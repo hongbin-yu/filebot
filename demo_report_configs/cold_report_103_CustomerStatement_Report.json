@@ -1,0 +1,84 @@
+{
+  "name": "CustomerStatement_Report",
+  "description": "COLD_REPORT配置: CustomerStatement_Report",
+  "report_id": 103,
+  "version": "1.0",
+  "source": "cold_report",
+  "metadata": {
+    "appid": 2,
+    "formid": 3,
+    "indexid": 103,
+    "levelid": 2,
+    "sourceid": 1003,
+    "comments": "客户对账单报表配置",
+    "seperator": ",",
+    "allowdups": 1,
+    "reptable": "CUSTOMER_STATEMENT",
+    "store_in_db": 1,
+    "index_pages": "N",
+    "enter": 0,
+    "duration": 30,
+    "durationunit": 2
+  },
+  "field_groups": [
+    {
+      "name": "field_1",
+      "textfieldsid": 103,
+      "seq": 1,
+      "icolumn": 1,
+      "length": 8,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": true
+      },
+      "validation": {
+        "pattern": "^CUST\\d{4}$"
+      }
+    },
+    {
+      "name": "field_2",
+      "textfieldsid": 103,
+      "seq": 2,
+      "icolumn": 2,
+      "length": 40,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": false
+      }
+    }
+  ],
+  "index_fields": [
+    {
+      "name": "CUST_ID",
+      "start": 1,
+      "length": 8,
+      "levelid": 2,
+      "description": "Customer ID",
+      "required": true,
+      "metadata": {
+        "cold_index_id": 103,
+        "page": 1,
+        "irow": 1,
+        "table_name": "CUSTOMER_MASTER",
+        "key_field_name": null,
+        "date_format": null
+      },
+      "validation": {
+        "pattern": "^CUST\\d{4}$",
+        "use_pattern": true
+      }
+    }
+  ],
+  "statistics": {
+    "total_field_groups": 2,
+    "total_index_fields": 1,
+    "has_fieldinfo_data": true,
+    "has_index_data": true
+  }
+}

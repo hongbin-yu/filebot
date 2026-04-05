@@ -1,0 +1,8 @@
+{
+  "id": "heartbeat-check-20260405T220454",
+  "description": "心跳检查 - 系统状态更新",
+  "completed": "2026-04-05T22:04:54Z",
+  "notified": false,
+  "status": "info",
+  "details": "✅ WebBot运行正常 (端口8000监听，PID 744593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 701380，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听，已停止超过25小时)；❌ 前端React服务持续停止 (端口5173未监听，已停止超过25小时)；❌ WebBot前端持续停止 (端口5175未监听，已停止超过25小时)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 742492，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存3.8Gi/7.3Gi used, 2.2Gi free, 3.5Gi available；📊 负载0.39, 0.26, 0.26；📋 无活动子任务，无运行中exec会话"
+}

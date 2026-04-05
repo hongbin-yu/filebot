@@ -1,0 +1,14 @@
+{
+  "update_time": "2026-03-16",
+  "config_loaded": true,
+  "config_version": "2.0",
+  "tables_loaded": 0,
+  "records_loaded": 0,
+  "updated_apps": 1,
+  "app_details": [
+    {
+      "app_id": "e7127854-1a78-4105-a6d5-1e225ead7295",
+      "app_name": "Smart iAdmin集成测试"
+    }
+  ]
+}

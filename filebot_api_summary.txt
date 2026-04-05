@@ -1,0 +1,70 @@
+FileBot API 文档总结
+==================================================
+
+未分类 (2个端点):
+  GET / - Root
+  GET /api/health - Health Check
+
+认证 (5个端点):
+  POST /api/v1/auth/login - Login
+  POST /api/v1/auth/register - Register
+  GET /api/v1/auth/me - Get Current User Info
+  POST /api/v1/auth/refresh - Refresh Token
+  POST /api/v1/auth/logout - Logout
+
+用户 (4个端点):
+  GET /api/v1/users/ - Get Users
+  GET /api/v1/users/{user_id} - Get User
+  PUT /api/v1/users/{user_id} - Update User
+  DELETE /api/v1/users/{user_id} - Delete User
+
+应用 (15个端点):
+  GET /api/v1/apps/ - Get Apps
+  POST /api/v1/apps/ - Create App
+  GET /api/v1/apps/{app_id} - Get App
+  PUT /api/v1/apps/{app_id} - Update App
+  DELETE /api/v1/apps/{app_id} - Delete App
+  GET /api/v1/apps/{app_id}/drawers - Get Drawers
+  POST /api/v1/apps/{app_id}/drawers - Create Drawer
+  GET /api/v1/apps/{app_id}/drawers/{drawer_id} - Get Drawer
+  PUT /api/v1/apps/{app_id}/drawers/{drawer_id} - Update Drawer
+  DELETE /api/v1/apps/{app_id}/drawers/{drawer_id} - Delete Drawer
+  GET /api/v1/apps/{app_id}/drawers/{drawer_id}/folders - Get Folders
+  POST /api/v1/apps/{app_id}/drawers/{drawer_id}/folders - Create Folder
+  GET /api/v1/apps/{app_id}/drawers/{drawer_id}/folders/{folder_id} - Get Folder
+  PUT /api/v1/apps/{app_id}/drawers/{drawer_id}/folders/{folder_id} - Update Folder
+  DELETE /api/v1/apps/{app_id}/drawers/{drawer_id}/folders/{folder_id} - Delete Folder
+
+文档 (13个端点):
+  GET /api/v1/documents/ - Get Documents
+  GET /api/v1/documents/{document_id} - Get Document
+  PUT /api/v1/documents/{document_id} - Update Document
+  DELETE /api/v1/documents/{document_id} - Delete Document
+  GET /api/v1/documents/{document_id}/pages - Get Document Pages
+  GET /api/v1/documents/{document_id}/pages/{page_id} - Get Document Page
+  PUT /api/v1/documents/{document_id}/pages/{page_id} - Update Document Page
+  DELETE /api/v1/documents/{document_id}/pages/{page_id} - Delete Document Page
+  POST /api/v1/documents/upload/ - Upload Document
+  GET /api/v1/documents/{document_id}/download - Download Document
+  POST /api/v1/documents/{document_id}/retry-conversion - Retry Document Conversion
+  POST /api/v1/documents/batch/archive - Batch Archive Documents
+  POST /api/v1/documents/batch/delete - Batch Delete Documents
+
+搜索 (4个端点):
+  GET /api/v1/search/documents - Search Documents
+  GET /api/v1/search/pages - Search Pages
+  GET /api/v1/search/combined - Combined Search
+  GET /api/v1/search/advanced - Advanced Search
+
+转换 (10个端点):
+  GET /api/v1/conversion/tasks - Get Conversion Tasks
+  POST /api/v1/conversion/tasks - Create Conversion Task
+  GET /api/v1/conversion/tasks/{task_id} - Get Conversion Task
+  PUT /api/v1/conversion/tasks/{task_id} - Update Conversion Task
+  DELETE /api/v1/conversion/tasks/{task_id} - Delete Conversion Task
+  GET /api/v1/conversion/queue - Get Conversion Queue
+  POST /api/v1/conversion/queue/retry-failed - Retry Failed Conversions
+  POST /api/v1/conversion/batch - Batch Convert Documents
+  GET /api/v1/conversion/status - Get Conversion Service Status
+  POST /api/v1/conversion/test-convert - Test Conversion
+

@@ -1,0 +1,23 @@
+{
+  "report_id": 101,
+  "report_name": "Invoice_Report",
+  "extraction_time": "2026-03-15T15:10:27.975880",
+  "total_records": 3,
+  "validation_summary": {
+    "total_lines": 3,
+    "valid_lines": 3,
+    "invalid_lines": 0,
+    "field_errors": {}
+  },
+  "field_statistics": {
+    "total_fields": 9,
+    "by_data_type": {
+      "code": 6,
+      "date": 3
+    },
+    "by_validation_status": {
+      "passed": 6,
+      "failed": 3
+    }
+  }
+}

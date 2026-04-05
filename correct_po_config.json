@@ -1,0 +1,177 @@
+{
+  "app_name": "Purchase Order",
+  "app_code": "PO",
+  "template_name": "pcl_form.jasper",
+  "file_extension": ".cld",
+  "encoding": "latin-1",
+  "description": "采购订单应用程序配置 - 基于PO.TXT样板文件分析",
+  "field_definitions": [
+    {
+      "name": "record_type",
+      "description": "记录类型标记",
+      "keywords": [
+        "-"
+      ],
+      "start_pos": 0,
+      "length": 3,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^-$",
+      "sample_value": "-"
+    },
+    {
+      "name": "date",
+      "description": "日期 (MM/DD/YY)",
+      "keywords": [
+        "04/09/12",
+        "05/02/12",
+        "01/26/12",
+        "04/10/12",
+        "05/23/12"
+      ],
+      "start_pos": 3,
+      "length": 12,
+      "field_type": "date",
+      "required": true,
+      "validation_pattern": "\\d{2}/\\d{2}/\\d{2}",
+      "sample_value": "04/09/12"
+    },
+    {
+      "name": "status",
+      "description": "状态代码",
+      "keywords": [
+        "E",
+        "I",
+        "O"
+      ],
+      "start_pos": 15,
+      "length": 6,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^[EIO]$",
+      "sample_value": "E"
+    },
+    {
+      "name": "initials",
+      "description": "人员缩写",
+      "keywords": [
+        "BD",
+        "DL",
+        "PH",
+        "JM",
+        "WO",
+        "JD"
+      ],
+      "start_pos": 21,
+      "length": 5,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^[A-Z]{2}$",
+      "sample_value": "BD"
+    },
+    {
+      "name": "first_name",
+      "description": "名",
+      "keywords": [
+        "BRIAN",
+        "DANNY",
+        "GARY",
+        "PAUL",
+        "WILLIE",
+        "JOHN"
+      ],
+      "start_pos": 26,
+      "length": 6,
+      "field_type": "name",
+      "required": true,
+      "validation_pattern": "^[A-Z]+$",
+      "sample_value": "BRIAN"
+    },
+    {
+      "name": "last_name",
+      "description": "姓",
+      "keywords": [
+        "DEARB",
+        "LEUNG",
+        "MCKENN",
+        "HOLLMA",
+        "ORTI",
+        "DEUGEN"
+      ],
+      "start_pos": 32,
+      "length": 7,
+      "field_type": "name",
+      "required": true,
+      "validation_pattern": "^[A-Z]+$",
+      "sample_value": "DEARB"
+    },
+    {
+      "name": "company_name",
+      "description": "公司名称",
+      "keywords": [
+        "PARKER HANNIFIN CORPORATION",
+        "PARKER HANNIFIN"
+      ],
+      "start_pos": 40,
+      "length": 40,
+      "field_type": "string",
+      "required": false,
+      "validation_pattern": null,
+      "sample_value": "PARKER HANNIFIN CORPORATION"
+    },
+    {
+      "name": "phone",
+      "description": "电话号码",
+      "keywords": [
+        "(619) 661-7000",
+        "(619) 671-3208"
+      ],
+      "start_pos": 20,
+      "length": 20,
+      "field_type": "phone",
+      "required": false,
+      "validation_pattern": "\\(\\d{3}\\) \\d{3}-\\d{4}",
+      "sample_value": "(619) 661-7000"
+    },
+    {
+      "name": "fax",
+      "description": "传真号码",
+      "keywords": [
+        "(619) 671-3208"
+      ],
+      "start_pos": 20,
+      "length": 20,
+      "field_type": "phone",
+      "required": false,
+      "validation_pattern": "\\(\\d{3}\\) \\d{3}-\\d{4}",
+      "sample_value": "(619) 671-3208"
+    },
+    {
+      "name": "address_line1",
+      "description": "地址行1",
+      "keywords": [
+        "7664 PANASONIC WAY",
+        "SAN DIEGO, CA 92154"
+      ],
+      "start_pos": 80,
+      "length": 40,
+      "field_type": "address",
+      "required": false,
+      "validation_pattern": null,
+      "sample_value": "7664 PANASONIC WAY"
+    },
+    {
+      "name": "address_line2",
+      "description": "地址行2",
+      "keywords": [
+        "SAN DIEGO, CA 92154"
+      ],
+      "start_pos": 120,
+      "length": 40,
+      "field_type": "address",
+      "required": false,
+      "validation_pattern": null,
+      "sample_value": "SAN DIEGO, CA 92154"
+    }
+  ]
+}

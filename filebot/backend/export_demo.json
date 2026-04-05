@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "export_type": "smarti_migration",
+  "export_time": "2026-04-01T10:43:52.296654",
+  "summary": {
+    "total_apps": 5,
+    "total_documents": 115,
+    "missing_files": 15,
+    "success_rate": 86.95652173913044
+  },
+  "data_structure": {
+    "apps": "包含应用基本信息",
+    "folders": "包含文件夹树结构",
+    "documents": "包含文档元数据",
+    "file_status": "标识缺失文件"
+  },
+  "example_app": {
+    "id": "uuid",
+    "name": "应用名称",
+    "slug": "应用标识",
+    "folders": [
+      {
+        "id": "uuid",
+        "name": "文件夹名",
+        "path": "/path/to/folder",
+        "documents": [
+          {
+            "id": "uuid",
+            "title": "文档标题",
+            "original_filename": "原始文件名",
+            "file_size": 12345,
+            "file_status": "available|missing"
+          }
+        ]
+      }
+    ]
+  }
+}

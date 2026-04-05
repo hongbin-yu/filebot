@@ -1,0 +1,74 @@
+🚀 启动WebBot AI内容管理系统
+=================================
+✅ Python3可用: Python 3.12.3
+✅ 依赖检查完成
+⚠️  警告: FileBot数据库未找到: ../filebot/backend/filebot.db
+   将创建新的WebBot表结构
+🌐 启动WebBot服务器...
+📊 API地址: http://localhost:8000
+📚 API文档: http://localhost:8000/docs
+🖥️  前端界面: http://localhost:8000/static/index.html
+
+按Ctrl+C停止服务器
+INFO:     Will watch for changes in these directories: ['/home/hongb/.openclaw/workspace/webbot/app']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [1661136] using WatchFiles
+INFO:     Started server process [1661138]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+✅ 组件路由已加载
+📁 静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../frontend
+📁 GCWeb静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../static
+🚀 WebBot启动中...
+✅ 组件表检查完成
+📊 数据库初始化完成
+✅ 数据库初始化完成
+INFO:     127.0.0.1:47032 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37506 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37506 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37492 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37506 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37492 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:37492 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35690 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35690 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35684 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35690 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35690 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:35690 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36878 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36878 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36872 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36878 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36878 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:36878 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46962 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46962 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46952 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46962 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46962 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46962 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57166 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55106 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55092 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55106 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55092 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55092 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55092 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55114 - "OPTIONS /api/v1/pages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55114 - "POST /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52702 - "OPTIONS /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55114 - "POST /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46396 - "POST /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46396 - "POST /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46412 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39326 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47434 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51972 - "GET /api/v1/pages/getheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58900 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1661138]
+🛑 WebBot关闭中...
+INFO:     Stopping reloader process [1661136]

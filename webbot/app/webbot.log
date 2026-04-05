@@ -1,0 +1,31 @@
+INFO:     Started server process [1169225]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ 组件路由已加载
+📁 静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../frontend
+📁 GCWeb静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../static
+🚀 WebBot启动中...
+✅ 组件表检查完成
+📊 数据库初始化完成
+✅ 数据库初始化完成
+INFO:     127.0.0.1:36242 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55144 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46230 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46244 - "GET /api HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46252 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46252 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46264 - "POST /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46264 - "POST /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46266 - "GET /api/v1/pages/test-page-from-api HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46280 - "DELETE /api/v1/pages/test-page-from-api HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46292 - "POST /api/v1/ai/create-page HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46298 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35352 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35358 - "POST /api/v1/components/render-page HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54822 - "GET /gcweb/GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1169225]
+🛑 WebBot关闭中...

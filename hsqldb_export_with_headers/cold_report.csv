@@ -1,0 +1,17 @@
+ID,SETID,SOURCEID,DISPOSITIONID,APPID,SAMPLEID,EXTERN_ID,FORMID,RECORDCLASSID,INDEXID,NAME,COMMENTS,LEVELID,TEXTFIELDSID,AUDITID,INDEX_PAGES,MODIFY_DATE
+10,,2,-99,6,2,2,10,10,0,Bank Statements,Sample Financial:  stmt.rpt,2,,0,y,1998-10-06
+34,,3,-99,6,3,3,34,34,0,Demand Deposit Reports,Sample Financial:  dds.rpt,2,,0,y,1999-04-09
+53,,4,-99,6,4,3,53,53,0,Item Entry Block Listing,Sample Financial:  itemblk.rpt,1,,0,y,1998-10-06
+57,,5,-99,8,5,4,57,57,0,Aged Outpatient Billing Exception Report,Sample Hospital:  opexecep.rpt,2,,0,y,1998-10-06
+67,,6,-99,8,6,3,67,67,0,Charge Packet Patient List,Sample Hospital:  ipackrpt.rpt,2,,0,y,1998-10-06
+71,,7,-99,8,7,3,71,71,0,Daily Transaction Audit Report,Sample Hospital:  tranaud.rpt,2,,0,y,1998-10-06
+74,,8,-99,8,8,5,74,74,0,Detail Billing Report,Sample Hospital:  detail.rpt,2,,0,y,1998-10-06
+87,,9,-99,8,9,0,87,0,0,UB92 Report,Sample Hospital:  ub82.rpt,2,,0,y,1998-10-06
+93,,10,-99,10,10,6,93,93,0,Jewelry Invoice,Sample Invoicing:  jewelry.rpt,2,,0,y,1998-10-06
+96,,11,-99,10,11,9,96,96,0,Lighting Invoice,Sample Invoicing:  light1.rpt,2,,0,y,1998-10-06
+99,,12,-99,10,12,3,99,99,0,Lighting Shipper,Sample Invoicing:  shipper.rpt,2,,0,y,1998-10-06
+103,2,13,-99,10,13,7,103,103,0,Phone Invoice, ,2,,0,n,1998-10-06
+108,,15,-99,6,17,0,108,0,0,Metacode, ,1,,0,y,1999-04-09
+109,,20,,21,,17,0,,0,invoice,,2,,,y,2014-04-24
+115,,20,,21,,17,0,,0,pdf invoice,,4,,,y,2014-04-14
+109,4,,1,0,,1,,,14

@@ -1,0 +1,25 @@
+INFO:     Started server process [2431325]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ 组件路由已加载
+📁 静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../frontend
+📁 GCWeb静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../static
+🚀 WebBot启动中...
+✅ 组件表检查完成
+📊 数据库初始化完成
+✅ 数据库初始化完成
+INFO:     127.0.0.1:58672 - "GET /api/v1/components/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48830 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54998 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:36480 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36484 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36496 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:36506 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36796 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:34570 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2431325]
+🛑 WebBot关闭中...

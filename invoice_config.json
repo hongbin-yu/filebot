@@ -1,0 +1,538 @@
+{
+  "name": "Parker_Invoice_Config",
+  "description": "从Smart iAdmin COLD_INDEXES转换的配置",
+  "version": "1.0",
+  "source": "cold_indexes",
+  "fields": [
+    {
+      "name": "INVOICE_NO",
+      "start": 1,
+      "length": 7,
+      "description": "Literal: Invoice Number | Sample: 1333333...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{7}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 101,
+        "levelid": 1,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "column_name": "INVOICE_NO",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "CUSTOMER_NO",
+      "start": 9,
+      "length": 5,
+      "description": "Literal: Customer Number | Sample: 33333...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{5}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 101,
+        "levelid": 1,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "column_name": "CUSTOMER_NO",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "INVOICE_DATE",
+      "start": 57,
+      "length": 8,
+      "description": "Literal: Invoice Date | Sample: 04/17/14...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{2}/\\d{2}/\\d{2}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 101,
+        "levelid": 1,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "column_name": "INVOICE_DATE",
+        "key_field_name": null,
+        "date_format": "mm/dd/yy"
+      }
+    },
+    {
+      "name": "CONTROL_CODE",
+      "start": 66,
+      "length": 7,
+      "description": "Literal: Control Code | Sample: 33CG333...",
+      "required": false,
+      "validation": {
+        "pattern": "^[A-Z0-9]{7}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 101,
+        "levelid": 1,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "column_name": "CONTROL_CODE",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "ORDER_NO",
+      "start": 61,
+      "length": 6,
+      "description": "Literal: Order Number | Sample: 333333...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{6}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 101,
+        "levelid": 1,
+        "page": 1,
+        "irow": 12,
+        "table_name": "INVOICE_HEADER",
+        "column_name": "ORDER_NO",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "RELEASE_NO",
+      "start": 68,
+      "length": 3,
+      "description": "Literal: Release Number | Sample: 001...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{3}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 101,
+        "levelid": 1,
+        "page": 1,
+        "irow": 12,
+        "table_name": "INVOICE_HEADER",
+        "column_name": "RELEASE_NO",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "LINE_SEQ",
+      "start": 1,
+      "length": 3,
+      "description": "Literal: Line Item Seq | Sample: 002...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{3}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 102,
+        "levelid": 2,
+        "page": 1,
+        "irow": 17,
+        "table_name": "INVOICE_LINE",
+        "column_name": "LINE_SEQ",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "PART_NO",
+      "start": 5,
+      "length": 13,
+      "description": "Literal: Part Number | Sample: NH-91011-1250...",
+      "required": true,
+      "validation": {
+        "pattern": "^NH-\\d{5}-\\d{4}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 102,
+        "levelid": 2,
+        "page": 1,
+        "irow": 17,
+        "table_name": "INVOICE_LINE",
+        "column_name": "PART_NO",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "WH_CODE",
+      "start": 43,
+      "length": 3,
+      "description": "Literal: Warehouse Code | Sample: 701...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{3}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 102,
+        "levelid": 2,
+        "page": 1,
+        "irow": 17,
+        "table_name": "INVOICE_LINE",
+        "column_name": "WH_CODE",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "QTY",
+      "start": 49,
+      "length": 1,
+      "description": "Literal: Quantity | Sample: 3...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d+$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 102,
+        "levelid": 2,
+        "page": 1,
+        "irow": 17,
+        "table_name": "INVOICE_LINE",
+        "column_name": "QTY",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "UNIT_PRICE",
+      "start": 54,
+      "length": 8,
+      "description": "Literal: Unit Price | Sample: 282.8393...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d+\\.\\d{4}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 102,
+        "levelid": 2,
+        "page": 1,
+        "irow": 17,
+        "table_name": "INVOICE_LINE",
+        "column_name": "UNIT_PRICE",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "DISCOUNT_RATE",
+      "start": 62,
+      "length": 7,
+      "description": "Literal: Discount Rate | Sample: .0000...",
+      "required": false,
+      "validation": {
+        "pattern": "^\\.\\d{4}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 102,
+        "levelid": 2,
+        "page": 1,
+        "irow": 17,
+        "table_name": "INVOICE_LINE",
+        "column_name": "DISCOUNT_RATE",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "INVOICE_LINE",
+      "start": 69,
+      "length": 11,
+      "description": "Literal: Line Amount | Sample: 848.52...",
+      "required": true,
+      "validation": {
+        "pattern": "^[\\d",
+        "replaces": "]+\\.\\d{2}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 102,
+        "levelid": 2,
+        "page": 1,
+        "irow": 17,
+        "table_name": null,
+        "column_name": "INVOICE_LINE",
+        "key_field_name": "LINE_AMOUNT",
+        "date_format": null
+      }
+    },
+    {
+      "name": "LINE_SEQ",
+      "start": 1,
+      "length": 3,
+      "description": "Literal: Line Item Seq | Sample: 003...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{3}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 103,
+        "levelid": 2,
+        "page": 1,
+        "irow": 20,
+        "table_name": "INVOICE_LINE",
+        "column_name": "LINE_SEQ",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "PART_NO",
+      "start": 5,
+      "length": 13,
+      "description": "Literal: Part Number | Sample: NH-91011-2125...",
+      "required": true,
+      "validation": {
+        "pattern": "^NH-\\d{5}-\\d{4}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 103,
+        "levelid": 2,
+        "page": 1,
+        "irow": 20,
+        "table_name": "INVOICE_LINE",
+        "column_name": "PART_NO",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "WH_CODE",
+      "start": 43,
+      "length": 3,
+      "description": "Literal: Warehouse Code | Sample: 701...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{3}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 103,
+        "levelid": 2,
+        "page": 1,
+        "irow": 20,
+        "table_name": "INVOICE_LINE",
+        "column_name": "WH_CODE",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "QTY",
+      "start": 49,
+      "length": 1,
+      "description": "Literal: Quantity | Sample: 3...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d+$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 103,
+        "levelid": 2,
+        "page": 1,
+        "irow": 20,
+        "table_name": "INVOICE_LINE",
+        "column_name": "QTY",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "UNIT_PRICE",
+      "start": 54,
+      "length": 8,
+      "description": "Literal: Unit Price | Sample: 265.5826...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d+\\.\\d{4}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 103,
+        "levelid": 2,
+        "page": 1,
+        "irow": 20,
+        "table_name": "INVOICE_LINE",
+        "column_name": "UNIT_PRICE",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "DISCOUNT_RATE",
+      "start": 62,
+      "length": 7,
+      "description": "Literal: Discount Rate | Sample: .0000...",
+      "required": false,
+      "validation": {
+        "pattern": "^\\.\\d{4}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 103,
+        "levelid": 2,
+        "page": 1,
+        "irow": 20,
+        "table_name": "INVOICE_LINE",
+        "column_name": "DISCOUNT_RATE",
+        "key_field_name": null,
+        "date_format": null
+      }
+    },
+    {
+      "name": "INVOICE_LINE",
+      "start": 69,
+      "length": 11,
+      "description": "Literal: Line Amount | Sample: 796.75...",
+      "required": true,
+      "validation": {
+        "pattern": "^[\\d",
+        "replaces": "]+\\.\\d{2}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 103,
+        "levelid": 2,
+        "page": 1,
+        "irow": 20,
+        "table_name": null,
+        "column_name": "INVOICE_LINE",
+        "key_field_name": "LINE_AMOUNT",
+        "date_format": null
+      }
+    },
+    {
+      "name": "field_104_3_1",
+      "start": 1,
+      "length": 20,
+      "description": "Literal: Total Amount | Sample: 3...",
+      "required": false,
+      "validation": {
+        "pattern": "1",
+        "replaces": "^[\\d",
+        "trim_left": "333.33"
+      },
+      "metadata": {
+        "cold_index_id": 104,
+        "levelid": 3,
+        "page": 1,
+        "irow": 1,
+        "table_name": "]+\\.\\d{2}$",
+        "column_name": null,
+        "key_field_name": "INVOICE_TOTAL",
+        "date_format": null
+      }
+    },
+    {
+      "name": "INVOICE_TOTAL",
+      "start": 25,
+      "length": 20,
+      "description": "Literal: Freight Amount | Sample: 21.00...",
+      "required": false,
+      "validation": {
+        "pattern": "^[\\d",
+        "replaces": "]+\\.\\d{2}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 104,
+        "levelid": 3,
+        "page": 1,
+        "irow": 1,
+        "table_name": null,
+        "column_name": "INVOICE_TOTAL",
+        "key_field_name": "FREIGHT_AMOUNT",
+        "date_format": null
+      }
+    },
+    {
+      "name": "\\$",
+      "start": 50,
+      "length": 20,
+      "description": "Literal: Invoice Total | Sample: 8...",
+      "required": false,
+      "validation": {
+        "pattern": "1",
+        "replaces": "^\\$[\\d",
+        "trim_left": "474.57"
+      },
+      "metadata": {
+        "cold_index_id": 104,
+        "levelid": 3,
+        "page": 1,
+        "irow": 1,
+        "table_name": "]+\\.\\d{2}$",
+        "column_name": "\\$",
+        "key_field_name": "INVOICE_TOTAL",
+        "date_format": null
+      }
+    },
+    {
+      "name": "INVOICE_TERMS",
+      "start": 1,
+      "length": 50,
+      "description": "Literal: Terms Description | Sample: 1% 10TH 25TH...",
+      "required": false,
+      "validation": {
+        "pattern": "0",
+        "trim_left": "NET 30"
+      },
+      "metadata": {
+        "cold_index_id": 105,
+        "levelid": 4,
+        "page": 1,
+        "irow": 1,
+        "table_name": null,
+        "column_name": "INVOICE_TERMS",
+        "key_field_name": "TERMS_DESC",
+        "date_format": null
+      }
+    },
+    {
+      "name": "DUNS_NUMBER",
+      "start": 52,
+      "length": 30,
+      "description": "Literal: DUNS Number | Sample: 00-837-0645...",
+      "required": true,
+      "validation": {
+        "pattern": "^\\d{2}-\\d{3}-\\d{4}$",
+        "use_pattern": true
+      },
+      "metadata": {
+        "cold_index_id": 105,
+        "levelid": 4,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_TERMS",
+        "column_name": "DUNS_NUMBER",
+        "key_field_name": null,
+        "date_format": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import MainLayout from './components/layout/MainLayout';
+import AppsDashboard from './pages/AppsDashboard';
+import AppFolders from './pages/AppFolders';
+import AppDocuments from './pages/AppDocuments';
+import Documents from './pages/Documents';
+import Upload from './pages/Upload';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import DocumentDetail from './pages/DocumentDetail';
+import Folders from './pages/Folders';
+import CopilotSidebar from './components/copilot/CopilotSidebar';
+import { CopilotProvider, useCopilot } from './contexts/CopilotContext';
+import authService from './services/auth.service';
+import './App.css';
+
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = authService.isAuthenticated();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Main App with Copilot integration
+const MainAppContent: React.FC = () => {
+  const { isOpen } = useCopilot();
+  
+  if (isOpen) {
+    // 两栏布局模式：左边主系统，右边FileBot聊天窗口
+    return (
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* 左边：主系统 (占主要空间) */}
+        <div className="flex-1 overflow-auto">
+          <MainLayout />
+        </div>
+        
+        {/* 右边：FileBot聊天窗口 (固定宽度) */}
+        <div className="w-96 border-l border-gray-200">
+          <CopilotSidebar />
+        </div>
+      </div>
+    );
+  }
+  
+  // 全屏模式：简化系统界面
+  return (
+    <div className="min-h-screen">
+      <MainLayout />
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <CopilotProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Protected Routes */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <MainAppContent />
+            </ProtectedRoute>
+          }>
+            {/* New hierarchical navigation */}
+            <Route index element={<AppsDashboard />} />
+            <Route path=":appId">
+              <Route index element={<AppFolders />} />
+              <Route path=":drawerSlug" element={<AppFolders />} />
+              <Route path="folders/:folderId/documents" element={<AppDocuments />} />
+              <Route path="folders/:folderId/upload" element={<Upload />} />
+              {/* 测试路由：更宽松的匹配 */}
+              <Route path="folders/:folderId*/upload" element={<div>测试路由匹配</div>} />
+            </Route>
+            
+            {/* Legacy routes (to be deprecated) */}
+            <Route path="documents" element={<Navigate to="/" />} />
+            <Route path="folders" element={<Navigate to="/" />} />
+            <Route path="upload" element={<Navigate to="/" />} />
+            <Route path="documents/:id" element={<DocumentDetail />} />
+            {/* Add more routes as needed */}
+          </Route>
+          
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </CopilotProvider>
+  );
+}
+
+export default App;

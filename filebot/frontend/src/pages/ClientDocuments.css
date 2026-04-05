@@ -1,0 +1,121 @@
+/* ClientDocuments 组件样式 */
+.client-documents {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 表格样式优化 */
+.client-documents table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.client-documents thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f9fafb;
+  z-index: 10;
+}
+
+.client-documents tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.client-documents tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* 索引列固定宽度 */
+.client-documents th:nth-child(n+2):nth-child(-n+10),
+.client-documents td:nth-child(n+2):nth-child(-n+10) {
+  max-width: 120px;
+  min-width: 80px;
+}
+
+/* 响应式调整 */
+@media (max-width: 1280px) {
+  .client-documents .overflow-x-auto {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .client-documents table {
+    min-width: 1200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .client-documents {
+    padding: 1rem !important;
+  }
+  
+  .client-documents .flex-col {
+    flex-direction: column !important;
+  }
+  
+  .client-documents .space-x-4 > * + * {
+    margin-left: 0 !important;
+    margin-top: 0.5rem;
+  }
+}
+
+/* 动画效果 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.client-documents tbody tr {
+  animation: slideIn 0.2s ease-out;
+}
+
+.client-documents tbody tr:nth-child(even) {
+  animation-delay: 0.05s;
+}
+
+.client-documents tbody tr:nth-child(odd) {
+  animation-delay: 0.1s;
+}
+
+/* 搜索框样式 */
+.client-documents input[type="text"]:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 按钮样式优化 */
+.client-documents button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 状态标签 */
+.client-documents .bg-yellow-100 {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* 滚动条样式 */
+.client-documents .overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.client-documents .overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.client-documents .overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.client-documents .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

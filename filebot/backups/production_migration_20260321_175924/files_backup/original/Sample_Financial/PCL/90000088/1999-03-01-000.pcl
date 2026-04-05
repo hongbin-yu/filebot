@@ -1,0 +1,1900 @@
+%-12345X@PJL
+@PJL ENTER LANGUAGE=PCL
+E(0N&l0O
+
+
+
+
+
+---------------------------------------------------- -------------------
+---- SSSSSSSSS ---------- AA -------- PPPPPPPPP ---- -----------------
+-- SSSSSSSSSSSSS ------- AAAA ------- PPPPPPPPPPP -- ---------------
+-- SSSSSS -- SS ------- AAAAAA ------ PPPP -- PPPP - -------------
+--- SSSSSSS ---------- AAA  AAA ----- PPPP -- PPPP - -----------
+----- SSSSSSS ------- AAAAAAAAAA ---- PPPPPPPPPPP -- ---------
+------- SSSSSSS ---- AAAAAAAAAAAA --- PPPPPPPPPP --- -------
+-- SS --- SSSSSS -- AAAA ---- AAAA -- PPPP --------- -----
+- SSSSSSSSSSSSSS - AAAA ------ AAAA - PPPP --------- ---
+--- SSSSSSSSSS --- AAAA ------ AAAA - PPPP --------- -
+
+
+
+ZVGSRP01,WJ50
+
+
+
+                  C l i e n t                010
+
+                  R e c e i v e r            
+
+                  D e p a r t m e n t        
+
+
+                  Spool request              LIST1S QXRX RECHNUNG
+
+                  Request number             14959
+
+
+                  Database                   U1P(mopa17)
+
+                  Owner                      BATCHSCHD
+
+                  Device type                ZXERXNXX
+
+                  Format type                LETTER
+
+                  Priority                   3
+
+
+                  Number                     1
+
+                  Output request             1
+                      created                02.03.1999 02:09:43
+                      from                   BATCHSCHD
+                      printed                02.03.1999 02:09:43
+                      host                   mopa17
+                      Device                 QXRX
+%-12345X@PJL
+@PJL ENTER LANGUAGE=PCL
+E(0N&l0L&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4440V&a1008HANFX4005
+&a4440V&a1656HBILL TO CUSTOMER/SERVICE        
+&a4440V&a3123H             1.500
+&a4440V&a3888H       1.500
+&a4440V&a4458H      145.00
+&a4440V&a4968H         217.50
+&a4680V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5040V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5040V&a4946H         0.00
+&a5160V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5160V&a4946H        17.94
+&a5280V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5280V&a4946H       235.44&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00000005
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HAli Huder Corp
+&a1800V&a504H576 East 187th Street
+&a1920V&a504HBRONX NY  10458
+&a2040V&a504H(8U(s1p57.0v0s0b0T*104582*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000008
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00000005
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hali 
+&a3000V&a4896H 03/01/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000019 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00000005
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00000005
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HAli Huder Corp
+&a1800V&a3744H576 East 187th Street
+&a1920V&a3744HBRONX NY  10458
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  credit card N30 Due Date: 03/31/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 03/31/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H   DEBIT MEMO&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4440V&a1008HANFX4005
+&a4440V&a1656HBILL TO CUSTOMER/SERVICE        
+&a4440V&a3123H             1.500
+&a4440V&a3888H       1.500
+&a4440V&a4458H      145.00
+&a4440V&a4968H         217.50
+&a4680V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a4800V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #58239
+&a5040V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5400V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5400V&a4946H         0.00
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5520V&a4946H        16.75
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5640V&a4946H       234.25&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00016700
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HCENTRALIA PHARMACY
+&a1800V&a504H208 N TOWER
+&a1920V&a504HCENTRALIA WA  98531
+&a2040V&a504H(8U(s1p57.0v0s0b0T*985314*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000046
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00016700
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hjan 
+&a3000V&a4896H 01/20/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000013 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00016700
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00016700
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HCENTRALIA PHARMACY
+&a1800V&a3744H208 N TOWER
+&a1920V&a3744HCENTRALIA WA  98531
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H   DEBIT MEMO&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4440V&a1008HANFX4005
+&a4440V&a1656HBILL TO CUSTOMER/SERVICE        
+&a4440V&a3123H             1.000
+&a4440V&a3888H       1.000
+&a4440V&a4458H      145.00
+&a4440V&a4968H         145.00
+&a4680V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a4800V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #59374
+&a5040V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5400V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5400V&a4946H         0.00
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5640V&a4946H       145.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00016888
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HFOTOTIX CORP
+&a1800V&a504H1268A AUTO PARKWAY
+&a1920V&a504HESCONDIDO CA  92029
+&a2040V&a504H(8U(s1p57.0v0s0b0T*920298*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000047
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00016888
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hlaurie 
+&a3000V&a4896H 01/27/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000005 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00016888
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00016888
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HFOTOTIX CORP
+&a1800V&a3744H1268A AUTO PARKWAY
+&a1920V&a3744HESCONDIDO CA  92029
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H   DEBIT MEMO&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4440V&a1008HANFX4005
+&a4440V&a1656HBILL TO CUSTOMER/SERVICE        
+&a4440V&a3123H             1.000
+&a4440V&a3888H       1.000
+&a4440V&a4458H      145.00
+&a4440V&a4968H         145.00
+&a4680V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a4800V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #59376
+&a5040V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5400V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5400V&a4946H         0.00
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5640V&a4946H       145.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00018242
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HDH 1HR PHOTO EXPRESS
+&a1800V&a504H72-345 HIGHWAY 111
+&a1920V&a504HPALM DESERT CA  92260
+&a2040V&a504H(8U(s1p57.0v0s0b0T*922601*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000048
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00018242
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hbrian 
+&a3000V&a4896H 02/02/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000014 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00018242
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00018264
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HDH 1 HR PHT EXPRESS
+&a1800V&a3744H74-913 HIGHWAY 111
+&a1920V&a3744HINDIAN WELLS CA  92210
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H   DEBIT MEMO&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4440V&a1008HANFX4005
+&a4440V&a1656HBILL TO CUSTOMER/SERVICE        
+&a4440V&a3123H            16.000
+&a4440V&a3888H      16.000
+&a4440V&a4458H      145.00
+&a4440V&a4968H       2,320.00
+&a4680V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a4800V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #58246
+&a5040V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5400V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5400V&a4946H         0.00
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5640V&a4946H     2,320.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00027440
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HQUALEX INC
+&a1800V&a504H4020 STIRRUP CREEK DRIVE
+&a1920V&a504HDURHAM NC  27703
+&a2040V&a504H(8U(s1p57.0v0s0b0T*277031*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000070
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0040083
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00027440
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hdennis 
+&a3000V&a4896H 01/28/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000010 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00027440
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00028828
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HKMART 3974
+&a1800V&a3744H4080 W SHAW
+&a1920V&a3744HFRESNO CA  93722
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  5% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  5.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H   DEBIT MEMO&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCEOH7000
+&a4440V&a1656HACCUSET1200                  =
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T10042568   Serial No. 1173
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HCECPB005
+&a4800V&a1656HSTANDARD SERVICE LABOR RATE
+&a4800V&a4906H         350.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor    120.000 MIN @       175.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T    20
+&a5160V&a1008HCECPB030
+&a5160V&a1656HZONE 1 TRAVEL
+&a5160V&a4906H         300.00
+&a5400V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5760V&a4946H         0.00
+&a5880V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5880V&a4946H         0.00
+&a6000V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a6000V&a4946H       650.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00030006
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HTIMES PUBLISHING CO INC
+&a1800V&a504H113-115 W MAIN STREET
+&a1920V&a504HWATERTOWN WI  53094
+&a2040V&a504H(8U(s1p57.0v0s0b0T*530949*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000075
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Northern Trust
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0075073
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 50 LaSalle Street
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Chicago
+&a1200V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInstalled At: US00030006
+&a1320V&a3744H(0Y(s1p8.0v0s0b4T&k0006.666HTIMES PUBLISHING CO INC
+&a1440V&a3744H113-115 W MAIN STREET
+&a1560V&a3744HWATERTOWN WI  53094
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00030006
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H 
+&a3000V&a4896H 
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000015 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00030006
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a2040V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00030006
+&a2160V&a3744H(0Y(s1p8.0v0s0b4T&k0006.666HTIMES PUBLISHING CO INC
+&a2280V&a3744H113-115 W MAIN STREET
+&a2400V&a3744HWATERTOWN WI  53094
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  COD Company Check Due Date: 03/31/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 03/31/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCEOH7000
+&a4440V&a1656HACCUSET1200                  =
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 1173
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         217.50
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      1.500 H @       145.00 per Hour
+&a5160V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a5280V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #59785
+&a5520V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5880V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5880V&a4946H         0.00
+&a6000V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a6000V&a4946H         0.00
+&a6120V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a6120V&a4946H       217.50&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00030912
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HANAHEIM POLICE DEPT
+&a1800V&a504H425 S HARBOR BOULEVARD
+&a1920V&a504HANAHEIM CA  92805
+&a2040V&a504H(8U(s1p57.0v0s0b0T*928056*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000079
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Northern Trust
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0075073
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 50 LaSalle Street
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Chicago
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00030912
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hjim/bob 
+&a3000V&a4896H 02/17/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000004 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00030912
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00030912
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HANAHEIM POLICE DEPT
+&a1800V&a3744H425 S HARBOR BOULEVARD
+&a1920V&a3744HANAHEIM CA  92805
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCEOH7000
+&a4440V&a1656HACCUSET1200                  =
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 1173
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         435.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      3.000 H @       145.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5640V&a4946H         0.00
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5760V&a4946H       435.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00034371
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HDIRECT FOTO
+&a1800V&a504H2903 SATURN S T/STE H
+&a1920V&a504HBREA CA  92821
+&a2040V&a504H(8U(s1p57.0v0s0b0T*928218*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000084
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00034371
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hbob 
+&a3000V&a4896H 02/16/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000006 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00034371
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00034371
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HDIRECT FOTO
+&a1800V&a3744H2903 SATURN S T/STE H
+&a1920V&a3744HBREA CA  92821
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 90 Dyas Net 91 Due Date: 05/31/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 05/30/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 05/31/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCEOH7000
+&a4440V&a1656HACCUSET1200                  =
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 1173
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         145.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      1.000 H @       145.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5640V&a4946H         0.00
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5760V&a4946H       145.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00034734
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HM&M QUALITY PRINTING
+&a1800V&a504H2815-22817 VENTURA
+&a1920V&a504HWOODLAND HILLS CA  91364
+&a2040V&a504H(8U(s1p57.0v0s0b0T*913647*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000085
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00034734
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hmassoud 
+&a3000V&a4896H 02/18/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000002 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00034734
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00034734
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HM&M QUALITY PRINTING
+&a1800V&a3744H2815-22817 VENTURA
+&a1920V&a3744HWOODLAND HILLS CA  91364
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCEOH7000
+&a4440V&a1656HACCUSET1200                  =
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 1173
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         290.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      2.000 H @       145.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5640V&a4946H         0.00
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5760V&a4946H       290.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00034734
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HM&M QUALITY PRINTING
+&a1800V&a504H2815-22817 VENTURA
+&a1920V&a504HWOODLAND HILLS CA  91364
+&a2040V&a504H(8U(s1p57.0v0s0b0T*913647*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000086
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00034734
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hmassoud 
+&a3000V&a4896H 02/16/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000003 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00034734
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00034734
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HM&M QUALITY PRINTING
+&a1800V&a3744H2815-22817 VENTURA
+&a1920V&a3744HWOODLAND HILLS CA  91364
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCEOH7000
+&a4440V&a1656HACCUSET1200                  =
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 1173
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         217.50
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      1.500 H @       145.00 per Hour
+&a5160V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a5280V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #58247
+&a5520V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5880V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5880V&a4946H         0.00
+&a6000V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a6000V&a4946H         0.00
+&a6120V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a6120V&a4946H       217.50&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00035590
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HSAM'S CAMERA & ELECTRONICS DBA/SAMS
+&a1800V&a504HAM/GATEWAY WST MALL
+&a1920V&a504HKALISPELL MT  59901
+&a2040V&a504H(8U(s1p57.0v0s0b0T*599016*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000088
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Northern Trust
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0075073
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 50 LaSalle Street
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Chicago
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00035590
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hterri 
+&a3000V&a4896H 01/19/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000008 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00035590
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00035590
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HSAM'S CAMERA & ELECTRONICS DBA/SA
+&a1800V&a3744HAM/GATEWAY WST MALL
+&a1920V&a3744HKALISPELL MT  59901
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCGRUS000
+&a4440V&a1656HACCUSET 800
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T10052793   Serial No. 7028
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HCECPB005
+&a4800V&a1656HSTANDARD SERVICE LABOR RATE
+&a4800V&a4906H         787.50
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor    270.000 MIN @       175.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T    20
+&a5160V&a1008HCECPB030
+&a5160V&a1656HZONE 1 TRAVEL
+&a5160V&a4906H         300.00
+&a5400V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5760V&a4946H         0.00
+&a5880V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5880V&a4946H        19.50
+&a6000V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a6000V&a4946H     1,107.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00054986
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HBANKERS SYSTEMS INC
+&a1800V&a504H6815 SAUK VIEW DRIVE
+&a1920V&a504HSAINT CLOUD MN  56303
+&a2040V&a504H(8U(s1p57.0v0s0b0T*563033*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000114
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Northern Trust
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0075073
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 50 LaSalle Street
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Chicago
+&a1200V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInstalled At: US00054986
+&a1320V&a3744H(0Y(s1p8.0v0s0b4T&k0006.666HBANKERS SYSTEMS INC
+&a1440V&a3744H6815 SAUK VIEW DRIVE
+&a1560V&a3744HSAINT CLOUD MN  56303
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00054986
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HWB3758 
+&a3000V&a4896H 
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000017 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00054986
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a2040V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00054986
+&a2160V&a3744H(0Y(s1p8.0v0s0b4T&k0006.666HBANKERS SYSTEMS INC
+&a2280V&a3744H6815 SAUK VIEW DRIVE
+&a2400V&a3744HSAINT CLOUD MN  56303
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  1% 10 Days Net 20 Due Date: 03/21/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 03/11/1999 you receive  1.0  % discount
+&a3120V&a504HUp to 03/21/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCGRUS000
+&a4440V&a1656HACCUSET 800
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 7028
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         145.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      1.000 H @       145.00 per Hour
+&a5160V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a5280V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #59769
+&a5520V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5880V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5880V&a4946H         0.00
+&a6000V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a6000V&a4946H         0.00
+&a6120V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a6120V&a4946H       145.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00075184
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HFOTO EXPRESS
+&a1800V&a504H520 LAWRENCE EXPRESSWAY 309
+&a1920V&a504HSUNNYVALE CA  94086
+&a2040V&a504H(8U(s1p57.0v0s0b0T*940863*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000132
+&a480V&a3744HDate       
+&a480V&a4320H 02/02/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00075184
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hjohnson 
+&a3000V&a4896H 02/02/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000000 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00075184
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00075184
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HFOTO EXPRESS
+&a1800V&a3744H520 LAWRENCE EXPRESSWAY 309
+&a1920V&a3744HSUNNYVALE CA  94086
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/03/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 03/14/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/03/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCGRUS000
+&a4440V&a1656HACCUSET 800
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 7028
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         145.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      1.000 H @       145.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5640V&a4946H         0.00
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5760V&a4946H       145.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00076130
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HA G PHOTO-DIGITAL
+&a1800V&a504H6034 COLLAGE AVENUE
+&a1920V&a504HOAKLAND CA  94618
+&a2040V&a504H(8U(s1p57.0v0s0b0T*946182*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000138
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0040083
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00076130
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hagatha 
+&a3000V&a4896H 01/29/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000011 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00076130
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00076130
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HA G PHOTO-DIGITAL
+&a1800V&a3744H6034 COLLAGE AVENUE
+&a1920V&a3744HOAKLAND CA  94618
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCGRUS000
+&a4440V&a1656HACCUSET 800
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 7028
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         145.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      1.000 H @       145.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5640V&a4946H        12.47
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5760V&a4946H       157.47&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00077280
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HOVERLAKE PHOTO
+&a1800V&a504H1423 130TH NE
+&a1920V&a504HBELLEVUE WA  98005
+&a2040V&a504H(8U(s1p57.0v0s0b0T*980058*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000149
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0040083
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00077280
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hgordon 
+&a3000V&a4896H 01/21/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000012 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00077280
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00077280
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HOVERLAKE PHOTO
+&a1800V&a3744H1423 130TH NE
+&a1920V&a3744HBELLEVUE WA  98005
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCGRUS000
+&a4440V&a1656HACCUSET 800
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 7028
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         290.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      2.000 H @       145.00 per Hour
+&a5160V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a5280V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #59782
+&a5520V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5880V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5880V&a4946H         0.00
+&a6000V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a6000V&a4946H         0.00
+&a6120V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a6120V&a4946H       290.00&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00077410
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HTOM CAMERA&VIDEO/DBA
+&a1800V&a504H1014 S WESTLAKE BOULEVARD 6
+&a1920V&a504HWESTLAKE VILLAGE CA  91361
+&a2040V&a504H(8U(s1p57.0v0s0b0T*913610*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000150
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Mellon Bank, N.A
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0021219
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Three Mellon Center
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Pittsburgh, PA15258
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00077410
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Htom 
+&a3000V&a4896H 02/16/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000001 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00077410
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00077410
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HTOM CAMERA&VIDEO/DBA
+&a1800V&a3744H1014 S WESTLAKE BOULEVARD 6
+&a1920V&a3744HWESTLAKE VILLAGE CA  91361
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCGRUS000
+&a4440V&a1656HACCUSET 800
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 7028
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4045
+&a4800V&a1656HMINI PM
+&a4800V&a4906H         499.00
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor          1 EA @       499.00 per each
+&a5160V&a936H(8U(s0p13.10h10.0v1s1b4T Manual Item Text / External
+&a5280V&a1008H(8U(s0p13.10h10.0v0s0b4Tservice order #58243
+&a5520V&a504H(8U(s0p16.67h8.0v0s0b4T    20
+&a5520V&a1008HANFX4055
+&a5520V&a1656HNEW EQUIPMENT INSTALLATION      
+&a5520V&a3123H             1.500
+&a5520V&a3888H       1.500
+&a5520V&a4458H        1.00
+&a5520V&a4968H           1.50
+&a5760V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a6120V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a6120V&a4946H         0.00
+&a6240V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a6240V&a4946H        38.03
+&a6360V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a6360V&a4946H       538.53&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00078043
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333HS&L ENTERPRISES INC
+&a1800V&a504H931 OCEAN BEACH HIGHWAY
+&a1920V&a504HLONGVIEW WA  98632
+&a2040V&a504H(8U(s1p57.0v0s0b0T*986322*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000157
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Northern Trust
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0075073
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 50 LaSalle Street
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Chicago
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00078043
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Heric 
+&a3000V&a4896H 01/22/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000009 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00078043
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00078045
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333HS&L ENTERPRISES
+&a1800V&a3744H104 MINOR ROAD
+&a1920V&a3744HKELSO WA  98626
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  2% 40 Days Net 60 Due Date: 04/30/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 04/10/1999 you receive  2.0  % discount
+&a3120V&a504HUp to 04/30/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICE&l2A&l0O&l48C&l0E&l0C9
+
+&a4440V&a1008H(8U(s0p16.67h8.0v0s0b4TCGRUS000
+&a4440V&a1656HACCUSET 800
+&a4560V&a1008H(8U(s0p16.67h8.0v0s0b4T   Serial No. 7028
+&a4800V&a504H(8U(s0p16.67h8.0v0s0b4T    10
+&a4800V&a1008HANFX4005
+&a4800V&a1656HBILL TO CUSTOMER/SERVICE
+&a4800V&a4906H         217.50
+&a4920V&a1008H(8U(s0p16.67h8.0v0s0b4TLabor      1.500 H @       145.00 per Hour
+&a5160V&a504H(8U(s0p16.67h8.0v0s0b4T______________________________________________________________________________________________________________________
+&a5520V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HFreight(8U(s0p14.28h9.0v1s1b4T        
+&a5520V&a4946H         0.00
+&a5640V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HTax(8U(s0p14.28h9.0v1s1b4T            
+&a5640V&a4946H        17.94
+&a5760V&a1008H(0Y(s1p10.0v1s1b4T&k0008.333HINVOICE TOTAL(8U(s0p14.28h9.0v1s1b4T  
+&a5760V&a4946H       235.44&a-50V
+&a7510V&a1656H(0Y(s1p10.0v0s0b4T&k0008.333H   ***  E N D  ***&a+50V
+&a1560V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HBill To: US00078812
+&a1680V&a504H(0Y(s1p10.0v0s0b4T&k0008.333Hali huder corporation
+&a1800V&a504H576 e. 187th street
+&a1920V&a504HBRONX NY  10458
+&a2040V&a504H(8U(s1p57.0v0s0b0T*104582*(0N(s3T(0Y(s1p10.0v0s0b4T&f0S&a504H&a3960V*c5112H*c300V*v0O*c15G*c2P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a4257V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c295V*c0P
+&f1S&f0S&a501H&a3957V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a7557V*c5117H*c5V*c0P
+&f1S&f0S&a501H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5613H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a933H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a933H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a3309H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a4461H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3957V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a7557V*c5H*c5V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S&f0S&a5037H&a3962V*c5H*c3595V*c0P
+&f1S
+&a4080V&a504H(0Y(s1p10.0v1s1b4T&k0008.333H   Item
+&a4080V&a936H  Material
+&a4080V&a1656HDescription
+&a4080V&a3456H       Quantity
+&a4080V&a4464H      Unit
+&a4080V&a5040H   Amount
+&a4200V&a3456H(0Y(s1p10.0v1s1b4T&k0008.333H Ordered    Shipped
+&a4200V&a4464H     Price
+&a7680V&a1327H(0Y(s1p8.0v0s0b4T&k0006.666HSUBJECT TO THE TERMS AND CONDITIONS OF SALE ON THE REVERSE SIDE HEREOF
+&a720V&a216H(0Y(s1p8.0v0s0b4T&k0006.666HAgfa Corporation
+&a840V&a216H100 Challenger Road
+&a960V&a216HRidgefield Park, NJ 07660-2199
+&a1080V&a216H(201) 440-2500
+&a1200V&a216H(0Y(s1p10.0v1s1b4T&k0008.333HEIN: 22-3615964&f0S&a3708H&a210V*c1800H*c840V*v0O*c15G*c2P
+&f1S&f0S&a3705H&a207V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a1047V*c1805H*c5V*c0P
+&f1S&f0S&a3705H&a212V*c5H*c835V*c0P
+&f1S&f0S&a5505H&a212V*c5H*c835V*c0P
+&f1S
+&a360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HInvoice No.
+&a360V&a4320H 90000161
+&a480V&a3744HDate       
+&a480V&a4320H 03/01/1999
+&a600V&a3744HRemit To:  
+&a600V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Northern Trust
+&a720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a720V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 0075073
+&a840V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a840V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H 50 LaSalle Street
+&a960V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333H           
+&a960V&a4320H(0Y(s1p8.0v0s0b4T&k0006.666H Chicago
+&a840V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H      ________
+&a2520V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HPay To: US00078812
+&a2880V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HReference Number 
+&a2880V&a4896H     Date  
+&a3000V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hali 
+&a3000V&a4896H 03/01/1999
+&a3120V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HAGFA Order Number
+&a3120V&a4896H     Date  
+&a3240V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333H70000018 
+&a3240V&a4896H 03/01/1999
+&a3360V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HSold-To: (0Y(s1p10.0v0s0b4T&k0008.333HUS00078812
+&a3480V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip via: 
+&a3600V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of Delivery: (0Y(s1p10.0v0s0b4T&k0008.333HCONSIGNEE DOCK
+&a3720V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HCurrency:   USD
+&a1560V&a3744H(0Y(s1p10.0v1s1b4T&k0008.333HShip To: US00078812
+&a1680V&a3744H(0Y(s1p10.0v0s0b4T&k0008.333Hali huder corporation
+&a1800V&a3744H576 e. 187th street
+&a1920V&a3744HBRONX NY  10458
+&a2760V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms:  credit card N30 Due Date: 03/31/1999 
+&a2880V&a504H(0Y(s1p10.0v1s1b4T&k0008.333HTerms of payment:
+&a3000V&a504H(0Y(s1p8.0v0s0b4T&k0006.666HUp to 03/31/1999 without deduction
+&a360V&a1800H(0Y(s1p18.0v1s1b4T&k0015.000H     INVOICEE%-12345X

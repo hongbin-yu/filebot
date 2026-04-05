@@ -1,0 +1,315 @@
+{
+  "lastHeartbeat": "2026-03-20T14:06:00Z",
+  "activeProcesses": {
+    "filebot-backend": {
+      "pid": 50918,
+      "started": "2026-03-19T20:05:00Z",
+      "port": 8001,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-20T12:29:53Z",
+      "status": "\u670d\u52a1\u8fd0\u884c\u6b63\u5e38",
+      "details": "\u8fdb\u7a0b50918\u8fd0\u884c\u4e2d\uff0c\u7aef\u53e38001\u76d1\u542c\uff0cHTTP 200\u54cd\u5e94\u6b63\u5e38\uff0cAPI\u5065\u5eb7\u68c0\u67e5\u6b63\u5e38\uff0c\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff08\u5fc3\u8df3\u68c0\u67e5\u901a\u8fc7\uff09"
+    },
+    "pcl-web-app": {
+      "pid": 51073,
+      "started": "2026-03-19T20:05:00Z",
+      "port": 5000,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-20T12:29:53Z",
+      "status": "\u670d\u52a1\u8fd0\u884c\u6b63\u5e38",
+      "details": "\u8fdb\u7a0b51073\u8fd0\u884c\u4e2d\uff0c\u7aef\u53e35000\u76d1\u542c\uff0cHTTP 200\u54cd\u5e94\u6b63\u5e38\uff0c\u652f\u63018\u79cd\u683c\u5f0f\u8f6c\u6362(pcl/txt/png/tiff/jpg/pdf\u7b49)\uff0c\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff08\u5fc3\u8df3\u68c0\u67e5\u901a\u8fc7\uff09"
+    },
+    "frontend": {
+      "pid": 209735,
+      "started": "2026-03-20T01:16:00Z",
+      "port": 5173,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-20T12:29:53Z",
+      "status": "\u670d\u52a1\u8fd0\u884c\u6b63\u5e38",
+      "details": "\u8fdb\u7a0b209735\u8fd0\u884c\u4e2d\uff0c\u7aef\u53e35173\u76d1\u542c\uff0cHTTP 200\u54cd\u5e94\u6b63\u5e38\uff0c\u524d\u7aef\u754c\u9762\u53ef\u8bbf\u95ee\u3002\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0cTypeScript 0\u4e2a\u9519\u8bef\uff0cMaterial-UI Grid\u5e03\u5c40\u6b63\u5e38\uff08\u5fc3\u8df3\u68c0\u67e5\u901a\u8fc7\uff09"
+    },
+    "ollama": {
+      "pid": 190,
+      "started": "2026-03-19T18:12:00Z",
+      "port": 11434,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-20T12:29:53Z",
+      "status": "\u670d\u52a1\u8fd0\u884c\u6b63\u5e38",
+      "details": "Ollama\u8fdb\u7a0b190\u8fd0\u884c\u4e2d\uff0c\u7aef\u53e311434\u76d1\u542c\uff0cHTTP 200\u54cd\u5e94\u6b63\u5e38\uff0c4\u4e2a\u6a21\u578b\u53ef\u7528\uff08deepseek-r1:8b/32b/latest, llama3.1:latest\uff09\uff0c\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff08\u5fc3\u8df3\u68c0\u67e5\u901a\u8fc7\uff09"
+    }
+  },
+  "recentTasks": [
+    {
+      "id": "heartbeat-check-2026-03-20-1229",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T12:29:53Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 03:53 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.4Gi/7.3Gi used (4.9Gi available); \ud83d\udcca \u8d1f\u8f7d0.18, 0.11, 0.09"
+    },
+    {
+      "id": "news-briefing-2026-03-20-1200",
+      "description": "\u6bcf\u65e5\u65b0\u95fb\u7b80\u62a5\u751f\u6210 - 2026-03-20 08:00 EDT",
+      "completed": "2026-03-20T12:00:45Z",
+      "notified": true,
+      "status": "success",
+      "details": "\u2705 \u6bcf\u65e5\u65b0\u95fb\u7b80\u62a5\u5df2\u751f\u6210\u5e76\u53d1\u9001\u3002\u5185\u5bb9\u6db5\u76d6\u52a0\u62ff\u5927\u3001\u7f8e\u56fd\u3001\u4e2d\u56fd\u65b0\u95fb\u53ca\u70ed\u70b9\u5730\u533a\u52a8\u6001\uff0c\u5305\u542bXLE/CAT/WMT\u7b49\u80a1\u7968\u5f71\u54cd\u5206\u6790\u3002\u7b80\u62a5\u65f6\u95f4: 2026-03-20 08:00:06 EDT\u3002"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-1157",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T11:57:31Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 03:53 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.5Gi/7.3Gi used (4.8Gi available); \ud83d\udcca \u8d1f\u8f7d0.07, 0.06, 0.05"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-1124",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T11:24:49Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 03:53 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.4Gi/7.3Gi used (4.9Gi available); \ud83d\udcca \u8d1f\u8f7d0.03, 0.06, 0.07"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-1052",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0cWhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38",
+      "completed": "2026-03-20T10:52:49Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 06:39 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.4Gi/7.3Gi used (4.9Gi available); \ud83d\udcca \u8d1f\u8f7d0.14, 0.16, 0.07"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-1018",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T10:18:53Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 03:53 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.4Gi/7.3Gi used (4.9Gi available); \ud83d\udcca \u8d1f\u8f7d0.06, 0.08, 0.02"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0946",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T09:46:44Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 05:32 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.4Gi/7.3Gi used (4.9Gi available); \ud83d\udcca \u8d1f\u8f7d0.00, 0.04, 0.07"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0916",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T09:16:44Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 03:53 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi used (5.0Gi available); \ud83d\udcca \u8d1f\u8f7d0.09, 0.11, 0.09"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0841",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T08:41:04Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 03:53 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi used (5.0Gi available); \ud83d\udcca \u8d1f\u8f7d0.01, 0.05, 0.05"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0808",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T08:08:36Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (\u7cfb\u7edf\u6d88\u606f: 03:53 EDT\u8fde\u63a5); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% used (62G/1007G); \ud83e\udde0 \u5185\u5b582.4Gi/7.3Gi used (4.9Gi available); \ud83d\udcca \u8d1f\u8f7d0.09, 0.07, 0.01"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0452",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0c\u7cfb\u7edf\u5df2\u7a33\u5b9a\u8fd0\u884c9\u5c0f\u65f644\u5206\u949f",
+      "completed": "2026-03-20T04:52:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173, HTTP 200); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434, HTTP 200); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (00:33 EDT\u91cd\u8fde); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi\u5df2\u7528 (5.0Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.30,0.13,0.08; \u23f0 \u7cfb\u7edf\u8fd0\u884c9\u5c0f\u65f644\u5206\u949f"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0420",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T04:20:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173\u76d1\u542c); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (23:54 EDT\u91cd\u8fde); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi\u5df2\u7528 (5.0Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.06,0.10,0.06; \u23f0 \u7cfb\u7edf\u8fd0\u884c9\u5c0f\u65f615\u5206\u949f"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0347",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T03:47:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173\u76d1\u542c); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (23:21 EDT\u91cd\u8fde); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi\u5df2\u7528 (5.0Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.00,0.05,0.07; \u23f0 \u7cfb\u7edf\u8fd0\u884c8\u5c0f\u65f645\u5206\u949f"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0314",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c",
+      "completed": "2026-03-20T03:14:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173\u76d1\u542c); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (22:47 EDT\u91cd\u8fde); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi\u5df2\u7528 (5.0Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.03,0.05,0.07; \u23f0 \u7cfb\u7edf\u8fd0\u884c8\u5c0f\u65f616\u5206\u949f"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0241",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0c\u524d\u7aef\u670d\u52a1Vite\u91cd\u542f",
+      "completed": "2026-03-20T02:41:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 209735, \u7aef\u53e35173\u76d1\u542c, Vite\u5f00\u53d1\u670d\u52a1\u5668\u91cd\u542f); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (22:14 EDT\u91cd\u8fde); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi\u5df2\u7528 (5.0Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.00,0.06,0.07; \u23f0 \u7cfb\u7edf\u8fd0\u884c7\u5c0f\u65f646\u5206\u949f"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0209",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0c\u524d\u7aef\u670d\u52a1PID\u66f4\u65b0",
+      "completed": "2026-03-20T02:09:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 176702, \u7aef\u53e35173\u76d1\u542c, HTTP 200\u54cd\u5e94\uff0cPID\u4ece168562\u66f4\u65b0\uff0c\u53ef\u80fd\u4e3aVite\u70ed\u91cd\u8f7d); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 OpenClaw\u7f51\u5173\u8fd0\u884c\u6b63\u5e38 (\u7aef\u53e318789\u76d1\u542c); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173: 21:35\u8fde\u63a5\uff0c21:44\u77ed\u6682\u65ad\u5f00(503)\uff0c21:44\u91cd\u65b0\u8fde\u63a5; \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.3Gi/7.3Gi\u5df2\u7528 (5.0Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.06,0.04,0.06; \u23f0 \u7cfb\u7edf\u8fd0\u884c7\u5c0f\u65f616\u5206\u949f\u7a33\u5b9a; \ud83e\udd55 \u5e02\u573a\u8425\u9500AI\u4e13\u5bb6\u5f85\u547d"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0139",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0cTelegram\u7fa4\u7ec4\u6d4b\u8bd5\u5f85\u9a8c\u8bc1",
+      "completed": "2026-03-20T01:39:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c, \u6839\u7aef\u70b9HTTP 200\u54cd\u5e94\uff0chealth\u7aef\u70b9\u8fd4\u56de404\u4f46\u670d\u52a1\u8fd0\u884c\u6b63\u5e38); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c, HTTP 200\u5065\u5eb7\u68c0\u67e5); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 168562, \u7aef\u53e35173\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 OpenClaw\u7f51\u5173\u8fd0\u884c\u6b63\u5e38 (\u7aef\u53e318789\u76d1\u542c); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.2Gi/7.3Gi\u5df2\u7528 (5.1Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.02,0.10,0.12; \u23f0 \u7cfb\u7edf\u8fd0\u884c\u7a33\u5b9a; \ud83e\udd55 \u5e02\u573a\u8425\u9500AI\u4e13\u5bb6\u5f85\u547d; \ud83d\udcf1 Telegram\u7fa4\u7ec4\u6d4b\u8bd5: \u7528\u6237\u4e4b\u524d\u5c1d\u8bd5\u6dfb\u52a0@HongBinYuBot\u5230\u4e24\u4eba\u79c1\u5bc6\u7fa4\u7ec4\uff0c\u4f46@\u63d0\u53ca\u4e86\u9519\u8bef\u7528\u6237\u540d(@HongbinYu)\uff0c\u9700\u8981\u9a8c\u8bc1\u662f\u5426\u6b63\u786e\u6dfb\u52a0bot\u5e76@\u63d0\u53ca"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0022",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0c\u9ed8\u8ba4\u5168\u5c4f\u5e03\u5c40\u4fee\u590d\u5df2\u90e8\u7f72",
+      "completed": "2026-03-20T00:22:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c, HTTP 200); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 155984, \u7aef\u53e35173\u76d1\u542c, HTTP 200\uff0c\u5df2\u4fee\u590d\u9ed8\u8ba4\u5168\u5c4f\u5e03\u5c40\u95ee\u9898\uff0c\u6dfb\u52a0useEffect\u5f3a\u5236isOpen=false); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c, HTTP 200); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c, HTTP 200); \u2705 OpenClaw\u7f51\u5173\u8fd0\u884c\u6b63\u5e38 (\u7aef\u53e318789\u76d1\u542c, OpenAI API\u7aef\u70b9\u5df2\u542f\u7528); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.0Gi/7.3Gi\u5df2\u7528 (5.3Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.14,0.14,0.09; \ud83c\udfe0 \u7528\u6237\u5728\u5bb6\u6d4b\u8bd5\u754c\u9762\uff0c\u62a5\u544a'\u9ed8\u8ba4\u5168\u5c4f\u754c\u9762: \u542f\u52a8\u65f6\u662f\u5426\u4e3a\u5168\u5c4f\u5e03\u5c40? no'\uff0c\u5df2\u7d27\u6025\u4fee\u590d\u5e76\u91cd\u542f\u524d\u7aef\u670d\u52a1"
+    },
+    {
+      "id": "heartbeat-check-2026-03-20-0009",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0c\u7528\u6237\u5df2\u56de\u5bb6",
+      "completed": "2026-03-20T00:09:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 128910, \u7aef\u53e35173\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c, HTTP 200\u5065\u5eb7\u68c0\u67e5); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c, HTTP 200\u54cd\u5e94); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38; \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b582.0Gi/7.3Gi\u5df2\u7528 (5.3Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.17,0.09,0.07; \u23f0 \u7cfb\u7edf\u8fd0\u884c5\u5c0f\u65f628\u5206\u949f; \ud83c\udfe0 \u7528\u6237\u5df2\u56de\u5bb6\uff0c\u7cfb\u7edf\u5c31\u7eea\u5f85\u6d4b\u8bd5"
+    },
+    {
+      "id": "heartbeat-check-2026-03-19-2319",
+      "description": "\u5b9a\u671f\u5fc3\u8df3\u68c0\u67e5 - \u6240\u6709\u6838\u5fc3\u670d\u52a1\u7a33\u5b9a\u8fd0\u884c\uff0c\u524d\u7aef\u670d\u52a1PID\u66f4\u65b0",
+      "completed": "2026-03-19T23:19:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "\u2705 FileBot\u540e\u7aef\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 50918, \u7aef\u53e38001\u76d1\u542c); \u2705 \u524d\u7aefReact\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 128910, \u7aef\u53e35173\u76d1\u542c - PID\u4ece116505\u66f4\u65b0); \u2705 PCL\u8f6c\u6362\u5668\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 51073, \u7aef\u53e35000\u76d1\u542c); \u2705 Ollama\u670d\u52a1\u8fd0\u884c\u6b63\u5e38 (PID 190, \u7aef\u53e311434\u76d1\u542c); \u2705 Redis\u548cMySQL\u8fd0\u884c\u6b63\u5e38; \ud83d\udce1 WhatsApp\u7f51\u5173\u8fde\u63a5\u6b63\u5e38 (19:20 EDT\u91cd\u8fde); \ud83d\udcbe \u78c1\u76d8\u4f7f\u75287% (62G/1007G); \ud83e\udde0 \u5185\u5b581.8Gi/7.3Gi\u5df2\u7528 (5.5Gi\u53ef\u7528); \ud83d\udcca \u8d1f\u8f7d0.02,0.08,0.07; \u23f0 \u7cfb\u7edf\u8fd0\u884c4\u5c0f\u65f643\u5206\u949f"
+    }
+  ],
+  "pendingNotifications": [
+    {
+      "id": "notification-20260319082300",
+      "type": "service_stopped",
+      "message": "\u26a0\ufe0f \u5173\u952e\u670d\u52a1\u505c\u6b62: FileBot\u540e\u7aef\u548c\u524d\u7aef\u670d\u52a1\u5df2\u505c\u6b62\u8fd0\u884c",
+      "timestamp": "2026-03-19T08:23:00Z",
+      "priority": "high",
+      "service": "filebot-backend,frontend",
+      "details": "FileBot\u540e\u7aef\u670d\u52a1 (\u7aef\u53e38001) \u548c\u524d\u7aefReact\u670d\u52a1 (\u7aef\u53e35173) \u5df2\u505c\u6b62\u8fd0\u884c\u3002\u4e0a\u6b21\u68c0\u67e5 (06:54 UTC) \u65f6\u670d\u52a1\u8fd8\u6b63\u5e38\u8fd0\u884c\uff0c\u73b0\u5728\u8fdb\u7a0b\u4e0d\u5b58\u5728\u4e14\u7aef\u53e3\u672a\u76d1\u542c\u3002\u9700\u8981\u7acb\u5373\u91cd\u542f\u670d\u52a1\u3002",
+      "notified": true
+    },
+    {
+      "id": "notification-20260319010400",
+      "type": "frontend_issue_resolved",
+      "message": "\u2705 \u524d\u7aef\u6a21\u5757\u5bfc\u5165\u9519\u8bef\u5df2\u89e3\u51b3 - TypeScript\u914d\u7f6e\u4fee\u590d\u6210\u529f\uff0c\u767b\u5f55\u9875\u9762\u6b63\u5e38\u663e\u793a",
+      "timestamp": "2026-03-19T01:04:00Z",
+      "priority": "high",
+      "service": "frontend",
+      "details": "\u524d\u7aef\u6a21\u5757\u5bfc\u5165\u9519\u8bef ('The requested module /src/services/auth.service.ts does not provide an export named authService') \u5df2\u901a\u8fc7 TypeScript \u914d\u7f6e\u4fee\u590d\u89e3\u51b3 (verbatimModuleSyntax: false)\u3002\u524d\u7aef\u670d\u52a1\u5728\u7aef\u53e35173\u8fd0\u884c\u6b63\u5e38\uff0c\u7528\u6237\u786e\u8ba4\u767b\u5f55\u9875\u9762\u5b8c\u6574\u663e\u793a\u3002",
+      "notified": true
+    },
+    {
+      "id": "notification-20260318223837",
+      "type": "api_repaired",
+      "message": "\u2705 \u5269\u4f59API\u4fee\u590d\u5b8c\u6210: \u5e94\u7528\u521b\u5efa\u3001\u8f6c\u6362\u6d4b\u8bd5\u3001\u62bd\u5c49\u521b\u5efaAPI\u5168\u90e8\u6062\u590d\u6b63\u5e38",
+      "timestamp": "2026-03-18T22:38:37.707759Z",
+      "priority": "info",
+      "service": "filebot-backend",
+      "details": "\u7528\u6237\u6307\u793a\"\u597d\u4fee\u590d\u5269\u4f59API\"\u5df2\u6267\u884c\u5b8c\u6210\uff0c\u6240\u6709\u6838\u5fc3API\u5df2\u4fee\u590d",
+      "notified": true
+    }
+  ],
+  "lastChecks": {
+    "processes": "2026-03-20T14:06:00Z",
+    "tasks": "2026-03-20T14:06:00Z",
+    "system": "2026-03-20T14:06:00Z"
+  },
+  "issues": {
+    "pcl-conversion-tool": {
+      "status": "verified",
+      "description": "PCLTSDK_870\u5de5\u5177\u94fe\u9a8c\u8bc1\u6210\u529f (C:\\workspace\\PCLTSDK_870\\PclXform.exe)\uff0cDOS\u547d\u4ee4\u884c\u8c03\u7528\u6709\u6548",
+      "lastUpdated": "2026-03-17T15:35:00Z",
+      "priority": "low",
+      "progress": "\u5df2\u9a8c\u8bc1\uff0c\u7b49\u5f85Web\u5e94\u7528\u96c6\u6210"
+    },
+    "pcl-web-dependencies": {
+      "status": "resolved",
+      "description": "PCL Web\u5e94\u7528Python\u4f9d\u8d56\u5df2\u5b89\u88c5\uff08Flask\u7b49\uff09",
+      "lastUpdated": "2026-03-17T16:00:31Z",
+      "priority": "low",
+      "resolution": "\u865a\u62df\u73af\u5883\u521b\u5efa\uff0c\u6240\u6709\u4f9d\u8d56\u5305\u5b89\u88c5\u5b8c\u6210"
+    },
+    "filebot-service-stopped": {
+      "status": "resolved",
+      "description": "FileBot\u540e\u7aef\u670d\u52a1\u5df2\u505c\u6b62\u8fd0\u884c (\u7aef\u53e38000)",
+      "lastUpdated": "2026-03-18T00:14:00Z",
+      "priority": "low",
+      "notified": true,
+      "resolution": "\u670d\u52a1\u5df2\u91cd\u542f\uff0cPID 52479\uff0c\u8fd0\u884c\u6b63\u5e38"
+    },
+    "pcl-web-upload-functionality": {
+      "status": "resolved",
+      "description": "PCL Web\u5e94\u7528\u4e0a\u4f20\u529f\u80fd\u5df2\u4fee\u590d\uff1a\u652f\u6301\u591a\u5b57\u6bb5\u540d\u548ccmd.exe\u5305\u88c5",
+      "lastUpdated": "2026-03-17T18:56:00Z",
+      "priority": "low",
+      "details": "\u4fee\u590dupload_file()\u51fd\u6570\u652f\u6301'file'\u548c'files'\u5b57\u6bb5\u540d\uff1b\u4fee\u590dpclxform\u547d\u4ee4\u4f7f\u7528cmd.exe /c\u5305\u88c5\u3002"
+    },
+    "pcl-web-app-stopped": {
+      "status": "resolved",
+      "description": "PCL Web\u5e94\u7528\u5df2\u505c\u6b62\u8fd0\u884c (\u7aef\u53e35000)",
+      "lastUpdated": "2026-03-18T00:14:00Z",
+      "priority": "low",
+      "notified": true,
+      "resolution": "\u670d\u52a1\u5df2\u91cd\u542f\uff0cPID 52169\uff0c\u8fd0\u884c\u6b63\u5e38"
+    },
+    "pcl_conversion_timeout": {
+      "status": "resolved",
+      "description": "PCL\u8f6c\u6362\u547d\u4ee4\u8d85\u65f6\u5df2\u4fee\u590d\uff1a\u6dfb\u52a0cmd.exe /c\u5305\u88c5",
+      "lastUpdated": "2026-03-17T18:56:00Z",
+      "priority": "low",
+      "details": "\u5df2\u4fee\u590d\u547d\u4ee4\u683c\u5f0f\uff0c\u4f7f\u7528cmd.exe /c\u5305\u88c5Windows\u53ef\u6267\u884c\u6587\u4ef6\u3002"
+    },
+    "frontend-module-export-error": {
+      "status": "resolved",
+      "description": "\u524d\u7aef\u6a21\u5757\u5bfc\u5165\u9519\u8bef: 'The requested module /src/services/auth.service.ts does not provide an export named authService'",
+      "lastUpdated": "2026-03-19T01:04:00Z",
+      "priority": "low",
+      "details": "\u5df2\u901a\u8fc7TypeScript\u914d\u7f6e\u4fee\u590d\u89e3\u51b3\uff1a\u5c06 verbatimModuleSyntax \u4ece true \u6539\u4e3a false\u3002\u524d\u7aef\u670d\u52a1\u5728\u7aef\u53e35173\u91cd\u542f\uff0c\u767b\u5f55\u9875\u9762\u6b63\u5e38\u663e\u793a\uff0c\u6a21\u5757\u5bfc\u5165\u9519\u8bef\u5df2\u6d88\u9664\u3002",
+      "progress": "\u2705 \u5df2\u89e3\u51b3"
+    }
+  },
+  "systemStatus": {
+    "diskSpace": "7% used (62G/1007G)",
+    "memory": "2.4Gi/7.3Gi used (4.9Gi available)",
+    "loadAvg": "0.18, 0.11, 0.09",
+    "services": {
+      "redis": "running",
+      "mysql": "running"
+    },
+    "timestamp": "2026-03-20T14:06:00Z",
+    "processes": {
+      "filebot-backend": "running (port 8001 listening, PID 50918)",
+      "frontend": "running (port 5173 listening, PID 209735)",
+      "pcl-web-app": "running (port 5000 listening, PID 51073)",
+      "ollama": "running (port 11434 listening, PID 190)",
+      "openclaw-gateway": "running (port 18789 listening)"
+    }
+  }
+}

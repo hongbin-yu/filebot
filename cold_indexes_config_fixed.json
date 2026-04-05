@@ -1,0 +1,279 @@
+{
+  "app_name": "Smart iAdmin Migration",
+  "app_code": "SMARTI",
+  "template_name": "cold_indexes_template.jasper",
+  "file_extension": ".cld",
+  "encoding": "latin-1",
+  "description": "从Smart iAdmin COLD_INDEXES迁移的配置 (28 个字段)",
+  "version": "1.0",
+  "created_from": "cold_indexes.csv",
+  "field_definitions": [
+    {
+      "name": "field_10_5_16",
+      "description": "Index field for report 10, level 5, column 16",
+      "start_pos": 15,
+      "length": 8,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_10_6_66",
+      "description": "Index field for report 10, level 6, column 66",
+      "start_pos": 65,
+      "length": 8,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_34_4_49",
+      "description": "Index field for report 34, level 4, column 49",
+      "start_pos": 48,
+      "length": 35,
+      "field_type": "text",
+      "required": true,
+      "validation": {},
+      "sample_value": "y"
+    },
+    {
+      "name": "field_34_5_9",
+      "description": "Index field for report 34, level 5, column 9",
+      "start_pos": 8,
+      "length": 15,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_34_6_9",
+      "description": "Index field for report 34, level 6, column 9",
+      "start_pos": 8,
+      "length": 8,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_53_4_53",
+      "description": "Index field for report 53, level 4, column 53",
+      "start_pos": 52,
+      "length": 28,
+      "field_type": "text",
+      "required": true,
+      "validation": {},
+      "sample_value": "y"
+    },
+    {
+      "name": "field_53_5_9",
+      "description": "Index field for report 53, level 5, column 9",
+      "start_pos": 8,
+      "length": 15,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_53_6_29",
+      "description": "Index field for report 53, level 6, column 29",
+      "start_pos": 28,
+      "length": 8,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_57_4_1",
+      "description": "Index field for report 57, level 4, column 1",
+      "start_pos": 0,
+      "length": 29,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_87_4_1",
+      "description": "Index field for report 87, level 4, column 1",
+      "start_pos": 0,
+      "length": 30,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_87_5_65",
+      "description": "Index field for report 87, level 5, column 65",
+      "start_pos": 64,
+      "length": 7,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_93_4_49",
+      "description": "Index field for report 93, level 4, column 49",
+      "start_pos": 48,
+      "length": 6,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_93_5_53",
+      "description": "Index field for report 93, level 5, column 53",
+      "start_pos": 52,
+      "length": 6,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_93_6_11",
+      "description": "Index field for report 93, level 6, column 11",
+      "start_pos": 10,
+      "length": 30,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_93_7_73",
+      "description": "Index field for report 93, level 7, column 73",
+      "start_pos": 72,
+      "length": 30,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_96_4_77",
+      "description": "Index field for report 96, level 4, column 77",
+      "start_pos": 76,
+      "length": 6,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_96_5_21",
+      "description": "Index field for report 96, level 5, column 21",
+      "start_pos": 20,
+      "length": 15,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_96_6_12",
+      "description": "Index field for report 96, level 6, column 12",
+      "start_pos": 11,
+      "length": 30,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_96_7_54",
+      "description": "Index field for report 96, level 7, column 54",
+      "start_pos": 53,
+      "length": 30,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_99_4_56",
+      "description": "Index field for report 99, level 4, column 56",
+      "start_pos": 55,
+      "length": 7,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_99_5_57",
+      "description": "Index field for report 99, level 5, column 57",
+      "start_pos": 56,
+      "length": 14,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_99_6_3",
+      "description": "Index field for report 99, level 6, column 3",
+      "start_pos": 2,
+      "length": 30,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_99_7_3",
+      "description": "Index field for report 99, level 7, column 3",
+      "start_pos": 2,
+      "length": 30,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_103_6_55",
+      "description": "Index field for report 103, level 6, column 55",
+      "start_pos": 54,
+      "length": 35,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_109_2_1",
+      "description": "Index field for report 109, level 2, column 1",
+      "start_pos": 0,
+      "length": 6,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_109_4_72",
+      "description": "Index field for report 109, level 4, column 72",
+      "start_pos": 71,
+      "length": 7,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_115_2_1",
+      "description": "Index field for report 115, level 2, column 1",
+      "start_pos": 0,
+      "length": 6,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    },
+    {
+      "name": "field_115_4_72",
+      "description": "Index field for report 115, level 4, column 72",
+      "start_pos": 71,
+      "length": 7,
+      "field_type": "text",
+      "required": true,
+      "validation": {}
+    }
+  ],
+  "report_indexes": {
+    "10": 2,
+    "34": 3,
+    "53": 3,
+    "57": 1,
+    "87": 2,
+    "93": 4,
+    "96": 4,
+    "99": 4,
+    "103": 1,
+    "109": 2,
+    "115": 2
+  }
+}

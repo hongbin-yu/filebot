@@ -1,0 +1,120 @@
+INFO:     Will watch for changes in these directories: ['/home/hongb/.openclaw/workspace/doardingbot']
+INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+INFO:     Started reloader process [3329271] using WatchFiles
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/requests/__init__.py:109: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.3.0)/charset_normalizer (3.4.6) doesn't match a supported version!
+  warnings.warn(
+INFO:     Started server process [3329273]
+INFO:     Waiting for application startup.
+2026-03-24 19:33:48,350 - app.main - INFO - Starting DoardingBot...
+2026-03-24 19:33:48,352 - app.main - INFO - Database initialized successfully
+2026-03-24 19:33:48,353 - app.main - WARNING - WebBot connection check failed: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /health (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 111] Connection refused"))
+INFO:     Application startup complete.
+INFO:     127.0.0.1:53430 - "GET / HTTP/1.1" 200 OK
+2026-03-24 19:34:21,356 - app.routes.download_routes - INFO - Starting download job 54e56971-061c-4343-ba74-093f48d332a8 for 1 URLs
+2026-03-24 19:34:21,357 - app.routes.download_routes - INFO - Downloading page: https://example.com/
+2026-03-24 19:34:21,357 - app.services.scraper_service - INFO - Scraping URL: https://example.com/
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'example.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+2026-03-24 19:34:21,542 - app.routes.download_routes - INFO - Successfully downloaded https://example.com/ to /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_193421_b32961a9/html/example.com__182ccedb.html
+2026-03-24 19:34:21,542 - app.routes.download_routes - INFO - Download job 54e56971-061c-4343-ba74-093f48d332a8 completed: Successfully downloaded 1 pages
+2026-03-24 19:34:21,542 - app.routes.download_routes - INFO - Download directory: /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_193421_b32961a9
+INFO:     127.0.0.1:47974 - "POST /api/download/pages HTTP/1.1" 200 OK
+2026-03-24 19:34:36,405 - app.routes.download_routes - INFO - Starting processing job 736c2ea1-5a81-4bcf-950d-7b959ba465df for directory: /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_193421_b32961a9
+2026-03-24 19:34:36,405 - app.routes.download_routes - INFO - Found 1 HTML files to process
+2026-03-24 19:34:36,405 - app.routes.download_routes - INFO - Processing file: example.com__182ccedb.html
+2026-03-24 19:34:36,406 - app.routes.download_routes - INFO - Successfully processed example.com__182ccedb.html
+2026-03-24 19:34:36,406 - app.routes.download_routes - INFO - Processing job 736c2ea1-5a81-4bcf-950d-7b959ba465df completed: Successfully processed 1 files
+INFO:     127.0.0.1:47096 - "POST /api/download/process HTTP/1.1" 200 OK
+2026-03-24 19:34:49,964 - app.routes.download_routes - INFO - Starting processing job 50f8aa30-4d15-45ba-8896-74ccb2d6cda4 for directory: /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_193421_b32961a9
+2026-03-24 19:34:49,965 - app.routes.download_routes - INFO - Found 1 HTML files to process
+2026-03-24 19:34:49,966 - app.routes.download_routes - INFO - Processing file: example.com__182ccedb.html
+2026-03-24 19:34:49,968 - app.routes.download_routes - INFO - Successfully processed example.com__182ccedb.html
+2026-03-24 19:34:49,968 - app.routes.download_routes - INFO - Processing job 50f8aa30-4d15-45ba-8896-74ccb2d6cda4 completed: Successfully processed 1 files
+INFO:     127.0.0.1:35224 - "POST /api/download/process HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57574 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50422 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40062 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53342 - "GET /health HTTP/1.1" 200 OK
+2026-03-24 20:23:25,848 - app.routes.download_routes - INFO - Starting download job bd474bdf-3639-4bc3-82df-f0c469b67f55 for 1 URLs
+2026-03-24 20:23:25,853 - app.routes.download_routes - INFO - Downloading page: https://canada.ca/en
+2026-03-24 20:23:25,853 - app.services.scraper_service - INFO - Scraping URL: https://canada.ca/en
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'canada.ca'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'www.canada.ca'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+2026-03-24 20:23:54,917 - app.services.scraper_service - ERROR - Request error for https://canada.ca/en: HTTPSConnectionPool(host='www.canada.ca', port=443): Read timed out. (read timeout=30)
+2026-03-24 20:23:54,917 - app.routes.download_routes - ERROR - Failed to download https://canada.ca/en: Request error: HTTPSConnectionPool(host='www.canada.ca', port=443): Read timed out. (read timeout=30)
+2026-03-24 20:23:54,917 - app.routes.download_routes - INFO - Download job bd474bdf-3639-4bc3-82df-f0c469b67f55 completed: All 1 downloads failed
+2026-03-24 20:23:54,917 - app.routes.download_routes - INFO - Download directory: /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_202325_e71a93f2
+INFO:     127.0.0.1:58860 - "POST /api/download/pages HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/routes/download_routes.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-24 20:24:58,220 - app.main - INFO - Shutting down DoardingBot...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3329273]
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/requests/__init__.py:109: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.3.0)/charset_normalizer (3.4.6) doesn't match a supported version!
+  warnings.warn(
+INFO:     Started server process [3353099]
+INFO:     Waiting for application startup.
+2026-03-24 20:24:59,616 - app.main - INFO - Starting DoardingBot...
+2026-03-24 20:24:59,617 - app.main - INFO - Database initialized successfully
+2026-03-24 20:24:59,621 - app.main - INFO - WebBot connection successful: http://localhost:8000
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routes/download_routes.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-24 20:25:06,984 - app.main - INFO - Shutting down DoardingBot...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3353099]
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/requests/__init__.py:109: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.3.0)/charset_normalizer (3.4.6) doesn't match a supported version!
+  warnings.warn(
+INFO:     Started server process [3353177]
+INFO:     Waiting for application startup.
+2026-03-24 20:25:07,636 - app.main - INFO - Starting DoardingBot...
+2026-03-24 20:25:07,637 - app.main - INFO - Database initialized successfully
+2026-03-24 20:25:07,640 - app.main - INFO - WebBot connection successful: http://localhost:8000
+INFO:     Application startup complete.
+2026-03-24 20:27:11,526 - app.routes.download_routes - INFO - Starting download job 2136e696-5cfb-4538-877d-cb78c04461e1 for 1 URLs
+2026-03-24 20:27:11,527 - app.routes.download_routes - INFO - Downloading page: https://example.com/
+2026-03-24 20:27:11,528 - app.services.scraper_service - INFO - Scraping URL: https://example.com/
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'example.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+2026-03-24 20:27:11,734 - app.routes.download_routes - INFO - Successfully downloaded https://example.com/ to /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_202711_f0e11a82/html/example.com__182ccedb.html
+2026-03-24 20:27:11,734 - app.routes.download_routes - INFO - Download job 2136e696-5cfb-4538-877d-cb78c04461e1 completed: Successfully downloaded 1 pages
+2026-03-24 20:27:11,734 - app.routes.download_routes - INFO - Download directory: /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_202711_f0e11a82
+INFO:     127.0.0.1:52746 - "POST /api/download/pages HTTP/1.1" 200 OK
+2026-03-24 20:27:22,560 - app.routes.download_routes - INFO - Starting processing job b78bcf1a-7f2f-4057-a499-8d1dd02ae58d for directory: /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_202711_f0e11a82
+2026-03-24 20:27:22,561 - app.routes.download_routes - INFO - Found 1 HTML files to process
+2026-03-24 20:27:22,561 - app.routes.download_routes - INFO - Processing file: example.com__182ccedb.html
+2026-03-24 20:27:22,561 - app.routes.download_routes - INFO - Successfully processed example.com__182ccedb.html
+2026-03-24 20:27:22,561 - app.routes.download_routes - INFO - Processing job b78bcf1a-7f2f-4057-a499-8d1dd02ae58d completed: Successfully processed 1 files
+INFO:     127.0.0.1:48838 - "POST /api/download/process HTTP/1.1" 200 OK
+2026-03-24 20:27:33,760 - app.routes.download_routes - INFO - Starting download job acef922c-126c-440a-b1d0-5bfab0a8863b for 1 URLs
+2026-03-24 20:27:33,762 - app.routes.download_routes - INFO - Downloading page: https://www.usa.gov/
+2026-03-24 20:27:33,762 - app.services.scraper_service - INFO - Scraping URL: https://www.usa.gov/
+/home/hongb/.openclaw/workspace/doardingbot/venv/lib/python3.12/site-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 'www.usa.gov'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+2026-03-24 20:27:33,988 - app.routes.download_routes - INFO - Successfully downloaded https://www.usa.gov/ to /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_202733_5c3c1a02/html/www.usa.gov__bcbe979e.html
+2026-03-24 20:27:33,988 - app.routes.download_routes - INFO - Download job acef922c-126c-440a-b1d0-5bfab0a8863b completed: Successfully downloaded 1 pages
+2026-03-24 20:27:33,989 - app.routes.download_routes - INFO - Download directory: /home/hongb/.openclaw/workspace/doardingbot/downloads/download_20260324_202733_5c3c1a02
+INFO:     127.0.0.1:35656 - "POST /api/download/pages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40562 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41104 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37978 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48476 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55482 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49976 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58606 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59122 - "GET / HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-24 23:59:56,169 - app.main - INFO - Shutting down DoardingBot...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3353177]
+INFO:     Stopping reloader process [3329271]
+2026-03-25 01:23:07,863 - app.main - INFO - Starting DoardingBot...
+2026-03-25 01:23:07,866 - app.main - INFO - Database initialized successfully
+2026-03-25 01:23:07,870 - app.main - INFO - WebBot connection successful: http://localhost:8000
+2026-03-25 11:46:25,818 - app.main - INFO - Shutting down DoardingBot...

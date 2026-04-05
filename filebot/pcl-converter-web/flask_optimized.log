@@ -1,0 +1,243 @@
+2026-03-18 01:01:31,945 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+==================================================
+PCL转PDF转换器 - Windows原生优化版
+平台: Linux 6.6.87.2-microsoft-standard-WSL2
+Python版本: 3.12.3 (main, Mar  3 2026, 12:15:18) [GCC 13.3.0]
+可用工具: ['pclxform', 'pcltool']
+上传目录: C:\workspace\pcl-uploads
+转换目录: C:\workspace\pcl-converted
+FileBot API: 已禁用
+==================================================
+访问地址: http://localhost:5000
+健康检查: http://localhost:5000/health
+按Ctrl+C停止应用
+==================================================
+ * Serving Flask app 'app_windows_optimized'
+ * Debug mode: off
+2026-03-18 01:01:31,946 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.29.152.245:5000
+2026-03-18 01:01:31,946 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-18 01:01:59,783 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:01:59,784 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:01:59] "GET /health HTTP/1.1" 200 -
+2026-03-18 01:02:07,552 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:02:07,552 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:02:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:03:07,170 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:03:07,170 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:03:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:03:47,659 - __main__ - INFO - 文件已上传: test.txt -> uploads/25ee5a01b55d4288_test.txt
+2026-03-18 01:03:47,659 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:03:47] "POST /upload HTTP/1.1" 200 -
+2026-03-18 01:04:07,370 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:04:07,371 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:04:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:05:06,760 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:05:06,760 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:05:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:06:06,983 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:06:06,983 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:06:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:07:07,184 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:07:07,184 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:07:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:08:07,461 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:08:07,461 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:08:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:09:07,050 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:09:07,050 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:09:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:10:07,609 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:10:07,610 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:10:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:11:07,068 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:11:07,068 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:11:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:12:06,950 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:12:06,951 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:12:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:13:07,046 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:13:07,046 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:13:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:14:07,316 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:14:07,316 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:14:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:15:06,934 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:15:06,934 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:15:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:16:07,046 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:16:07,047 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:16:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:17:06,663 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:17:06,663 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:17:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:18:07,256 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:18:07,256 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:18:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:19:07,020 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:19:07,020 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:19:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:20:07,296 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:20:07,296 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:20:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:21:07,131 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:21:07,132 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:21:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:22:07,136 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:22:07,136 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:22:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:23:06,679 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:23:06,679 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:23:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:23:28,452 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:23:28,452 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:23:28] "GET /health HTTP/1.1" 200 -
+2026-03-18 01:24:07,318 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:24:07,319 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:24:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:25:06,771 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:25:06,772 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:25:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:26:07,252 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:26:07,252 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:26:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:27:07,271 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:27:07,271 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:27:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:28:07,463 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:28:07,463 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:28:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:29:07,235 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:29:07,235 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:29:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:30:07,346 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:30:07,347 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:30:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:31:06,688 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:31:06,688 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:31:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:32:07,018 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:32:07,018 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:32:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:33:06,649 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:33:06,650 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:33:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 01:53:45,311 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 01:53:45,311 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 01:53:45] "GET /health HTTP/1.1" 200 -
+2026-03-18 02:35:45,206 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 02:35:45,207 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 02:35:45] "GET /health HTTP/1.1" 200 -
+2026-03-18 03:14:56,311 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 03:14:56,312 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 03:14:56] "GET /health HTTP/1.1" 200 -
+2026-03-18 04:16:32,238 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 04:16:32,239 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 04:16:32] "GET /health HTTP/1.1" 200 -
+2026-03-18 04:46:30,880 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 04:46:30,880 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 04:46:30] "GET /health HTTP/1.1" 200 -
+2026-03-18 05:14:50,536 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 05:14:50,537 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 05:14:50] "GET /health HTTP/1.1" 200 -
+2026-03-18 05:44:38,710 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 05:44:38,711 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 05:44:38] "GET /health HTTP/1.1" 200 -
+2026-03-18 06:15:04,696 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:15:04,696 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:15:04] "GET /health HTTP/1.1" 200 -
+2026-03-18 06:44:37,975 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:44:37,976 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:44:37] "GET /health HTTP/1.1" 200 -
+2026-03-18 06:51:09,676 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:51:09,676 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:51:09] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:51:14,990 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:51:14,991 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:51:14] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:51:45,189 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:51:45,189 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:51:45] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:52:14,983 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:52:14,983 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:52:14] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:53:07,404 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:53:07,404 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:53:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:54:06,971 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:54:06,971 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:54:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:55:07,324 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:55:07,324 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:55:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:56:06,979 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:56:06,979 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:56:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:57:07,258 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:57:07,258 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:57:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:58:07,185 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:58:07,186 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:58:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 06:59:06,932 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 06:59:06,932 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 06:59:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:00:06,476 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:00:06,476 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:00:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:01:07,740 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:01:07,741 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:01:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:02:06,967 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:02:06,967 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:02:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:03:06,617 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:03:06,617 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:03:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:04:06,777 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:04:06,778 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:04:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:05:06,583 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:05:06,584 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:05:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:06:06,028 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:06:06,028 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:06:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:07:07,928 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:07:07,929 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:07:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:08:06,608 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:08:06,609 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:08:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:09:07,633 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:09:07,634 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:09:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:10:07,225 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:10:07,226 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:10:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:11:06,803 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:11:06,803 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:11:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:12:07,055 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:12:07,055 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:12:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:13:07,351 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:13:07,351 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:13:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:14:06,940 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:14:06,941 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:14:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:15:04,555 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:15:04,556 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:15:04] "GET /health HTTP/1.1" 200 -
+2026-03-18 07:15:08,304 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:15:08,305 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:15:08] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:16:06,848 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:16:06,848 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:16:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:17:06,547 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:17:06,547 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:17:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:18:07,190 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:18:07,191 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:18:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:19:07,232 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:19:07,232 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:19:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:20:06,826 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:20:06,826 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:20:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:21:07,174 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:21:07,175 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:21:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:22:06,630 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:22:06,630 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:22:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:23:06,927 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:23:06,928 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:23:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:24:06,505 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:24:06,505 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:24:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:25:07,397 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:25:07,398 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:25:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:26:06,891 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:26:06,892 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:26:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:27:07,150 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:27:07,151 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:27:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:28:07,263 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:28:07,264 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:28:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:29:07,133 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:29:07,133 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:29:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:30:06,126 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:30:06,126 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:30:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:31:06,426 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:31:06,427 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:31:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:32:07,290 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:32:07,290 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:32:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:33:07,469 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:33:07,470 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:33:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:34:07,227 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:34:07,228 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:34:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:35:07,254 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:35:07,255 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:35:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:36:05,809 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:36:05,809 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:36:05] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:37:06,524 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:37:06,525 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:37:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:38:06,121 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:38:06,121 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:38:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:39:07,311 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:39:07,311 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:39:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:40:06,336 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:40:06,336 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:40:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:41:07,168 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:41:07,169 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:41:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:42:06,287 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:42:06,287 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:42:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:43:06,578 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:43:06,578 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:43:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:44:06,193 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:44:06,193 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:44:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:45:06,468 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:45:06,468 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:45:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:46:07,220 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:46:07,221 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:46:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:47:07,684 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:47:07,684 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:47:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:48:07,285 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:48:07,286 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:48:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:49:04,350 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:49:04,350 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:49:04] "GET /health HTTP/1.1" 200 -
+2026-03-18 07:49:07,511 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:49:07,511 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:49:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:50:06,348 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:50:06,349 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:50:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 07:51:06,630 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 07:51:06,630 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 07:51:06] "GET /api/tools HTTP/1.1" 200 -
+2026-03-18 08:15:11,153 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 08:15:11,153 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 08:15:11] "GET /health HTTP/1.1" 200 -
+2026-03-18 09:23:47,247 - __main__ - INFO - 检测到PCL工具: ['pclxform', 'pcltool']
+2026-03-18 09:23:47,248 - werkzeug - INFO - 127.0.0.1 - - [18/Mar/2026 09:23:47] "GET /health HTTP/1.1" 200 -

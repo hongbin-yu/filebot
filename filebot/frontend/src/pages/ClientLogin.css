@@ -1,0 +1,129 @@
+/* ClientLogin 组件样式 */
+.client-login {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 登录卡片动画 */
+.client-login .bg-white {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo动画 */
+.client-login .inline-flex {
+  animation: bounceIn 0.6s ease-out;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 输入框焦点效果 */
+.client-login input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+}
+
+/* 按钮悬停效果 */
+.client-login button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.client-login button[type="button"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+  transition: transform 0.2s;
+}
+
+/* 响应式调整 */
+@media (max-width: 640px) {
+  .client-login {
+    padding: 1rem !important;
+  }
+  
+  .client-login .p-8 {
+    padding: 1.5rem !important;
+  }
+  
+  .client-login h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  .client-login h2 {
+    font-size: 1.5rem !important;
+  }
+}
+
+/* 错误消息动画 */
+.client-login .bg-red-50 {
+  animation: shake 0.5s ease-out;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+/* 加载旋转器 */
+.client-login .animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 渐变背景优化 */
+.client-login .bg-gradient-to-br {
+  background-attachment: fixed;
+}
+
+/* 页脚说明框 */
+.client-login .bg-blue-50 {
+  animation: fadeIn 0.8s ease-out 0.3s both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

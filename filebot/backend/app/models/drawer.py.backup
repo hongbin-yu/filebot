@@ -1,0 +1,35 @@
+from sqlalchemy import Column, DateTime, String, Integer, ForeignKey
+# from sqlalchemy.dialects.postgresql import UUID  # 注释掉，使用String代替
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+import uuid
+
+from ..db.database import Base
+
+
+class Drawer(Base):
+    """抽屉表 (Drawer) - 支持嵌套结构"""
+    __tablename__ = "drawers"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    app_id = Column(String(36), ForeignKey("apps.id"), nullable=False)
+    parent_drawer_id = Column(String(36), ForeignKey("drawers.id"), nullable=True)  # 支持嵌套抽屉
+    name = Column(String(100), nullable=False, index=True)
+    slug = Column(String(120), nullable=True, index=True)  # URL友好标识符（在应用内唯一）
+    description = Column(String(500), nullable=True)
+    order_index = Column(Integer, default=0)  # 排序索引
+    
+    # 审计字段（兼容旧系统）
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by = Column(String(100), nullable=True)  # 创建者用户名
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_by = Column(String(100), nullable=True)  # 更新者用户名
+
+    # 关系
+    app = relationship("App", back_populates="drawers")
+    parent = relationship("Drawer", remote_side=[id], back_populates="subdrawers")
+    subdrawers = relationship("Drawer", back_populates="parent", cascade="all, delete-orphan")
+    folders = relationship("Folder", back_populates="drawer", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Drawer(id={self.id}, name={self.name}, slug={self.slug}, app_id={self.app_id}, parent_drawer_id={self.parent_drawer_id})>"

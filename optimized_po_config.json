@@ -1,0 +1,113 @@
+{
+  "app_name": "Purchase Order",
+  "app_code": "PO",
+  "template_name": "pcl_form.jasper",
+  "file_extension": ".cld",
+  "encoding": "latin-1",
+  "description": "优化后的采购订单配置 - 基于精确字段位置分析",
+  "field_definitions": [
+    {
+      "name": "record_type",
+      "description": "记录类型标记",
+      "segment_type": "data_record",
+      "keywords": [
+        "-"
+      ],
+      "start_pos": 0,
+      "length": 3,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^-$",
+      "sample_value": "-"
+    },
+    {
+      "name": "date",
+      "description": "日期 (MM/DD/YY)",
+      "segment_type": "data_record",
+      "keywords": [
+        "04/09/12",
+        "05/02/12",
+        "01/26/12"
+      ],
+      "start_pos": 3,
+      "length": 12,
+      "field_type": "date",
+      "required": true,
+      "validation_pattern": "\\d{2}/\\d{2}/\\d{2}",
+      "sample_value": "04/09/12"
+    },
+    {
+      "name": "status",
+      "description": "状态代码",
+      "segment_type": "data_record",
+      "keywords": [
+        "E",
+        "I",
+        "O"
+      ],
+      "start_pos": 15,
+      "length": 6,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^[EIO]$",
+      "sample_value": "E"
+    },
+    {
+      "name": "initials",
+      "description": "人员缩写",
+      "segment_type": "data_record",
+      "keywords": [
+        "BD",
+        "DL",
+        "PH",
+        "JM",
+        "WO",
+        "JD"
+      ],
+      "start_pos": 21,
+      "length": 5,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^[A-Z]{2}$",
+      "sample_value": "BD"
+    },
+    {
+      "name": "first_name",
+      "description": "名",
+      "segment_type": "data_record",
+      "keywords": [
+        "BRIAN",
+        "DANNY",
+        "GARY",
+        "PAUL",
+        "WILLIE",
+        "JOHN"
+      ],
+      "start_pos": 26,
+      "length": 6,
+      "field_type": "name",
+      "required": true,
+      "validation_pattern": "^[A-Z]+$",
+      "sample_value": "BRIAN"
+    },
+    {
+      "name": "last_name",
+      "description": "姓",
+      "segment_type": "data_record",
+      "keywords": [
+        "DEARB",
+        "LEUNG",
+        "MCKENN",
+        "HOLLMA",
+        "ORTI",
+        "DEUGEN"
+      ],
+      "start_pos": 32,
+      "length": 7,
+      "field_type": "name",
+      "required": true,
+      "validation_pattern": "^[A-Z]+$",
+      "sample_value": "DEARB"
+    }
+  ]
+}

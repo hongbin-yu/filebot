@@ -1,0 +1,190 @@
+{
+  "app_name": "Purchase Order",
+  "app_code": "PO",
+  "template_name": "pcl_form.jasper",
+  "file_extension": ".cld",
+  "encoding": "latin-1",
+  "description": "基于样板文件 PO.TXT 生成的配置",
+  "segments": [
+    {
+      "segment_type": "header",
+      "start_line": 2,
+      "end_line": 3,
+      "line_count": 2
+    },
+    {
+      "segment_type": "product_info",
+      "start_line": 4,
+      "end_line": 5,
+      "line_count": 2
+    },
+    {
+      "segment_type": "unknown",
+      "start_line": 6,
+      "end_line": 7,
+      "line_count": 2
+    },
+    {
+      "segment_type": "header",
+      "start_line": 8,
+      "end_line": 9,
+      "line_count": 2
+    },
+    {
+      "segment_type": "unknown",
+      "start_line": 10,
+      "end_line": 13,
+      "line_count": 3
+    },
+    {
+      "segment_type": "header",
+      "start_line": 14,
+      "end_line": 15,
+      "line_count": 2
+    },
+    {
+      "segment_type": "data_record",
+      "start_line": 16,
+      "end_line": 16,
+      "line_count": 1
+    },
+    {
+      "segment_type": "header",
+      "start_line": 17,
+      "end_line": 20,
+      "line_count": 2
+    },
+    {
+      "segment_type": "unknown",
+      "start_line": 21,
+      "end_line": 23,
+      "line_count": 2
+    },
+    {
+      "segment_type": "header",
+      "start_line": 24,
+      "end_line": 25,
+      "line_count": 1
+    }
+  ],
+  "field_definitions": [
+    {
+      "name": "record_type",
+      "description": "记录类型标记",
+      "segment_type": "data_record",
+      "keywords": [
+        "-"
+      ],
+      "start_pos": 0,
+      "length": 1,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^[A-Z]{1,3}$",
+      "sample_value": "-"
+    },
+    {
+      "name": "date",
+      "description": "日期 (MM/DD/YY)",
+      "segment_type": "data_record",
+      "keywords": [
+        "04/09/12",
+        "05/02/12",
+        "01/26/12"
+      ],
+      "start_pos": 3,
+      "length": 8,
+      "field_type": "date",
+      "required": true,
+      "validation_pattern": "\\d{2}/\\d{2}/\\d{2}",
+      "sample_value": "04/09/12"
+    },
+    {
+      "name": "status",
+      "description": "状态代码",
+      "segment_type": "data_record",
+      "keywords": [
+        "E",
+        "I",
+        "O"
+      ],
+      "start_pos": 15,
+      "length": 1,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^[A-Z]{1,3}$",
+      "sample_value": "E"
+    },
+    {
+      "name": "initials",
+      "description": "人员缩写",
+      "segment_type": "data_record",
+      "keywords": [
+        "BD",
+        "DL",
+        "PH",
+        "JM",
+        "WO",
+        "JD"
+      ],
+      "start_pos": 21,
+      "length": 2,
+      "field_type": "code",
+      "required": true,
+      "validation_pattern": "^[A-Z]{1,3}$",
+      "sample_value": "BD"
+    },
+    {
+      "name": "first_name",
+      "description": "名",
+      "segment_type": "data_record",
+      "keywords": [
+        "BRIAN",
+        "DANNY",
+        "GARY",
+        "PAUL",
+        "WILLIE",
+        "JOHN"
+      ],
+      "start_pos": 26,
+      "length": 5,
+      "field_type": "name",
+      "required": true,
+      "validation_pattern": null,
+      "sample_value": "BRIAN"
+    },
+    {
+      "name": "last_name",
+      "description": "姓",
+      "segment_type": "data_record",
+      "keywords": [
+        "DEARB",
+        "LEUNG",
+        "MCKENN",
+        "HOLLMA",
+        "ORTI",
+        "DEUGEN"
+      ],
+      "start_pos": 32,
+      "length": 5,
+      "field_type": "name",
+      "required": true,
+      "validation_pattern": null,
+      "sample_value": "DEARB"
+    },
+    {
+      "name": "company_name",
+      "description": "公司名称",
+      "segment_type": "header",
+      "keywords": [
+        "PARKER HANNIFIN CORPORATION",
+        "PARKER HANNIFIN"
+      ],
+      "start_pos": 44,
+      "length": 27,
+      "field_type": "string",
+      "required": false,
+      "validation_pattern": null,
+      "sample_value": "PARKER HANNIFIN CORPORATION"
+    }
+  ]
+}

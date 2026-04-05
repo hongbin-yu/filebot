@@ -1,0 +1,19 @@
+{
+  "id": 101000,
+  "name": "Invoice_Report_Extracted_20260315_151027",
+  "content": "{\n  \"report_id\": 101,\n  \"report_name\": \"Invoice_Report\",\n  \"extraction_time\": \"2026-03-15T15:10:27.976043\",\n  \"total_records\": 3,\n  \"fields\": [\n    {\n      \"name\": \"field_1\",\n      \"value\": \"INV-2026031501\",\n      \"data_type\": \"code\",\n      \"validation_passed\": false,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^INV-\\\\d{8}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_2\",\n      \"value\": \"03/15/2026\",\n      \"data_type\": \"date\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^[0-9]{2}/[0-9]{2}/[0-9]{4}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_3\",\n      \"value\": \"ABC-12345\",\n      \"data_type\": \"code\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^[A-Z]{3}-[0-9]{5}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_1\",\n      \"value\": \"INV-2026031502\",\n      \"data_type\": \"code\",\n      \"validation_passed\": false,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^INV-\\\\d{8}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_2\",\n      \"value\": \"03/15/2026\",\n      \"data_type\": \"date\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^[0-9]{2}/[0-9]{2}/[0-9]{4}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_3\",\n      \"value\": \"DEF-67890\",\n      \"data_type\": \"code\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^[A-Z]{3}-[0-9]{5}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_1\",\n      \"value\": \"INV-2026031503\",\n      \"data_type\": \"code\",\n      \"validation_passed\": false,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^INV-\\\\d{8}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_2\",\n      \"value\": \"03/14/2026\",\n      \"data_type\": \"date\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^[0-9]{2}/[0-9]{2}/[0-9]{4}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_3\",\n      \"value\": \"GHI-11223\",\n      \"data_type\": \"code\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 101,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^[A-Z]{3}-[0-9]{5}$\"\n        }\n      }\n    }\n  ]\n}",
+  "metadata": {
+    "source_report": "Invoice_Report",
+    "source_id": 101,
+    "appid": 1,
+    "formid": 1,
+    "extraction_config": {
+      "separator": ",",
+      "field_count": 3,
+      "index_count": 3
+    }
+  },
+  "created_at": "2026-03-15T15:10:27.976043",
+  "updated_at": "2026-03-15T15:10:27.976043",
+  "status": "processed"
+}

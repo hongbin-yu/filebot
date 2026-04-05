@@ -1,0 +1,525 @@
+{
+  "lastHeartbeat": "2026-03-23T22:33:30Z",
+  "activeProcesses": {
+    "filebot-backend": {
+      "pid": 2608489,
+      "started": "2026-03-20T14:42:00Z",
+      "port": 8001,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-23T22:33:30Z",
+      "status": "服务运行正常",
+      "details": "进程2608489运行中，端口8001监听，HTTP 200响应正常，AI分类功能已验证，服务稳定运行（心跳检查通过）"
+    },
+    "pcl-web-app": {
+      "pid": 461415,
+      "started": "2026-03-20T12:58:00Z",
+      "port": 5000,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-23T22:33:30Z",
+      "status": "服务运行正常",
+      "details": "进程461415运行中，端口5000监听，HTTP 200响应正常，支持8种格式转换(pcl/txt/png/tiff/jpg/pdf等)，服务稳定运行（心跳检查通过）"
+    },
+    "frontend": {
+      "pid": 1892263,
+      "started": "2026-03-21T13:55:00Z",
+      "port": 5173,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-23T22:33:30Z",
+      "status": "服务运行正常",
+      "details": "进程1892263运行中，端口5173监听，HTTP 200响应正常，前端界面可访问。服务稳定运行，TypeScript 0个错误，Material-UI Grid布局正常（心跳检查通过）"
+    },
+    "ollama": {
+      "pid": 190,
+      "started": "2026-03-19T18:12:00Z",
+      "port": 11434,
+      "health": "healthy",
+      "port_listening": true,
+      "lastChecked": "2026-03-23T22:33:30Z",
+      "status": "服务运行正常",
+      "details": "Ollama进程190运行中，端口11434监听，HTTP 200响应正常，4个模型可用（deepseek-r1:8b/32b/latest, llama3.1:latest），服务稳定运行（心跳检查通过）"
+    }
+  },
+  "recentTasks": [
+    {
+      "id": "heartbeat-check-20260323T2233",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T22:33:30Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 2608489, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2636938, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 18:20:29 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.8Gi/7.3Gi used (5.5Gi available); 📊 负载0.01, 0.04, 0.06; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T2202",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T22:02:57Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 2608489, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2636938, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 17:49:47 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.7Gi/7.3Gi used (5.6Gi available); 📊 负载0.15, 0.17, 0.12; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T2059",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T20:59:22Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 2608489, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2608621, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 16:27:10 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.7Gi/7.3Gi used (5.6Gi available); 📊 负载0.28, 0.17, 0.11; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1935",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T19:35:59Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2571168, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 15:05:08 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.7Gi/7.3Gi used (5.6Gi available); 📊 负载0.01, 0.05, 0.06; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1843",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T18:43:21Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 14:30:53 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.5Gi/7.3Gi used (4.8Gi available); 📊 负载0.21, 0.22, 0.13; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1811",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T18:11:31Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 13:56:33 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.5Gi/7.3Gi used (4.9Gi available); 📊 负载0.09, 0.10, 0.08; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1741",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T17:41:55Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 13:22:04 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.3Gi/7.3Gi used (5.0Gi available); 📊 负载0.10, 0.15, 0.11; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1711",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T17:11:39Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 12:47:06 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.2Gi/7.3Gi used (5.1Gi available); 📊 负载0.07, 0.06, 0.07; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1637",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T16:37:07Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 12:12:06 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.1Gi/7.3Gi used (5.2Gi available); 📊 负载0.00, 0.03, 0.06; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1608",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T16:08:29Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 11:37:05 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.0Gi/7.3Gi used (5.3Gi available); 📊 负载0.23, 0.11, 0.06; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1537",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T15:37:55Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 11:06:56 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.0Gi/7.3Gi used (5.3Gi available); 📊 负载0.03, 0.06, 0.06; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1504",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T15:04:18Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 11:02:06 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.0Gi/7.3Gi used (5.3Gi available); 📊 负载0.05, 0.11, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1435",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T14:35:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 10:27:05 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.9Gi/7.3Gi used (5.4Gi available); 📊 负载0.11, 0.11, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1404",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T14:04:43Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 09:52:05 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.8Gi/7.3Gi used (5.5Gi available); 📊 负载0.08, 0.08, 0.08; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1334",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T13:34:44Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 09:17:05 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.8Gi/7.3Gi used (5.5Gi available); 📊 负载0.05, 0.05, 0.06; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1304",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T13:04:41Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 08:42:06 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.8Gi/7.3Gi used (5.5Gi available); 📊 负载0.03, 0.09, 0.08; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1227",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T12:27:41Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 07:36:20 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.08, 0.15, 0.11; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T1137",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T11:37:18Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2363693, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 07:03:45 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.13, 0.17, 0.12; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-20260323T100",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T10:06:06Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 05:57:57 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.03, 0.07, 0.08; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0936",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T09:36:11Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 05:25:19 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.34, 0.18, 0.12; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0910",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T09:02:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 04:52:40 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.19, 0.10, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0832",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T08:32:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 04:19:55 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.03, 0.07, 0.08; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0735",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T07:35:01Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 03:14:21 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.02, 0.10, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0634",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T06:34:03Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 02:08:40 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.18, 0.10, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0603",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T06:03:22Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 01:35:42 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.20, 0.12, 0.10; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0533",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T05:33:20Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 2200005, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 01:02:41 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.6Gi/7.3Gi used (5.7Gi available); 📊 负载0.09, 0.12, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0449",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T04:49:25Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 00:30:19 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.9Gi/7.3Gi used (4.4Gi available); 📊 负载0.03, 0.09, 0.11; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0419",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T04:19:20Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 23:57:11 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.9Gi/7.3Gi used (4.4Gi available); 📊 负载0.26, 0.24, 0.15; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0349",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T03:49:23Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 23:23:59 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.8Gi/7.3Gi used (4.5Gi available); 📊 负载0.08, 0.09, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0319",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T03:19:27Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 22:50:43 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.8Gi/7.3Gi used (4.5Gi available); 📊 负载0.10, 0.10, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0249",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T02:49:32Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 22:22:15 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.8Gi/7.3Gi used (4.0Gi available); 📊 负载0.01, 0.06, 0.07; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0219",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T02:19:26Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 22:17:24 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.8Gi/7.3Gi used (4.1Gi available); 📊 负载0.12, 0.10, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0149",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T01:49:29Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 21:44:01 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.8Gi/7.3Gi used (4.1Gi available); 📊 负载0.12, 0.12, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0119",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T01:19:26Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 21:10:34 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存3.0Gi/7.3Gi used (4.3Gi available); 📊 负载0.07, 0.10, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0049",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-23T00:49:22Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 20:37:03 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.8Gi/7.3Gi used (4.5Gi available); 📊 负载0.20, 0.14, 0.10; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-23-0019",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WhatsApp网关连接正常",
+      "completed": "2026-03-23T00:19:22Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 20:03:29 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.8Gi/7.3Gi used (4.5Gi available); 📊 负载0.14, 0.17, 0.14; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态良好"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-2341",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-22T23:41:05Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 19:29:49 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.6Gi/7.3Gi used (4.7Gi available); 📊 负载0.11, 0.18, 0.12; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-2308",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统状态正常",
+      "completed": "2026-03-22T23:08:36Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 18:56:06 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.5Gi/7.3Gi used (4.8Gi available); 📊 负载0.12, 0.09, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态正常"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-2139",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WhatsApp网关连接正常",
+      "completed": "2026-03-22T21:39:17Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 17:14:34 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.6Gi/7.3Gi used (4.8Gi available); 📊 负载0.22, 0.15, 0.10; 🔔 项目状态: WebBot项目在私聊模式下推进，WET-BOEW框架整合中，分工方案已批准执行"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-2035",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WebBot项目私聊模式启动",
+      "completed": "2026-03-22T20:35:36Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 16:06:37 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.4Gi/7.3Gi used (4.9Gi available); 📊 负载0.05, 0.09, 0.08; 🔔 项目状态: WebBot项目在私聊模式下启动，基于WET-BOEW框架，分工方案已批准"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1835",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，系统健康状态良好",
+      "completed": "2026-03-22T18:35:21Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; ✅ OpenClaw网关运行正常 (PID 1704030, 端口18789); 📡 WhatsApp网关连接正常 (系统消息: 14:24:05 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.4Gi/7.3Gi used (5.0Gi available); 📊 负载0.02, 0.11, 0.09; 🔔 项目状态: 所有核心服务稳定运行，系统健康状态良好"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1736",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，前端服务自动重启完成",
+      "completed": "2026-03-22T17:36:12Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1892263, 端口5173, HTTP 200) - 服务自动重启完成; ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 13:15 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.3Gi/7.3Gi used (4.6Gi available); 📊 负载0.04, 0.09, 0.08; 🔔 项目状态: 所有服务稳定运行，前端服务自动重启完成"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1632",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WebBot项目进展顺利",
+      "completed": "2026-03-22T16:32:08Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1794920, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 12:05 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.3Gi/7.3Gi used (4.8Gi available); 📊 负载0.19, 0.17, 0.10; 🔔 项目状态: WebBot项目进展顺利，所有服务稳定运行，今晚20:00 EDT三方讨论准备就绪"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1549",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WebBot项目进展顺利",
+      "completed": "2026-03-22T15:49:38Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1794920, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 11:30 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.1Gi/7.3Gi used (5.2Gi available); 📊 负载0.04, 0.13, 0.09; 🔔 项目状态: WebBot项目进展顺利，所有服务稳定运行，今晚20:00 EDT三方讨论准备就绪"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1514",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WebBot项目进展顺利",
+      "completed": "2026-03-22T15:14:00Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1794920, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 10:55 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.0Gi/7.3Gi used (5.0Gi available); 📊 负载0.12, 0.04, 0.01; 🔔 项目状态: WebBot项目进展顺利，分工方案批准，采用私聊模式，基于WET-BOEW框架，依赖FileBot图像/音频管理，今晚20:00 EDT三方讨论准备就绪"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1444",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WebBot项目进展顺利",
+      "completed": "2026-03-22T14:44:06Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1794920, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 10:20 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.0Gi/7.3Gi used (5.1Gi available); 📊 负载0.07, 0.03, 0.02; 🔔 项目状态: WebBot项目进展顺利，所有服务稳定运行"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1413",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，WebBot项目正式启动",
+      "completed": "2026-03-22T14:13:48Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1794920, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 09:45 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.1Gi/7.3Gi used (4.8Gi available); 📊 负载0.03, 0.07, 0.09; 🔔 项目状态: WebBot项目正式启动，分工方案批准，采用私聊模式，基于WET-BOEW框架，依赖FileBot图像/音频管理"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1342",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，三方讨论准备就绪",
+      "completed": "2026-03-22T13:42:23Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1782586, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 09:10 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存2.1Gi/7.3Gi used (4.8Gi available); 📊 负载0.04, 0.10, 0.09; 🔔 重要事项: 今晚20:00 EDT三方讨论准备就绪 (FileBot优化方案)"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1306",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，三方讨论准备就绪",
+      "completed": "2026-03-22T13:06:03Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1361374, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 08:35 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.8Gi/7.3Gi used (5.5Gi available); 📊 负载0.16, 0.07, 0.07; 🔔 重要事项: 今晚20:00 EDT三方讨论准备就绪 (FileBot优化方案)"
+    },
+    {
+      "id": "heartbeat-check-2026-03-22-1157",
+      "description": "定期心跳检查 - 所有核心服务稳定运行，三方讨论准备就绪",
+      "completed": "2026-03-22T11:57:17Z",
+      "notified": false,
+      "status": "success",
+      "details": "✅ FileBot后端服务运行正常 (PID 1423662, 端口8001, HTTP 200); ✅ 前端React服务运行正常 (PID 1361374, 端口5173, HTTP 200); ✅ PCL转换器服务运行正常 (PID 461415, 端口5000, HTTP 200); ✅ Ollama服务运行正常 (PID 190, 端口11434, HTTP 200); ✅ Redis和MySQL运行正常; 📡 WhatsApp网关连接正常 (系统消息: 07:28 EDT连接); 💾 磁盘使用7% used (64G/1007G); 🧠 内存1.8Gi/7.3Gi used (5.5Gi available); 📊 负载0.11, 0.11, 0.10; 🔔 重要事项: 今晚20:00 EDT三方讨论准备就绪 (FileBot优化方案)"
+    }
+  ],
+  "pendingNotifications": [],
+  "lastChecks": {
+    "processes": "2026-03-23T09:02:00Z",
+    "tasks": "2026-03-23T09:02:00Z",
+    "system": "2026-03-23T09:02:00Z"
+  },
+  "issues": {
+    "pcl-conversion-tool": {
+      "status": "verified",
+      "description": "PCLTSDK_870工具链验证成功 (C:\\workspace\\PCLTSDK_870\\PclXform.exe)，DOS命令行调用有效",
+      "lastUpdated": "2026-03-17T15:35:00Z",
+      "priority": "low",
+      "progress": "已验证，等待Web应用集成"
+    },
+    "pcl-web-dependencies": {
+      "status": "resolved",
+      "description": "PCL Web应用Python依赖已安装（Flask等）",
+      "lastUpdated": "2026-03-17T16:00:31Z",
+      "priority": "low",
+      "resolution": "虚拟环境创建，所有依赖包安装完成"
+    },
+    "filebot-service-stopped": {
+      "status": "resolved",
+      "description": "FileBot后端服务已停止运行 (端口8000)",
+      "lastUpdated": "2026-03-18T00:14:00Z",
+      "priority": "low",
+      "notified": true,
+      "resolution": "服务已重启，PID 52479，运行正常"
+    },
+    "pcl-web-upload-functionality": {
+      "status": "resolved",
+      "description": "PCL Web应用上传功能已修复：支持多字段名和cmd.exe包装",
+      "lastUpdated": "2026-03-17T18:56:00Z",
+      "priority": "low",
+      "details": "修复upload_file()函数支持'file'和'files'字段名；修复pclxform命令使用cmd.exe /c包装。"
+    },
+    "pcl-web-app-stopped": {
+      "status": "resolved",
+      "description": "PCL Web应用已停止运行 (端口5000)",
+      "lastUpdated": "2026-03-18T00:14:00Z",
+      "priority": "low",
+      "notified": true,
+      "resolution": "服务已重启，PID 52169，运行正常"
+    },
+    "pcl_conversion_timeout": {
+      "status": "resolved",
+      "description": "PCL转换命令超时已修复：添加cmd.exe /c包装",
+      "lastUpdated": "2026-03-17T18:56:00Z",
+      "priority": "low",
+      "details": "已修复命令格式，使用cmd.exe /c包装Windows可执行文件。"
+    },
+    "frontend-module-export-error": {
+      "status": "resolved",
+      "description": "前端模块导入错误: 'The requested module /src/services/auth.service.ts does not provide an export named authService'",
+      "lastUpdated": "2026-03-19T01:04:00Z",
+      "priority": "low",
+      "details": "已通过TypeScript配置修复解决：将 verbatimModuleSyntax 从 true 改为 false。前端服务在端口5173重启，登录页面正常显示，模块导入错误已消除。",
+      "progress": "✅ 已解决"
+    }
+  },
+  "systemStatus": {
+    "diskSpace": "7% used (64G/1007G)",
+    "memory": "1.8Gi/7.3Gi used (5.5Gi available)",
+    "loadAvg": "0.01, 0.04, 0.06",
+    "services": {
+      "redis": "running",
+      "mysql": "running"
+    },
+    "timestamp": "2026-03-23T22:33:30Z",
+    "processes": {
+      "filebot-backend": "running (port 8001 listening, PID 2608489)",
+      "frontend": "running (port 5173 listening, PID 1892263)",
+      "pcl-web-app": "running (port 5000 listening, PID 461415)",
+      "ollama": "running (port 11434 listening, PID 190)",
+      "openclaw-gateway": "running (port 18789 listening, PID 2636938)"
+    },
+    "system": "2026-03-23T07:35:01Z"
+  }
+}

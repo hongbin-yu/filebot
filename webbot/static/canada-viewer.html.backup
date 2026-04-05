@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Canada.ca Pages Viewer</title>
+    
+    <!-- Canada.ca WET theme CSS -->
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/theme.min.css">
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/wet-boew.min.css">
+    
+    <!-- Load basic Canada.ca page structure styles -->
+    <style>
+        /* Minimal custom styles to integrate with Canada.ca theme */
+        .wb-srch { display: none !important; }
+        .gcweb-menu { display: none !important; }
+        #gcwu-sig { display: none !important; }
+        
+        /* Our custom integration styles - minimal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .page-item {
+            padding: 10px 15px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .page-item:hover {
+            background: #e9ecef;
+        }
+        
+        .page-item.active {
+            background: #335075;
+            color: white;
+        }
+        
+        .content-panel {
+            background: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .content-header {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        #toggle-clean-view {
+            margin-top: 10px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+        }
+        
+        .error {
+            background: #f2dede;
+            color: #a94442;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border: 1px solid #ebccd1;
+        }
+        
+        /* Spinner animation for saving indicator */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .spinning {
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
+        /* Hide Canada.ca default header/footer elements we don't need */
+        #wb-bnr, #wb-sm, #wb-info, #wb-srch, #wb-lng, #wb-sm {
+            display: none !important;
+        }
+        
+        /* Tree navigation styles */
+        .page-tree {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .tree-category {
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .tree-category-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .tree-category-header:hover {
+            background-color: #e9ecef;
+        }
+        
+        .tree-category-header .toggle-icon {
+            color: #666;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+        
+        .tree-category-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .tree-category-items {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            background-color: white;
+            max-height: 400px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+        
+        .tree-category-items.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+        
+        .tree-page-item {
+            padding: 10px 15px 10px 30px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+            transition: background-color 0.2s;
+        }
+        
+        .tree-page-item:last-child {
+            border-bottom: none;
+        }
+        
+        .tree-page-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .tree-page-item.active {
+            background-color: #e7f3ff;
+            border-left: 3px solid #007bff;
+        }
+        
+        .tree-page-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .tree-page-meta {
+            font-size: 11px;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .tree-page-id {
+            font-family: monospace;
+            background-color: #f5f5f5;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 10px;
+        }
+        
+        .empty-category {
+            padding: 15px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+        
+        /* AEM-inspired navigation styles */
+        .aem-navigation {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        
+        .aem-category {
+            margin-bottom: 2px;
+            border: 1px solid #d1d1d1;
+            border-radius: 3px;
+            overflow: hidden;
+            background-color: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        .aem-category-header {
+            background: linear-gradient(to bottom, #f8f8f8, #f0f0f0);
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+        
+        .aem-category-header:hover {
+            background: linear-gradient(to bottom, #f0f0f0, #e8e8e8);
+        }
+        
+        .aem-category-header .aem-toggle-icon {
+            color: #666;
+            font-size: 10px;
+            transition: transform 0.2s;
+            margin-left: 8px;
+        }
+        
+        .aem-category-header.collapsed .aem-toggle-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .aem-category-items {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            background-color: #fff;
+            transition: max-height 0.3s ease;
+        }
+        
+        .aem-category-items.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+        
+        .aem-page-item {
+            padding: 6px 12px 6px 32px;
+            cursor: pointer;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background-color 0.15s;
+            font-size: 13px;
+            position: relative;
+            min-height: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .aem-page-item:last-child {
+            border-bottom: none;
+        }
+        
+        .aem-page-item:hover {
+            background-color: #f0f7ff;
+        }
+        
+        .aem-page-item.active {
+            background-color: #e1f0ff;
+            border-left: 3px solid #0078d4;
+        }
+        
+        .aem-page-item::before {
+            content: '📄';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .aem-page-item.folder::before {
+            content: '📁';
+        }
+        
+        .aem-page-item.root::before {
+            content: '🌐';
+        }
+        
+        .aem-page-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .aem-page-meta {
+            font-size: 10px;
+            color: #888;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .aem-page-id {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background-color: #f0f0f0;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 9px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .aem-badge {
+            background-color: #0078d4;
+            color: white;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        /* Breadcrumb styles */
+        .breadcrumb {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: #6c757d;
+        }
+        
+        .breadcrumb-item.active {
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        .breadcrumb-item a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
+    <!-- Skip links for accessibility -->
+    <ul id="wb-tphp">
+        <li class="wb-slc"><a class="wb-sl" href="#wb-cont">Skip to main content</a></li>
+        <li class="wb-slc"><a class="wb-sl" href="#wb-info">Skip to "About this site"</a></li>
+    </ul>
+    
+    <!-- Header section (minimal) -->
+    <header>
+        <div id="wb-bnr" class="container">
+            <div class="row">
+                <!-- Language selection (hidden) -->
+                <section id="wb-lng" class="text-right" style="display: none;">
+                    <h2 class="wb-inv">Language selection</h2>
+                    <ul class="list-inline margin-bottom-none">
+                        <li><a lang="fr" href="#">Français</a></li>
+                    </ul>
+                </section>
+                
+                <!-- Canada.ca brand -->
+                <div class="brand col-xs-8 col-sm-9 col-md-6">
+                    <a href="https://www.canada.ca/en.html">
+                        <img src="https://www.canada.ca/etc/designs/canada/wet-boew/assets/sig-blk-en.svg" alt="Government of Canada" />
+                        <span class="wb-inv">Government of Canada / <span lang="fr">Gouvernement du Canada</span></span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Title banner -->
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <h1 property="name" id="wb-cont">Canada.ca Pages Viewer</h1>
+                    <p class="subtitle">Browse imported Canada.ca pages from WebBot</p>
+                    
+                    <!-- Stats panel -->
+                    <div class="panel panel-default">
+                        <div class="panel-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="stat-item text-center">
+                                        <span class="stat-value h2" id="page-count">0</span>
+                                        <span class="stat-label">Pages</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="stat-item text-center">
+                                        <span class="stat-value h2" id="language-count">0</span>
+                                        <span class="stat-label">Languages</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="stat-item text-center">
+                                        <span class="stat-value h2">WebBot</span>
+                                        <span class="stat-label">Backend</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main content -->
+    <main property="mainContentOfPage" class="container" typeof="WebPageElement">
+        <div class="row">
+            <!-- Sidebar with page list -->
+            <div class="col-md-4">
+                <section class="panel panel-default">
+                    <div class="panel-heading">
+                        <h2 class="panel-title">Pages</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div id="loading-pages" class="loading">Loading pages...</div>
+                        <div id="page-tree" class="page-tree" style="display: none;"></div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- Main content panel -->
+            <div class="col-md-8">
+                <section class="panel panel-default content-panel">
+                    <div class="panel-heading">
+                        <h2 class="panel-title">Page Content</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div id="loading-content" class="loading" style="display: none;">Loading content...</div>
+                        <div id="content-area" style="display: none;">
+                            <div class="content-header">
+                                <!-- Breadcrumb navigation -->
+                                <nav aria-label="breadcrumb" id="page-breadcrumb" style="margin-bottom: 15px;">
+                                    <ol class="breadcrumb" style="padding: 8px 15px; margin-bottom: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                                        <li class="breadcrumb-item"><a href="#" id="breadcrumb-home">WebBot</a></li>
+                                        <!-- Dynamic breadcrumb items will be added here -->
+                                    </ol>
+                                </nav>
+                                
+                                <h1 class="content-title" id="page-title"></h1>
+                                <div class="content-meta">
+                                    <span id="page-language" class="label label-info"></span>
+                                    <span id="page-status" class="label label-default"></span>
+                                    <span id="page-id" class="label label-primary"></span>
+                                </div>
+                                <div class="content-controls" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                                    <button id="toggle-clean-view" class="btn btn-primary">
+                                        <span id="clean-view-text">Enable Clean View</span>
+                                    </button>
+                                    <span id="view-mode-info" style="margin-left: 10px; color: #666;">(Original view)</span>
+                                </div>
+                            </div>
+                            <div class="content-body" id="page-content"></div>
+                            <!-- Edit mode UI (initially hidden) -->
+                            <div id="edit-area" style="display: none; margin-top: 20px; padding: 30px; border: 2px solid #4CAF50; border-radius: 10px; background-color: #f9f9f9; width: 100%; box-sizing: border-box;">
+                                <h3 style="color: #4CAF50; margin-bottom: 25px; padding-bottom: 10px; border-bottom: 2px solid #4CAF50; font-size: 24px; font-weight: bold;">Edit Page Content</h3>
+                                <div class="form-group">
+                                    <label for="editor-title">Title:</label>
+                                    <input type="text" id="editor-title" class="form-control" placeholder="Page title" style="width: 100%; max-width: 100%;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="editor-content">Content (HTML):</label>
+                                    <textarea id="editor-content" class="form-control" rows="25" placeholder="HTML content" style="width: 100%; max-width: 100%; font-family: monospace; font-size: 14px; min-height: 400px; resize: vertical;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editor-language">Language:</label>
+                                    <select id="editor-language" class="form-control" style="width: 100%; max-width: 100%;">
+                                        <option value="en">English</option>
+                                        <option value="fr">French</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editor-status">Status:</label>
+                                    <select id="editor-status" class="form-control" style="width: 100%; max-width: 100%;">
+                                        <option value="draft">Draft</option>
+                                        <option value="published">Published</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
+                                <div class="btn-toolbar">
+                                    <button id="save-edit" class="btn btn-success" style="margin-right: 10px;">
+                                        <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span> Save Changes
+                                    </button>
+                                    <button id="cancel-edit" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Cancel
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- View mode controls -->
+                            <div class="view-controls" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                                <button id="edit-page" class="btn btn-primary" style="margin-right: 10px;">
+                                    <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Edit Page
+                                </button>
+                                <button id="add-page" class="btn btn-info" style="margin-right: 10px;">
+                                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Child Page
+                                </button>
+                                <button id="toggle-clean-view" class="btn btn-primary">
+                                    <span id="clean-view-text">Enable Clean View</span>
+                                </button>
+                                <span id="view-mode-info" style="margin-left: 10px; color: #666;">(Original view)</span>
+                            </div>
+                        </div>
+                        <div id="error-area" class="error alert alert-danger" style="display: none;"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <p class="text-center">
+                        WebBot Canada.ca Pages Viewer | Imported from FileBot | 
+                        <a href="/api/v1/pages" target="_blank">API</a> | 
+                        <a href="/docs" target="_blank">Documentation</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Canada.ca WET JavaScript -->
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js"></script>
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js"></script>
+    
+    <!-- Our application script -->
+    <script>
+        // API base URL
+        const API_BASE = '/api/v1/pages';
+        
+        // State
+        let pages = [];
+        let currentPageId = null;
+        let currentPageData = null; // Store current page data for editing
+        let cleanViewEnabled = true; // Default to clean view (removes Canada.ca header/footer, adds WebBot header/footer)
+        
+        // DOM elements
+        const pageCountEl = document.getElementById('page-count');
+        const languageCountEl = document.getElementById('language-count');
+        const pageTreeEl = document.getElementById('page-tree');
+        const loadingPagesEl = document.getElementById('loading-pages');
+        const contentAreaEl = document.getElementById('content-area');
+        const loadingContentEl = document.getElementById('loading-content');
+        const errorAreaEl = document.getElementById('error-area');
+        const pageTitleEl = document.getElementById('page-title');
+        const pageLanguageEl = document.getElementById('page-language');
+        const pageStatusEl = document.getElementById('page-status');
+        const pageIdEl = document.getElementById('page-id');
+        const pageContentEl = document.getElementById('page-content');
+        const toggleCleanViewBtn = document.getElementById('toggle-clean-view');
+        const cleanViewText = document.getElementById('clean-view-text');
+        const viewModeInfo = document.getElementById('view-mode-info');
+        
+        // Edit mode DOM elements
+        const editAreaEl = document.getElementById('edit-area');
+        const editPageBtn = document.getElementById('edit-page');
+        const addPageBtn = document.getElementById('add-page');
+        const editorTitleEl = document.getElementById('editor-title');
+        const editorContentEl = document.getElementById('editor-content');
+        const editorLanguageEl = document.getElementById('editor-language');
+        const editorStatusEl = document.getElementById('editor-status');
+        const saveEditBtn = document.getElementById('save-edit');
+        const cancelEditBtn = document.getElementById('cancel-edit');
+        const viewControlsEl = document.querySelector('.view-controls');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPages();
+            // Setup clean view toggle
+            toggleCleanViewBtn.addEventListener('click', toggleCleanView);
+            // Setup edit functionality
+            editPageBtn.addEventListener('click', enterEditMode);
+            addPageBtn.addEventListener('click', addChildPage);
+            saveEditBtn.addEventListener('click', saveEdit);
+            cancelEditBtn.addEventListener('click', exitEditMode);
+            // Setup breadcrumb home link
+            const breadcrumbHome = document.getElementById('breadcrumb-home');
+            if (breadcrumbHome) {
+                breadcrumbHome.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Clear current page selection (go back to home)
+                    currentPageId = null;
+                    currentPageData = null;
+                    // Clear content area
+                    contentAreaEl.style.display = 'none';
+                    // Clear breadcrumb except home
+                    updateBreadcrumb(null, buildPageTree(pages));
+                    // Update active items in tree
+                    document.querySelectorAll('.aem-page-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                });
+            }
+            updateCleanViewUI();
+        });
+        
+        // Load all pages
+        async function loadPages() {
+            try {
+                // Try API first
+                const response = await fetch(API_BASE);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                pages = await response.json();
+                
+                // If API returns empty array, try static JSON
+                if (pages.length === 0) {
+                    console.log('API returned empty array, trying static JSON...');
+                    const staticResponse = await fetch('/gcweb/pages.json');
+                    if (staticResponse.ok) {
+                        pages = await staticResponse.json();
+                    }
+                }
+                
+                // Update stats
+                pageCountEl.textContent = pages.length;
+                const languages = [...new Set(pages.map(p => p.language))];
+                languageCountEl.textContent = languages.length;
+                
+                // Render page tree
+                renderPageTree();
+                
+                // Hide loading, show tree
+                loadingPagesEl.style.display = 'none';
+                pageTreeEl.style.display = 'block';
+                
+                // Load first page if available
+                if (pages.length > 0) {
+                    loadPage(pages[0].id);
+                }
+                
+            } catch (error) {
+                console.log('API failed, trying static JSON as fallback:', error.message);
+                // Try static JSON as fallback
+                try {
+                    const staticResponse = await fetch('/gcweb/pages.json');
+                    if (staticResponse.ok) {
+                        pages = await staticResponse.json();
+                        
+                        // Update stats
+                        pageCountEl.textContent = pages.length;
+                        const languages = [...new Set(pages.map(p => p.language))];
+                        languageCountEl.textContent = languages.length;
+                        
+                        // Render page tree
+                        renderPageTree();
+                        
+                        // Hide loading, show tree
+                        loadingPagesEl.style.display = 'none';
+                        pageTreeEl.style.display = 'block';
+                        
+                        // Load first page if available
+                        if (pages.length > 0) {
+                            loadPage(pages[0].id);
+                        }
+                    } else {
+                        throw new Error(`Static JSON also failed: ${staticResponse.status}`);
+                    }
+                } catch (staticError) {
+                    loadingPagesEl.innerHTML = `<div class="error">Failed to load pages: ${error.message}<br>Static fallback also failed: ${staticError.message}</div>`;
+                    console.error('Error loading pages:', error, staticError);
+                }
+            }
+        }
+        
+        // Build hierarchical tree structure from pages using parent_id
+        function buildPageTree(pages) {
+            // First, create a map of all pages by id
+            const pageMap = {};
+            pages.forEach(page => {
+                pageMap[page.id] = {
+                    ...page,
+                    children: []
+                };
+            });
+            
+            // Build tree structure
+            const tree = {
+                roots: [],      // Pages with no parent
+                nodes: pageMap  // All pages for quick lookup
+            };
+            
+            // Link children to parents
+            pages.forEach(page => {
+                const parentId = page.parent_id;
+                if (parentId && pageMap[parentId]) {
+                    // Add as child of parent
+                    pageMap[parentId].children.push(pageMap[page.id]);
+                } else {
+                    // No parent or parent not found → it's a root
+                    tree.roots.push(pageMap[page.id]);
+                }
+            });
+            
+            // Sort roots and children for consistent display
+            tree.roots.sort((a, b) => a.id.localeCompare(b.id));
+            
+            // Recursively sort children
+            function sortChildren(node) {
+                if (node.children && node.children.length > 0) {
+                    node.children.sort((a, b) => a.id.localeCompare(b.id));
+                    node.children.forEach(child => sortChildren(child));
+                }
+            }
+            
+            tree.roots.forEach(root => sortChildren(root));
+            
+            return tree;
+        }
+        
+        // Render page tree
+        function renderPageTree() {
+            console.log('renderPageTree called with', pages.length, 'pages');
+            // Clear existing content
+            pageTreeEl.innerHTML = '';
+            
+            // Build tree structure
+            const tree = buildPageTree(pages);
+            
+            // If no roots, show message
+            if (tree.roots.length === 0) {
+                pageTreeEl.innerHTML = '<div class="empty-category">No pages found</div>';
+                return;
+            }
+            
+            // Sort roots by title
+            const sortedRoots = [...tree.roots].sort((a, b) => a.title.localeCompare(b.title));
+            
+            // Create category for each root
+            sortedRoots.forEach(root => {
+                // Get all pages in this subtree (root + all descendants)
+                const allPagesInSubtree = [];
+                function collectPages(node) {
+                    allPagesInSubtree.push(node);
+                    if (node.children && node.children.length > 0) {
+                        node.children.forEach(child => collectPages(child));
+                    }
+                }
+                collectPages(root);
+                
+                // Create category container
+                const categoryEl = document.createElement('div');
+                categoryEl.className = 'aem-category';
+                
+                // Create category header (clickable to expand/collapse)
+                const headerEl = document.createElement('div');
+                headerEl.className = 'aem-category-header';
+                headerEl.setAttribute('data-category', root.id);
+                
+                const pageCount = allPagesInSubtree.length;
+                headerEl.innerHTML = `
+                    <span>${escapeHtml(root.title)}</span>
+                    <span class="aem-badge">${pageCount}</span>
+                    <span class="aem-toggle-icon">▼</span>
+                `;
+                
+                // Create items container
+                const itemsEl = document.createElement('ul');
+                itemsEl.className = 'aem-category-items';
+                
+                // Add page items (sorted by title)
+                const sortedPages = allPagesInSubtree.sort((a, b) => a.title.localeCompare(b.title));
+                
+                sortedPages.forEach(page => {
+                    const pageItemEl = document.createElement('li');
+                    
+                    // Determine item type for icon
+                    const hasChildren = page.children && page.children.length > 0;
+                    const isRoot = !page.parent_id;
+                    
+                    pageItemEl.className = 'aem-page-item';
+                    if (hasChildren) {
+                        pageItemEl.classList.add('folder');
+                    } else if (isRoot) {
+                        pageItemEl.classList.add('root');
+                    }
+                    
+                    if (currentPageId === page.id) {
+                        pageItemEl.classList.add('active');
+                    }
+                    
+                    // Indent based on depth (simple visual hierarchy)
+                    const depth = getDepthInTree(page.id, tree);
+                    const indent = Math.min(depth * 20, 80); // Max 80px indent
+                    
+                    // Shorten long titles for display
+                    const shortTitle = page.title.length > 60 
+                        ? page.title.substring(0, 57) + '...' 
+                        : page.title;
+                    
+                    pageItemEl.innerHTML = `
+                        <div class="aem-page-title" style="margin-left: ${indent}px;">
+                            ${escapeHtml(shortTitle)}
+                        </div>
+                        <div class="aem-page-meta" style="margin-left: ${indent}px;">
+                            <span class="aem-page-id">${escapeHtml(page.id)}</span>
+                            <span>${page.language.toUpperCase()}</span>
+                            <span>${page.status}</span>
+                            ${hasChildren ? `<span style="color: #888; font-size: 9px;">(${page.children.length} children)</span>` : ''}
+                        </div>
+                    `;
+                    
+                    pageItemEl.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent category toggle
+                        loadPage(page.id);
+                    });
+                    
+                    itemsEl.appendChild(pageItemEl);
+                });
+                
+                // Toggle category expand/collapse
+                headerEl.addEventListener('click', () => {
+                    const isCollapsed = headerEl.classList.contains('collapsed');
+                    if (isCollapsed) {
+                        // Expand
+                        headerEl.classList.remove('collapsed');
+                        itemsEl.classList.remove('collapsed');
+                    } else {
+                        // Collapse
+                        headerEl.classList.add('collapsed');
+                        itemsEl.classList.add('collapsed');
+                    }
+                });
+                
+                // Default: collapsed for categories with many pages, expanded for small ones
+                if (allPagesInSubtree.length > 5) {
+                    headerEl.classList.add('collapsed');
+                    itemsEl.classList.add('collapsed');
+                }
+                
+                // Assemble category
+                categoryEl.appendChild(headerEl);
+                categoryEl.appendChild(itemsEl);
+                pageTreeEl.appendChild(categoryEl);
+            });
+        }
+        
+        // Helper function to get depth of a page in the tree
+        function getDepthInTree(pageId, tree) {
+            // Breadth-first search to find depth
+            let queue = [...tree.roots.map(root => ({ node: root, depth: 0 }))];
+            
+            while (queue.length > 0) {
+                const { node, depth } = queue.shift();
+                if (node.id === pageId) {
+                    return depth;
+                }
+                
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(child => {
+                        queue.push({ node: child, depth: depth + 1 });
+                    });
+                }
+            }
+            
+            return 0; // Not found, treat as root depth
+        }
+        
+        // Update breadcrumb navigation based on current page
+        function updateBreadcrumb(pageId, tree) {
+            const breadcrumbEl = document.getElementById('page-breadcrumb');
+            const breadcrumbList = breadcrumbEl.querySelector('.breadcrumb');
+            
+            // Clear existing breadcrumb items except home
+            const homeItem = breadcrumbList.querySelector('#breadcrumb-home').parentElement;
+            breadcrumbList.innerHTML = '';
+            breadcrumbList.appendChild(homeItem);
+            
+            // If no page selected, return
+            if (!pageId || !tree.nodes[pageId]) {
+                return;
+            }
+            
+            // Build path from root to current page
+            const path = [];
+            let current = tree.nodes[pageId];
+            
+            // Walk up the tree to build path
+            while (current) {
+                path.unshift(current); // Add to beginning of array
+                const parentId = current.parent_id;
+                current = parentId ? tree.nodes[parentId] : null;
+            }
+            
+            // Add breadcrumb items for each level
+            path.forEach((page, index) => {
+                const isLast = index === path.length - 1;
+                const breadcrumbItem = document.createElement('li');
+                breadcrumbItem.className = `breadcrumb-item ${isLast ? 'active' : ''}`;
+                
+                if (isLast) {
+                    // Last item is current page, no link
+                    breadcrumbItem.textContent = page.title;
+                } else {
+                    // Add clickable link to navigate to this page
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = page.title;
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        loadPage(page.id);
+                    });
+                    breadcrumbItem.appendChild(link);
+                }
+                
+                breadcrumbList.appendChild(breadcrumbItem);
+            });
+        }
+        
+        // Build page tree structure from flat list
+        function buildPageTree(pages) {
+        // Load a specific page
+        async function loadPage(pageId) {
+            currentPageId = pageId;
+            
+            // Update active item in tree
+            document.querySelectorAll('.aem-page-item').forEach(item => {
+                item.classList.remove('active');
+                // Check if this item corresponds to the current page
+                // We need to find the page ID from the aem-page-id element
+                const idElement = item.querySelector('.aem-page-id');
+                if (idElement && idElement.textContent === pageId) {
+                    item.classList.add('active');
+                    
+                    // Auto-expand the parent category
+                    const categoryItem = item.closest('.aem-category');
+                    if (categoryItem) {
+                        const header = categoryItem.querySelector('.aem-category-header');
+                        const items = categoryItem.querySelector('.aem-category-items');
+                        if (header && items) {
+                            header.classList.remove('collapsed');
+                            items.classList.remove('collapsed');
+                        }
+                    }
+                }
+            });
+            
+            // Show loading, hide content and error
+            loadingContentEl.style.display = 'block';
+            contentAreaEl.style.display = 'none';
+            errorAreaEl.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/${encodeURIComponent(pageId)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const page = await response.json();
+                
+                // Store page data for editing
+                currentPageData = page;
+                
+                // Update breadcrumb navigation
+                const tree = buildPageTree(pages);
+                updateBreadcrumb(pageId, tree);
+                
+                // Update content area
+                pageTitleEl.textContent = page.title;
+                pageLanguageEl.textContent = `Language: ${page.language.toUpperCase()}`;
+                pageStatusEl.textContent = `Status: ${page.status}`;
+                pageIdEl.textContent = `ID: ${page.id}`;
+                
+                // Format content (basic HTML sanitization)
+                let content = page.content || '';
+                
+                // Apply clean view if enabled
+                if (cleanViewEnabled) {
+                    content = cleanContent(content);
+                } else {
+                    // Only wrap plain text in paragraphs for original view
+                    if (!content.includes('<') && content.length > 0) {
+                        content = content.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('');
+                    }
+                }
+                pageContentEl.innerHTML = content;
+                
+                // Hide loading, show content
+                loadingContentEl.style.display = 'none';
+                contentAreaEl.style.display = 'block';
+                
+            } catch (error) {
+                loadingContentEl.style.display = 'none';
+                errorAreaEl.textContent = `Failed to load page: ${error.message}`;
+                errorAreaEl.style.display = 'block';
+                console.error('Error loading page:', error);
+            }
+        }
+        
+        // Simple HTML escaping
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Clean view toggle
+        function toggleCleanView() {
+            cleanViewEnabled = !cleanViewEnabled;
+            updateCleanViewUI();
+            // Reload current page with new view mode
+            if (currentPageId) {
+                loadPage(currentPageId);
+            }
+        }
+        
+        function updateCleanViewUI() {
+            if (cleanViewEnabled) {
+                cleanViewText.textContent = 'Disable Clean View';
+                viewModeInfo.textContent = '(Clean view - header/footer removed)';
+                toggleCleanViewBtn.classList.remove('btn-primary');
+                toggleCleanViewBtn.classList.add('btn-success');
+            } else {
+                cleanViewText.textContent = 'Enable Clean View';
+                viewModeInfo.textContent = '(Original view)';
+                toggleCleanViewBtn.classList.remove('btn-success');
+                toggleCleanViewBtn.classList.add('btn-primary');
+            }
+        }
+        
+        // Clean content by removing Canada.ca header/footer and adding WebBot header/footer
+        function cleanContent(content) {
+            if (!content || typeof content !== 'string') return content;
+            
+            let cleaned = content;
+            
+            // Try to extract main content if it's HTML
+            if (content.includes('<') && content.includes('>')) {
+                // It's HTML content
+                // Try to find and extract main content area
+                // Common Canada.ca selectors for main content
+                const mainSelectors = [
+                    'main[property="mainContentOfPage"]',
+                    '#wb-cont',
+                    '.container',
+                    'article',
+                    '.col-md-9',
+                    '.col-md-8',
+                    '#main-content'
+                ];
+                
+                // Create a temporary DOM parser
+                const parser = new DOMParser();
+                try {
+                    const doc = parser.parseFromString(content, 'text/html');
+                    
+                    // Try to find main content using selectors
+                    let mainElement = null;
+                    for (const selector of mainSelectors) {
+                        mainElement = doc.querySelector(selector);
+                        if (mainElement) break;
+                    }
+                    
+                    // If found main element, extract its content
+                    if (mainElement) {
+                        cleaned = mainElement.innerHTML;
+                        
+                        // Clean up any remaining header/footer elements
+                        const headerFooterSelectors = [
+                            '#wb-bnr', '#wb-sm', '#wb-info', '#wb-srch', '#wb-lng',
+                            '#wb-sec', '#wb-sm', '#wb-dtmd', '#wb-glb-mn',
+                            '.pagedetails', '.brand', '.subsite', '.gc-footer'
+                        ];
+                        
+                        headerFooterSelectors.forEach(selector => {
+                            const elements = doc.querySelectorAll(selector);
+                            elements.forEach(el => {
+                                const removeText = el.textContent || '';
+                                cleaned = cleaned.replace(new RegExp(removeText, 'gi'), '');
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.warn('HTML parsing failed, falling back to text cleaning:', e);
+                }
+            }
+            
+            // For plain text content, use pattern matching
+            if (!cleaned.includes('<') || cleaned === content) {
+                // Remove "Page details YYYY-MM-DD" footer
+                cleaned = cleaned.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
+                
+                // Remove common Canada.ca footer patterns
+                const footerPatterns = [
+                    /Date modified:.*$/im,
+                    /Government of Canada.*$/im,
+                    /©.*$/im,
+                    /All rights reserved.*$/im,
+                    /Report a problem.*$/im,
+                    /Contact us.*$/im,
+                    /Terms and conditions.*$/im,
+                    /Privacy.*$/im,
+                    /Canada\.ca.*$/im
+                ];
+                
+                footerPatterns.forEach(pattern => {
+                    cleaned = cleaned.replace(pattern, '').trim();
+                });
+                
+                // Remove duplicate title at beginning (if content starts with the title)
+                const lines = cleaned.split('\n');
+                if (lines.length > 1) {
+                    const firstLine = lines[0].trim();
+                    // If first line is short and appears again, remove it
+                    if (firstLine.length < 100 && cleaned.indexOf(firstLine, firstLine.length) !== -1) {
+                        lines.shift(); // Remove first line
+                        cleaned = lines.join('\n').trim();
+                    }
+                }
+            }
+            
+            // Add WebBot custom header and footer
+            const webBotHeader = `
+                <div class="web-bot-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h1 style="margin: 0; font-size: 24px; font-weight: 600;">
+                                    <span style="background: white; color: #764ba2; padding: 4px 12px; border-radius: 4px; margin-right: 10px;">🤖</span>
+                                    WebBot Canada.ca Viewer
+                                </h1>
+                                <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">
+                                    Processed and cleaned Canada.ca content | Imported from FileBot
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const webBotFooter = `
+                <div class="web-bot-footer" style="background: #f8f9fa; border-top: 3px solid #764ba2; padding: 20px; margin-top: 30px; border-radius: 8px; color: #333;">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <div style="display: inline-block; background: white; padding: 10px 20px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                    <span style="color: #764ba2; font-weight: 600;">WebBot</span> Content Management System
+                                    <span style="margin: 0 10px; color: #ccc;">•</span>
+                                    Version 1.0
+                                    <span style="margin: 0 10px; color: #ccc;">•</span>
+                                    <a href="/gcweb/canada-viewer.html" style="color: #667eea; text-decoration: none;">Return to Viewer</a>
+                                </div>
+                                <p style="margin-top: 15px; font-size: 12px; color: #666;">
+                                    © 2026 WebBot System. This content was imported from Canada.ca and processed for WebBot CMS.
+                                    <br>
+                                    Original Canada.ca content is © Government of Canada.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return webBotHeader + cleaned + webBotFooter;
+        }
+        
+        // Edit mode functions
+        function enterEditMode() {
+            if (!currentPageData) {
+                alert('No page loaded to edit');
+                return;
+            }
+            
+            // Populate editor fields with current page data
+            editorTitleEl.value = currentPageData.title;
+            editorContentEl.value = currentPageData.content || '';
+            editorLanguageEl.value = currentPageData.language;
+            editorStatusEl.value = currentPageData.status;
+            
+            // Switch to edit mode
+            editAreaEl.style.display = 'block';
+            viewControlsEl.style.display = 'none';
+            pageContentEl.style.display = 'none';
+            
+            // Disable clean view toggle in edit mode
+            toggleCleanViewBtn.disabled = true;
+            toggleCleanViewBtn.style.opacity = '0.5';
+        }
+        
+        function exitEditMode() {
+            // Switch back to view mode
+            editAreaEl.style.display = 'none';
+            viewControlsEl.style.display = 'block';
+            pageContentEl.style.display = 'block';
+            
+            // Re-enable clean view toggle
+            toggleCleanViewBtn.disabled = false;
+            toggleCleanViewBtn.style.opacity = '1';
+        }
+        
+        async function saveEdit() {
+            if (!currentPageData || !currentPageId) {
+                alert('No page loaded to save');
+                return;
+            }
+            
+            // Get updated values from form
+            const updatedData = {
+                title: editorTitleEl.value.trim(),
+                content: editorContentEl.value.trim(),
+                language: editorLanguageEl.value,
+                status: editorStatusEl.value
+            };
+            
+            // Validate required fields
+            if (!updatedData.title) {
+                alert('Title is required');
+                return;
+            }
+            
+            // Show saving indicator
+            const saveBtnText = saveEditBtn.innerHTML;
+            saveEditBtn.innerHTML = '<span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span> Saving...';
+            saveEditBtn.disabled = true;
+            
+            try {
+                // Send PUT request to update page
+                const response = await fetch(`${API_BASE}/${encodeURIComponent(currentPageId)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP ${response.status}: ${errorData.detail || response.statusText}`);
+                }
+                
+                const updatedPage = await response.json();
+                
+                // Update current page data
+                currentPageData = updatedPage;
+                
+                // Exit edit mode
+                exitEditMode();
+                
+                // Reload the page to show updated content
+                await loadPage(currentPageId);
+                
+                // Show success message
+                alert('Page updated successfully!');
+                
+            } catch (error) {
+                console.error('Error saving page:', error);
+                alert(`Failed to save page: ${error.message}`);
+            } finally {
+                // Restore save button
+                saveEditBtn.innerHTML = saveBtnText;
+                saveEditBtn.disabled = false;
+            }
+        }
+        
+        // Add a new child page under current page
+        async function addChildPage() {
+            if (!currentPageData) {
+                alert('Please select a page first to add a child page');
+                return;
+            }
+            
+            // Prompt for new page ID (required)
+            const pageId = prompt('Enter new page ID (filename without extension):', '');
+            if (!pageId) {
+                return; // User cancelled
+            }
+            
+            // Validate page ID format
+            if (!/^[a-z0-9-]+$/.test(pageId)) {
+                alert('Page ID must contain only lowercase letters, numbers, and hyphens');
+                return;
+            }
+            
+            // Check if page ID already exists
+            if (pages.some(p => p.id === pageId)) {
+                alert(`Page ID "${pageId}" already exists. Please choose a different ID.`);
+                return;
+            }
+            
+            // Prompt for title
+            const title = prompt('Enter page title:', `New Page - ${pageId}`);
+            if (!title) {
+                return; // User cancelled
+            }
+            
+            // Default content (empty)
+            const content = '<p>New page content</p>';
+            
+            // Use same language as parent by default
+            const language = currentPageData.language;
+            
+            // Create new page data
+            const newPageData = {
+                id: pageId,
+                title: title,
+                content: content,
+                language: language,
+                status: 'draft',
+                parent_id: currentPageData.id  // Set parent to current page
+            };
+            
+            // Show saving indicator
+            const originalBtnText = addPageBtn.innerHTML;
+            addPageBtn.innerHTML = '<span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span> Creating...';
+            addPageBtn.disabled = true;
+            
+            try {
+                // Send POST request to create new page
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newPageData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP ${response.status}: ${errorData.detail || response.statusText}`);
+                }
+                
+                const createdPage = await response.json();
+                
+                // Refresh pages list
+                await loadPages();
+                
+                // Load the new page
+                await loadPage(pageId);
+                
+                // Show success message
+                alert(`Page "${title}" created successfully as child of "${currentPageData.title}"!`);
+                
+            } catch (error) {
+                console.error('Error creating page:', error);
+                alert(`Failed to create page: ${error.message}`);
+            } finally {
+                // Restore button
+                addPageBtn.innerHTML = originalBtnText;
+                addPageBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

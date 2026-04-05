@@ -1,0 +1,45 @@
+2026-03-17 21:44:29,265 - __main__ - INFO - ============================================================
+2026-03-17 21:44:29,265 - __main__ - INFO - PCL to PDF Converter - Windows优化版
+2026-03-17 21:44:29,265 - __main__ - INFO - 平台: Linux 6.6.87.2-microsoft-standard-WSL2
+2026-03-17 21:44:29,265 - __main__ - INFO - Python: 3.12.3 (main, Mar  3 2026, 12:15:18) [GCC 13.3.0]
+2026-03-17 21:44:29,265 - __main__ - INFO - 上传文件夹: /mnt/c/workspace/pcl-uploads
+2026-03-17 21:44:29,265 - __main__ - INFO - 转换文件夹: /mnt/c/workspace/pcl-converted
+2026-03-17 21:44:29,274 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pclxform (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PclXform.exe)
+2026-03-17 21:44:29,276 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pcltool (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PCLTOOL.exe)
+2026-03-17 21:44:29,276 - __main__ - INFO - 检测到PCL工具: pclxform, pcltool
+2026-03-17 21:44:29,276 - __main__ - INFO - FileBot API模式: 已禁用
+2026-03-17 21:44:29,276 - __main__ - INFO - ============================================================
+2026-03-17 21:44:29,276 - __main__ - INFO - 应用地址: http://localhost:5000
+2026-03-17 21:44:29,277 - __main__ - INFO - 健康检查: http://localhost:5000/health
+2026-03-17 21:44:29,277 - __main__ - INFO - ============================================================
+ * Serving Flask app 'app_win'
+ * Debug mode: off
+2026-03-17 21:44:29,278 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.29.152.245:5000
+2026-03-17 21:44:29,278 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-17 21:44:51,374 - __main__ - INFO - 上传请求文件字段: ['file']
+2026-03-17 21:44:51,374 - __main__ - INFO - 接收到的文件: filename=00000001.pcl, content_type=application/octet-stream, content_length=0
+2026-03-17 21:44:51,378 - __main__ - INFO - 文件已上传: 00000001.pcl -> /mnt/c/workspace/pcl-uploads/599651f5a99945369e393873c80e5616_00000001.pcl
+2026-03-17 21:44:51,385 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pclxform (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PclXform.exe)
+2026-03-17 21:44:51,388 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pcltool (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PCLTOOL.exe)
+2026-03-17 21:44:51,388 - __main__ - INFO - 自动选择PCL工具: pclxform (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PclXform.exe)
+2026-03-17 21:44:51,543 - __main__ - INFO - 尝试终止残留的PclXform.exe进程
+2026-03-17 21:44:51,544 - __main__ - INFO - 执行转换命令: /mnt/c/Windows/System32/cmd.exe /c "C:\Program Files (x86)\PageTech\PCLTSDK_870\PclXform.exe" "C:\Program Files (x86)\PageTech\PCLTSDK_870\default.tpt" inp="599651f5a99945369e393873c80e5616_00000001.pcl" inf="C:\workspace\pcl-uploads" outp="00000001.pdf" outf="C:\workspace\pcl-converted" Silent=true
+2026-03-17 21:44:51,544 - __main__ - INFO - 设置工作目录: /mnt/c/Program Files (x86)/PageTech/PCLTSDK_870
+2026-03-17 21:44:51,598 - __main__ - INFO - 转换返回码: 1
+2026-03-17 21:44:51,598 - __main__ - WARNING - 转换错误: '\"C:\Program Files (x86)\PageTech\PCLTSDK_870\PclXform.exe\"' is not recognized as an internal or external command,
+operable program or batch file.
+
+2026-03-17 21:44:51,749 - __main__ - INFO - 转换完成后终止PclXform.exe进程
+2026-03-17 21:44:51,749 - __main__ - ERROR - 转换失败: 00000001.pcl - 转换失败 (返回码: 1): '\"C:\Program Files (x86)\PageTech\PCLTSDK_870\PclXform.exe\"' is not recognized as an internal or external command,
+operable program or batch file.
+
+2026-03-17 21:44:51,753 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 21:44:51] "POST /upload HTTP/1.1" 200 -
+2026-03-17 21:51:32,986 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pclxform (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PclXform.exe)
+2026-03-17 21:51:32,988 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pcltool (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PCLTOOL.exe)
+2026-03-17 21:51:32,989 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 21:51:32] "GET /health HTTP/1.1" 200 -
+2026-03-17 21:55:20,560 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pclxform (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PclXform.exe)
+2026-03-17 21:55:20,562 - __main__ - INFO - 检测到PCL GUI工具（文件存在）: pcltool (/mnt/c/Program Files (x86)/PageTech/PCLTSDK_870/PCLTOOL.exe)
+2026-03-17 21:55:20,563 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 21:55:20] "GET /health HTTP/1.1" 200 -

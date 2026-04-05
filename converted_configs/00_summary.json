@@ -1,0 +1,15 @@
+{
+  "total_files": 8,
+  "converted_files": 8,
+  "total_items": 712,
+  "by_table": {
+    "cold_form_fields": 187,
+    "fold": 97,
+    "cold_fields": 164,
+    "cold_indexes": 80,
+    "draw": 18,
+    "app": 35,
+    "cold_report": 16,
+    "doc": 115
+  }
+}

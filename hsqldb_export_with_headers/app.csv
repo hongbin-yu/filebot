@@ -1,0 +1,36 @@
+ID,AUDITID,NAME,MODIFY_DATE,DEFAULT_INDEXID,COMMENTS,REPORTID,OWNER,TEMPLATE,extra_col_10
+0,-99,Template,1999-12-07,0,,,,,
+6,-99,Sample Financial,1998-10-06,5,This is a sample application,,0,FALSE,Index 2+_+Filename+_
+8,-99,Sample Hospital,1998-10-06,5,This is a sample application containing hospital type information,,0,,
+10,-99,Sample Invoicing,1998-10-06,5,This is a sample application containing invoice related information,,0,,
+21,,Sample Test,2014-04-08,0,,,,,
+0,1,1,Drawer
+0,2,1,Folder
+0,3,1,Document
+0,4,1,Index 1
+0,5,1,Index 2
+0,6,1,Index 3
+0,7,1,Index 4
+0,8,1,Index 5
+6,1,1,Report Type
+6,2,1,Report
+6,3,3,Date
+6,4,1,Name
+6,5,1,Account #
+6,6,3,Entry Date
+8,1,1,Report Type
+8,2,1,Report Title
+8,3,3,Date
+8,4,1,Patient Name
+8,5,1,Patient Number
+10,1,1,Division
+10,2,1,Report Name
+10,3,3,Date
+10,4,2,Invoice Number
+10,5,1,Account Number
+10,6,1,Sold To
+10,7,1,Ship To
+21,1,1,Type
+21,2,1,Customer #
+21,3,3,Date
+21,4,1,Invoice #

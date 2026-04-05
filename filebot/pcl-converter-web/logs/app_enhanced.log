@@ -1,0 +1,203 @@
+2026-03-17 18:56:20,908 - __main__ - INFO - ======================================================================
+2026-03-17 18:56:20,908 - __main__ - INFO - PCL转PDF专业转换器 - 增强版
+2026-03-17 18:56:20,908 - __main__ - INFO - 启动时间: 2026-03-17 18:56:20
+2026-03-17 18:56:20,908 - __main__ - INFO - 平台: Linux 6.6.87.2-microsoft-standard-WSL2
+2026-03-17 18:56:20,908 - __main__ - INFO - Python: 3.12.3 (main, Mar  3 2026, 12:15:18) [GCC 13.3.0]
+2026-03-17 18:56:20,974 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 18:56:20,992 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 18:56:20,992 - __main__ - INFO - 检测到 1 个PCL转换工具:
+2026-03-17 18:56:20,992 - __main__ - INFO -   • gs: gs (Ghostscript通用转换)
+2026-03-17 18:56:20,993 - __main__ - INFO - 历史统计: 0 次转换，成功率: 0.0%
+2026-03-17 18:56:20,993 - __main__ - INFO - ======================================================================
+2026-03-17 18:56:20,993 - __main__ - INFO - 🌐 应用地址: http://localhost:5000
+2026-03-17 18:56:20,993 - __main__ - INFO - 📊 健康检查: http://localhost:5000/health
+2026-03-17 18:56:20,993 - __main__ - INFO - 🔧 工具检测: http://localhost:5000/api/tools
+2026-03-17 18:56:20,993 - __main__ - INFO - ======================================================================
+2026-03-17 18:56:20,997 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.29.152.245:5000
+2026-03-17 18:56:20,997 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-17 19:14:25,817 - __main__ - INFO - ======================================================================
+2026-03-17 19:14:25,818 - __main__ - INFO - PCL转PDF专业转换器 - 增强版
+2026-03-17 19:14:25,818 - __main__ - INFO - 启动时间: 2026-03-17 19:14:25
+2026-03-17 19:14:25,818 - __main__ - INFO - 平台: Linux 6.6.87.2-microsoft-standard-WSL2
+2026-03-17 19:14:25,818 - __main__ - INFO - Python: 3.12.3 (main, Mar  3 2026, 12:15:18) [GCC 13.3.0]
+2026-03-17 19:14:25,896 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:14:25,914 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:14:25,915 - __main__ - INFO - 检测到 1 个PCL转换工具:
+2026-03-17 19:14:25,915 - __main__ - INFO -   • gs: gs (Ghostscript通用转换)
+2026-03-17 19:14:25,916 - __main__ - INFO - 历史统计: 0 次转换，成功率: 0.0%
+2026-03-17 19:14:25,916 - __main__ - INFO - ======================================================================
+2026-03-17 19:14:25,916 - __main__ - INFO - 🌐 应用地址: http://localhost:5000
+2026-03-17 19:14:25,916 - __main__ - INFO - 📊 健康检查: http://localhost:5000/health
+2026-03-17 19:14:25,916 - __main__ - INFO - 🔧 工具检测: http://localhost:5000/api/tools
+2026-03-17 19:14:25,916 - __main__ - INFO - ======================================================================
+2026-03-17 19:14:25,921 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.29.152.245:5000
+2026-03-17 19:14:25,921 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-17 19:15:20,290 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:15:20,307 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:15:20,313 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:15:20] "GET / HTTP/1.1" 200 -
+2026-03-17 19:15:20,719 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:15:20,736 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:15:20,773 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:15:20] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:15:20,854 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:15:20] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-03-17 19:15:44,509 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:15:44,522 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:15:44,537 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:15:44] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:15:50,719 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:15:50,732 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:15:50,747 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:15:50] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:16:21,286 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:16:21,299 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:16:21,307 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:16:21] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:16:42,219 - app_enhanced - ERROR - Exception on /upload [POST]
+Traceback (most recent call last):
+  File "/home/hongb/.openclaw/workspace/filebot/pcl-converter-web/venv/lib/python3.12/site-packages/werkzeug/datastructures/file_storage.py", line 150, in __getattr__
+    return getattr(self.stream, name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'SpooledTemporaryFile' object has no attribute 'size'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hongb/.openclaw/workspace/filebot/pcl-converter-web/venv/lib/python3.12/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/pcl-converter-web/venv/lib/python3.12/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/pcl-converter-web/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/pcl-converter-web/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/pcl-converter-web/app_enhanced.py", line 527, in upload_file
+    if file.size > app.config['MAX_CONTENT_LENGTH']:
+       ^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/pcl-converter-web/venv/lib/python3.12/site-packages/werkzeug/datastructures/file_storage.py", line 155, in __getattr__
+    return getattr(self.stream._file, name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: '_io.BytesIO' object has no attribute 'size'
+2026-03-17 19:16:42,222 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:16:42] "[35m[1mPOST /upload HTTP/1.1[0m" 500 -
+2026-03-17 19:16:51,051 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:16:51,064 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:16:51,075 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:16:51] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:17:20,998 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:17:21,010 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:17:21,017 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:17:21] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:17:49,110 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:17:49,177 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:17:49,178 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:17:49] "GET / HTTP/1.1" 200 -
+2026-03-17 19:17:49,345 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:17:49,363 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:17:49,372 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:17:49] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:18:19,380 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:18:19,400 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:18:19,417 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:18:19] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:18:50,344 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:18:50,356 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:18:50,366 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:18:50] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:19:20,027 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:19:20,040 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:19:20,050 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:19:20] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:19:50,369 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:19:50,406 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:19:50,422 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:19:50] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:20:20,035 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:20:20,047 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:20:20,053 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:20:20] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:20:50,340 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:20:50,352 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:20:50,363 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:20:50] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:22:07,328 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:22:07,340 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:22:07,350 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:22:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:23:07,026 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:23:07,038 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:23:07,046 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:23:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:24:07,262 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:24:07,275 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:24:07,286 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:24:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:25:06,999 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:25:07,011 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:25:07,020 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:25:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:26:07,340 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:26:07,353 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:26:07,364 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:26:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:27:07,022 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:27:07,034 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:27:07,042 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:27:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:28:07,331 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:28:07,345 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:28:07,355 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:28:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:29:07,020 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:29:07,032 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:29:07,042 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:29:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:30:07,298 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:30:07,312 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:30:07,319 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:30:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:31:06,984 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:31:06,996 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:31:07,002 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:31:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:32:07,302 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:32:07,314 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:32:07,325 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:32:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:33:07,006 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:33:07,020 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:33:07,029 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:33:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:33:14,683 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:33:14,697 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:33:14,698 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:33:14] "GET / HTTP/1.1" 200 -
+2026-03-17 19:33:14,897 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:33:14,911 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:33:14,920 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:33:14] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:33:44,990 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:33:45,003 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:33:45,010 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:33:45] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:34:07,329 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:34:07,342 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:34:07,350 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:34:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:34:14,995 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:34:15,007 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:34:15,014 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:34:15] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:34:45,316 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:34:45,328 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:34:45,339 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:34:45] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:35:07,013 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:35:07,027 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:35:07,035 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:35:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:35:15,310 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:35:15,325 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:35:15,334 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:35:15] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:35:45,012 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:35:45,025 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:35:45,036 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:35:45] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:36:07,328 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:36:07,341 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:36:07,351 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:36:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:36:15,021 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:36:15,032 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:36:15,042 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:36:15] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:37:07,299 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:37:07,313 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:37:07,320 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:37:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:37:07,544 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:37:07,558 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:37:07,564 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:37:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:38:06,990 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:38:07,002 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:38:07,010 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:38:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:38:07,336 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:38:07,350 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:38:07,357 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:38:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:39:06,993 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:39:07,007 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:39:07,018 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:39:07] "GET /api/tools HTTP/1.1" 200 -
+2026-03-17 19:39:07,347 - __main__ - INFO - 检测到PCL工具: gs (gs) - Ghostscript通用转换
+2026-03-17 19:39:07,361 - __main__ - INFO - hplip已安装，HP工具包可用
+2026-03-17 19:39:07,368 - werkzeug - INFO - 127.0.0.1 - - [17/Mar/2026 19:39:07] "GET /api/tools HTTP/1.1" 200 -

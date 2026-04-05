@@ -1,0 +1,120 @@
+{
+  "name": "PurchaseOrder_Report",
+  "description": "COLD_REPORT配置: PurchaseOrder_Report",
+  "report_id": 102,
+  "version": "1.0",
+  "source": "cold_report",
+  "metadata": {
+    "appid": 1,
+    "formid": 2,
+    "indexid": 102,
+    "levelid": 1,
+    "sourceid": 1002,
+    "comments": "采购单报表配置",
+    "seperator": "|",
+    "allowdups": 0,
+    "reptable": "PO_DATA",
+    "store_in_db": 1,
+    "index_pages": "Y",
+    "enter": 1,
+    "duration": 365,
+    "durationunit": 1
+  },
+  "field_groups": [
+    {
+      "name": "field_1",
+      "textfieldsid": 102,
+      "seq": 1,
+      "icolumn": 1,
+      "length": 12,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": true
+      },
+      "validation": {
+        "pattern": "^PO-\\d{9}$"
+      }
+    },
+    {
+      "name": "field_2",
+      "textfieldsid": 102,
+      "seq": 2,
+      "icolumn": 2,
+      "length": 50,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": false
+      }
+    },
+    {
+      "name": "field_3",
+      "textfieldsid": 102,
+      "seq": 3,
+      "icolumn": 3,
+      "length": 10,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": false
+      },
+      "validation": {
+        "pattern": "^USD \\d+\\.\\d{2}$"
+      }
+    }
+  ],
+  "index_fields": [
+    {
+      "name": "PO_NO",
+      "start": 1,
+      "length": 12,
+      "levelid": 1,
+      "description": "PO Number",
+      "required": true,
+      "metadata": {
+        "cold_index_id": 102,
+        "page": 1,
+        "irow": 1,
+        "table_name": "PO_HEADER",
+        "key_field_name": null,
+        "date_format": null
+      },
+      "validation": {
+        "pattern": "^PO-\\d{9}$",
+        "use_pattern": true
+      }
+    },
+    {
+      "name": "SUPPLIER_NAME",
+      "start": 14,
+      "length": 50,
+      "levelid": 1,
+      "description": "Supplier Name",
+      "required": false,
+      "metadata": {
+        "cold_index_id": 102,
+        "page": 1,
+        "irow": 1,
+        "table_name": "PO_HEADER",
+        "key_field_name": null,
+        "date_format": null
+      },
+      "validation": {
+        "use_pattern": false
+      }
+    }
+  ],
+  "statistics": {
+    "total_field_groups": 3,
+    "total_index_fields": 2,
+    "has_fieldinfo_data": true,
+    "has_index_data": true
+  }
+}

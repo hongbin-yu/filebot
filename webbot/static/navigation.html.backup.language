@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>WebBot Page Navigation</title>
+    
+    <!-- Canada.ca WET theme CSS -->
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/theme.min.css">
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/wet-boew.min.css">
+    
+    <!-- AEM Style Navigation CSS -->
+    <style>
+        /* Hide Canada.ca default header/footer elements */
+        #wb-bnr, #wb-sm, #wb-info, #wb-srch, #wb-lng, .wb-srch, .gcweb-menu, #gcwu-sig {
+            display: none !important;
+        }
+        
+        /* Main container */
+        .aem-navigation-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+        
+        /* Page header */
+        .navigation-header {
+            background: white;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .navigation-header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .navigation-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        /* Breadcrumb */
+        .aem-breadcrumb {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .breadcrumb-item {
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: #6c757d;
+            padding: 0 8px;
+        }
+        
+        .breadcrumb-item a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb-item.active {
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        /* Multi-column navigation grid */
+        .aem-columns-grid {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(300px, 1fr);
+            gap: 20px;
+            min-height: 600px;
+            overflow-x: auto;
+            padding-bottom: 10px; /* Space for scrollbar */
+        }
+        
+        /* Column styling */
+        .aem-column {
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .column-header {
+            background: linear-gradient(to bottom, #f8f8f8, #f0f0f0);
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .column-body {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        
+        /* Page list items */
+        .aem-page-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .aem-page-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background-color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+        
+        .aem-page-item:last-child {
+            border-bottom: none;
+        }
+        
+        .aem-page-item:hover {
+            background-color: #f0f7ff;
+        }
+        
+        .aem-page-item.active {
+            background-color: #e1f0ff;
+            border-left: 3px solid #0078d4;
+        }
+        
+        .aem-page-item.folder {
+            background-color: #f9f9f9;
+        }
+        
+        .aem-page-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .aem-page-icon.folder::before {
+            content: '📁';
+        }
+        
+        .aem-page-icon.page::before {
+            content: '📄';
+        }
+        
+        .aem-page-icon.root::before {
+            content: '🌐';
+        }
+        
+        .aem-page-content {
+            flex: 1;
+            min-width: 0; /* Allow text truncation */
+        }
+        
+        .aem-page-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .aem-page-meta {
+            font-size: 11px;
+            color: #666;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .aem-page-id {
+            font-family: 'Monaco', 'Menlo', monospace;
+            background-color: #f0f0f0;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 10px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .aem-page-count {
+            background-color: #0078d4;
+            color: white;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        
+        /* Action buttons */
+        .aem-actions {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .btn-edit {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+            padding: 8px 20px;
+            font-weight: 500;
+        }
+        
+        .btn-edit:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+        
+        .btn-edit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Loading states */
+        .loading {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error {
+            background: #f2dede;
+            color: #a94442;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px;
+            border: 1px solid #ebccd1;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .aem-columns-grid {
+                grid-auto-columns: minmax(280px, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .aem-columns-grid {
+                grid-auto-flow: row;
+                grid-auto-columns: unset;
+                grid-template-columns: 1fr;
+                overflow-x: visible;
+            }
+            
+            .aem-navigation-container {
+                padding: 10px;
+            }
+        }
+        
+        /* Deep navigation mode (3+ levels) */
+        .aem-columns-grid.deep-navigation {
+            grid-auto-flow: row;
+            grid-auto-columns: unset;
+            grid-template-columns: 1fr;
+            overflow-x: visible;
+            max-height: 700px;
+            overflow-y: auto;
+        }
+        
+        .aem-columns-grid.deep-navigation .aem-column {
+            margin-bottom: 20px;
+        }
+        
+        .aem-columns-grid.deep-navigation .column-body {
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
+    <!-- Skip links for accessibility -->
+    <ul id="wb-tphp">
+        <li class="wb-slc"><a class="wb-sl" href="#wb-cont">Skip to main content</a></li>
+        <li class="wb-slc"><a class="wb-sl" href="#wb-info">Skip to "About this site"</a></li>
+    </ul>
+    
+    <!-- Main content -->
+    <main property="mainContentOfPage" class="container" typeof="WebPageElement">
+        <div class="aem-navigation-container">
+            <!-- Header -->
+            <div class="navigation-header">
+                <h1>WebBot Page Navigation</h1>
+                <div class="navigation-subtitle">
+                    Browse and select pages in AEM-style multi-column navigation
+                </div>
+                <div id="page-stats" class="text-muted" style="font-size: 13px;">
+                    Loading pages...
+                </div>
+            </div>
+            
+            <!-- Breadcrumb navigation -->
+            <nav aria-label="breadcrumb" id="breadcrumb-container">
+                <div class="aem-breadcrumb">
+                    <span class="breadcrumb-item"><a href="#" id="breadcrumb-home">WebBot</a></span>
+                    <!-- Dynamic breadcrumb items will be added here -->
+                </div>
+            </nav>
+            
+            <!-- Multi-column navigation area -->
+            <div id="columns-container" class="aem-columns-grid">
+                <!-- Columns will be dynamically generated here -->
+                <div class="loading" id="loading-columns">
+                    Loading page structure...
+                </div>
+            </div>
+            
+            <!-- Action buttons -->
+            <div class="aem-actions">
+                <button id="btn-edit" class="btn btn-edit" disabled>
+                    Edit Selected Page
+                </button>
+                <button id="btn-new" class="btn btn-primary">
+                    Create New Page
+                </button>
+                <button id="btn-refresh" class="btn btn-default">
+                    Refresh
+                </button>
+            </div>
+            
+            <!-- Error display -->
+            <div id="error-container" class="error" style="display: none;"></div>
+        </div>
+    </main>
+    
+    <!-- Canada.ca WET JavaScript -->
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js"></script>
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js"></script>
+    
+    <!-- Navigation JavaScript -->
+    <script>
+        // API configuration
+        const API_BASE = '/api/v1/pages';
+        
+        // State management
+        let allPages = [];
+        let selectedPageId = null;
+        let selectedPageData = null;
+        let currentPath = []; // Array of page IDs representing current navigation path
+        
+        // DOM elements
+        const columnsContainer = document.getElementById('columns-container');
+        const loadingColumns = document.getElementById('loading-columns');
+        const breadcrumbContainer = document.getElementById('breadcrumb-container');
+        const breadcrumbHome = document.getElementById('breadcrumb-home');
+        const btnEdit = document.getElementById('btn-edit');
+        const btnNew = document.getElementById('btn-new');
+        const btnRefresh = document.getElementById('btn-refresh');
+        const errorContainer = document.getElementById('error-container');
+        const pageStats = document.getElementById('page-stats');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllPages().then(() => {
+                // After pages are loaded, check for hash in URL
+                const hash = window.location.hash;
+                if (hash && hash.startsWith('#')) {
+                    const pageId = decodeURIComponent(hash.substring(1));
+                    // Try to navigate to this page
+                    navigateToPageInPath(pageId);
+                }
+            });
+            
+            // Setup event listeners
+            breadcrumbHome.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateToHome();
+            });
+            
+            btnEdit.addEventListener('click', navigateToEditor);
+            btnNew.addEventListener('click', createNewPage);
+            btnRefresh.addEventListener('click', loadAllPages);
+        });
+        
+        // Load all pages from API
+        async function loadAllPages() {
+            try {
+                showLoading();
+                errorContainer.style.display = 'none';
+                
+                const response = await fetch(API_BASE);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                allPages = await response.json();
+                
+                // Update stats
+                updatePageStats();
+                
+                // Build initial navigation (root pages)
+                renderNavigation();
+                
+            } catch (error) {
+                showError(`Failed to load pages: ${error.message}`);
+                console.error('Error loading pages:', error);
+            }
+        }
+        
+        // Update page statistics display
+        function updatePageStats() {
+            const totalPages = allPages.length;
+            const languages = [...new Set(allPages.map(p => p.language))];
+            const rootPages = allPages.filter(p => !p.parent_id).length;
+            
+            pageStats.innerHTML = `
+                <strong>${totalPages}</strong> total pages • 
+                <strong>${languages.length}</strong> languages • 
+                <strong>${rootPages}</strong> root pages
+            `;
+        }
+        
+        // Show loading state
+        function showLoading() {
+            columnsContainer.innerHTML = '<div class="loading">Loading page structure...</div>';
+        }
+        
+        // Show error message
+        function showError(message) {
+            errorContainer.textContent = message;
+            errorContainer.style.display = 'block';
+        }
+        
+        // Navigate to home (clear selection and path)
+        function navigateToHome() {
+            selectedPageId = null;
+            selectedPageData = null;
+            currentPath = [];
+            renderNavigation();
+            updateEditButton();
+            updateBreadcrumb();
+        }
+        
+        // Navigate to a specific page in the path (from hash or breadcrumb)
+        function navigateToPageInPath(targetPageId) {
+            // Find the page
+            const page = allPages.find(p => p.id === targetPageId);
+            if (!page) {
+                console.warn(`Page not found: ${targetPageId}`);
+                return;
+            }
+            
+            // Get path to this page
+            const path = getPathToPage(targetPageId);
+            
+            // Set current path and render
+            currentPath = path;
+            renderNavigation();
+            updateBreadcrumb();
+            
+            // Select this page
+            selectedPageId = targetPageId;
+            updateEditButton();
+        }
+        
+        // Navigate to editor page
+        function navigateToEditor() {
+            if (!selectedPageId) return;
+            
+            // Navigate to editor page with selected page ID
+            window.location.href = `editor.html?pageId=${encodeURIComponent(selectedPageId)}`;
+        }
+        
+        // Create new page (placeholder for now)
+        function createNewPage() {
+            alert('Create new page functionality will be implemented in next phase.');
+        }
+        
+        // Update edit button state
+        function updateEditButton() {
+            if (selectedPageId) {
+                btnEdit.disabled = false;
+                btnEdit.textContent = `Edit: ${selectedPageData?.title || selectedPageId}`;
+            } else {
+                btnEdit.disabled = true;
+                btnEdit.textContent = 'Edit Selected Page';
+            }
+        }
+        
+        // Update breadcrumb navigation
+        function updateBreadcrumb() {
+            const breadcrumbEl = breadcrumbContainer.querySelector('.aem-breadcrumb');
+            const homeItem = breadcrumbEl.querySelector('#breadcrumb-home').parentElement;
+            
+            // Clear existing items except home
+            breadcrumbEl.innerHTML = '';
+            breadcrumbEl.appendChild(homeItem);
+            
+            // Add path items
+            currentPath.forEach((pageId, index) => {
+                const page = allPages.find(p => p.id === pageId);
+                if (!page) return;
+                
+                const isLast = index === currentPath.length - 1;
+                const breadcrumbItem = document.createElement('span');
+                breadcrumbItem.className = `breadcrumb-item ${isLast ? 'active' : ''}`;
+                
+                if (isLast) {
+                    breadcrumbItem.textContent = page.title;
+                } else {
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = page.title;
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        // Navigate to this page in the path
+                        const pathIndex = currentPath.indexOf(pageId);
+                        currentPath = currentPath.slice(0, pathIndex + 1);
+                        renderNavigation();
+                        updateBreadcrumb();
+                    });
+                    breadcrumbItem.appendChild(link);
+                }
+                
+                breadcrumbEl.appendChild(breadcrumbItem);
+            });
+        }
+        
+        // Build page tree structure
+        function buildPageTree() {
+            const pageMap = {};
+            allPages.forEach(page => {
+                pageMap[page.id] = {
+                    ...page,
+                    children: []
+                };
+            });
+            
+            // Link children to parents
+            allPages.forEach(page => {
+                const parentId = page.parent_id;
+                if (parentId && pageMap[parentId]) {
+                    pageMap[parentId].children.push(pageMap[page.id]);
+                }
+            });
+            
+            return pageMap;
+        }
+        
+        // Render multi-column navigation
+        function renderNavigation() {
+            // Hide loading
+            loadingColumns.style.display = 'none';
+            
+            // Clear columns container
+            columnsContainer.innerHTML = '';
+            
+            // Build page tree once
+            const pageTree = buildPageTree();
+            
+            // Determine if we should use deep navigation mode
+            // Enable when at 3+ levels OR when current page has few children
+            let useDeepMode = false;
+            if (currentPath.length >= 3) {
+                useDeepMode = true;
+            } else if (currentPath.length > 0) {
+                // Check if current page has few children (5 or less)
+                const currentPageId = currentPath[currentPath.length - 1];
+                const currentPage = pageTree[currentPageId];
+                if (currentPage && currentPage.children.length <= 5) {
+                    useDeepMode = true;
+                }
+            }
+            
+            // Apply deep navigation class
+            if (useDeepMode) {
+                columnsContainer.classList.add('deep-navigation');
+            } else {
+                columnsContainer.classList.remove('deep-navigation');
+            }
+            
+            // Determine what to show in each column
+            const columns = [];
+            
+            if (currentPath.length === 0) {
+                // Show root pages in first column
+                const rootPages = allPages.filter(p => !p.parent_id);
+                columns.push({
+                    title: 'Root Pages',
+                    pages: rootPages,
+                    parentId: null
+                });
+            } else {
+                // Create columns for each level in the path
+                for (let i = 0; i < currentPath.length; i++) {
+                    const pageId = currentPath[i];
+                    const page = pageTree[pageId];
+                    if (page) {
+                        columns.push({
+                            title: page.title,
+                            pages: page.children,
+                            parentId: pageId,
+                            isCurrent: i === currentPath.length - 1
+                        });
+                    }
+                }
+                
+                // Add empty column if current page has no children
+                const currentPageId = currentPath[currentPath.length - 1];
+                const currentPage = pageTree[currentPageId];
+                if (currentPage && currentPage.children.length === 0) {
+                    columns.push({
+                        title: 'No Subpages',
+                        pages: [],
+                        parentId: currentPageId,
+                        isCurrent: true
+                    });
+                }
+            }
+            
+            // Create columns
+            columns.forEach((column, columnIndex) => {
+                const columnEl = createColumn(column, columnIndex);
+                columnsContainer.appendChild(columnEl);
+            });
+            
+            // If no columns (shouldn't happen), show empty state
+            if (columns.length === 0) {
+                columnsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📁</div>
+                        <h3>No pages found</h3>
+                        <p>There are no pages in the system yet.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Create a single column
+        function createColumn(columnData, columnIndex) {
+            const columnEl = document.createElement('div');
+            columnEl.className = 'aem-column';
+            
+            // Column header
+            const headerEl = document.createElement('div');
+            headerEl.className = 'column-header';
+            headerEl.textContent = columnData.title;
+            columnEl.appendChild(headerEl);
+            
+            // Column body
+            const bodyEl = document.createElement('div');
+            bodyEl.className = 'column-body';
+            
+            if (columnData.pages.length === 0) {
+                bodyEl.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 24px; opacity: 0.3; margin-bottom: 10px;">📄</div>
+                        <p style="color: #999; font-size: 14px;">No pages in this folder</p>
+                    </div>
+                `;
+            } else {
+                const pageListEl = document.createElement('ul');
+                pageListEl.className = 'aem-page-list';
+                
+                // Sort pages by title
+                const sortedPages = [...columnData.pages].sort((a, b) => 
+                    a.title.localeCompare(b.title)
+                );
+                
+                sortedPages.forEach(page => {
+                    const pageItemEl = createPageListItem(page, columnData.parentId);
+                    pageListEl.appendChild(pageItemEl);
+                });
+                
+                bodyEl.appendChild(pageListEl);
+            }
+            
+            columnEl.appendChild(bodyEl);
+            return columnEl;
+        }
+        
+        // Create a page list item
+        function createPageListItem(page, parentId) {
+            const pageItemEl = document.createElement('li');
+            pageItemEl.className = 'aem-page-item';
+            
+            // Determine if this is a folder (has children)
+            const hasChildren = page.children && page.children.length > 0;
+            const isRoot = !parentId;
+            
+            if (hasChildren) {
+                pageItemEl.classList.add('folder');
+            }
+            
+            // Check if this page is selected or in current path
+            const isSelected = selectedPageId === page.id;
+            const isInPath = currentPath.includes(page.id);
+            
+            if (isSelected || isInPath) {
+                pageItemEl.classList.add('active');
+            }
+            
+            // Create icon
+            const iconEl = document.createElement('div');
+            iconEl.className = 'aem-page-icon';
+            if (isRoot) {
+                iconEl.classList.add('root');
+            } else if (hasChildren) {
+                iconEl.classList.add('folder');
+            } else {
+                iconEl.classList.add('page');
+            }
+            
+            // Create content
+            const contentEl = document.createElement('div');
+            contentEl.className = 'aem-page-content';
+            
+            const titleEl = document.createElement('div');
+            titleEl.className = 'aem-page-title';
+            titleEl.textContent = page.title;
+            
+            const metaEl = document.createElement('div');
+            metaEl.className = 'aem-page-meta';
+            
+            const idEl = document.createElement('span');
+            idEl.className = 'aem-page-id';
+            idEl.textContent = page.id;
+            
+            const languageEl = document.createElement('span');
+            languageEl.textContent = page.language.toUpperCase();
+            
+            metaEl.appendChild(idEl);
+            metaEl.appendChild(languageEl);
+            
+            if (hasChildren) {
+                const countEl = document.createElement('span');
+                countEl.className = 'aem-page-count';
+                countEl.textContent = page.children.length;
+                metaEl.appendChild(countEl);
+            }
+            
+            contentEl.appendChild(titleEl);
+            contentEl.appendChild(metaEl);
+            
+            // Assemble the item
+            pageItemEl.appendChild(iconEl);
+            pageItemEl.appendChild(contentEl);
+            
+            // Add click handler
+            pageItemEl.addEventListener('click', () => {
+                handlePageClick(page.id);
+            });
+            
+            return pageItemEl;
+        }
+        
+        // Handle page click in navigation
+        function handlePageClick(pageId) {
+            const page = allPages.find(p => p.id === pageId);
+            if (!page) return;
+            
+            selectedPageId = pageId;
+            selectedPageData = page;
+            
+            // Update path: if this page is already in path, truncate after it
+            const pageIndex = currentPath.indexOf(pageId);
+            if (pageIndex !== -1) {
+                currentPath = currentPath.slice(0, pageIndex + 1);
+            } else {
+                // Add to path if it's a direct child of the last page in path
+                if (currentPath.length === 0 || page.parent_id === currentPath[currentPath.length - 1]) {
+                    currentPath.push(pageId);
+                } else {
+                    // Find the path to this page
+                    const pathToPage = getPathToPage(pageId);
+                    currentPath = pathToPage;
+                }
+            }
+            
+            // Re-render navigation and update UI
+            renderNavigation();
+            updateBreadcrumb();
+            updateEditButton();
+        }
+        
+        // Get the path (array of page IDs) from root to a specific page
+        function getPathToPage(pageId) {
+            const path = [];
+            let currentId = pageId;
+            const pageTree = buildPageTree();
+            
+            while (currentId) {
+                path.unshift(currentId);
+                const page = pageTree[currentId];
+                currentId = page ? page.parent_id : null;
+            }
+            
+            return path;
+        }
+    </script>
+</body>
+</html>

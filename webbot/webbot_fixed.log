@@ -1,0 +1,406 @@
+INFO:     Will watch for changes in these directories: ['/home/hongb/.openclaw/workspace/webbot']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [143882] using WatchFiles
+INFO:     Started server process [143884]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+✅ 组件路由已加载
+📁 静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../frontend
+📁 GCWeb静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../static
+🚀 WebBot启动中...
+✅ 组件表检查完成
+📊 数据库初始化完成
+✅ 数据库初始化完成
+INFO:     127.0.0.1:54752 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39940 - "GET /simple-navigation.html HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39940 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39940 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39946 - "GET /navigation.html HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39946 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49032 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39960 - "GET /simple-navigation.html HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39960 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47906 - "GET /navigation.html HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47906 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49682 - "GET /simple-navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49686 - "GET /simple-navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33864 - "GET /simple-navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33864 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:33864 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:33864 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33880 - "GET /editor.html?pageId=services HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:33884 - "GET /editor.html?pageId=a-propos-agence-revenu-canada-arc HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49304 - "GET /navigation.html HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45698 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47018 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42052 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42056 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43578 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34518 - "GET /editor.html?pageId=transport HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34518 - "GET /api/v1/pages/transport HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34532 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:34532 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44986 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44986 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:44986 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46198 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56838 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56846 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57124 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48982 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46974 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:44434 - "GET /editor.html?pageId=transparency HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44434 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:44444 - "GET /api/v1/pages/transparency HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44434 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38584 - "PUT /api/v1/pages/transparency HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38584 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38584 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:38584 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39588 - "GET /editor.html?pageId=government HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39588 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39588 - "GET /api/v1/pages/government HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39588 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41460 - "PUT /api/v1/pages/government HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41472 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41472 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:41472 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49014 - "GET /editor.html?pageId=global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49014 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49020 - "GET /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49014 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49026 - "PUT /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40382 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40382 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:40382 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38874 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:38874 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38876 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38876 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:38876 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38876 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51978 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51978 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57710 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57710 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57710 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57716 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52328 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52328 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52328 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52338 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35200 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:41996 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41996 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:41996 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41998 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45956 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:36360 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36360 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:36360 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36364 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36370 - "GET /editor.html?pageId=contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36370 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:36370 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36370 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34732 - "GET /editor.html?pageId=questions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34732 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:34742 - "GET /api/v1/pages/questions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34732 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51406 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51406 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51406 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45528 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50276 - "GET /editor.html?pageId=government-communications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50276 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50292 - "GET /api/v1/pages/government-communications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50292 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44960 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:50294 - "PUT /api/v1/pages/government-communications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50294 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50294 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50294 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42986 - "GET /editor.html?pageId=contact HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:42986 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42990 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:42986 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42998 - "PUT /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46680 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46680 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35050 - "GET /editor.html?pageId=government HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:35050 - "GET /api/v1/pages/government HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35054 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:35054 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35070 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:35070 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:35070 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50044 - "GET /editor.html?pageId=transparence HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50044 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50044 - "GET /api/v1/pages/transparence HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50044 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44244 - "PUT /api/v1/pages/transparence HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44244 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:44244 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44246 - "GET /editor.html?pageId=gouvernement HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44246 - "GET /api/v1/pages/gouvernement HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44246 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:44246 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37088 - "PUT /api/v1/pages/gouvernement HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37088 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:37088 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46402 - "GET /editor.html?pageId=global-header-9a5d HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:46402 - "GET /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46416 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46416 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46418 - "PUT /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46418 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46418 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43626 - "GET /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43626 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:43626 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60942 - "PUT /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60942 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:60942 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:60942 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59918 - "GET /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59918 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59918 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59924 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59930 - "GET /editor.html?pageId=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59930 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59930 - "GET /api/v1/pages/en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59930 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32816 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:32816 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34960 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55874 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:49556 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49556 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49556 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49566 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49580 - "GET /editor.html?pageId=federal-identity-requirements HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49580 - "GET /api/v1/pages/federal-identity-requirements HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49580 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49580 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46634 - "PUT /api/v1/pages/federal-identity-requirements HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46634 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46634 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33506 - "GET /editor.html?pageId=global-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33506 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:33518 - "GET /api/v1/pages/global-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33506 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33534 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:33534 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53582 - "GET /editor.html?pageId=privacy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53582 - "GET /api/v1/pages/privacy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53582 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:53582 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45524 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:45524 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54430 - "GET /editor.html?pageId=contact HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54430 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54434 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54434 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54446 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54446 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54446 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36920 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51310 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:55816 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54854 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:50044 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50044 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50044 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50042 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50042 - "GET /api/v1/pages/social HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50058 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50058 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35430 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:35430 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41768 - "GET /editor.html?pageId=global-header-9a5d&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41768 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:41770 - "GET /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41770 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41772 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:41772 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47472 - "GET /api/v1/pages/social HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47472 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:47472 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52072 - "GET /editor.html?pageId=contact HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52072 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52072 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52072 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43406 - "GET /editor.html?pageId=social HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43406 - "GET /api/v1/pages/social HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43406 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:43406 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52756 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52756 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52756 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46284 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46284 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46284 - "GET /api/v1/pages/mobile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46284 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46300 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46300 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47342 - "GET /editor.html?pageId=contact&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47342 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47352 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:47342 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47368 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:47368 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40790 - "GET /editor.html?pageId=dept&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40790 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:40790 - "GET /api/v1/pages/dept HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40790 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58568 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58568 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58582 - "GET /editor.html?pageId=about-canada-ca HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58582 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58582 - "GET /api/v1/pages/about-canada-ca HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58582 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60898 - "GET /canada-viewer.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60900 - "GET /canada-viewer.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:40822 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:38270 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:44106 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44110 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39254 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39256 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:39256 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39256 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39264 - "GET /editor.html?pageId=global-header-9a5d&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39264 - "GET /api/v1/pages/global-header-9a5d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39270 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39270 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35848 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:39100 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39100 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39114 - "GET /editor.html?pageId=treasury-board-secretariat&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39114 - "GET /api/v1/pages/treasury-board-secretariat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39122 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39122 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39122 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:39122 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58020 - "GET /editor.html?pageId=dept&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58020 - "GET /api/v1/pages/dept HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58028 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58020 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60390 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49242 - "GET /editor.html?pageId=dept&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49242 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49244 - "GET /editor.html?pageId=dept&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49244 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49246 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:49246 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49246 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43922 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49428 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54392 - "GET /editor.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54396 - "GET /editor.html?pageId=contact&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43728 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:46608 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:47532 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47532 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47548 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47548 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47552 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37548 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56960 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56960 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56960 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34526 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34526 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34526 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34526 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34526 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34526 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34526 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34526 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34526 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34526 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34526 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56894 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56894 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56894 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34388 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34388 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34388 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56522 - "GET /api/v1/pages/social HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53772 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53772 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53772 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53772 - "GET /navigation.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53772 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:53772 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53772 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53780 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53780 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47746 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47746 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47746 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47746 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47746 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47746 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35604 - "GET /api/v1/pages HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:35604 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35604 - "GET /api/v1/pages/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35614 - "GET /editor.html?pageId=social HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35614 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35624 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35624 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35624 - "GET /editor.html?pageId=social&mode=composing HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:35624 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35624 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35624 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35628 - "GET /editor.html?pageId=mobile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35628 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35628 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35628 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35628 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35628 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35628 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:35628 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45890 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38772 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:38772 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38772 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38782 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46668 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46668 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46672 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46672 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46672 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46672 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46672 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46668 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46668 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46668 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36630 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36630 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36636 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36636 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36636 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36636 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36636 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36630 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36630 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36630 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:48902 - "GET /api/v1/pages/contact HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38444 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38444 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38442 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38442 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38442 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38442 - "GET /editor.html?pageId=mobile&mode=composing HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38442 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38444 - "GET /%22https%3A//www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js/%22 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38444 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38444 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [143884]
+🛑 WebBot关闭中...
+INFO:     Stopping reloader process [143882]

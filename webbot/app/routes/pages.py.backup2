@@ -1,0 +1,313 @@
+"""
+页面管理路由
+"""
+
+from fastapi import APIRouter, HTTPException, Depends
+import sqlite3
+import json
+import uuid
+from datetime import datetime
+from typing import List
+
+from models import PageCreate, PageUpdate, PageResponse, PageStatus
+
+router = APIRouter(prefix="/api/v1/pages", tags=["pages"])
+
+def get_db_connection():
+    """获取数据库连接"""
+    try:
+        conn = sqlite3.connect("/home/hongb/.openclaw/workspace/filebot/backend/filebot.db")
+        conn.row_factory = sqlite3.Row
+        return conn
+    except sqlite3.Error as e:
+        raise HTTPException(status_code=500, detail=f"数据库连接失败: {e}")
+
+def generate_page_id(title: str) -> str:
+    """根据标题生成页面ID"""
+    # 简单实现：将标题转换为小写，替换空格为连字符
+    import re
+    # 移除特殊字符，只保留字母数字和空格
+    cleaned = re.sub(r'[^a-zA-Z0-9\s]', '', title)
+    # 替换空格为连字符，转换为小写
+    page_id = re.sub(r'\s+', '-', cleaned.strip()).lower()
+    # 如果为空，生成随机ID
+    if not page_id:
+        page_id = f"page-{uuid.uuid4().hex[:8]}"
+    return page_id
+
+def extract_language_from_path(path: str) -> str:
+    """
+    从路径中提取语言代码
+    路径格式应为: /canadasite/en/... 或 /site/fr/about
+    第二个节点是语言节点
+    """
+    if not path:
+        return "en"
+    
+    # 清理路径：移除首尾斜杠，分割节点
+    clean_path = path.strip('/')
+    parts = clean_path.split('/')
+    
+    # 至少需要两个部分：站点和语言
+    if len(parts) >= 2:
+        # 第二个部分是语言代码
+        lang = parts[1].lower()
+        # 验证是否为支持的语言
+        if lang in ['en', 'fr']:
+            return lang
+    
+    # 默认返回英语
+    return "en"
+
+def normalize_path(path: str) -> str:
+    """规范化路径：确保以斜杠开头，不以斜杠结尾"""
+    if not path:
+        return ""
+    # 确保以斜杠开头
+    if not path.startswith('/'):
+        path = '/' + path
+    # 移除末尾斜杠（除非是根路径）
+    if path.endswith('/') and path != '/':
+        path = path.rstrip('/')
+    return path
+
+@router.post("/", response_model=PageResponse)
+async def create_page(page: PageCreate):
+    """创建新页面"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 确定页面ID和语言
+        if page.path:
+            # 使用提供的路径作为页面ID
+            page_id = normalize_path(page.path)
+            # 从路径中提取语言代码（覆盖提供的语言）
+            language_from_path = extract_language_from_path(page.path)
+        else:
+            # 生成基于标题的页面ID
+            page_id = generate_page_id(page.title)
+            language_from_path = page.language.value
+        
+        # 检查ID是否已存在
+        cursor.execute("SELECT id FROM webbot_page WHERE id = ?", (page_id,))
+        if cursor.fetchone():
+            # 如果ID已存在，对于路径ID需要报错（路径必须唯一）
+            if page.path:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"页面路径 '{page.path}' 已存在。请使用不同的路径。"
+                )
+            # 对于生成的ID，添加随机后缀
+            page_id = f"{page_id}-{uuid.uuid4().hex[:4]}"
+        
+        # 插入数据库
+        now = datetime.now().isoformat()
+        cursor.execute("""
+            INSERT INTO webbot_page 
+            (id, title, content, language, parent_id, other_lang_page_id, status, metadata, created_at, last_modified)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            page_id,
+            page.title,
+            page.content or "",
+            language_from_path,  # 使用从路径提取的语言或原始语言
+            page.parent_id,
+            page.other_lang_page_id,
+            page.status.value,
+            str(page.metadata) if page.metadata else "{}",
+            now,
+            now
+        ))
+        
+        conn.commit()
+        
+        # 获取创建的页面
+        cursor.execute("SELECT * FROM webbot_page WHERE id = ?", (page_id,))
+        created_page = cursor.fetchone()
+        
+        if not created_page:
+            raise HTTPException(status_code=500, detail="页面创建失败")
+        
+        # 转换为响应模型
+        result = dict(created_page)
+        # 解析metadata字段（数据库存储为JSON字符串）
+        if result.get("metadata") and isinstance(result["metadata"], str):
+            try:
+                result["metadata"] = json.loads(result["metadata"])
+            except json.JSONDecodeError:
+                result["metadata"] = {}
+        elif result.get("metadata") is None:
+            result["metadata"] = {}
+        # language和status字段已经是字符串，Pydantic会自动转换为枚举
+        result["language"] = result["language"]
+        result["status"] = result["status"]
+        
+        return PageResponse(**result)
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"数据库错误: {e}")
+    finally:
+        conn.close()
+
+@router.get("/", response_model=List[PageResponse])
+async def list_pages(skip: int = 0, limit: int = 100):
+    """获取页面列表"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT * FROM webbot_page 
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?
+        """, (limit, skip))
+        
+        pages = cursor.fetchall()
+        result = []
+        
+        for page in pages:
+            page_dict = dict(page)
+            # 解析metadata字段（数据库存储为JSON字符串）
+            if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
+                try:
+                    page_dict["metadata"] = json.loads(page_dict["metadata"])
+                except json.JSONDecodeError:
+                    page_dict["metadata"] = {}
+            elif page_dict.get("metadata") is None:
+                page_dict["metadata"] = {}
+            result.append(PageResponse(**page_dict))
+        
+        return result
+        
+    except sqlite3.Error as e:
+        raise HTTPException(status_code=500, detail=f"查询失败: {e}")
+    finally:
+        conn.close()
+
+@router.get("/{page_id}", response_model=PageResponse)
+async def get_page(page_id: str):
+    """获取单个页面"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("SELECT * FROM webbot_page WHERE id = ?", (page_id,))
+        page = cursor.fetchone()
+        
+        if not page:
+            raise HTTPException(status_code=404, detail="页面未找到")
+        
+        page_dict = dict(page)
+        # 解析metadata字段（数据库存储为JSON字符串）
+        if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
+            try:
+                page_dict["metadata"] = json.loads(page_dict["metadata"])
+            except json.JSONDecodeError:
+                page_dict["metadata"] = {}
+        elif page_dict.get("metadata") is None:
+            page_dict["metadata"] = {}
+        return PageResponse(**page_dict)
+        
+    except sqlite3.Error as e:
+        raise HTTPException(status_code=500, detail=f"查询失败: {e}")
+    finally:
+        conn.close()
+
+@router.put("/{page_id}", response_model=PageResponse)
+async def update_page(page_id: str, page_update: PageUpdate):
+    """更新页面"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 检查页面是否存在
+        cursor.execute("SELECT * FROM webbot_page WHERE id = ?", (page_id,))
+        existing_page = cursor.fetchone()
+        
+        if not existing_page:
+            raise HTTPException(status_code=404, detail="页面未找到")
+        
+        # 构建更新字段
+        update_fields = []
+        update_values = []
+        
+        if page_update.title is not None:
+            update_fields.append("title = ?")
+            update_values.append(page_update.title)
+        
+        if page_update.content is not None:
+            update_fields.append("content = ?")
+            update_values.append(page_update.content)
+        
+        if page_update.language is not None:
+            update_fields.append("language = ?")
+            update_values.append(page_update.language.value)
+        
+        if page_update.parent_id is not None:
+            update_fields.append("parent_id = ?")
+            update_values.append(page_update.parent_id)
+        
+        if page_update.other_lang_page_id is not None:
+            update_fields.append("other_lang_page_id = ?")
+            update_values.append(page_update.other_lang_page_id)
+        
+        if page_update.status is not None:
+            update_fields.append("status = ?")
+            update_values.append(page_update.status.value)
+        
+        if page_update.metadata is not None:
+            update_fields.append("metadata = ?")
+            update_values.append(str(page_update.metadata))
+        
+        # 如果没有更新字段，直接返回原页面
+        if not update_fields:
+            return PageResponse(**dict(existing_page))
+        
+        # 添加最后修改时间
+        update_fields.append("last_modified = ?")
+        update_values.append(datetime.now().isoformat())
+        
+        # 执行更新
+        update_values.append(page_id)  # WHERE条件
+        update_query = f"UPDATE webbot_page SET {', '.join(update_fields)} WHERE id = ?"
+        cursor.execute(update_query, update_values)
+        
+        conn.commit()
+        
+        # 获取更新后的页面
+        cursor.execute("SELECT * FROM webbot_page WHERE id = ?", (page_id,))
+        updated_page = cursor.fetchone()
+        
+        return PageResponse(**dict(updated_page))
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"更新失败: {e}")
+    finally:
+        conn.close()
+
+@router.delete("/{page_id}")
+async def delete_page(page_id: str):
+    """删除页面"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 检查页面是否存在
+        cursor.execute("SELECT id FROM webbot_page WHERE id = ?", (page_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="页面未找到")
+        
+        # 删除页面
+        cursor.execute("DELETE FROM webbot_page WHERE id = ?", (page_id,))
+        conn.commit()
+        
+        return {"message": "页面删除成功", "page_id": page_id}
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"删除失败: {e}")
+    finally:
+        conn.close()

@@ -1,0 +1,880 @@
+{
+  "table_name": "fold",
+  "source_file": "fold.csv",
+  "item_count": 97,
+  "items": [
+    {
+      "id": 2,
+      "draw_id": 2,
+      "name": "Statements",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 3,
+      "draw_id": 3,
+      "name": "Unposted Items",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 4,
+      "draw_id": 3,
+      "name": "Item Entry Block Listing",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 5,
+      "draw_id": 2,
+      "name": "Correspondence",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 6,
+      "draw_id": 4,
+      "name": "Aged Outpatient Exception",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 7,
+      "draw_id": 5,
+      "name": "Charge Packet",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 8,
+      "draw_id": 6,
+      "name": "Daily Transaction Audit",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 9,
+      "draw_id": 4,
+      "name": "Detail",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 10,
+      "draw_id": 4,
+      "name": "UB92",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 11,
+      "draw_id": 4,
+      "name": "Letters",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 12,
+      "draw_id": 7,
+      "name": "Invoice",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 13,
+      "draw_id": 8,
+      "name": "Invoice",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 14,
+      "draw_id": 8,
+      "name": "Shipper",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 15,
+      "draw_id": 9,
+      "name": "40175843",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 16,
+      "draw_id": 9,
+      "name": "40123781",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 17,
+      "draw_id": 9,
+      "name": "40195810",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 18,
+      "draw_id": 9,
+      "name": "40154312",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 19,
+      "draw_id": 9,
+      "name": "40187026",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 20,
+      "draw_id": 9,
+      "name": "40123015",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 21,
+      "draw_id": 9,
+      "name": "40159725",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 22,
+      "draw_id": 9,
+      "name": "40163201",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 23,
+      "draw_id": 9,
+      "name": "40192832",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 24,
+      "draw_id": 9,
+      "name": "40138793",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 25,
+      "draw_id": 9,
+      "name": "40167198",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 26,
+      "draw_id": 9,
+      "name": "40143251",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 27,
+      "draw_id": 9,
+      "name": "40178926",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 28,
+      "draw_id": 9,
+      "name": "40149725",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 29,
+      "draw_id": 9,
+      "name": "40138760",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 30,
+      "draw_id": 9,
+      "name": "40169182",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 31,
+      "draw_id": 9,
+      "name": "40192085",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 32,
+      "draw_id": 9,
+      "name": "40176265",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 33,
+      "draw_id": 9,
+      "name": "40132917",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 34,
+      "draw_id": 9,
+      "name": "40169420",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 35,
+      "draw_id": 9,
+      "name": "40144321",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 36,
+      "draw_id": 9,
+      "name": "40199523",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 37,
+      "draw_id": 9,
+      "name": "40139882",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 38,
+      "draw_id": 9,
+      "name": "40156789",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 39,
+      "draw_id": 9,
+      "name": "40154380",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 40,
+      "draw_id": 9,
+      "name": "40127685",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 41,
+      "draw_id": 9,
+      "name": "40136529",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 42,
+      "draw_id": 9,
+      "name": "40117826",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 43,
+      "draw_id": 9,
+      "name": "40145451",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 44,
+      "draw_id": 9,
+      "name": "40168967",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 45,
+      "draw_id": 11,
+      "name": "Letters",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 46,
+      "draw_id": 11,
+      "name": "Directions",
+      "modify_date": "1998-10-06",
+      "comments": "5",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 52,
+      "draw_id": 16,
+      "name": "Signature Cards",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 57,
+      "draw_id": 19,
+      "name": "Sample",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 58,
+      "draw_id": 20,
+      "name": "DEC-RENEWAL POLICY",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 59,
+      "draw_id": 20,
+      "name": "DEC-AMENDED POLICY",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 60,
+      "draw_id": 20,
+      "name": "DEC-AMENDED RENEWAL POLICY",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 61,
+      "draw_id": 20,
+      "name": "DEC-REINSTATED POLICY",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 62,
+      "draw_id": 21,
+      "name": "90000008",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 63,
+      "draw_id": 21,
+      "name": "90000046",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 64,
+      "draw_id": 21,
+      "name": "90000047",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 65,
+      "draw_id": 21,
+      "name": "90000048",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 66,
+      "draw_id": 21,
+      "name": "90000070",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 67,
+      "draw_id": 21,
+      "name": "90000075",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 68,
+      "draw_id": 21,
+      "name": "90000079",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 69,
+      "draw_id": 21,
+      "name": "90000084",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 70,
+      "draw_id": 21,
+      "name": "90000085",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 71,
+      "draw_id": 21,
+      "name": "90000086",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 72,
+      "draw_id": 21,
+      "name": "90000088",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 73,
+      "draw_id": 21,
+      "name": "90000114",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 74,
+      "draw_id": 21,
+      "name": "90000132",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 75,
+      "draw_id": 21,
+      "name": "90000138",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 76,
+      "draw_id": 21,
+      "name": "90000149",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 77,
+      "draw_id": 21,
+      "name": "90000150",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 78,
+      "draw_id": 21,
+      "name": "90000157",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 79,
+      "draw_id": 21,
+      "name": "90000161",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 80,
+      "draw_id": 22,
+      "name": "04551602",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 81,
+      "draw_id": 22,
+      "name": "04551768",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 82,
+      "draw_id": 22,
+      "name": "04551818",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 83,
+      "draw_id": 22,
+      "name": "04551891",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 84,
+      "draw_id": 22,
+      "name": "04551925",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 85,
+      "draw_id": 22,
+      "name": "04552162",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 86,
+      "draw_id": 22,
+      "name": "04552295",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 87,
+      "draw_id": 22,
+      "name": "04552378",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 88,
+      "draw_id": 22,
+      "name": "04552535",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 89,
+      "draw_id": 22,
+      "name": "04552881",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 90,
+      "draw_id": 22,
+      "name": "04552899",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 91,
+      "draw_id": 22,
+      "name": "04552964",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 92,
+      "draw_id": 22,
+      "name": "04553137",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 93,
+      "draw_id": 22,
+      "name": "04553343",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 94,
+      "draw_id": 22,
+      "name": "04553400",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 95,
+      "draw_id": 22,
+      "name": "04553509",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 96,
+      "draw_id": 22,
+      "name": "04553665",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 97,
+      "draw_id": 22,
+      "name": "04553830",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 98,
+      "draw_id": 22,
+      "name": "04553947",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 99,
+      "draw_id": 22,
+      "name": "04553996",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 100,
+      "draw_id": 22,
+      "name": "04554028",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 101,
+      "draw_id": 22,
+      "name": "04554051",
+      "modify_date": "1999-04-09",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 137,
+      "draw_id": 32,
+      "name": "Artifact",
+      "modify_date": "1999-05-04",
+      "comments": "4",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 139,
+      "draw_id": 34,
+      "name": "687582",
+      "modify_date": "2014-04-14",
+      "comments": "0",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 142,
+      "draw_id": 36,
+      "name": "687582",
+      "modify_date": "2014-04-17",
+      "comments": "0",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 143,
+      "draw_id": 37,
+      "name": "333333",
+      "modify_date": "2014-04-25",
+      "comments": "0",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 144,
+      "draw_id": 37,
+      "name": "444444",
+      "modify_date": "2014-04-25",
+      "comments": "0",
+      "audit_id": 0,
+      "table": "fold"
+    },
+    {
+      "id": 145,
+      "draw_id": 37,
+      "name": "555555",
+      "modify_date": "2014-04-25",
+      "comments": "0",
+      "audit_id": 0,
+      "table": "fold"
+    }
+  ]
+}

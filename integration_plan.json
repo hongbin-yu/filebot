@@ -1,0 +1,42 @@
+{
+  "phase": "阶段2: 服务增强",
+  "status": "配置已存储，准备服务修改",
+  "tasks": [
+    {
+      "task": "修改conversion_service.py",
+      "description": "添加Smart iAdmin配置读取和解析逻辑",
+      "estimated_time": "30分钟",
+      "priority": "高"
+    },
+    {
+      "task": "测试.cld文件解析",
+      "description": "使用Smart iAdmin配置解析样本.cld文件",
+      "estimated_time": "20分钟",
+      "priority": "高"
+    },
+    {
+      "task": "验证字段提取",
+      "description": "检查PO Number, Vendor, Amount等字段提取准确性",
+      "estimated_time": "15分钟",
+      "priority": "中"
+    },
+    {
+      "task": "集成测试报告",
+      "description": "生成集成测试结果报告",
+      "estimated_time": "10分钟",
+      "priority": "低"
+    }
+  ],
+  "technical_approach": {
+    "config_source": "从应用settings字段读取smart_iadmin_config",
+    "parsing_method": "基于字段定义(start, length, offset)进行位置解析",
+    "validation": "应用验证规则(pattern, replaces)进行数据清洗",
+    "output": "生成结构化PDF，包含提取的字段信息"
+  },
+  "next_steps": [
+    "1. 修改conversion_service.py读取应用配置",
+    "2. 创建测试.cld文件或使用实际文件",
+    "3. 运行集成测试并验证结果",
+    "4. 提供测试报告和性能评估"
+  ]
+}

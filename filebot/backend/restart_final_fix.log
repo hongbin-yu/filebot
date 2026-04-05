@@ -1,0 +1,918 @@
+INFO:     Will watch for changes in these directories: ['/home/hongb/.openclaw/workspace/filebot/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [87821] using StatReload
+INFO:     Started server process [87823]
+INFO:     Waiting for application startup.
+2026-03-16 14:28:34,530 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:28:34,605 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 14:28:34,605 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+INFO:     127.0.0.1:37394 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37408 - "GET /api/v1/apps/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:42978 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46928 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46950 - "GET /api/v1/apps/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50584 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50594 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49460 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33440 - "GET /api/health HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'app/models/app.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 14:54:53,247 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [87823]
+INFO:     Started server process [99549]
+INFO:     Waiting for application startup.
+2026-03-16 14:54:53,939 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:54:53,946 - main - WARNING - 创建默认用户时出错: When initializing mapper Mapper[App(apps)], expression 'FileNamingRule' failed to locate a name ('FileNamingRule'). If this is a class name, consider adding this relationship() to the <class 'app.models.app.App'> class after both dependent classes have been defined.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/models/__init__.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 14:55:08,146 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [99549]
+INFO:     Started server process [99654]
+INFO:     Waiting for application startup.
+2026-03-16 14:55:08,767 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:55:08,863 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 14:55:08,863 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/__init__.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 14:56:40,457 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [99654]
+INFO:     Started server process [100336]
+INFO:     Waiting for application startup.
+2026-03-16 14:56:41,240 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:56:41,258 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 14:56:41,258 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 14:56:54,550 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [100336]
+INFO:     Started server process [100442]
+INFO:     Waiting for application startup.
+2026-03-16 14:56:55,236 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:56:55,258 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 14:56:55,258 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 14:57:47,630 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [100442]
+INFO:     Started server process [100835]
+INFO:     Waiting for application startup.
+2026-03-16 14:57:48,301 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:57:48,321 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 14:57:48,321 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 14:59:04,496 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [100835]
+INFO:     Started server process [101410]
+INFO:     Waiting for application startup.
+2026-03-16 14:59:05,188 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:59:05,210 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 14:59:05,210 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:03:38,706 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [101410]
+INFO:     Started server process [103439]
+INFO:     Waiting for application startup.
+2026-03-16 15:03:39,574 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:03:39,592 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:03:39,592 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:03:54,675 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [103439]
+INFO:     Started server process [103547]
+INFO:     Waiting for application startup.
+2026-03-16 15:03:55,491 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:03:55,509 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:03:55,509 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:04:36,948 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [103547]
+INFO:     Started server process [103864]
+INFO:     Waiting for application startup.
+2026-03-16 15:04:37,734 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:04:37,756 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:04:37,756 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:04:52,159 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [103864]
+INFO:     Started server process [103972]
+INFO:     Waiting for application startup.
+2026-03-16 15:04:52,928 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:04:52,948 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:04:52,948 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/schemas/file_naming_rule.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:05:30,791 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [103972]
+INFO:     Started server process [104253]
+INFO:     Waiting for application startup.
+2026-03-16 15:05:31,393 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:05:31,411 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:05:31,411 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/schemas/file_naming_rule.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:05:41,020 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [104253]
+INFO:     Started server process [104360]
+INFO:     Waiting for application startup.
+2026-03-16 15:05:41,661 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:05:41,680 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:05:41,680 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/schemas/file_naming_rule.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:06:05,921 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [104360]
+INFO:     Started server process [104541]
+INFO:     Waiting for application startup.
+2026-03-16 15:06:06,701 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:06:06,723 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:06:06,723 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/file_naming_rules.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:06:37,076 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [104541]
+INFO:     Started server process [104756]
+INFO:     Waiting for application startup.
+2026-03-16 15:06:37,774 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:06:37,796 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:06:37,796 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/file_naming_rules.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:06:56,192 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [104756]
+INFO:     Started server process [104902]
+INFO:     Waiting for application startup.
+2026-03-16 15:06:56,921 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:06:56,947 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:06:56,947 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/models/file_naming_rule.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:07:22,452 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [104902]
+INFO:     Started server process [105118]
+INFO:     Waiting for application startup.
+2026-03-16 15:07:23,158 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:07:23,182 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:07:23,182 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/models/file_naming_rule.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:07:40,813 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [105118]
+INFO:     Started server process [105263]
+INFO:     Waiting for application startup.
+2026-03-16 15:07:41,550 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:07:41,575 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:07:41,575 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:07:59,603 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [105263]
+INFO:     Started server process [105372]
+INFO:     Waiting for application startup.
+2026-03-16 15:08:00,282 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:08:00,307 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:08:00,307 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:08:05,656 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [105372]
+INFO:     Started server process [105444]
+INFO:     Waiting for application startup.
+2026-03-16 15:08:06,430 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:08:06,455 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:08:06,455 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:08:16,008 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [105444]
+INFO:     Started server process [105517]
+INFO:     Waiting for application startup.
+2026-03-16 15:08:16,763 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:08:16,786 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:08:16,786 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:08:31,266 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [105517]
+INFO:     Started server process [105624]
+INFO:     Waiting for application startup.
+2026-03-16 15:08:32,025 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:08:32,047 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:08:32,047 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/routers/device.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:14:55,690 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [105624]
+INFO:     Started server process [108509]
+INFO:     Waiting for application startup.
+2026-03-16 15:14:56,373 - main - INFO - 启动 FileBot 应用...
+2026-03-16 15:14:56,392 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 15:14:56,392 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 15:15:11,415 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [108509]
+Process SpawnProcess-24:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/models/__init__.py'. Reloading...
+Process SpawnProcess-25:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/models/file_naming_rule.py'. Reloading...
+Process SpawnProcess-26:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/schemas/file_naming_rule.py'. Reloading...
+Process SpawnProcess-27:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/models/document.py'. Reloading...
+Process SpawnProcess-28:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/models/device.py'. Reloading...
+Process SpawnProcess-29:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/models/document.py'. Reloading...
+Process SpawnProcess-30:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+Process SpawnProcess-31:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+Process SpawnProcess-32:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+Process SpawnProcess-33:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+Process SpawnProcess-34:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+Process SpawnProcess-35:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+Process SpawnProcess-36:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+WARNING:  StatReload detected changes in 'app/routers/documents.py'. Reloading...
+Process SpawnProcess-37:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/hongb/.openclaw/workspace/filebot/backend/main.py", line 87, in <module>
+    from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/device.py", line 8, in <module>
+    from app.core.security import get_current_active_user, get_current_admin_user
+ImportError: cannot import name 'get_current_admin_user' from 'app.core.security' (/home/hongb/.openclaw/workspace/filebot/backend/app/core/security.py)
+INFO:     Stopping reloader process [87821]

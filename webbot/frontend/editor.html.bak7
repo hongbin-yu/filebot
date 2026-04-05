@@ -1,0 +1,2773 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>WebBot Page Editor - Simple</title>
+    
+    <!-- jQuery (required by WET-BOEW) -->
+    <script src="/gcweb/external/jquery/2.2.4/jquery.min.js"></script>
+    
+    <!-- Canada.ca WET theme CSS -->
+    <link rel="stylesheet" href="/gcweb/GCWeb/css/theme.min.css">
+    <link rel="stylesheet" href="/gcweb/wet-boew/css/wet-boew.min.css">
+    
+    <!-- TinyMCE WYSIWYG Editor CSS -->
+    <script src="/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
+    
+    <!-- Simple custom styles for editor -->
+    <style>
+        /* Hide Canada.ca default header/footer elements */
+        #wb-bnr, #wb-sm, #wb-info, #wb-srch, #wb-lng, .wb-srch, .gcweb-menu, #gcwu-sig {
+            display: none !important;
+        }
+        
+        /* Editor container */
+        .editor-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            height: 90vh;
+        }
+        
+        /* Left sidebar for page tree */
+        .sidebar {
+            width: 300px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+        
+        .sidebar-header {
+            background: #335075;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid #2a4160;
+        }
+        
+        .page-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .tree-category {
+            margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .tree-category-header {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .tree-category-header:hover {
+            background-color: #e9ecef;
+        }
+        
+        .tree-category-items {
+            padding: 5px 0;
+            background-color: white;
+        }
+        
+        .page-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            margin: 2px 0;
+            font-size: 14px;
+        }
+        
+        .page-item:hover {
+            background-color: #f0f7ff;
+            border-left-color: #007bff;
+        }
+        
+        .page-item.active {
+            background-color: #e3f2fd;
+            border-left-color: #2196F3;
+            font-weight: 600;
+        }
+        
+        /* Main editor area */
+        .main-editor {
+            flex: 1;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+            order: 1; /* Display on the left side */
+        }
+        
+        .editor-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .editor-header h2 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .page-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .editor-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        /* Form styles */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        textarea.form-control {
+            font-family: monospace;
+            min-height: 500px;
+            resize: vertical;
+        }
+        
+        .editor-actions {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #ddd;
+            text-align: right;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+            margin-right: 10px;
+        }
+        
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        
+        .btn-default {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-default:hover {
+            background-color: #545b62;
+        }
+        
+        /* Loading and error states */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #c3e6cb;
+            margin-bottom: 20px;
+        }
+        
+        /* Breadcrumb */
+        .breadcrumb {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .breadcrumb-item {
+            display: inline;
+        }
+        
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: #6c757d;
+            padding: 0 8px;
+        }
+        
+        .breadcrumb-item a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+        }
+        
+        /* WYSIWYG Editor Styles */
+        .editor-mode-switcher {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .editor-mode-btn {
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .editor-mode-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        
+        .editor-mode-btn:hover:not(.active) {
+            background: #e9ecef;
+        }
+        
+        .wysiwyg-container {
+            min-height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        .wysiwyg-container .ql-toolbar {
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .wysiwyg-container .ql-container {
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            min-height: 450px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .html-source-container {
+            display: none;
+        }
+        
+        .html-source-container.active {
+            display: block;
+        }
+        
+        .wysiwyg-container {
+            display: none;
+        }
+        
+        .wysiwyg-container.active {
+            display: block;
+        }
+        
+        /* AI Assistant Panel Styles - Scheme 2 (Full Panel) */
+        .ai-assistant-panel {
+            width: 350px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: 90vh;
+            order: 2; /* Display on the right side */
+            transition: all 0.3s ease;
+        }
+        
+        .ai-assistant-panel.hidden {
+            display: none;
+        }
+        
+
+        
+        .ai-panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .ai-panel-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .ai-panel-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ai-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .ai-message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .ai-message.user {
+            background: #e3f2fd;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .ai-message.assistant {
+            background: #f5f5f5;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .ai-message.system {
+            background: #fff3e0;
+            align-self: center;
+            font-style: italic;
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+        
+        .ai-panel-input {
+            border-top: 1px solid #eee;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .ai-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .ai-input:focus {
+            border-color: #667eea;
+        }
+        
+        .ai-send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .ai-send-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .ai-typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 10px 14px;
+            background: #f5f5f5;
+            border-radius: 18px;
+            align-self: flex-start;
+            width: fit-content;
+        }
+        
+        .ai-typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: aiTyping 1.4s infinite ease-in-out;
+        }
+        
+        .ai-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .ai-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes aiTyping {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        .component-preview {
+            background: #f9f9f9;
+            border: 1px dashed #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        
+        .component-preview code {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 11px;
+        }
+        
+
+    </style>
+</head>
+<body vocab="http://schema.org/" typeof="WebPage" class="">
+    <div class="editor-container">
+
+        <!-- AI Assistant Panel (right sidebar) -->
+        <div id="ai-assistant-panel" class="ai-assistant-panel">
+            <div class="ai-panel-header">
+                <h3>🤖 WebBot AI Assistant</h3>
+                <button class="ai-panel-close" id="ai-panel-close">×</button>
+            </div>
+            <div class="ai-panel-body" id="ai-chat-messages">
+                <div class="ai-message system">
+                    Hello! I'm your WebBot AI assistant. I can help you insert components into your page. Try saying "insert button" or "add table".
+                </div>
+            </div>
+            <div class="ai-panel-input">
+                <input type="text" class="ai-input" id="ai-chat-input" placeholder="Type your message...">
+                <button class="ai-send-btn" id="ai-chat-send">➤</button>
+            </div>
+        </div>
+        
+        <!-- Main editor area -->
+        <div class="main-editor">
+            <div class="editor-header">
+                <h2>WebBot Page Editor</h2>
+                <div class="page-info">
+                    <span id="page-title-display">No page selected</span>
+                    <span id="page-id-display"></span>
+                    <span id="page-language-display"></span>
+                    <span id="page-status-display"></span>
+                </div>
+                <div id="breadcrumb" class="breadcrumb">
+                    <div class="breadcrumb-item">
+                        <a href="#" id="home-link">Home</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="editor-content">
+                <!-- Loading state -->
+                <div id="loading-content" class="loading" style="display: none;">
+                    Loading page data...
+                </div>
+                
+                <!-- Error state -->
+                <div id="error-area" class="error" style="display: none;">
+                    Error loading page. Please try again.
+                </div>
+                
+                <!-- Success message -->
+                <div id="success-message" class="success" style="display: none;">
+                    Page saved successfully!
+                </div>
+                
+                <!-- Editor form (initially hidden) -->
+                <div id="editor-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="editor-title">Page Title:</label>
+                        <input type="text" id="editor-title" class="form-control" placeholder="Enter page title">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editor-content">Page Content:</label>
+                        
+                        <!-- Editor mode switcher -->
+                        <div class="editor-mode-switcher">
+                            <button type="button" class="editor-mode-btn active" data-mode="wysiwyg">
+                                <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+                                WYSIWYG Editor
+                            </button>
+                            <button type="button" class="editor-mode-btn" data-mode="html">
+                                <span class="glyphicon glyphicon-console" aria-hidden="true"></span>
+                                HTML Source
+                            </button>
+                        </div>
+                        
+                        <!-- WYSIWYG Editor Container -->
+                        <div id="wysiwyg-editor-container" class="wysiwyg-container active">
+                            <!-- Quill editor will be initialized here -->
+                        </div>
+                        
+                        <!-- HTML Source Container -->
+                        <div id="html-source-container" class="html-source-container">
+                            <textarea id="editor-content" class="form-control" rows="30" placeholder="Enter HTML content"></textarea>
+                        </div>
+                        
+                        <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                            <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
+                            Switch between WYSIWYG (What You See Is What You Get) editor and HTML source code view.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editor-language">Language:</label>
+                        <select id="editor-language" class="form-control">
+                            <option value="en">English</option>
+                            <option value="fr">French</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editor-status">Status:</label>
+                        <select id="editor-status" class="form-control">
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- No page selected message -->
+                <div id="no-page-selected">
+                    <div class="loading">
+                        <p>Select a page from the tree to start editing.</p>
+                        <p>Or navigate directly to a page by adding ?pageId=PAGE_ID to the URL.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="editor-actions" style="display: none;" id="editor-actions">
+                <button id="preview-page" class="btn btn-info">
+                    <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+                    Preview
+                </button>
+                <button id="save-page" class="btn btn-success">
+                    <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
+                    Save Page
+                </button>
+                <button id="cancel-edit" class="btn btn-default">
+                    Cancel
+                </button>
+            </div>
+        </div>
+        
+
+    </div>
+    
+    <!-- Canada.ca WET-BOEW JavaScript -->
+    <script src="/gcweb/GCWeb/js/theme.min.js"></script>
+    
+    <!-- TinyMCE WYSIWYG Editor JS already loaded in head -->
+    
+    <script>
+        // API configuration
+        const API_BASE = '/api/v1/pages';
+        let currentPageId = null;
+        let currentPageData = null;
+        let allPages = [];
+        
+        // DOM elements
+        const pageTreeEl = document.getElementById('page-tree');
+        const editorFormEl = document.getElementById('editor-form');
+        const noPageSelectedEl = document.getElementById('no-page-selected');
+        const loadingContentEl = document.getElementById('loading-content');
+        const errorAreaEl = document.getElementById('error-area');
+        const successMessageEl = document.getElementById('success-message');
+        const editorActionsEl = document.getElementById('editor-actions');
+        
+        // Form elements
+        const editorTitleEl = document.getElementById('editor-title');
+        const editorContentEl = document.getElementById('editor-content');
+        const editorLanguageEl = document.getElementById('editor-language');
+        const editorStatusEl = document.getElementById('editor-status');
+        const previewPageBtn = document.getElementById('preview-page');
+        const savePageBtn = document.getElementById('save-page');
+        const cancelEditBtn = document.getElementById('cancel-edit');
+        
+        // WYSIWYG Editor elements
+        let tinyMceEditor = null;
+        const wysiwygContainer = document.getElementById('wysiwyg-editor-container');
+        const htmlSourceContainer = document.getElementById('html-source-container');
+        const editorModeBtns = document.querySelectorAll('.editor-mode-btn');
+        
+        // Display elements
+        const pageTitleDisplayEl = document.querySelector('#page-title-display');
+        const pageIdDisplayEl = document.querySelector('#page-id-display');
+        const pageLanguageDisplayEl = document.querySelector('#page-language-display');
+        const pageStatusDisplayEl = document.querySelector('#page-status-display');
+        const breadcrumbEl = document.getElementById('breadcrumb');
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('WebBot Editor initialized');
+            
+            // Get page ID from URL if present
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageIdFromUrl = urlParams.get('pageId');
+            
+
+            
+            // If pageId in URL, load that page
+            if (pageIdFromUrl) {
+                setTimeout(() => {
+                    loadPage(pageIdFromUrl);
+                }, 500);
+            }
+            
+            // Event listeners
+            previewPageBtn.addEventListener('click', previewPage);
+            savePageBtn.addEventListener('click', savePage);
+            cancelEditBtn.addEventListener('click', cancelEdit);
+            
+            // Home link
+            document.getElementById('home-link').addEventListener('click', function(e) {
+                e.preventDefault();
+                clearEditor();
+            });
+            
+            // Initialize TinyMCE WYSIWYG Editor
+            initializeTinyMCE();
+            
+            // Add event listeners for editor mode switching
+            editorModeBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const mode = this.getAttribute('data-mode');
+                    switchEditorMode(mode);
+                });
+            });
+        });
+        
+        // Initialize Quill WYSIWYG Editor
+        function initializeTinyMCE() {
+            console.log('Initializing TinyMCE editor...');
+            
+            // Configure TinyMCE
+            tinymce.init({
+                selector: '#wysiwyg-editor-container',
+                height: 600,
+                menubar: 'file edit view insert format tools table help',
+                base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'help', 'wordcount',
+                    'pagebreak'
+                ],
+                toolbar: 'undo redo | styleselect | bold italic underline | ' +
+                         'alignleft aligncenter alignright alignjustify | ' +
+                         'bullist numlist outdent indent | link image media table | ' +
+                         'blockquote pagebreak | charmap preview searchreplace visualblocks | ' +
+                         'code fullscreen help | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | deleteComponent | aiAssistant',
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+                // Load Canada.ca CSS for editor content (makes editing look like preview)
+                content_css: [
+                    '/gcweb/GCWeb/css/theme.min.css',
+                    '/gcweb/wet-boew/css/wet-boew.min.css'
+                ],
+                // Allow all HTML elements for Canada.ca pages
+                extended_valid_elements: '*[*]',
+                // Disable cleanup of HTML
+                cleanup: false,
+                valid_elements: '*[*]',
+                // Allow full HTML
+                allow_html_in_named_anchor: true,
+                // Setup callback when editor is initialized
+                setup: function(editor) {
+                    tinyMceEditor = editor;
+                    
+                    // Add component insertion buttons
+                    editor.ui.registry.addButton('insertButton', {
+                        icon: 'plus',
+                        tooltip: 'Insert Button',
+                        onAction: function() {
+                            insertComponent('button');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertTable', {
+                        icon: 'table',
+                        tooltip: 'Insert Table',
+                        onAction: function() {
+                            insertComponent('table');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertAlert', {
+                        icon: 'warning',
+                        tooltip: 'Insert Alert Box',
+                        onAction: function() {
+                            insertComponent('alert');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertBreadcrumb', {
+                        icon: 'arrow-right',
+                        tooltip: 'Insert Breadcrumb',
+                        onAction: function() {
+                            insertComponent('breadcrumb');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertSidebar', {
+                        icon: 'menu',
+                        tooltip: 'Insert Sidebar Navigation',
+                        onAction: function() {
+                            insertComponent('sidebar');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertFooter', {
+                        icon: 'page-break',
+                        tooltip: 'Insert Footer Section',
+                        onAction: function() {
+                            insertComponent('footer');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertSearch', {
+                        icon: 'search',
+                        tooltip: 'Insert Search Box',
+                        onAction: function() {
+                            insertComponent('search');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertIntroduction', {
+                        icon: 'newspaper-o',
+                        tooltip: 'Insert Introduction Block',
+                        onAction: function() {
+                            insertComponent('introduction');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertIntroFullImage', {
+                        icon: 'picture-o',
+                        tooltip: 'Insert Introduction with Full Image',
+                        onAction: function() {
+                            insertComponent('introduction-full-image');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertIntroHalfImage', {
+                        icon: 'columns',
+                        tooltip: 'Insert Introduction with Half Image',
+                        onAction: function() {
+                            insertComponent('introduction-half-image');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertMostRequested', {
+                        icon: 'list-ol',
+                        tooltip: 'Insert Most Requested Links',
+                        onAction: function() {
+                            insertComponent('most-requested');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertFeatureLink', {
+                        icon: 'link',
+                        tooltip: 'Insert Feature Link with Description',
+                        onAction: function() {
+                            insertComponent('feature-link');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertGovernmentInitiatives', {
+                        icon: 'flag',
+                        tooltip: 'Insert Government Initiatives',
+                        onAction: function() {
+                            insertComponent('government-initiatives');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertServicesInfo3col', {
+                        icon: 'grid',
+                        tooltip: 'Insert Services & Info (3 Columns)',
+                        onAction: function() {
+                            insertComponent('services-info-3col');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertServicesInfo2col', {
+                        icon: 'grid-2',
+                        tooltip: 'Insert Services & Info (2 Columns)',
+                        onAction: function() {
+                            insertComponent('services-info-2col');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertServicesInfoList', {
+                        icon: 'list',
+                        tooltip: 'Insert Services & Info (List)',
+                        onAction: function() {
+                            insertComponent('services-info-list');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertFeatureLinkDark', {
+                        icon: 'tint',
+                        tooltip: 'Insert Feature Link (Dark Background)',
+                        onAction: function() {
+                            insertComponent('feature-link-dark');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertFeatureLinkLight', {
+                        icon: 'tint',
+                        tooltip: 'Insert Feature Link (Light Background)',
+                        onAction: function() {
+                            insertComponent('feature-link-light');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('insertFeatureLinkGray', {
+                        icon: 'tint',
+                        tooltip: 'Insert Feature Link (Gray Background)',
+                        onAction: function() {
+                            insertComponent('feature-link-gray');
+                        }
+                    });
+                    
+                    editor.ui.registry.addButton('deleteComponent', {
+                        icon: 'trash',
+                        tooltip: 'Delete Component',
+                        onAction: function() {
+                            deleteComponent();
+                        }
+                    });
+                    
+                    // AI Assistant button
+                    editor.ui.registry.addButton('aiAssistant', {
+                        icon: 'user',
+                        tooltip: 'AI Assistant (Beta)',
+                        onAction: function() {
+                            toggleAIAssistant();
+                        }
+                    });
+                    
+                    // Sync content changes to textarea
+                    editor.on('change', function() {
+                        const htmlContent = editor.getContent();
+                        // Only update textarea if we're in WYSIWYG mode
+                        if (wysiwygContainer.classList.contains('active')) {
+                            editorContentEl.value = htmlContent;
+                        }
+                    });
+                    
+                    // Also sync when textarea content changes (for HTML mode)
+                    editorContentEl.addEventListener('input', function() {
+                        // Only update TinyMCE if we're in HTML mode
+                        if (htmlSourceContainer.classList.contains('active')) {
+                            editor.setContent(this.value);
+                        }
+                    });
+                }
+            });
+            
+            console.log('TinyMCE editor initialized');
+        }
+        
+        // Switch between WYSIWYG and HTML source modes
+        function switchEditorMode(mode) {
+            console.log(`Switching to ${mode} mode`);
+            
+            // Update active button state
+            editorModeBtns.forEach(btn => {
+                if (btn.getAttribute('data-mode') === mode) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Show/hide appropriate containers
+            if (mode === 'wysiwyg') {
+                wysiwygContainer.classList.add('active');
+                htmlSourceContainer.classList.remove('active');
+                
+                // Sync content from textarea to TinyMCE
+                const htmlContent = editorContentEl.value;
+                if (tinyMceEditor) {
+                    tinyMceEditor.setContent(htmlContent);
+                    // Focus the editor
+                    setTimeout(() => {
+                        tinyMceEditor.focus();
+                    }, 100);
+                }
+            } else {
+                wysiwygContainer.classList.remove('active');
+                htmlSourceContainer.classList.add('active');
+                
+                // Sync content from TinyMCE to textarea
+                if (tinyMceEditor) {
+                    const htmlContent = tinyMceEditor.getContent();
+                    editorContentEl.value = htmlContent;
+                }
+                
+                // Focus the textarea
+                setTimeout(() => {
+                    editorContentEl.focus();
+                }, 100);
+            }
+        }
+        
+        // Load all pages for the tree
+
+        
+        // Build page tree from flat list
+        function buildPageTree() {
+            // Group pages by parent_id
+            const pagesByParent = {};
+            allPages.forEach(page => {
+                const parentId = page.parent_id || 'root';
+                if (!pagesByParent[parentId]) {
+                    pagesByParent[parentId] = [];
+                }
+                pagesByParent[parentId].push(page);
+            });
+            
+            // Build tree for root pages
+            let html = '';
+            const rootPages = pagesByParent['root'] || pagesByParent[null] || [];
+            
+            if (rootPages.length === 0) {
+                html = '<div class="loading">No pages found.</div>';
+            } else {
+                // Sort root pages by title
+                rootPages.sort((a, b) => a.title.localeCompare(b.title));
+                
+                // Create categories for each root page with children
+                rootPages.forEach(rootPage => {
+                    const children = pagesByParent[rootPage.id] || [];
+                    const hasChildren = children.length > 0;
+                    
+                    html += `
+                    <div class="tree-category">
+                        <div class="tree-category-header ${hasChildren ? '' : 'no-children'}">
+                            <span class="page-title" data-page-id="${rootPage.id}">${rootPage.title}</span>
+                            ${hasChildren ? '<span class="toggle-icon">▼</span>' : ''}
+                        </div>
+                        ${hasChildren ? `
+                        <div class="tree-category-items">
+                            ${children.map(child => `
+                                <div class="page-item" data-page-id="${child.id}">
+                                    ${child.title}
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
+                    </div>
+                    `;
+                });
+            }
+            
+            pageTreeEl.innerHTML = html;
+            
+            // Add event listeners
+            document.querySelectorAll('.page-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page-id');
+                    loadPage(pageId);
+                });
+            });
+            
+            // Add event listeners for category headers
+            document.querySelectorAll('.tree-category-header').forEach(header => {
+                const toggleIcon = header.querySelector('.toggle-icon');
+                if (toggleIcon) {
+                    header.addEventListener('click', function() {
+                        const items = this.nextElementSibling;
+                        if (items && items.classList.contains('tree-category-items')) {
+                            items.classList.toggle('collapsed');
+                            this.classList.toggle('collapsed');
+                        }
+                    });
+                } else {
+                    // No children, make header clickable
+                    header.addEventListener('click', function() {
+                        const pageId = this.querySelector('.page-title').getAttribute('data-page-id');
+                        loadPage(pageId);
+                    });
+                    header.style.cursor = 'pointer';
+                }
+            });
+            
+            // Make root page titles clickable
+            document.querySelectorAll('.page-title').forEach(titleEl => {
+                titleEl.style.cursor = 'pointer';
+                titleEl.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const pageId = this.getAttribute('data-page-id');
+                    loadPage(pageId);
+                });
+            });
+        }
+        
+        // Load a specific page
+        async function loadPage(pageId) {
+            currentPageId = pageId;
+            
+
+            
+            // Show loading, hide other content
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/${encodeURIComponent(pageId)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const page = await response.json();
+                
+                // Store page data
+                currentPageData = page;
+                
+                // Update breadcrumb
+                updateBreadcrumb(page);
+                
+                // Update display
+                pageTitleDisplayEl.textContent = page.title || 'Untitled';
+                pageIdDisplayEl.textContent = ` | ID: ${page.id}`;
+                pageLanguageDisplayEl.textContent = ` | Language: ${page.language ? page.language.toUpperCase() : 'EN'}`;
+                pageStatusDisplayEl.textContent = ` | Status: ${page.status || 'draft'}`;
+                
+                // Clean the page content to remove header/footer before editing
+                const cleanedContent = cleanContent(page.content || '', pageId);
+                
+                // Populate form with cleaned content
+                editorTitleEl.value = page.title || '';
+                editorContentEl.value = cleanedContent;
+                editorLanguageEl.value = page.language || 'en';
+                editorStatusEl.value = page.status || 'draft';
+                
+                // Also populate TinyMCE editor if initialized
+                if (tinyMceEditor) {
+                    tinyMceEditor.setContent(cleanedContent);
+                }
+                
+                // Update page content in currentPageData to cleaned version
+                page.content = cleanedContent;
+                
+                // Show editor and actions, hide other states
+                hideLoading();
+                editorFormEl.style.display = 'block';
+                editorActionsEl.style.display = 'block';
+                noPageSelectedEl.style.display = 'none';
+                errorAreaEl.style.display = 'none';
+                successMessageEl.style.display = 'none';
+                
+                // Update URL without reloading
+                const url = new URL(window.location);
+                url.searchParams.set('pageId', pageId);
+                window.history.replaceState({}, '', url);
+                
+                console.log(`Loaded page: ${page.title}`);
+                
+                // Check if autoPreview is requested
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('autoPreview') === 'true') {
+                    // Remove autoPreview from URL to avoid repeated triggers
+                    const url = new URL(window.location);
+                    url.searchParams.delete('autoPreview');
+                    window.history.replaceState({}, '', url);
+                    
+                    // Trigger preview after a short delay to ensure UI is ready
+                    setTimeout(() => {
+                        previewPage();
+                    }, 500);
+                }
+            } catch (error) {
+                console.error('Error loading page:', error);
+                showError(`Failed to load page: ${error.message}`);
+            }
+        }
+        
+        // Update breadcrumb navigation
+        function updateBreadcrumb(page) {
+            // Simple breadcrumb for now
+            breadcrumbEl.innerHTML = `
+                <div class="breadcrumb-item">
+                    <a href="#" id="home-link">Home</a>
+                </div>
+                <div class="breadcrumb-item active">${page.title || page.id}</div>
+            `;
+            
+            // Re-add home link event listener
+            document.getElementById('home-link').addEventListener('click', function(e) {
+                e.preventDefault();
+                clearEditor();
+            });
+        }
+        
+        // Clean content by removing Canada.ca header/footer and date section, keeping only main content
+        function cleanContent(content, pageId) {
+            console.log('cleanContent called for page:', pageId, 'content length:', content?.length);
+            if (!content || typeof content !== 'string') {
+                console.log('cleanContent: invalid content, returning:', content);
+                return content;
+            }
+            
+            let cleaned = content;
+            
+            // Try to extract main content if it's HTML
+            if (content.includes('<') && content.includes('>')) {
+                // It's HTML content
+                // Create a temporary DOM parser
+                const parser = new DOMParser();
+                try {
+                    const doc = parser.parseFromString(content, 'text/html');
+                    
+                    // Remove Canada.ca header and footer elements before extracting main
+                    const headerFooterSelectors = [
+                        '#wb-bnr', '#wb-sm', '#wb-info', '#wb-srch', '#wb-lng',
+                        '#wb-sec', '#wb-dtmd', '#wb-glb-mn', '#wb-srch-frm',
+                        '.pagedetails', '.brand', '.subsite', '.gc-footer',
+                        '.gc-subway', '.gc-main-nav', '.gc-top-nav',
+                        'footer', 'header', '.footer', '.header',
+                        '#gcwu-sig', '#gcwu-sig-in', '#gcwu-tc', '#gcwu-date-mod',
+                        // Additional header/footer selectors
+                        '[role="banner"]', '[role="contentinfo"]',
+                        '.gcweb-menu', '.gc-web-menu', '.gc-web-header', '.gc-web-footer',
+                        '#gcweb-nav', '#gcweb-header', '#gcweb-footer',
+                        '.site-header', '.site-footer', '.global-header', '.global-footer',
+                        '.header-main', '.footer-main', '#header', '#footer',
+                        '.nav-main', '.navigation', '.main-nav', '.primary-nav'
+                    ];
+                    
+                    headerFooterSelectors.forEach(selector => {
+                        const elements = doc.querySelectorAll(selector);
+                        elements.forEach(el => {
+                            el.remove();
+                        });
+                    });
+                    
+                    // Try to find main content area - prioritize Canada.ca main element
+                    const mainSelectors = [
+                        'main[property="mainContentOfPage"]',
+                        'main',
+                        '.mwstext.section',           // Canada.ca content area
+                        '.row.profile',               // Canada.ca profile/content container
+                        '#main-content',
+                        'article',
+                        '.container.main',
+                        '.col-md-9',
+                        '.col-md-8',
+                        '.container',
+                        '#wb-cont'                    // Title element (last resort)
+                    ];
+                    
+                    let mainElement = null;
+                    let matchedSelector = '';
+                    for (const selector of mainSelectors) {
+                        mainElement = doc.querySelector(selector);
+                        if (mainElement) {
+                            matchedSelector = selector;
+                            break;
+                        }
+                    }
+                    
+                    // Special handling for #wb-cont if it's just a heading
+                    if (mainElement && matchedSelector === '#wb-cont' && 
+                        mainElement.tagName && mainElement.tagName.match(/^H[1-6]$/i)) {
+                        console.log('cleanContent: #wb-cont is a heading element, looking for content container...');
+                        // Try to find parent or sibling with actual content
+                        const parent = mainElement.parentElement;
+                        if (parent) {
+                            const parentText = parent.textContent || '';
+                            const headingText = mainElement.textContent || '';
+                            if (parentText.length > headingText.length + 100) {
+                                // Parent has additional content beyond heading
+                                console.log('cleanContent: using parent container instead of heading');
+                                mainElement = parent;
+                            } else {
+                                // Look for next sibling with substantial content
+                                let nextSib = mainElement.nextElementSibling;
+                                while (nextSib && (nextSib.textContent || '').length < 100) {
+                                    nextSib = nextSib.nextElementSibling;
+                                }
+                                if (nextSib && (nextSib.textContent || '').length >= 100) {
+                                    console.log('cleanContent: using next sibling with content');
+                                    mainElement = nextSib;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If found main element, use its innerHTML
+                    if (mainElement) {
+                        console.log('cleanContent: found main element via selector ' + matchedSelector + ', innerHTML length:', mainElement.innerHTML.length);
+                        cleaned = mainElement.innerHTML;
+                    } else {
+                        console.log('cleanContent: no main element found, falling back to body');
+                        // Fallback: use body content but keep the header/footer removal
+                        const body = doc.body;
+                        if (body) {
+                            console.log('cleanContent: body found, innerHTML length:', body.innerHTML.length);
+                            cleaned = body.innerHTML;
+                        } else {
+                            console.log('cleanContent: no body found');
+                        }
+                    }
+                    
+                    // Additional cleanup: remove any remaining date/modified sections
+                    const dateSelectors = [
+                        '.pagedetails',
+                        '.wb-inv',
+                        '.wb-tphp',
+                        '.date-modified',
+                        '.modified',
+                        '[class*="date"]',
+                        '[id*="date"]'
+                    ];
+                    
+                    dateSelectors.forEach(selector => {
+                        const elements = doc.querySelectorAll(selector);
+                        elements.forEach(el => {
+                            const text = el.textContent || '';
+                            if (text.includes('Date modified') || text.includes('Page details') || 
+                                text.includes('Modified') || text.match(/\d{4}-\d{2}-\d{2}/)) {
+                                el.remove();
+                            }
+                        });
+                    });
+                    
+                } catch (e) {
+                    console.warn('HTML parsing failed, falling back to text cleaning:', e);
+                }
+            }
+            
+            // For plain text content or fallback, use pattern matching
+            if (!cleaned.includes('<') || cleaned === content) {
+                // Remove "Page details YYYY-MM-DD" footer
+                cleaned = cleaned.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
+                
+                // Remove common Canada.ca footer patterns
+                const footerPatterns = [
+                    /Date modified:.*$/im,
+                    /Government of Canada.*$/im,
+                    /©.*$/im,
+                    /All rights reserved.*$/im,
+                    /Report a problem.*$/im,
+                    /Contact us.*$/im,
+                    /Terms and conditions.*$/im,
+                    /Privacy.*$/im,
+                    /Canada\.ca.*$/im
+                ];
+                
+                footerPatterns.forEach(pattern => {
+                    cleaned = cleaned.replace(pattern, '').trim();
+                });
+                
+                // Remove duplicate title at beginning
+                const lines = cleaned.split('\n');
+                if (lines.length > 1) {
+                    const firstLine = lines[0].trim();
+                    if (firstLine.length < 100 && cleaned.indexOf(firstLine, firstLine.length) !== -1) {
+                        lines.shift();
+                        cleaned = lines.join('\n').trim();
+                    }
+                }
+            }
+            
+            // Fallback: if cleaned content is too short but original content is substantial, return original
+            if (cleaned.length < 100 && content.length > 500) {
+                console.warn('cleanContent: cleaned content too short, returning original content. Cleaned:', cleaned.length, 'Original:', content.length);
+                // Return original content but with basic footer removal
+                const basicCleaned = content.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
+                return basicCleaned;
+            }
+            
+            console.log('cleanContent: returning cleaned content, length:', cleaned.length, 'first 200 chars:', cleaned.substring(0, 200).replace(/\n/g, ' '));
+            // Return cleaned content only (no WebBot header/footer)
+            return cleaned;
+        }
+        
+        // Create a full WebBot page with custom header and footer
+        function createWebBotPage(title, content) {
+            console.log('createWebBotPage: creating wrapped page, title:', title);
+            
+            // WebBot custom header and footer styling
+            const webBotHeader = `
+                <!-- WebBot Custom Header -->
+                <header class="webbot-header" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 20px 0;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                ">
+                    <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                        <div class="header-content" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="logo" style="font-size: 24px; font-weight: bold;">
+                                🥕 WebBot
+                            </div>
+                            <div class="header-info" style="font-size: 14px; opacity: 0.9;">
+                                <span class="page-id" style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px;">
+                                    ${currentPageId || 'untitled'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="page-title" style="margin-top: 15px; font-size: 28px; font-weight: 300;">
+                            ${title}
+                        </div>
+                    </div>
+                </header>
+            `;
+            
+            const webBotFooter = `
+                <!-- WebBot Custom Footer -->
+                <footer class="webbot-footer" style="
+                    background: #f8f9fa;
+                    color: #666;
+                    padding: 30px 0;
+                    margin-top: 40px;
+                    border-top: 1px solid #eaeaea;
+                ">
+                    <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                        <div class="footer-content" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="footer-left" style="font-size: 14px;">
+                                <strong>WebBot Content Management System</strong><br>
+                                AI-enhanced website content management
+                            </div>
+                            <div class="footer-right" style="text-align: right; font-size: 12px; color: #999;">
+                                <div>Generated: ${new Date().toLocaleString()}</div>
+                                <div>Powered by FileBot &amp; Canada.ca GCWeb</div>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            `;
+            
+            // Return full page with WebBot wrapper
+            return `
+                ${webBotHeader}
+                <main class="webbot-main-content" style="
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 30px 20px;
+                    min-height: 60vh;
+                ">
+                    ${content}
+                </main>
+                ${webBotFooter}
+            `;
+        }
+        
+        // Get current editor content based on active mode
+        function getCurrentContent() {
+            // Check if WYSIWYG mode is active
+            if (wysiwygContainer.classList.contains('active') && tinyMceEditor) {
+                return tinyMceEditor.getContent();
+            } else {
+                // HTML source mode is active or TinyMCE not initialized
+                return editorContentEl.value;
+            }
+        }
+        
+        // Preview page content
+        function previewPage() {
+            if (!currentPageId || !currentPageData) {
+                showError('No page selected to preview.');
+                return;
+            }
+            
+            // Get current content from editor (based on active mode)
+            let content = getCurrentContent();
+            console.log('previewPage: content length from getCurrentContent:', content?.length);
+            const title = editorTitleEl.value || currentPageData.title || 'Untitled Page';
+            
+            if (!content) {
+                console.log('previewPage: content is empty, showing error');
+                showError('No content to preview.');
+                return;
+            }
+            
+            console.log('Generating preview for:', currentPageId, 'content first 100 chars:', content.substring(0, 100).replace(/\n/g, ' '));
+            
+            // Clean the content
+            const cleanedContent = cleanContent(content, currentPageId);
+            console.log('previewPage: cleanedContent length:', cleanedContent?.length);
+            
+            // Fallback: if cleaned content is empty or too short, use original content with warning
+            let finalContent = cleanedContent;
+            if (!finalContent || finalContent.trim().length < 100) {
+                console.warn('cleanContent returned insufficient content. Length:', finalContent?.length, 'Using original content instead.');
+                finalContent = content;
+                // Try basic cleaning on original content (remove common footers)
+                const basicCleaned = content.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
+                if (basicCleaned.length > finalContent.length) {
+                    finalContent = basicCleaned;
+                }
+            }
+            
+            // Create preview HTML
+            const previewHtml = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Preview: ${title}</title>
+                    <link rel="stylesheet" href="/gcweb/GCWeb/css/theme.min.css">
+                    <link rel="stylesheet" href="/gcweb/wet-boew/css/wet-boew.min.css">
+                    <style>
+                        body {
+                            padding: 20px;
+                            background: #f8f9fa;
+                        }
+                        .preview-container {
+                            max-width: 1200px;
+                            margin: 0 auto;
+                            background: white;
+                            border-radius: 8px;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                            padding: 20px;
+                        }
+                        .preview-actions {
+                            margin-top: 20px;
+                            padding: 15px;
+                            background: #f8f9fa;
+                            border-radius: 6px;
+                            border: 1px solid #ddd;
+                            text-align: center;
+                        }
+                        .btn {
+                            padding: 8px 16px;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            margin: 0 5px;
+                        }
+                        .btn-primary {
+                            background: #007bff;
+                            color: white;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="preview-container">
+                        ${createWebBotPage(title, finalContent)}
+                        <div class="preview-actions">
+                            <button class="btn btn-primary" onclick="window.print()">Print Preview</button>
+                            <button class="btn" onclick="window.close()">Close Preview</button>
+                        </div>
+                    </div>
+                    
+                    <!-- jQuery (required by WET-BOEW) -->
+                    <script src="/gcweb/external/jquery/2.2.4/jquery.min.js"><\/script>
+                    <!-- Canada.ca WET-BOEW JavaScript -->
+                    <script src="/gcweb/wet-boew/js/wet-boew.min.js"><\/script>
+                    <script src="/gcweb/GCWeb/js/theme.min.js"><\/script>
+                </body>
+                </html>
+            `;
+            
+            // Open preview in new window
+            const previewWindow = window.open('', '_blank');
+            console.log('previewPage: previewWindow created:', previewWindow ? 'valid' : 'null/blocked');
+            if (!previewWindow) {
+                console.error('previewPage: window.open was blocked by browser');
+                showError('Preview window was blocked by browser. Please allow popups for this site.');
+                return;
+            }
+            previewWindow.document.write(previewHtml);
+            previewWindow.document.close();
+            
+            // Focus the new window
+            previewWindow.focus();
+        }
+        
+        // Save page changes
+        async function savePage() {
+            if (!currentPageId || !currentPageData) {
+                showError('No page selected to save.');
+                return;
+            }
+            
+            // Show saving indicator
+            const originalText = savePageBtn.textContent;
+            savePageBtn.disabled = true;
+            savePageBtn.innerHTML = '<span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span> Saving...';
+            
+            try {
+                const updatedData = {
+                    title: editorTitleEl.value.trim(),
+                    content: editorContentEl.value,
+                    language: editorLanguageEl.value,
+                    status: editorStatusEl.value
+                };
+                
+                // Validate required fields
+                if (!updatedData.title) {
+                    throw new Error('Page title is required');
+                }
+                
+                const response = await fetch(`${API_BASE}/${encodeURIComponent(currentPageId)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Update current page data
+                currentPageData = { ...currentPageData, ...updatedData };
+                
+                // Show success message
+                successMessageEl.textContent = 'Page saved successfully!';
+                successMessageEl.style.display = 'block';
+                errorAreaEl.style.display = 'none';
+                
+                // Update display
+                pageTitleDisplayEl.textContent = updatedData.title;
+                pageLanguageDisplayEl.textContent = ` | Language: ${updatedData.language.toUpperCase()}`;
+                pageStatusDisplayEl.textContent = ` | Status: ${updatedData.status}`;
+                
+
+                
+                console.log('Page saved successfully');
+            } catch (error) {
+                console.error('Error saving page:', error);
+                showError(`Failed to save page: ${error.message}`);
+            } finally {
+                // Restore button
+                savePageBtn.disabled = false;
+                savePageBtn.innerHTML = originalText;
+                
+                // Hide success message after 3 seconds
+                setTimeout(() => {
+                    successMessageEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // Cancel editing
+        function cancelEdit() {
+            if (currentPageData) {
+                // Reset form to original values
+                editorTitleEl.value = currentPageData.title || '';
+                editorContentEl.value = currentPageData.content || '';
+                editorLanguageEl.value = currentPageData.language || 'en';
+                editorStatusEl.value = currentPageData.status || 'draft';
+                
+                // Also reset TinyMCE editor if initialized
+                if (tinyMceEditor) {
+                    tinyMceEditor.setContent(currentPageData.content || '');
+                }
+                
+                successMessageEl.style.display = 'none';
+                errorAreaEl.style.display = 'none';
+                
+                console.log('Edit cancelled');
+            }
+        }
+        
+        // Clear editor (go back to no page selected)
+        function clearEditor() {
+            currentPageId = null;
+            currentPageData = null;
+            
+            editorFormEl.style.display = 'none';
+            editorActionsEl.style.display = 'none';
+            noPageSelectedEl.style.display = 'block';
+            errorAreaEl.style.display = 'none';
+            successMessageEl.style.display = 'none';
+            
+            pageTitleDisplayEl.textContent = 'No page selected';
+            pageIdDisplayEl.textContent = '';
+            pageLanguageDisplayEl.textContent = '';
+            pageStatusDisplayEl.textContent = '';
+            
+            // Clear URL parameter
+            const url = new URL(window.location);
+            url.searchParams.delete('pageId');
+            window.history.replaceState({}, '', url);
+            
+            // Clear active items in tree
+            document.querySelectorAll('.page-item, .tree-category-header').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            console.log('Editor cleared');
+        }
+        
+        // Helper functions
+        function showLoading() {
+            loadingContentEl.style.display = 'block';
+            editorFormEl.style.display = 'none';
+            errorAreaEl.style.display = 'none';
+            successMessageEl.style.display = 'none';
+        }
+        
+        function hideLoading() {
+            loadingContentEl.style.display = 'none';
+        }
+        
+        function showError(message) {
+            errorAreaEl.textContent = message;
+            errorAreaEl.style.display = 'block';
+            successMessageEl.style.display = 'none';
+            hideLoading();
+        }
+        
+
+        
+        // Insert component at cursor position
+        function insertComponent(componentType) {
+            if (!tinyMceEditor) {
+                console.error('TinyMCE editor not initialized');
+                return false;
+            }
+            
+            let componentHtml = '';
+            
+            switch(componentType) {
+                case 'button':
+                    componentHtml = '<button type="button" class="btn btn-primary webbot-component">Button</button>';
+                    break;
+                case 'button-success':
+                    componentHtml = '<button type="button" class="btn btn-success webbot-component">Success</button>';
+                    break;
+                case 'button-info':
+                    componentHtml = '<button type="button" class="btn btn-info webbot-component">Info</button>';
+                    break;
+                case 'button-warning':
+                    componentHtml = '<button type="button" class="btn btn-warning webbot-component">Warning</button>';
+                    break;
+                case 'button-danger':
+                    componentHtml = '<button type="button" class="btn btn-danger webbot-component">Danger</button>';
+                    break;
+                case 'table':
+                    componentHtml = '<table class="table table-striped webbot-component">\n' +
+                                    '  <thead>\n' +
+                                    '    <tr>\n' +
+                                    '      <th scope="col">#</th>\n' +
+                                    '      <th scope="col">Header 1</th>\n' +
+                                    '      <th scope="col">Header 2</th>\n' +
+                                    '    </tr>\n' +
+                                    '  </thead>\n' +
+                                    '  <tbody>\n' +
+                                    '    <tr>\n' +
+                                    '      <th scope="row">1</th>\n' +
+                                    '      <td>Data 1</td>\n' +
+                                    '      <td>Data 2</td>\n' +
+                                    '    </tr>\n' +
+                                    '  </tbody>\n' +
+                                    '</table>';
+                    break;
+                case 'alert':
+                    componentHtml = '<div class="alert alert-info webbot-component">\n' +
+                                    '  <h3>Information</h3>\n' +
+                                    '  <p>This is an alert box.</p>\n' +
+                                    '</div>';
+                    break;
+                case 'alert-danger':
+                    componentHtml = '<section class="alert alert-danger webbot-component">\n' +
+                                    '  <h3>Danger alert</h3>\n' +
+                                    '  <p>Alert details.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'alert-warning':
+                    componentHtml = '<section class="alert alert-warning webbot-component">\n' +
+                                    '  <h3>Warning alert</h3>\n' +
+                                    '  <p>Alert details.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'alert-success':
+                    componentHtml = '<section class="alert alert-success webbot-component">\n' +
+                                    '  <h3>Success alert</h3>\n' +
+                                    '  <p>Alert details.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'alert-info':
+                    componentHtml = '<section class="alert alert-info webbot-component">\n' +
+                                    '  <h3>Info alert</h3>\n' +
+                                    '  <p>Alert details.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'alert-success-link':
+                    componentHtml = '<section class="alert alert-success webbot-component">\n' +
+                                    '  <h3>(Success Title)</h3>\n' +
+                                    '  <p> Success content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'alert-info-link':
+                    componentHtml = '<section class="alert alert-info webbot-component">\n' +
+                                    '  <h3>(Info Title)</h3>\n' +
+                                    '  <p> Info content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'alert-warning-link':
+                    componentHtml = '<section class="alert alert-warning webbot-component">\n' +
+                                    '  <h3>(Warning Title)</h3>\n' +
+                                    '  <p> Warning content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'alert-danger-link':
+                    componentHtml = '<section class="alert alert-danger webbot-component">\n' +
+                                    '  <h3>(Info Title)</h3>\n' +
+                                    '  <p> Danger content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
+                                    '</section>';
+                    break;
+                case 'breadcrumb':
+                    componentHtml = '<nav class="wb-breadcrumb webbot-component" role="navigation" aria-label="Breadcrumb">\n' +
+                                    '  <h2 class="wb-inv">You are here:</h2>\n' +
+                                    '  <ul class="breadcrumb">\n' +
+                                    '    <li><a href="https://www.canada.ca/en.html">Home</a></li>\n' +
+                                    '    <li><a href="#">Section</a></li>\n' +
+                                    '    <li>Current page</li>\n' +
+                                    '  </ul>\n' +
+                                    '</nav>';
+                    break;
+                case 'sidebar':
+                    componentHtml = '<nav class="wb-sec col-md-3 col-md-pull-9 webbot-component" role="navigation" aria-labelledby="wb-sec-h">\n' +
+                                    '  <h2 id="wb-sec-h">Section Menu</h2>\n' +
+                                    '  <ul class="list-group menu list-unstyled">\n' +
+                                    '    <li><a href="#">Menu Item 1</a></li>\n' +
+                                    '    <li><a href="#">Menu Item 2</a></li>\n' +
+                                    '    <li><a href="#">Menu Item 3</a></li>\n' +
+                                    '  </ul>\n' +
+                                    '</nav>';
+                    break;
+                case 'footer':
+                    componentHtml = '<footer class="pagedetails container webbot-component">\n' +
+                                    '  <h2 class="wb-inv">Page details</h2>\n' +
+                                    '  <div class="row">\n' +
+                                    '    <div class="col-sm-8 col-md-9 col-lg-9">\n' +
+                                    '      <p>Date modified: 2026-04-02</p>\n' +
+                                    '    </div>\n' +
+                                    '  </div>\n' +
+                                    '</footer>';
+                    break;
+                case 'search':
+                    componentHtml = '<form action="https://www.canada.ca/en/sr/srb.html" method="get" role="search" class="form-inline webbot-component">\n' +
+                                    '  <div class="input-group">\n' +
+                                    '    <label for="search" class="wb-inv">Search Canada.ca</label>\n' +
+                                    '    <input id="search" name="q" type="search" size="34" maxlength="170" class="form-control" placeholder="Search Canada.ca">\n' +
+                                    '    <div class="input-group-btn">\n' +
+                                    '      <button type="submit" class="btn btn-primary">\n' +
+                                    '        <span class="glyphicon glyphicon-search"></span>\n' +
+                                    '        <span class="wb-inv">Search</span>\n' +
+                                    '      </button>\n' +
+                                    '    </div>\n' +
+                                    '  </div>\n' +
+                                    '</form>';
+                    break;
+                case 'introduction':
+                    componentHtml = '<div class="webbot-component">\n' +
+                                    '  <h1 property="name" id="wb-cont">Introduction block</h1>\n' +
+                                    '  <p>The introduction block pattern introduces the content of a landing page.</p>\n' +
+                                    '  <p><a class="btn btn-call-to-action" href="#">Super task button</a></p>\n' +
+                                    '</div>';
+                    break;
+                case 'introduction-full-image':
+                    componentHtml = '<div class="bg-center bg-cover webbot-component" data-bgimg-srcset="https://wet-boew.github.io/vocab/wb/utilities#no-image 991w, https://dummyimage.com/1200x726/667eea/764ba2.png 992w">\n' +
+                                    '  <div class="container">\n' +
+                                    '    <div class="row">\n' +
+                                    '      <div class="col-md-7">\n' +
+                                    '        <h1 property="name" id="wb-cont">Introduction block with full-width image</h1>\n' +
+                                    '        <p>The introduction block pattern introduces the content of a landing page.</p>\n' +
+                                    '        <p><a class="btn btn-call-to-action" href="#">Supertask button</a></p>\n' +
+                                    '      </div>\n' +
+                                    '    </div>\n' +
+                                    '  </div>\n' +
+                                    '</div>';
+                    break;
+                case 'introduction-half-image':
+                    componentHtml = '<div class="row webbot-component">\n' +
+                                    '  <div class="col-md-6">\n' +
+                                    '    <h1 property="name" id="wb-cont">Introduction block with half-width image</h1>\n' +
+                                    '    <p>The introduction block pattern introduces the content of a landing page.</p>\n' +
+                                    '    <p><a class="btn btn-call-to-action" href="#">Supertask button</a></p>\n' +
+                                    '  </div>\n' +
+                                    '  <div class="col-md-6 hidden-sm hidden-xs">\n' +
+                                    '    <img src="https://dummyimage.com/520x200/667eea/764ba2.png" alt="" class="img-responsive pull-right mrgn-tp-lg">\n' +
+                                    '  </div>\n' +
+                                    '</div>';
+                    break;
+                case 'most-requested':
+                    componentHtml = '<section class="gc-most-requested webbot-component">\n' +
+                                    '  <div class="container">\n' +
+                                    '    <h2>Most requested</h2>\n' +
+                                    '    <ul>\n' +
+                                    '      <li><a href="#">[Top task hyperlink 1]</a></li>\n' +
+                                    '      <li><a href="#">[Top task hyperlink 2]</a></li>\n' +
+                                    '      <li><a href="#">[Top task hyperlink 3]</a></li>\n' +
+                                    '      <li><a href="#">[Top task hyperlink 4]</a></li>\n' +
+                                    '      <li><a href="#">[Top task hyperlink 5]</a></li>\n' +
+                                    '      <li><a href="#">[Top task hyperlink 6]</a></li>\n' +
+                                    '    </ul>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'feature-link':
+                    componentHtml = '<section class="gc-featured-link webbot-component">\n' +
+                                    '  <div class="container">\n' +
+                                    '    <h2 class="wb-inv">Spotlight on</h2>\n' +
+                                    '    <p><a class="stretched-link" href="#">[Promotion title]</a></p>\n' +
+                                    '    <p>Long description [Optional]</p>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'government-initiatives':
+                    componentHtml = '<section class="gc-features webbot-component">\n' +
+                                    '  <h2>Government initiatives</h2>\n' +
+                                    '  <div class="row wb-eqht-grd">\n' +
+                                    '    <div class="col-sm-6">\n' +
+                                    '      <div class="well well-sm eqht-trgt">\n' +
+                                    '        <img src="https://dummyimage.com/520x200/667eea/764ba2.png" alt="Government initiative image">\n' +
+                                    '        <h3><a class="stretched-link" href="#">[Feature hyperlink text]</a></h3>\n' +
+                                    '        <p>Brief description of the feature being promoted.</p>\n' +
+                                    '      </div>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-sm-6">\n' +
+                                    '      <div class="well well-sm eqht-trgt">\n' +
+                                    '        <img src="https://dummyimage.com/520x200/667eea/764ba2.png" alt="Government initiative image">\n' +
+                                    '        <h3><a class="stretched-link" href="#">[Feature hyperlink text]</a></h3>\n' +
+                                    '        <p>Brief description of the feature being promoted.</p>\n' +
+                                    '      </div>\n' +
+                                    '    </div>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'services-info-3col':
+                    componentHtml = '<section class="gc-srvinfo webbot-component">\n' +
+                                    '  <h2>Services and information</h2>\n' +
+                                    '  <div class="wb-eqht row">\n' +
+                                    '    <div class="col-md-6 col-lg-4">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6 col-lg-4">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6 col-lg-4">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6 col-lg-4">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6 col-lg-4">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6 col-lg-4">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'services-info-2col':
+                    componentHtml = '<section class="gc-srvinfo webbot-component">\n' +
+                                    '  <h2>Services and information</h2>\n' +
+                                    '  <div class="wb-eqht row">\n' +
+                                    '    <div class="col-md-6">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '    <div class="col-md-6">\n' +
+                                    '      <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '      <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '    </div>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'services-info-list':
+                    componentHtml = '<section class="gc-srvinfo webbot-component">\n' +
+                                    '  <h2>Services and information</h2>\n' +
+                                    '  <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '  <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '  <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '  <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '  <h3><a href="#">[Hyperlink text]</a></h3>\n' +
+                                    '  <p>Use action verbs, or simply list keywords to summarize the information or tasks that can be accomplished on the page it links to</p>\n' +
+                                    '</section>';
+                    break;
+                case 'feature-link-dark':
+                    componentHtml = '<section class="gc-featured-link webbot-component" data-bg-color="#005B61">\n' +
+                                    '  <div class="container">\n' +
+                                    '    <h2 class="wb-inv">Spotlight on</h2>\n' +
+                                    '    <p><a class="stretched-link" href="#">[Promotion title]</a></p>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'feature-link-light':
+                    componentHtml = '<section class="gc-featured-link webbot-component" data-bg-color="#99dade">\n' +
+                                    '  <div class="container">\n' +
+                                    '    <h2 class="wb-inv">Spotlight on</h2>\n' +
+                                    '    <p><a class="stretched-link" href="#">[Promotion title]</a></p>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'feature-link-gray':
+                    componentHtml = '<section class="gc-featured-link webbot-component" data-bg-color="#8F8F8F">\n' +
+                                    '  <div class="container">\n' +
+                                    '    <h2 class="wb-inv">Spotlight on</h2>\n' +
+                                    '    <p><a class="stretched-link" href="#">[Promotion title]</a></p>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'follow-us':
+                    componentHtml = '<section class="gc-followus webbot-component">\n' +
+                                    '  <h2>On social media</h2>\n' +
+                                    '  <ul>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#facebook" class="facebook wb-lbx"><span class="wb-inv">Facebook: </span>FacebookPageName</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="x-social"><span class="wb-inv">X: </span>@XAccount</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="youtube"><span class="wb-inv">YouTube: </span>YouTubeName</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="instagram"><span class="wb-inv">Instagram: </span>InstagramName</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="linkedin"><span class="wb-inv">LinkedIn: </span>LinkedInName</a>\n' +
+                                    '    </li>\n' +
+                                    '  </ul>\n' +
+                                    '</section>\n' +
+                                    '<section id="facebook" class="modal-dialog modal-content overlay-def mfp-hide">\n' +
+                                    '  <header class="modal-header">\n' +
+                                    '    <h2 class="modal-title" id="lbx-title">Facebook</h2>\n' +
+                                    '  </header>\n' +
+                                    '  <div class="modal-body">\n' +
+                                    '    <ul class="list-unstyled lst-spcd">\n' +
+                                    '      <li>\n' +
+                                    '        <a href="#" rel="external">[First Facebook account title]</a>\n' +
+                                    '      </li>\n' +
+                                    '      <li>\n' +
+                                    '        <a href="#" rel="external">[Second Facebook account title]</a>\n' +
+                                    '      </li>\n' +
+                                    '    </ul>\n' +
+                                    '  </div>\n' +
+                                    '  <div class="modal-footer">\n' +
+                                    '    <button type="button" class="btn btn-sm btn-primary pull-left popup-modal-dismiss">Close<span class="wb-inv">Close overlay</span></button>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'follow-us-horizontal':
+                    componentHtml = '<section class="gc-followus webbot-component">\n' +
+                                    '  <h2>On social media</h2>\n' +
+                                    '  <ul class="list-inline">\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#facebook" class="facebook wb-lbx"><span class="wb-inv">Facebook: </span>FacebookPageName</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="x-social"><span class="wb-inv">X: </span>@XAccount</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="youtube"><span class="wb-inv">YouTube: </span>YouTubeName</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="instagram"><span class="wb-inv">Instagram: </span>InstagramName</a>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <a href="#" rel="external" class="linkedin"><span class="wb-inv">LinkedIn: </span>LinkedInName</a>\n' +
+                                    '    </li>\n' +
+                                    '  </ul>\n' +
+                                    '</section>\n' +
+                                    '<section id="facebook" class="modal-dialog modal-content overlay-def mfp-hide">\n' +
+                                    '  <header class="modal-header">\n' +
+                                    '    <h2 class="modal-title" id="lbx-title">Facebook</h2>\n' +
+                                    '  </header>\n' +
+                                    '  <div class="modal-body">\n' +
+                                    '    <ul class="list-unstyled lst-spcd">\n' +
+                                    '      <li>\n' +
+                                    '        <a href="#" rel="external">[First Facebook account title]</a>\n' +
+                                    '      </li>\n' +
+                                    '      <li>\n' +
+                                    '        <a href="#" rel="external">[Second Facebook account title]</a>\n' +
+                                    '      </li>\n' +
+                                    '    </ul>\n' +
+                                    '  </div>\n' +
+                                    '  <div class="modal-footer">\n' +
+                                    '    <button type="button" class="btn btn-sm btn-primary pull-left popup-modal-dismiss">Close<span class="wb-inv">Close overlay</span></button>\n' +
+                                    '  </div>\n' +
+                                    '</section>';
+                    break;
+                case 'calendar-events':
+                    componentHtml = '<div id="calendar1"></div>\n\n' +
+                                    '<div class="wb-calevt webbot-component" data-calevt-src="calendar1">\n' +
+                                    '  <ul>\n' +
+                                    '    <li>\n' +
+                                    '      <section>\n' +
+                                    '        <h4><a href="https://www.canada.ca" rel="external">Single-Day Event</a></h4>\n' +
+                                    '        <p><time datetime="2013-03-11">March 11th, 2013</time></p>\n' +
+                                    '        <p>Event Description</p>\n' +
+                                    '      </section>\n' +
+                                    '    </li>\n' +
+                                    '    <li>\n' +
+                                    '      <section>\n' +
+                                    '        <h4><a href="https://www.canada.ca" rel="external">Multi-Day Event</a></h4>\n' +
+                                    '        <p><time datetime="2013-03-12">March 12th, 2013</time> to <time datetime="2013-03-14">March 14th, 2013</time></p>\n' +
+                                    '        <p>Another event description with longer text to show how the calendar component displays multiple events.</p>\n' +
+                                    '      </section>\n' +
+                                    '    </li>\n' +
+                                    '  </ul>\n' +
+                                    '</div>';
+                    break;
+                case 'theme-page-jobs':
+                    componentHtml = '<div id="gridContainer" class="webbot-component">\n' +
+                                    '  <nav id="theme-nav">\n' +
+                                    '    <div class="container">\n' +
+                                    '      <h2 class="wb-inv">Themes menu</h2>\n' +
+                                    '      <a class="wb-sl" href="#wb-cont">Skip to main content</a>\n' +
+                                    '      <button id="menu-btn" class="btn btn-primary"><span class="wb-inv">Toggle </span>Menu<span class="glyphicon glyphicon-chevron-down"></span></button>\n' +
+                                    '      <ul class="list-unstyled">\n' +
+                                    '        <li><a href="theme-en.html">Jobs</a></li>\n' +
+                                    '        <li><a href="#">National security and defence</a></li>\n' +
+                                    '      </ul>\n' +
+                                    '    </div>\n' +
+                                    '  </nav>\n' +
+                                    '  <section>\n' +
+                                    '    <div class="container">\n' +
+                                    '      <h1 id="wb-cont">Jobs</h1>\n' +
+                                    '    </div>\n' +
+                                    '    <section class="gc-most-requested">\n' +
+                                    '      <div class="container">\n' +
+                                    '        <h2>Most requested</h2>\n' +
+                                    '        <ul>\n' +
+                                    '          <li><a href="#">View your records of employment</a></li>\n' +
+                                    '        </ul>\n' +
+                                    '      </div>\n' +
+                                    '    </section>\n' +
+                                    '    <div class="container">\n' +
+                                    '      <section class="gc-srvinfo">\n' +
+                                    '        <h2 class="wb-inv">Services and information</h2>\n' +
+                                    '        <div class="wb-eqht-grd row">\n' +
+                                    '          <div class="col-md-6">\n' +
+                                    '            <h3><a href="#">Find a job</a></h3>\n' +
+                                    '            <p>Search for jobs in Canada, apply or extend a work permit, get a Social Insurance Number (SIN), a criminal record check or security clearance</p>\n' +
+                                    '          </div>\n' +
+                                    '          <div class="col-md-6">\n' +
+                                    '            <h3><a href="#">Funding for jobs and training</a></h3>\n' +
+                                    '            <p>Find funding programs, grants and contributions that help support jobs, training, and social development</p>\n' +
+                                    '          </div>\n' +
+                                    '        </div>\n' +
+                                    '      </section>\n' +
+                                    '    </div>\n' +
+                                    '  </section>\n' +
+                                    '</div>';
+                    break;
+                default:
+                    console.error('Unknown component type:', componentType);
+                    return false;
+            }
+            
+            // Insert component at cursor position
+            try {
+                tinyMceEditor.insertContent(componentHtml);
+                console.log(`Inserted ${componentType} component at cursor position`);
+                return true;
+            } catch (error) {
+                console.error('Error inserting component:', error);
+                return false;
+            }
+        }
+
+        // Delete component at cursor position
+        function deleteComponent() {
+            if (!tinyMceEditor) {
+                console.error('TinyMCE editor not initialized');
+                return false;
+            }
+            
+            // Get the current selection
+            const selection = tinyMceEditor.selection;
+            const node = selection.getNode();
+            
+            // Find the nearest webbot-component element
+            let componentElement = node;
+            while (componentElement && componentElement !== document.body) {
+                if (componentElement.classList && componentElement.classList.contains('webbot-component')) {
+                    break;
+                }
+                componentElement = componentElement.parentElement;
+            }
+            
+            if (!componentElement || componentElement === document.body) {
+                // No webbot-component found, try to find by other component-specific classes
+                // This is a fallback for components inserted before we added webbot-component class
+                const fallbackClasses = ['btn-primary', 'btn-success', 'btn-info', 'btn-warning', 'btn-danger', 'table-striped', 'alert-info', 'alert-danger', 'alert-warning', 'alert-success', 'wb-breadcrumb', 'wb-sec', 'pagedetails', 'form-inline', 'gc-most-requested', 'gc-featured-link', 'gc-features', 'gc-srvinfo'];
+                componentElement = node;
+                while (componentElement && componentElement !== document.body) {
+                    if (componentElement.classList) {
+                        for (const cls of fallbackClasses) {
+                            if (componentElement.classList.contains(cls)) {
+                                break;
+                            }
+                        }
+                    }
+                    if (componentElement.classList && Array.from(componentElement.classList).some(c => fallbackClasses.includes(c))) {
+                        break;
+                    }
+                    componentElement = componentElement.parentElement;
+                }
+            }
+            
+            if (componentElement && componentElement !== document.body) {
+                // Remove the component element
+                componentElement.remove();
+                console.log('Deleted component:', componentElement);
+                return true;
+            } else {
+                console.warn('No component found at cursor position');
+                // Try to show a user-friendly message
+                tinyMceEditor.notificationManager.open({
+                    text: 'No WebBot component found at cursor position. Place your cursor inside a component (button, table, alert, etc.) and try again.',
+                    type: 'warning',
+                    timeout: 3000
+                });
+                return false;
+            }
+        }
+        
+        // ========== AI ASSISTANT FUNCTIONS ==========
+        
+        // Toggle AI assistant panel visibility
+        function toggleAIAssistant() {
+            const panel = document.getElementById('ai-assistant-panel');
+            if (panel) {
+                panel.classList.toggle('hidden');
+                if (!panel.classList.contains('hidden')) {
+                    // Focus on input when panel opens
+                    setTimeout(() => {
+                        const input = document.getElementById('ai-chat-input');
+                        if (input) input.focus();
+                    }, 300);
+                }
+            }
+        }
+        
+        // Add message to chat
+        function addAIMessage(text, sender) {
+            const chatMessages = document.getElementById('ai-chat-messages');
+            if (!chatMessages) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `ai-message ${sender}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Show typing indicator
+        function showAITypingIndicator() {
+            const chatMessages = document.getElementById('ai-chat-messages');
+            if (!chatMessages) return;
+            
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'ai-typing-indicator';
+            typingDiv.id = 'ai-typing-indicator';
+            typingDiv.innerHTML = `
+                <div class="ai-typing-dot"></div>
+                <div class="ai-typing-dot"></div>
+                <div class="ai-typing-dot"></div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return typingDiv;
+        }
+        
+        // Hide typing indicator
+        function hideAITypingIndicator() {
+            const typingIndicator = document.getElementById('ai-typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+        
+        // Process AI message (simple rule-based system)
+        function processAIMessage(message) {
+            const lowerMsg = message.toLowerCase().trim();
+            
+            // Show typing indicator
+            showAITypingIndicator();
+            
+            // Simulate AI processing delay
+            setTimeout(() => {
+                hideAITypingIndicator();
+                
+                let response = '';
+                let componentType = null;
+                
+                // Simple keyword matching
+                // Check for help requests first - if message contains "help" or "帮助", only show help
+                if (lowerMsg.includes('help') || lowerMsg.includes('帮助')) {
+                    // Handle help requests - only show help, don't execute any commands
+                    
+                    // Simple help system
+                    if (lowerMsg === 'help' || lowerMsg === '帮助') {
+                        // General help
+                        response = "I can help you insert or delete components in your page. Just tell me what you want to do:\n• **Buttons**: 'button' (primary), 'button success', 'button info', 'button warning', 'button danger'\n• **Alerts**: 'alert', 'alert danger', 'alert warning', 'alert success', 'alert info' (with or without 'link')\n• **Introduction**: 'introduction', 'introduction full image', 'introduction half image'\n• **Services & Info**: 'services and information' (3 columns, 2 columns, or list)\n• **Feature Links**: 'feature link' (basic, dark, light, or gray background)\n• **Government**: 'government initiatives'\n• **Most Requested**: 'most requested links'\n• **Navigation**: 'breadcrumb', 'sidebar', 'footer', 'search'\n• **Tables**: 'table'\n• **Delete**: 'delete' or 'remove'\n\nType 'help [category]' for more details, e.g. 'help alert', 'help button'.";
+                    } else if (lowerMsg.startsWith('help ') || lowerMsg.startsWith('帮助 ')) {
+                        // Categorized help
+                        let topic = lowerMsg;
+                        if (topic.startsWith('help ')) {
+                            topic = topic.substring(5);
+                        } else if (topic.startsWith('帮助 ')) {
+                            topic = topic.substring(3);
+                        }
+                        topic = topic.trim();
+                        
+                        // Simple category mapping
+                        const helpMap = {
+                            'button': "**Button Components**\n• 'button' - Insert a primary button (blue)\n• 'button success' - Insert a success button (green)\n• 'button info' - Insert an info button (blue)\n• 'button warning' - Insert a warning button (yellow)\n• 'button danger' - Insert a danger button (red)\n\nExamples: 'insert button', 'button success', 'add danger button'",
+                            
+                            'alert': "**Alert Components**\n• 'alert' - Insert an info alert\n• 'alert danger' - Insert a danger alert (red)\n• 'alert warning' - Insert a warning alert (yellow)\n• 'alert success' - Insert a success alert (green)\n• 'alert info' - Insert an info alert (blue)\n• 'alert danger link' - Insert danger alert with link\n• 'alert warning link' - Insert warning alert with link\n• 'alert success link' - Insert success alert with link\n• 'alert info link' - Insert info alert with link\n\nExamples: 'alert danger', 'warning alert with link', 'add success alert'",
+                            
+                            'introduction': "**Introduction Blocks**\n• 'introduction' - Insert basic introduction block\n• 'introduction full image' - Insert introduction with full-width background image\n• 'introduction half image' - Insert introduction with half-width image\n\nExamples: 'introduction', 'add introduction with full image', 'introduction half width'",
+                            
+                            'services': "**Services and Information Sections**\n• 'services and information' - Insert 3-column services section\n• 'services and information 2 columns' - Insert 2-column services section\n• 'services and information list' - Insert simple list services section\n\nExamples: 'services and information', 'services info 2 columns', 'services list'",
+                            
+                            'feature': "**Feature Link Components**\n• 'feature link' - Insert feature link with description\n• 'feature link dark' - Insert feature link with dark background\n• 'feature link light' - Insert feature link with light background\n• 'feature link gray' - Insert feature link with gray background\n\nExamples: 'feature link', 'add dark feature link', 'feature link with light background'",
+                            
+                            'government': "**Government Initiatives**\n• 'government initiatives' - Insert government initiatives section\n\nExamples: 'government initiatives', 'add government projects'",
+                            
+                            'most': "**Most Requested Links**\n• 'most requested links' - Insert most requested links section\n\nExamples: 'most requested links', 'top tasks', 'popular links'",
+                            
+                            'navigation': "**Navigation Components**\n• 'breadcrumb' - Insert breadcrumb navigation\n• 'sidebar' - Insert sidebar navigation\n• 'footer' - Insert footer section\n• 'search' - Insert search box\n\nExamples: 'add breadcrumb', 'insert sidebar', 'search box'",
+                            
+                            'table': "**Table Component**\n• 'table' - Insert a striped table\n\nExamples: 'insert table', 'add table'",
+                            
+                            'follow': "**Social Media Follow Us**\n• 'social media' - Insert social media follow us section with Facebook, X (Twitter), YouTube, Instagram, and LinkedIn links\n• 'follow us' - Insert vertical social media links section\n• 'social media horizontal' or 'follow us horizontal' - Insert horizontal (inline) social media links\n\nExamples: 'social media', 'follow us', 'social media horizontal', 'follow us horizontal', 'insert social media links'",
+                            
+                            'calendar': "**Calendar of Events**\n• 'calendar' or 'events' - Insert a calendar of events component with sample events\n• 'event calendar' - Insert interactive calendar component\n\nExamples: 'calendar', 'events', 'insert event calendar'",
+                            
+                            'theme': "**Theme Pages**\n• 'theme page' or 'theme template' - Insert a complete Jobs theme page with navigation, most requested links, and services sections\n• 'jobs theme' or 'jobs page' - Insert a structured Jobs page template\n\nExamples: 'theme page', 'theme template', 'jobs theme', 'insert jobs page'",
+                            
+                            'delete': "**Delete Component**\n• 'delete' - Delete component at cursor position\n• 'remove' - Remove component at cursor position\n\nExamples: 'delete', 'remove this button', 'delete component'"
+                        };
+                        
+                        // Check if topic is in helpMap
+                        if (helpMap[topic]) {
+                            response = helpMap[topic];
+                        } else {
+                            // Try to find matching category
+                            let found = false;
+                            for (const [category, helpText] of Object.entries(helpMap)) {
+                                if (topic.includes(category) || category.includes(topic)) {
+                                    response = helpText;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            
+                            // Also check Chinese mappings
+                            const chineseMap = {
+                                '按钮': 'button',
+                                '警告': 'alert',
+                                '介绍': 'introduction',
+                                '简介': 'introduction',
+                                '服务': 'services',
+                                '特色链接': 'feature',
+                                '专题链接': 'feature',
+                                '政府': 'government',
+                                '最常请求': 'most',
+                                '导航': 'navigation',
+                                '表格': 'table',
+                                '社交媒体': 'follow',
+                                '关注我们': 'follow',
+                                '日历': 'calendar',
+                                '活动': 'calendar',
+                                '主题页面': 'theme',
+                                '工作主题': 'theme',
+                                '工作页面': 'theme',
+                                '删除': 'delete'
+                            };
+                            
+                            if (!found && chineseMap[topic]) {
+                                response = helpMap[chineseMap[topic]];
+                                found = true;
+                            }
+                            
+                            if (!found) {
+                                response = "I can help you with these categories: button, alert, introduction, services, feature, government, most, navigation, table, follow, calendar, theme, delete.\n\nType 'help [category]' for details, e.g. 'help alert' or 'help button'.";
+                            }
+                        }
+                    } else {
+                        // Message contains "help" or "帮助" but not in standard format
+                        response = "I can help you insert or delete components in your page. Type 'help' to see all options or 'help [category]' for specific help, e.g. 'help alert', 'help button', or 'help follow'.";
+                    }
+                    
+                    // Ensure componentType remains null so no component is inserted
+                    componentType = null;
+                // Help requests are already handled above
+                // This else if block is now redundant
+                } else if ((lowerMsg.includes('button') || lowerMsg.includes('btn')) && !lowerMsg.includes('help') && !lowerMsg.includes('帮助')) {
+                    // Handle different button variants
+                    if (lowerMsg.includes('success')) {
+                        response = "Inserting a success button...";
+                        componentType = 'button-success';
+                    } else if (lowerMsg.includes('info')) {
+                        response = "Inserting an info button...";
+                        componentType = 'button-info';
+                    } else if (lowerMsg.includes('warning')) {
+                        response = "Inserting a warning button...";
+                        componentType = 'button-warning';
+                    } else if (lowerMsg.includes('danger')) {
+                        response = "Inserting a danger button...";
+                        componentType = 'button-danger';
+                    } else {
+                        response = "Inserting a button component...";
+                        componentType = 'button';
+                    }
+                } else if (lowerMsg.includes('table')) {
+                    response = "Inserting a table component...";
+                    componentType = 'table';
+                } else if (lowerMsg.includes('alert') && !lowerMsg.includes('help') && !lowerMsg.includes('帮助')) {
+                    // Handle different alert variants
+                    if (lowerMsg.includes('danger')) {
+                        if (lowerMsg.includes('link')) {
+                            response = "Inserting danger alert with link...";
+                            componentType = 'alert-danger-link';
+                        } else {
+                            response = "Inserting danger alert...";
+                            componentType = 'alert-danger';
+                        }
+                    } else if (lowerMsg.includes('warning')) {
+                        if (lowerMsg.includes('link')) {
+                            response = "Inserting warning alert with link...";
+                            componentType = 'alert-warning-link';
+                        } else {
+                            response = "Inserting warning alert...";
+                            componentType = 'alert-warning';
+                        }
+                    } else if (lowerMsg.includes('success')) {
+                        if (lowerMsg.includes('link')) {
+                            response = "Inserting success alert with link...";
+                            componentType = 'alert-success-link';
+                        } else {
+                            response = "Inserting success alert...";
+                            componentType = 'alert-success';
+                        }
+                    } else if (lowerMsg.includes('info')) {
+                        if (lowerMsg.includes('link')) {
+                            response = "Inserting info alert with link...";
+                            componentType = 'alert-info-link';
+                        } else {
+                            response = "Inserting info alert...";
+                            componentType = 'alert-info';
+                        }
+                    } else {
+                        // Default alert (info without link)
+                        response = "Inserting an alert box...";
+                        componentType = 'alert';
+                    }
+                } else if (lowerMsg.includes('warning') && !lowerMsg.includes('alert')) {
+                    // Handle standalone "warning" (without "alert" keyword)
+                    response = "Inserting warning alert...";
+                    componentType = 'alert-warning';
+                } else if (lowerMsg.includes('breadcrumb')) {
+                    response = "Inserting breadcrumb navigation...";
+                    componentType = 'breadcrumb';
+                } else if (lowerMsg.includes('sidebar') || lowerMsg.includes('menu')) {
+                    response = "Inserting sidebar navigation...";
+                    componentType = 'sidebar';
+                } else if (lowerMsg.includes('footer')) {
+                    response = "Inserting footer section...";
+                    componentType = 'footer';
+                } else if (lowerMsg.includes('search') || lowerMsg.includes('find')) {
+                    response = "Inserting search box...";
+                    componentType = 'search';
+                } else if (lowerMsg.includes('introduction') || lowerMsg.includes('intro') || lowerMsg.includes('介绍') || lowerMsg.includes('简介')) {
+                    if (lowerMsg.includes('full') || lowerMsg.includes('full-width') || lowerMsg.includes('full image') || lowerMsg.includes('全幅')) {
+                        response = "Inserting introduction block with full-width image...";
+                        componentType = 'introduction-full-image';
+                    } else if (lowerMsg.includes('half') || lowerMsg.includes('half-width') || lowerMsg.includes('half image') || lowerMsg.includes('半宽')) {
+                        response = "Inserting introduction block with half-width image...";
+                        componentType = 'introduction-half-image';
+                    } else {
+                        response = "Inserting introduction block...";
+                        componentType = 'introduction';
+                    }
+                } else if (lowerMsg.includes('most requested') || lowerMsg.includes('most-requested') || lowerMsg.includes('top tasks') || lowerMsg.includes('热门链接') || lowerMsg.includes('常用链接')) {
+                    response = "Inserting most requested links section...";
+                    componentType = 'most-requested';
+                } else if (lowerMsg.includes('feature link') || lowerMsg.includes('featured link') || lowerMsg.includes('spotlight') || lowerMsg.includes('特色链接') || lowerMsg.includes('专题链接')) {
+                    response = "Inserting feature link with description...";
+                    componentType = 'feature-link';
+                } else if (lowerMsg.includes('government initiatives') || lowerMsg.includes('government features') || lowerMsg.includes('gc-features') || lowerMsg.includes('政府倡议') || lowerMsg.includes('政府项目')) {
+                    response = "Inserting government initiatives section...";
+                    componentType = 'government-initiatives';
+                } else if (lowerMsg.includes('services and information') || lowerMsg.includes('services info') || lowerMsg.includes('gc-srvinfo') || lowerMsg.includes('服务与信息') || lowerMsg.includes('服务信息')) {
+                    if (lowerMsg.includes('3 columns') || lowerMsg.includes('3列') || lowerMsg.includes('3 column')) {
+                        response = "Inserting Services and Information section (3 columns)...";
+                        componentType = 'services-info-3col';
+                    } else if (lowerMsg.includes('2 columns') || lowerMsg.includes('2列') || lowerMsg.includes('2 column')) {
+                        response = "Inserting Services and Information section (2 columns)...";
+                        componentType = 'services-info-2col';
+                    } else if (lowerMsg.includes('list') || lowerMsg.includes('列表') || lowerMsg.includes('simple')) {
+                        response = "Inserting Services and Information section (list)...";
+                        componentType = 'services-info-list';
+                    } else {
+                        response = "Inserting Services and Information section (3 columns)...";
+                        componentType = 'services-info-3col';
+                    }
+                } else if (lowerMsg.includes('feature link dark') || lowerMsg.includes('dark feature link') || lowerMsg.includes('feature link dark background') || lowerMsg.includes('深色特色链接')) {
+                    response = "Inserting feature link with dark background...";
+                    componentType = 'feature-link-dark';
+                } else if (lowerMsg.includes('feature link light') || lowerMsg.includes('light feature link') || lowerMsg.includes('feature link light background') || lowerMsg.includes('浅色特色链接')) {
+                    response = "Inserting feature link with light background...";
+                    componentType = 'feature-link-light';
+                } else if (lowerMsg.includes('feature link gray') || lowerMsg.includes('gray feature link') || lowerMsg.includes('feature link gray background') || lowerMsg.includes('灰色特色链接') || lowerMsg.includes('feature link grey')) {
+                    response = "Inserting feature link with gray background...";
+                    componentType = 'feature-link-gray';
+                } else if (lowerMsg.includes('social media') || lowerMsg.includes('follow us') || lowerMsg.includes('社交媒体') || lowerMsg.includes('关注我们') || lowerMsg.includes('followus') || lowerMsg.includes('social')) {
+                    // Check for horizontal version
+                    if (lowerMsg.includes('horizontal') || lowerMsg.includes('水平')) {
+                        response = "Inserting horizontal social media follow us section...";
+                        componentType = 'follow-us-horizontal';
+                    } else {
+                        response = "Inserting social media follow us section...";
+                        componentType = 'follow-us';
+                    }
+                } else if (lowerMsg.includes('calendar') || lowerMsg.includes('events') || lowerMsg.includes('日历') || lowerMsg.includes('活动') || lowerMsg.includes('event calendar')) {
+                    response = "Inserting calendar of events component...";
+                    componentType = 'calendar-events';
+                } else if (lowerMsg.includes('theme page') || lowerMsg.includes('theme template') || lowerMsg.includes('jobs theme') || lowerMsg.includes('jobs page') || lowerMsg.includes('主题页面') || lowerMsg.includes('工作主题') || lowerMsg.includes('工作页面')) {
+                    response = "Inserting Jobs theme page component...";
+                    componentType = 'theme-page-jobs';
+                } else if (lowerMsg.includes('delete') || lowerMsg.includes('remove') || lowerMsg.includes('删除') || lowerMsg.includes('移除')) {
+                    response = "Deleting component at cursor position...";
+                    // Set a flag to indicate delete action
+                    componentType = 'delete';
+                } else if (false && (lowerMsg.startsWith('help ') || lowerMsg.startsWith('帮助 ') || (lowerMsg.includes('help') && lowerMsg !== 'help') || (lowerMsg.includes('帮助') && lowerMsg !== '帮助'))) {
+                    // Handle categorized help requests (English or Chinese)
+                    let helpTopic = lowerMsg;
+                    // Remove English "help " prefix
+                    if (helpTopic.startsWith('help ')) {
+                        helpTopic = helpTopic.substring(5);
+                    }
+                    // Remove Chinese "帮助 " prefix
+                    if (helpTopic.startsWith('帮助 ')) {
+                        helpTopic = helpTopic.substring(3);
+                    }
+                    helpTopic = helpTopic.trim();
+                    
+                    // Define help messages for different categories
+                    const helpMessages = {
+                        'button': "**Button Components**\n• 'button' - Insert a primary button (blue)\n• 'button success' - Insert a success button (green)\n• 'button info' - Insert an info button (blue)\n• 'button warning' - Insert a warning button (yellow)\n• 'button danger' - Insert a danger button (red)\n\nExamples: 'insert button', 'button success', 'add danger button'",
+                        
+                        'alert': "**Alert Components**\n• 'alert' - Insert an info alert\n• 'alert danger' - Insert a danger alert (red)\n• 'alert warning' - Insert a warning alert (yellow)\n• 'alert success' - Insert a success alert (green)\n• 'alert info' - Insert an info alert (blue)\n• 'alert danger link' - Insert danger alert with link\n• 'alert warning link' - Insert warning alert with link\n• 'alert success link' - Insert success alert with link\n• 'alert info link' - Insert info alert with link\n\nExamples: 'alert danger', 'warning alert with link', 'add success alert'",
+                        
+                        'introduction': "**Introduction Blocks**\n• 'introduction' - Insert basic introduction block\n• 'introduction full image' - Insert introduction with full-width background image\n• 'introduction half image' - Insert introduction with half-width image\n\nExamples: 'introduction', 'add introduction with full image', 'introduction half width'",
+                        
+                        'services': "**Services and Information Sections**\n• 'services and information' - Insert 3-column services section\n• 'services and information 2 columns' - Insert 2-column services section\n• 'services and information list' - Insert simple list services section\n\nExamples: 'services and information', 'services info 2 columns', 'services list'",
+                        
+                        'feature': "**Feature Link Components**\n• 'feature link' - Insert feature link with description\n• 'feature link dark' - Insert feature link with dark background\n• 'feature link light' - Insert feature link with light background\n• 'feature link gray' - Insert feature link with gray background\n\nExamples: 'feature link', 'add dark feature link', 'feature link with light background'",
+                        
+                        'government': "**Government Initiatives**\n• 'government initiatives' - Insert government initiatives section\n\nExamples: 'government initiatives', 'add government projects'",
+                        
+                        'most': "**Most Requested Links**\n• 'most requested links' - Insert most requested links section\n\nExamples: 'most requested links', 'top tasks', 'popular links'",
+                        
+                        'navigation': "**Navigation Components**\n• 'breadcrumb' - Insert breadcrumb navigation\n• 'sidebar' - Insert sidebar navigation\n• 'footer' - Insert footer section\n• 'search' - Insert search box\n\nExamples: 'add breadcrumb', 'insert sidebar', 'search box'",
+                        
+                        'table': "**Table Component**\n• 'table' - Insert a striped table\n\nExamples: 'insert table', 'add table'",
+                        
+                        'delete': "**Delete Component**\n• 'delete' - Delete component at cursor position\n• 'remove' - Remove component at cursor position\n\nExamples: 'delete', 'remove this button', 'delete component'",
+                        
+                        'all': "I can help you insert or delete components in your page. Just tell me what you want to do:\n• **Buttons**: 'button' (primary), 'button success', 'button info', 'button warning', 'button danger'\n• **Alerts**: 'alert', 'alert danger', 'alert warning', 'alert success', 'alert info' (with or without 'link')\n• **Introduction**: 'introduction', 'introduction full image', 'introduction half image'\n• **Services & Info**: 'services and information' (3 columns, 2 columns, or list)\n• **Feature Links**: 'feature link' (basic, dark, light, or gray background)\n• **Government**: 'government initiatives'\n• **Most Requested**: 'most requested links'\n• **Navigation**: 'breadcrumb', 'sidebar', 'footer', 'search'\n• **Tables**: 'table'\n• **Calendar**: 'calendar' or 'events'\n• **Theme Pages**: 'theme page' or 'jobs theme'\n• **Delete**: 'delete' or 'remove'\n\nType 'help [category]' for more details, e.g. 'help alert', 'help button'."
+                    };
+                    
+                    // Map aliases to main categories
+                    const categoryAliases = {
+                        // English aliases
+                        'buttons': 'button',
+                        'btn': 'button',
+                        'alerts': 'alert',
+                        'warning': 'alert',
+                        'danger': 'alert',
+                        'success': 'alert',
+                        'info': 'alert',
+                        'introductions': 'introduction',
+                        'intro': 'introduction',
+                        'services and information': 'services',
+                        'services info': 'services',
+                        'srvinfo': 'services',
+                        'feature links': 'feature',
+                        'featured': 'feature',
+                        'spotlight': 'feature',
+                        'government initiatives': 'government',
+                        'gov': 'government',
+                        'most requested': 'most',
+                        'most-requested': 'most',
+                        'top': 'most',
+                        'popular': 'most',
+                        'navigation': 'navigation',
+                        'nav': 'navigation',
+                        'breadcrumbs': 'navigation',
+                        'sidebar': 'navigation',
+                        'footer': 'navigation',
+                        'search': 'navigation',
+                        'tables': 'table',
+                        'delete': 'delete',
+                        'remove': 'delete',
+                        'all': 'all',
+                        'general': 'all',
+                        '': 'all',
+                        // Chinese aliases
+                        '按钮': 'button',
+                        '按钮组': 'button',
+                        '警告': 'alert',
+                        '危险': 'alert',
+                        '成功': 'alert',
+                        '信息': 'alert',
+                        '介绍': 'introduction',
+                        '简介': 'introduction',
+                        '服务': 'services',
+                        '服务信息': 'services',
+                        '服务与信息': 'services',
+                        '特色链接': 'feature',
+                        '专题链接': 'feature',
+                        '政府': 'government',
+                        '政府倡议': 'government',
+                        '政府项目': 'government',
+                        '最常请求': 'most',
+                        '热门链接': 'most',
+                        '常用链接': 'most',
+                        '导航': 'navigation',
+                        '面包屑': 'navigation',
+                        '侧边栏': 'navigation',
+                        '页脚': 'navigation',
+                        '搜索': 'navigation',
+                        '表格': 'table',
+                        '删除': 'delete',
+                        '移除': 'delete',
+                        '帮助': 'all',
+                        '帮助全部': 'all'
+                    };
+                    
+                    // Determine which category to show
+                    let category = 'all';
+                    if (helpTopic) {
+                        // Check exact match first
+                        if (helpMessages[helpTopic]) {
+                            category = helpTopic;
+                        } else if (categoryAliases[helpTopic]) {
+                            category = categoryAliases[helpTopic];
+                        } else {
+                            // Fuzzy match: find category that contains the topic
+                            for (const [cat, aliases] of Object.entries(categoryAliases)) {
+                                if (helpTopic.includes(cat) || cat.includes(helpTopic)) {
+                                    category = aliases;
+                                    break;
+                                }
+                            }
+                            // Also check category names
+                            for (const cat of Object.keys(helpMessages)) {
+                                if (helpTopic.includes(cat) || cat.includes(helpTopic)) {
+                                    category = cat;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    response = helpMessages[category] || helpMessages['all'];
+                    
+                } else if (false && (lowerMsg === 'help' || lowerMsg === '帮助' || lowerMsg.includes('what can you do'))) {
+                    // General help without category
+                    response = "I can help you insert or delete components in your page. Just tell me what you want to do:\n• **Buttons**: 'button' (primary), 'button success', 'button info', 'button warning', 'button danger'\n• **Alerts**: 'alert', 'alert danger', 'alert warning', 'alert success', 'alert info' (with or without 'link')\n• **Introduction**: 'introduction', 'introduction full image', 'introduction half image'\n• **Services & Info**: 'services and information' (3 columns, 2 columns, or list)\n• **Feature Links**: 'feature link' (basic, dark, light, or gray background)\n• **Government**: 'government initiatives'\n• **Most Requested**: 'most requested links'\n• **Navigation**: 'breadcrumb', 'sidebar', 'footer', 'search'\n• **Tables**: 'table'\n• **Delete**: 'delete' or 'remove'\n\nType 'help [category]' for more details, e.g. 'help alert', 'help button'.";
+                } else if (lowerMsg.includes('hello') || lowerMsg.includes('hi') || lowerMsg.includes('hey')) {
+                    response = "Hello! I'm your WebBot AI assistant. I can help you insert components into your Canada.ca page. What would you like to add? Try 'insert introduction block', 'most requested links', 'feature link', 'government initiatives', 'social media', 'calendar of events', 'theme page' or 'help' to see all options.";
+                } else {
+                    response = "I'm not sure what you mean. I can help you insert components like buttons (primary, success, info, warning, danger), tables, alerts (danger, warning, success, info, with link), breadcrumbs, sidebars, footers, search boxes, introduction blocks, most requested links, feature links, government initiatives, social media follow us, calendar of events, theme pages, or Services and Information sections (3 columns, 2 columns, list). Try saying 'insert a button', 'button success', 'alert danger', 'social media', 'calendar', 'theme page', or type 'help' to see what I can do.";
+                }
+                
+                // Add AI response
+                addAIMessage(response, 'assistant');
+                
+                // Insert or delete component if identified
+                if (componentType) {
+                    setTimeout(() => {
+                        if (componentType === 'delete') {
+                            const deleted = deleteComponent();
+                            if (deleted) {
+                                addAIMessage(`✅ Successfully deleted component at cursor position.`, 'system');
+                            } else {
+                                addAIMessage(`❌ No WebBot component found at cursor position. Place your cursor inside a component (button, table, alert, etc.) and try again.`, 'system');
+                            }
+                        } else {
+                            const inserted = insertComponent(componentType);
+                            if (inserted) {
+                                addAIMessage(`✅ Successfully inserted ${componentType} component at cursor position.`, 'system');
+                            } else {
+                                addAIMessage(`❌ Failed to insert ${componentType}. Make sure the editor is initialized.`, 'system');
+                            }
+                        }
+                    }, 500);
+                }
+            }, 1000 + Math.random() * 1000); // Random delay 1-2 seconds
+        }
+        
+        // Initialize AI assistant event listeners
+        function initializeAIAssistant() {
+            const panelCloseBtn = document.getElementById('ai-panel-close');
+            const chatSendBtn = document.getElementById('ai-chat-send');
+            const chatInput = document.getElementById('ai-chat-input');
+            
+            if (panelCloseBtn) {
+                panelCloseBtn.addEventListener('click', function() {
+                    const panel = document.getElementById('ai-assistant-panel');
+                    if (panel) {
+                        panel.classList.add('hidden');
+                    }
+                });
+            }
+            
+            if (chatSendBtn && chatInput) {
+                // Send message on button click
+                chatSendBtn.addEventListener('click', function() {
+                    const message = chatInput.value.trim();
+                    if (message) {
+                        addAIMessage(message, 'user');
+                        chatInput.value = '';
+                        processAIMessage(message);
+                    }
+                });
+                
+                // Send message on Enter key
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const message = chatInput.value.trim();
+                        if (message) {
+                            addAIMessage(message, 'user');
+                            chatInput.value = '';
+                            processAIMessage(message);
+                        }
+                    }
+                });
+            }
+            
+            console.log('AI Assistant initialized');
+        }
+        
+        // Initialize AI assistant when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAIAssistant();
+        });
+        
+        // ========== END AI ASSISTANT FUNCTIONS ==========
+        
+        // Initialize WET-BOEW if needed
+        $(document).ready(function() {
+            console.log('jQuery ready, WET-BOEW initialized');
+            
+
+        });
+    </script>
+    
+    <!-- jQuery (required by WET-BOEW) -->
+    <script src="/gcweb/wet-boew/js/wet-boew.min.js"></script>
+</body>
+</html>

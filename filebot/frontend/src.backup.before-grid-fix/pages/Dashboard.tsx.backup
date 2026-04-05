@@ -1,0 +1,236 @@
+import React, { useState, useEffect } from 'react';
+import documentService from '../services/document.service';
+import folderService from '../services/folder.service';
+import appService from '../services/app.service';
+import { Link } from 'react-router-dom';
+
+const Dashboard: React.FC = () => {
+  const [stats, setStats] = useState({
+    totalDocuments: 0,
+    totalFolders: 0,
+    recentDocuments: [],
+    systemStatus: {
+      api: 'unknown',
+      database: 'unknown',
+      storage: 'unknown'
+    }
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch documents count
+      const documents = await documentService.getDocuments();
+      const folders = await folderService.getFolders();
+      
+      // Check system status
+      const health = await appService.healthCheck();
+      
+      setStats({
+        totalDocuments: documents?.length || 0,
+        totalFolders: folders?.length || 0,
+        recentDocuments: documents?.slice(0, 5) || [],
+        systemStatus: {
+          api: health?.status === 'ok' ? 'healthy' : 'unhealthy',
+          database: health?.database === 'connected' ? 'healthy' : 'unhealthy',
+          storage: health?.storage?.available ? 'healthy' : 'unhealthy'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+      setStats(prev => ({
+        ...prev,
+        systemStatus: {
+          api: 'unhealthy',
+          database: 'unhealthy',
+          storage: 'unhealthy'
+        }
+      }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-600">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard</h1>
+      
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <h2 className="text-2xl font-bold text-gray-800">{stats.totalDocuments}</h2>
+              <p className="text-gray-600">Total Documents</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <h2 className="text-2xl font-bold text-gray-800">{stats.totalFolders}</h2>
+              <p className="text-gray-600">Total Folders</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <h2 className="text-2xl font-bold text-gray-800">System Status</h2>
+              <p className="text-gray-600">
+                {Object.values(stats.systemStatus).every(s => s === 'healthy') 
+                  ? 'All systems operational' 
+                  : 'Some issues detected'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* System Status */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">System Status</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`p-4 rounded ${stats.systemStatus.api === 'healthy' ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-3 ${stats.systemStatus.api === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="font-medium">API</span>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              {stats.systemStatus.api === 'healthy' ? 'Connected and responsive' : 'Connection issues'}
+            </p>
+          </div>
+          
+          <div className={`p-4 rounded ${stats.systemStatus.database === 'healthy' ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-3 ${stats.systemStatus.database === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="font-medium">Database</span>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              {stats.systemStatus.database === 'healthy' ? 'Connected and healthy' : 'Connection issues'}
+            </p>
+          </div>
+          
+          <div className={`p-4 rounded ${stats.systemStatus.storage === 'healthy' ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-3 ${stats.systemStatus.storage === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="font-medium">Storage</span>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              {stats.systemStatus.storage === 'healthy' ? 'Available and writable' : 'Storage issues'}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Recent Documents */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-800">Recent Documents</h2>
+          <Link to="/documents" className="text-blue-600 hover:text-blue-800">
+            View All →
+          </Link>
+        </div>
+        
+        {stats.recentDocuments.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Size
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Uploaded
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {stats.recentDocuments.map((doc: any) => (
+                  <tr key={doc.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {doc.name || 'Unnamed Document'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {doc.file_type || 'Unknown'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'N/A'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-gray-600">No documents uploaded yet.</p>
+            <Link to="/upload" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+              Upload your first document
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

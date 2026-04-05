@@ -1,0 +1,55 @@
+# FileBot 后端依赖
+
+## Web框架和API
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+## 数据库和ORM
+sqlalchemy>=2.0.23
+alembic>=1.13.0
+psycopg2-binary>=2.9.9  # PostgreSQL驱动
+pysqlite3>=0.5.2  # SQLite3驱动（Python 3.11+可能需要）
+
+## 数据验证和配置
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+## 认证和安全
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+cryptography>=41.0.0
+
+## 文件处理和文档转换
+Pillow>=10.1.0  # 图像处理
+pypdf2>=3.0.0  # PDF处理
+python-docx>=1.1.0  # Word文档处理
+pytesseract>=0.3.10  # OCR（需要安装Tesseract）
+opencv-python>=4.8.0  # 图像处理（TIFF等）
+reportlab>=4.0.4  # PDF生成
+img2pdf>=0.4.4  # 图像转PDF
+pdf2image>=1.16.3  # PDF转图像
+wand>=0.6.13  # ImageMagick绑定
+
+## 任务队列和异步处理
+celery>=5.3.0
+redis>=5.0.0  # Celery broker
+flower>=2.0.0  # Celery监控
+
+## 日志和监控
+structlog>=23.2.0
+prometheus-client>=0.19.0
+
+## 开发工具
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.25.0
+black>=23.11.0
+isort>=5.12.0
+mypy>=1.7.0
+
+## 其他工具
+python-magic>=0.4.27  # 文件类型检测
+filelock>=3.13.0  # 文件锁定
+watchdog>=3.0.0  # 文件系统事件

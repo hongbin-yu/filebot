@@ -1,0 +1,70 @@
+{
+  "name": "Invoice_Report",
+  "description": "COLD_REPORT配置: Invoice_Report",
+  "report_id": 101,
+  "version": "1.0",
+  "source": "cold_report",
+  "metadata": {
+    "appid": 1,
+    "formid": 1,
+    "indexid": 101,
+    "levelid": 1,
+    "sourceid": 1001,
+    "comments": "发票报表配置",
+    "seperator": ",",
+    "allowdups": 0,
+    "reptable": "INVOICE_DATA",
+    "store_in_db": 1,
+    "index_pages": "Y",
+    "enter": 1,
+    "duration": null,
+    "durationunit": null
+  },
+  "field_groups": [
+    {
+      "name": "field_1",
+      "textfieldsid": 101,
+      "seq": 1,
+      "icolumn": 1,
+      "length": 20,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": true
+      },
+      "validation": {
+        "pattern": "^[A-Z0-9]+$"
+      }
+    }
+  ],
+  "index_fields": [
+    {
+      "name": "INVOICE_NO",
+      "start": 1,
+      "length": 7,
+      "levelid": 1,
+      "description": "Invoice No",
+      "required": true,
+      "metadata": {
+        "cold_index_id": 101,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "key_field_name": null,
+        "date_format": null
+      },
+      "validation": {
+        "pattern": "^\\d{7}$",
+        "use_pattern": true
+      }
+    }
+  ],
+  "statistics": {
+    "total_field_groups": 1,
+    "total_index_fields": 1,
+    "has_fieldinfo_data": true,
+    "has_index_data": true
+  }
+}

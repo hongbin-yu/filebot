@@ -1,0 +1,488 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
+from sqlalchemy.orm import Session, joinedload
+from typing import List, Optional, Dict, Any
+import uuid
+
+from app.db.database import get_db
+from app.core.security import get_current_active_user
+from app.models.user import User
+from app.models.app import App
+from app.models.drawer import Drawer
+from app.models.folder import Folder
+from app.models.document import Document, ConversionStatus as DocConversionStatus
+from app.models.conversion_task import ConversionTask, TaskStatus
+from app.schemas.conversion import (
+    ConversionTaskCreate, ConversionTaskResponse, ConversionTaskUpdate,
+    FileUploadRequest, FileUploadResponse, BatchConversionRequest, BatchConversionResponse
+)
+
+router = APIRouter()
+
+
+# ========== 权限检查辅助函数 ==========
+
+def check_document_access_for_conversion(
+    document_id: uuid.UUID,
+    current_user: User,
+    db: Session
+) -> Document:
+    """检查用户是否有权限访问文档（用于转换操作）
+    
+    复用文档路由中的权限检查逻辑
+    """
+    from app.routers.documents import check_document_access
+    return check_document_access(document_id, current_user, db)
+
+
+# ========== ConversionTask (转换任务) 路由 ==========
+
+@router.get("/tasks", response_model=List[ConversionTaskResponse])
+def get_conversion_tasks(
+    document_id: Optional[uuid.UUID] = Query(None, description="按文档ID筛选"),
+    status_filter: Optional[TaskStatus] = Query(None, description="按任务状态筛选"),
+    skip: int = Query(0, ge=0, description="跳过记录数"),
+    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取转换任务列表
+    
+    用户只能查看自己有权限的文档的转换任务
+    """
+    # 构建基础查询
+    query = db.query(ConversionTask).options(
+        joinedload(ConversionTask.document).joinedload(Document.folder)
+        .joinedload(Folder.drawer).joinedload(Drawer.app)
+    )
+    
+    # 应用权限筛选：只能访问用户有权限的文档的任务
+    if not current_user.is_superuser:
+        # 普通用户：通过文档→文件夹→抽屉→应用链进行权限筛选
+        user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
+        
+        query = query.join(Document).join(Folder).join(Drawer).join(App)
+        query = query.filter(App.id.in_(user_apps_subquery))
+    
+    # 应用筛选条件
+    if document_id:
+        query = query.filter(ConversionTask.document_id == document_id)
+    
+    if status_filter:
+        query = query.filter(ConversionTask.status == status_filter)
+    
+    # 排序和分页
+    query = query.order_by(ConversionTask.created_at.desc())
+    tasks = query.offset(skip).limit(limit).all()
+    
+    return tasks
+
+
+@router.get("/tasks/{task_id}", response_model=ConversionTaskResponse)
+def get_conversion_task(
+    task_id: uuid.UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取转换任务详情"""
+    # 获取任务及其关联的文档
+    task = db.query(ConversionTask).options(
+        joinedload(ConversionTask.document).joinedload(Document.folder)
+        .joinedload(Folder.drawer).joinedload(Drawer.app)
+    ).filter(ConversionTask.id == task_id).first()
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="转换任务不存在"
+        )
+    
+    # 检查文档权限
+    check_document_access_for_conversion(task.document_id, current_user, db)
+    
+    return task
+
+
+@router.post("/tasks", response_model=ConversionTaskResponse)
+def create_conversion_task(
+    task_data: ConversionTaskCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """创建新的转换任务
+    
+    注意：通常转换任务是由系统自动创建的，此接口主要用于手动创建或测试
+    """
+    # 检查文档权限
+    document = check_document_access_for_conversion(task_data.document_id, current_user, db)
+    
+    # 检查文档是否已处于转换中
+    existing_task = db.query(ConversionTask).filter(
+        ConversionTask.document_id == task_data.document_id,
+        ConversionTask.status.in_([TaskStatus.QUEUED, TaskStatus.PROCESSING])
+    ).first()
+    
+    if existing_task:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"文档已有一个{existing_task.status.value}状态的转换任务"
+        )
+    
+    # 创建转换任务
+    task = ConversionTask(
+        document_id=task_data.document_id,
+        source_format=task_data.source_format,
+        target_format=task_data.target_format,
+        status=task_data.status,
+        progress=task_data.progress,
+        current_step=task_data.current_step,
+        error_message=task_data.error_message,
+        error_traceback=task_data.error_traceback,
+        worker_id=task_data.worker_id,
+        retry_count=task_data.retry_count
+    )
+    
+    # 更新文档的转换状态
+    document.conversion_status = DocConversionStatus.PENDING
+    
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    
+    # TODO: 触发异步转换任务
+    
+    return task
+
+
+@router.put("/tasks/{task_id}", response_model=ConversionTaskResponse)
+def update_conversion_task(
+    task_id: uuid.UUID,
+    task_update: ConversionTaskUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """更新转换任务信息
+    
+    主要用于更新任务状态、进度等信息
+    """
+    # 获取任务
+    task = db.query(ConversionTask).options(
+        joinedload(ConversionTask.document)
+    ).filter(ConversionTask.id == task_id).first()
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="转换任务不存在"
+        )
+    
+    # 检查文档权限
+    check_document_access_for_conversion(task.document_id, current_user, db)
+    
+    # 更新字段
+    update_data = task_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(task, field, value)
+    
+    # 如果任务状态变化，更新关联文档的转换状态
+    if task_update.status:
+        if task_update.status == TaskStatus.COMPLETED:
+            task.document.conversion_status = DocConversionStatus.COMPLETED
+        elif task_update.status == TaskStatus.FAILED:
+            task.document.conversion_status = DocConversionStatus.FAILED
+        elif task_update.status == TaskStatus.PROCESSING:
+            task.document.conversion_status = DocConversionStatus.PROCESSING
+    
+    db.commit()
+    db.refresh(task)
+    
+    return task
+
+
+@router.delete("/tasks/{task_id}")
+def delete_conversion_task(
+    task_id: uuid.UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """删除转换任务
+    
+    只能删除已完成、失败或取消的任务
+    """
+    # 获取任务
+    task = db.query(ConversionTask).options(
+        joinedload(ConversionTask.document)
+    ).filter(ConversionTask.id == task_id).first()
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="转换任务不存在"
+        )
+    
+    # 检查文档权限
+    check_document_access_for_conversion(task.document_id, current_user, db)
+    
+    # 只能删除非活跃状态的任务
+    if task.status in [TaskStatus.QUEUED, TaskStatus.PROCESSING]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"无法删除{task.status.value}状态的任务"
+        )
+    
+    db.delete(task)
+    db.commit()
+    
+    return {"message": "转换任务删除成功"}
+
+
+# ========== 转换队列管理 ==========
+
+@router.get("/queue")
+def get_conversion_queue(
+    skip: int = Query(0, ge=0, description="跳过记录数"),
+    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取转换队列（待处理和进行中的任务）"""
+    # 构建查询
+    query = db.query(ConversionTask).options(
+        joinedload(ConversionTask.document).joinedload(Document.folder)
+        .joinedload(Folder.drawer).joinedload(Drawer.app)
+    ).filter(
+        ConversionTask.status.in_([TaskStatus.QUEUED, TaskStatus.PROCESSING])
+    )
+    
+    # 应用权限筛选
+    if not current_user.is_superuser:
+        user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
+        
+        query = query.join(Document).join(Folder).join(Drawer).join(App)
+        query = query.filter(App.id.in_(user_apps_subquery))
+    
+    # 排序：先按状态（进行中优先），再按创建时间
+    from sqlalchemy import case
+    status_order = case(
+        (ConversionTask.status == TaskStatus.PROCESSING, 1),
+        (ConversionTask.status == TaskStatus.QUEUED, 2),
+        else_=3
+    )
+    
+    query = query.order_by(status_order, ConversionTask.created_at.asc())
+    tasks = query.offset(skip).limit(limit).all()
+    
+    # 统计信息
+    queued_count = db.query(ConversionTask).filter(
+        ConversionTask.status == TaskStatus.QUEUED
+    ).count()
+    
+    processing_count = db.query(ConversionTask).filter(
+        ConversionTask.status == TaskStatus.PROCESSING
+    ).count()
+    
+    return {
+        "tasks": tasks,
+        "queue_stats": {
+            "queued": queued_count,
+            "processing": processing_count,
+            "total": queued_count + processing_count
+        }
+    }
+
+
+@router.post("/queue/retry-failed")
+def retry_failed_conversions(
+    task_ids: Optional[List[uuid.UUID]] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """重试失败的转换任务
+    
+    如果不提供task_ids，则重试用户所有失败的转换任务
+    """
+    # 构建查询：查找用户有权限的失败任务
+    query = db.query(ConversionTask).options(
+        joinedload(ConversionTask.document).joinedload(Document.folder)
+        .joinedload(Folder.drawer).joinedload(Drawer.app)
+    ).filter(ConversionTask.status == TaskStatus.FAILED)
+    
+    # 应用权限筛选
+    if not current_user.is_superuser:
+        user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
+        
+        query = query.join(Document).join(Folder).join(Drawer).join(App)
+        query = query.filter(App.id.in_(user_apps_subquery))
+    
+    # 如果指定了任务ID，只重试这些任务
+    if task_ids:
+        query = query.filter(ConversionTask.id.in_(task_ids))
+    
+    failed_tasks = query.all()
+    
+    retried_count = 0
+    for task in failed_tasks:
+        # 重置任务状态
+        task.status = TaskStatus.QUEUED
+        task.progress = 0
+        task.current_step = None
+        task.error_message = None
+        task.error_traceback = None
+        task.retry_count += 1
+        
+        # 更新文档状态
+        task.document.conversion_status = DocConversionStatus.PENDING
+        
+        retried_count += 1
+    
+    if retried_count > 0:
+        db.commit()
+    
+    return {
+        "message": f"已重试 {retried_count} 个失败任务",
+        "retried_count": retried_count,
+        "task_ids": [str(task.id) for task in failed_tasks]
+    }
+
+
+# ========== 批量转换操作 ==========
+
+@router.post("/batch", response_model=BatchConversionResponse)
+def batch_convert_documents(
+    batch_request: BatchConversionRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """批量转换文档"""
+    queued_documents = []
+    failed_documents = []
+    
+    for doc_id in batch_request.document_ids:
+        try:
+            # 检查文档权限
+            document = check_document_access_for_conversion(doc_id, current_user, db)
+            
+            # 检查是否已有活跃的转换任务
+            existing_task = db.query(ConversionTask).filter(
+                ConversionTask.document_id == doc_id,
+                ConversionTask.status.in_([TaskStatus.QUEUED, TaskStatus.PROCESSING])
+            ).first()
+            
+            if existing_task:
+                failed_documents.append(doc_id)
+                continue
+            
+            # 确定源格式和目标格式
+            source_format = document.file_type.value
+            target_format = batch_request.target_format.lower()
+            
+            # 创建转换任务
+            task = ConversionTask(
+                document_id=doc_id,
+                source_format=source_format,
+                target_format=target_format,
+                status=TaskStatus.QUEUED
+            )
+            
+            # 更新文档状态
+            document.conversion_status = DocConversionStatus.PENDING
+            
+            db.add(task)
+            queued_documents.append(doc_id)
+            
+        except HTTPException:
+            # 文档不存在或没有权限
+            failed_documents.append(doc_id)
+    
+    if queued_documents:
+        db.commit()
+    
+    # TODO: 触发后台转换任务
+    
+    return BatchConversionResponse(
+        task_count=len(queued_documents),
+        queued_documents=queued_documents,
+        failed_documents=failed_documents
+    )
+
+
+# ========== 转换服务状态 ==========
+
+@router.get("/status")
+def get_conversion_service_status(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取转换服务状态统计"""
+    # 总任务统计
+    total_tasks = db.query(ConversionTask).count()
+    
+    # 按状态统计
+    status_stats = {}
+    for status in TaskStatus:
+        count = db.query(ConversionTask).filter(ConversionTask.status == status).count()
+        status_stats[status.value] = count
+    
+    # 用户特定的统计（如果用户不是管理员，只统计自己的文档）
+    user_stats = {}
+    if not current_user.is_superuser:
+        # 获取用户的应用
+        user_apps = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
+        
+        # 通过文档→文件夹→抽屉→应用链统计
+        user_tasks_count = db.query(ConversionTask).join(Document).join(Folder)\
+            .join(Drawer).join(App).filter(App.id.in_(user_apps)).count()
+        
+        user_stats["total_tasks"] = user_tasks_count
+    
+    return {
+        "service_status": "active",  # TODO: 检查实际服务状态
+        "total_tasks": total_tasks,
+        "status_stats": status_stats,
+        "user_stats": user_stats,
+        "supported_formats": {
+            "source": ["tiff", "pdf", "doc", "docx", "jpeg", "jpg", "png", "pcl", "ps", "txt"],
+            "target": ["pdf"]
+        }
+    }
+
+
+# ========== 文件上传与自动转换 ==========
+
+@router.post("/upload", response_model=FileUploadResponse)
+async def upload_and_convert(
+    upload_request: FileUploadRequest,
+    # file: UploadFile = File(...),  # TODO: 实现文件上传
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """上传文件并自动创建转换任务
+    
+    注意：这是简化的实现，实际需要处理文件上传
+    """
+    # 检查文件夹权限
+    from app.routers.documents import check_folder_access
+    folder = check_folder_access(upload_request.folder_id, current_user, db)
+    
+    # TODO: 实际的文件上传处理
+    # 这里应该调用 documents.py 中的上传逻辑，然后创建转换任务
+    
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="文件上传与自动转换功能待实现，请先使用 /documents/upload/ 接口"
+    )
+
+
+# ========== 转换工作器管理 ==========
+
+@router.get("/workers")
+def get_conversion_workers():
+    """获取转换工作器状态"""
+    # TODO: 实现工作器状态查询
+    return {
+        "workers": [],
+        "active_workers": 0,
+        "total_workers": 0,
+        "status": "not_implemented"
+    }

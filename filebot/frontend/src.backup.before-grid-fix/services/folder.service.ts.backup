@@ -1,0 +1,118 @@
+import api from './api';
+
+export interface Folder {
+  id: string;
+  name: string;
+  description?: string;
+  parent_folder_id?: string;
+  app_id: string;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+  document_count?: number;
+  total_size?: number;
+  children?: Folder[];
+}
+
+export interface FolderCreateRequest {
+  name: string;
+  description?: string;
+  parent_folder_id?: string;
+  app_id: string;
+}
+
+export interface FolderUpdateRequest {
+  name?: string;
+  description?: string;
+  parent_folder_id?: string;
+}
+
+export interface FolderTreeItem extends Folder {
+  children?: FolderTreeItem[];
+  level: number;
+  expanded?: boolean;
+}
+
+class FolderService {
+  // 获取文件夹列表
+  async getFolders(params?: {
+    app_id?: string;
+    parent_folder_id?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<Folder[]> {
+    const response = await api.get('/folders/', { params });
+    return response.data;
+  }
+
+  // 获取单个文件夹详情
+  async getFolderById(folderId: string): Promise<Folder> {
+    const response = await api.get(`/folders/${folderId}`);
+    return response.data;
+  }
+
+  // 创建文件夹
+  async createFolder(data: FolderCreateRequest): Promise<Folder> {
+    const response = await api.post('/folders/', data);
+    return response.data;
+  }
+
+  // 更新文件夹
+  async updateFolder(folderId: string, data: FolderUpdateRequest): Promise<Folder> {
+    const response = await api.put(`/folders/${folderId}`, data);
+    return response.data;
+  }
+
+  // 删除文件夹
+  async deleteFolder(folderId: string): Promise<void> {
+    await api.delete(`/folders/${folderId}`);
+  }
+
+  // 获取文件夹树
+  async getFolderTree(appId: string): Promise<FolderTreeItem[]> {
+    const response = await api.get(`/folders/${appId}/tree`);
+    return response.data;
+  }
+
+  // 移动文件夹
+  async moveFolder(folderId: string, newParentId?: string): Promise<void> {
+    await api.put(`/folders/${folderId}/move`, { parent_folder_id: newParentId });
+  }
+
+  // 获取文件夹中的文档
+  async getFolderDocuments(folderId: string, params?: {
+    skip?: number;
+    limit?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }): Promise<any[]> {
+    const response = await api.get(`/folders/${folderId}/documents`, { params });
+    return response.data;
+  }
+
+  // 获取文件夹统计
+  async getFolderStats(folderId: string): Promise<any> {
+    const response = await api.get(`/folders/${folderId}/stats`);
+    return response.data;
+  }
+
+  // 搜索文件夹
+  async searchFolders(params: {
+    name?: string;
+    description?: string;
+    app_id?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<Folder[]> {
+    const response = await api.get('/search/folders', { params });
+    return response.data;
+  }
+
+  // 批量创建文件夹
+  async batchCreateFolders(folders: FolderCreateRequest[]): Promise<Folder[]> {
+    const response = await api.post('/folders/batch', { folders });
+    return response.data;
+  }
+}
+
+export default new FolderService();

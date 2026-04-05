@@ -1,0 +1,470 @@
+import api from './api';
+
+// 开发模式标志 - 设为true使用模拟数据，false使用真实API
+const DEV_MODE = true;
+
+// 内存存储：用于存储模拟上传的文档（开发模式专用）
+let mockUploadedDocuments: any[] = [];
+
+export interface Document {
+  id: string;
+  title?: string;
+  description?: string;
+  document_number?: string;
+  status: string;
+  type: string;
+  original_filename: string;
+  file_size: number;
+  file_type: string;
+  mime_type: string;
+  conversion_status: string;
+  page_count?: number;
+  folder_id: string;
+  uploaded_by: string;
+  created_at: string;
+  updated_at?: string;
+  
+  // AI处理信息
+  ai_category?: string;
+  ai_confidence?: number;
+  ai_tags?: Record<string, any>;
+  ai_summary?: string;
+  classification_status?: string;
+}
+
+export interface DocumentUploadRequest {
+  file: File;
+  folder_id: string;
+  title?: string;
+  description?: string;
+  document_type?: string;
+}
+
+export interface DocumentSearchParams {
+  title?: string;
+  description?: string;
+  document_number?: string;
+  status?: string;
+  document_type?: string;
+  conversion_status?: string;
+  folder_id?: string;
+  drawer_id?: string;
+  app_id?: string;
+  skip?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_order?: string;
+}
+
+class DocumentService {
+  // 获取文档列表
+  async getDocuments(params: DocumentSearchParams = {}): Promise<Document[]> {
+    // 开发模式：使用模拟数据
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：使用模拟文档数据', params);
+      
+      // 模拟文档数据 - 与文件夹服务中的模拟文件夹ID匹配
+      const mockDocuments: Document[] = [
+        {
+          id: 'mock-doc-1',
+          title: 'Public Policy Document',
+          description: '公共政策文件',
+          document_number: 'PP-2026-001',
+          status: 'active',
+          type: 'pdf',
+          original_filename: 'public_policy_document.pdf',
+          file_size: 1500000,
+          file_type: 'application/pdf',
+          mime_type: 'application/pdf',
+          conversion_status: 'converted',
+          page_count: 25,
+          folder_id: '123e4567-e89b-12d3-a456-426614174100', // Public Documents文件夹ID
+          uploaded_by: 'admin',
+          created_at: '2026-03-20T10:30:00Z',
+          updated_at: '2026-03-20T10:30:00Z',
+          ai_category: 'policy_document',
+          ai_confidence: 0.85,
+          ai_tags: { category: 'public', type: 'policy', language: 'english' },
+          ai_summary: '公共政策文档',
+          classification_status: 'classified'
+        },
+        {
+          id: 'mock-doc-2',
+          title: 'Customer Contract - ABC Corp',
+          description: '与ABC公司的客户合同',
+          document_number: 'CC-ABC-2026-001',
+          status: 'active',
+          type: 'pdf',
+          original_filename: 'customer_contract_abc_corp.pdf',
+          file_size: 1800000,
+          file_type: 'application/pdf',
+          mime_type: 'application/pdf',
+          conversion_status: 'converted',
+          page_count: 32,
+          folder_id: '223e4567-e89b-12d3-a456-426614174101', // Contracts文件夹ID
+          uploaded_by: 'admin',
+          created_at: '2026-03-21T14:15:00Z',
+          updated_at: '2026-03-21T14:15:00Z',
+          ai_category: 'contract',
+          ai_confidence: 0.88,
+          ai_tags: { category: 'legal', client: 'ABC Corp', type: 'contract' },
+          ai_summary: '与ABC公司的商业合同',
+          classification_status: 'classified'
+        },
+        {
+          id: 'mock-doc-3',
+          title: 'Monthly Report - March 2026',
+          description: '2026年3月份月度报告',
+          document_number: 'MR-2026-03',
+          status: 'active',
+          type: 'pdf',
+          original_filename: 'monthly_report_march_2026.pdf',
+          file_size: 1200000,
+          file_type: 'application/pdf',
+          mime_type: 'application/pdf',
+          conversion_status: 'converted',
+          page_count: 28,
+          folder_id: '323e4567-e89b-12d3-a456-426614174102', // Reports文件夹ID
+          uploaded_by: 'admin',
+          created_at: '2026-03-25T09:45:00Z',
+          updated_at: '2026-03-25T09:45:00Z',
+          ai_category: 'monthly_report',
+          ai_confidence: 0.79,
+          ai_tags: { category: 'report', month: 'March', year: '2026' },
+          ai_summary: '2026年3月份月度报告',
+          classification_status: 'classified'
+        }
+      ];
+      
+      // 合并静态模拟数据和内存中存储的上传文档
+      const allDocuments = [...mockDocuments, ...mockUploadedDocuments];
+      
+      // 如果有folder_id参数，过滤文档
+      let filteredDocuments = allDocuments;
+      if (params.folder_id) {
+        filteredDocuments = allDocuments.filter(doc => doc.folder_id === params.folder_id);
+        console.log(`📊 根据folder_id=${params.folder_id}过滤: ${filteredDocuments.length}个文档`);
+        console.log(`📊 内存中文档: ${mockUploadedDocuments.filter(doc => doc.folder_id === params.folder_id).length}个`);
+      }
+      
+      return filteredDocuments;
+    }
+    
+    // 生产模式：调用真实API
+    const response = await api.get('/documents/', { params });
+    return response.data;
+  }
+
+  // 获取单个文档详情
+  async getDocumentById(documentId: string): Promise<Document> {
+    // 开发模式：使用模拟数据
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：getDocumentById', documentId);
+      
+      // 模拟文档数据（与getDocuments保持一致）+ 内存中的上传文档
+      const staticMockDocuments = [
+        {
+          id: 'mock-doc-1',
+          title: 'Public Policy Document',
+          description: '公共政策文件',
+          document_number: 'PP-2026-001',
+          status: 'active',
+          type: 'pdf',
+          original_filename: 'public_policy_document.pdf',
+          file_size: 1500000,
+          file_type: 'application/pdf',
+          mime_type: 'application/pdf',
+          conversion_status: 'converted',
+          page_count: 25,
+          folder_id: '123e4567-e89b-12d3-a456-426614174100', // Public Documents文件夹ID
+          uploaded_by: 'admin',
+          created_at: '2026-03-20T10:30:00Z',
+          updated_at: '2026-03-20T10:30:00Z',
+          ai_category: 'policy_document',
+          ai_confidence: 0.85,
+          ai_tags: { category: 'public', type: 'policy', language: 'english' },
+          ai_summary: '公共政策文档',
+          classification_status: 'classified'
+        },
+        {
+          id: 'mock-doc-2',
+          title: 'Customer Contract - ABC Corp',
+          description: '与ABC公司的客户合同',
+          document_number: 'CC-ABC-2026-001',
+          status: 'active',
+          type: 'pdf',
+          original_filename: 'customer_contract_abc_corp.pdf',
+          file_size: 1800000,
+          file_type: 'application/pdf',
+          mime_type: 'application/pdf',
+          conversion_status: 'converted',
+          page_count: 32,
+          folder_id: '223e4567-e89b-12d3-a456-426614174101', // Contracts文件夹ID
+          uploaded_by: 'admin',
+          created_at: '2026-03-21T14:15:00Z',
+          updated_at: '2026-03-21T14:15:00Z',
+          ai_category: 'contract',
+          ai_confidence: 0.88,
+          ai_tags: { category: 'legal', client: 'ABC Corp', type: 'contract' },
+          ai_summary: '与ABC公司的商业合同',
+          classification_status: 'classified'
+        },
+        {
+          id: 'mock-doc-3',
+          title: 'Monthly Report - March 2026',
+          description: '2026年3月份月度报告',
+          document_number: 'MR-2026-03',
+          status: 'active',
+          type: 'pdf',
+          original_filename: 'monthly_report_march_2026.pdf',
+          file_size: 1200000,
+          file_type: 'application/pdf',
+          mime_type: 'application/pdf',
+          conversion_status: 'converted',
+          page_count: 28,
+          folder_id: '323e4567-e89b-12d3-a456-426614174102', // Reports文件夹ID
+          uploaded_by: 'admin',
+          created_at: '2026-03-25T09:45:00Z',
+          updated_at: '2026-03-25T09:45:00Z',
+          ai_category: 'monthly_report',
+          ai_confidence: 0.79,
+          ai_tags: { category: 'report', month: 'March', year: '2026' },
+          ai_summary: '2026年3月份月度报告',
+          classification_status: 'classified'
+        }
+      ];
+      
+      // 合并静态数据和内存中的文档
+      const allMockDocuments = [...staticMockDocuments, ...mockUploadedDocuments];
+      
+      // 查找匹配的文档
+      const foundDoc = allMockDocuments.find(doc => doc.id === documentId);
+      if (foundDoc) {
+        return foundDoc;
+      }
+      
+      // 如果没有找到，返回默认模拟文档
+      console.warn(`❌ 未找到文档ID: ${documentId}，返回默认文档`);
+      return {
+        id: documentId,
+        title: '示例文档',
+        description: '模拟文档用于测试',
+        status: 'active',
+        type: 'pdf',
+        original_filename: 'example_document.pdf',
+        file_size: 1000000,
+        file_type: 'application/pdf',
+        mime_type: 'application/pdf',
+        conversion_status: 'converted',
+        page_count: 15,
+        folder_id: '123e4567-e89b-12d3-a456-426614174000',
+        uploaded_by: 'admin',
+        created_at: '2026-03-22T09:15:00Z',
+        updated_at: '2026-03-22T09:15:00Z',
+        ai_category: 'document',
+        ai_confidence: 0.75,
+        ai_tags: { category: 'test', type: 'example' },
+        ai_summary: '这是一个模拟文档',
+        classification_status: 'classified'
+      };
+    }
+    
+    // 生产模式：调用真实API
+    const response = await api.get(`/documents/${documentId}`);
+    return response.data;
+  }
+
+  // 上传文档
+  async uploadDocument(data: DocumentUploadRequest): Promise<any> {
+    // 开发模式：使用模拟上传
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：模拟文档上传', {
+        filename: data.file.name,
+        fileSize: data.file.size,
+        fileType: data.file.type,
+        folderId: data.folder_id,
+        title: data.title,
+        description: data.description
+      });
+      
+      // 模拟上传延迟
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 生成模拟的文档数据
+      const mockDocument: Document = {
+        id: `mock-doc-${Date.now()}`,
+        title: data.title || data.file.name.replace(/\.[^/.]+$/, ''),
+        description: data.description || '上传的测试文档',
+        status: 'uploaded',
+        type: 'pdf',
+        original_filename: data.file.name,
+        file_size: data.file.size,
+        file_type: 'application/pdf',
+        mime_type: data.file.type,
+        conversion_status: 'converted',
+        page_count: Math.floor(Math.random() * 50) + 1,
+        folder_id: data.folder_id,
+        uploaded_by: 'admin',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ai_category: 'document',
+        ai_confidence: 0.85,
+        ai_tags: { category: 'report', type: 'pdf' },
+        ai_summary: '这是一个模拟上传的PDF文档',
+        classification_status: 'classified'
+      };
+      
+      // 将模拟文档存储到内存中，以便后续查询
+      mockUploadedDocuments.push(mockDocument);
+      console.log('✅ 模拟上传成功，已存储到内存:', mockDocument);
+      console.log('📊 当前内存中文档总数:', mockUploadedDocuments.length);
+      return mockDocument;
+    }
+    
+    // 生产模式：调用真实API
+    const formData = new FormData();
+    formData.append('file', data.file);
+    formData.append('folder_id', data.folder_id);
+    if (data.title) formData.append('title', data.title);
+    if (data.description) formData.append('description', data.description);
+    if (data.document_type) formData.append('document_type', data.document_type);
+
+    const response = await api.post('/documents/upload/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 300000, // 5分钟超时，适应大文件上传
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`📤 上传进度: ${percentCompleted}%`);
+        }
+      },
+    });
+    return response.data;
+  }
+
+  // 更新文档信息
+  async updateDocument(documentId: string, data: Partial<Document>): Promise<Document> {
+    const response = await api.put(`/documents/${documentId}`, data);
+    return response.data;
+  }
+
+  // 删除文档
+  async deleteDocument(documentId: string): Promise<void> {
+    await api.delete(`/documents/${documentId}`);
+  }
+
+  // 批量删除文档
+  async batchDeleteDocuments(documentIds: string[]): Promise<void> {
+    await api.post('/documents/batch/delete', { document_ids: documentIds });
+  }
+
+  // 批量归档文档
+  async batchArchiveDocuments(documentIds: string[]): Promise<void> {
+    await api.post('/documents/batch/archive', { document_ids: documentIds });
+  }
+
+  // 下载文档
+  async downloadDocument(documentId: string, downloadType: 'original' | 'pdf' = 'original'): Promise<Blob> {
+    const response = await api.get(`/documents/${documentId}/download`, {
+      params: { download_type: downloadType },
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // 重试转换
+  async retryConversion(documentId: string): Promise<void> {
+    await api.post(`/documents/${documentId}/retry-conversion`);
+  }
+
+  // 搜索文档
+  async searchDocuments(params: DocumentSearchParams): Promise<Document[]> {
+    // 开发模式：使用模拟数据
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：searchDocuments', params);
+      
+      // 使用getDocuments中的模拟数据（已包含内存中的文档）
+      const mockDocuments = await this.getDocuments(params);
+      
+      // 简单的关键词过滤（模拟搜索）
+      if (params.title) {
+        const searchTerm = params.title.toLowerCase();
+        return mockDocuments.filter(doc => 
+          doc.title?.toLowerCase().includes(searchTerm) ||
+          doc.description?.toLowerCase().includes(searchTerm)
+        );
+      }
+      
+      return mockDocuments;
+    }
+    
+    // 生产模式：调用真实API
+    const response = await api.get('/search/documents', { params });
+    return response.data;
+  }
+
+  // 高级搜索
+  async advancedSearch(params: {
+    search_mode?: 'and' | 'or';
+    keywords?: string;
+    search_fields?: string;
+    folder_id?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<any> {
+    const response = await api.get('/search/advanced', { params });
+    return response.data;
+  }
+
+  // ========== TIFF相关方法 ==========
+
+  // 获取TIFF文件信息
+  async getTiffInfo(documentId: string): Promise<any> {
+    const response = await api.get(`/documents/${documentId}/tiff-info`);
+    return response.data;
+  }
+
+  // 获取TIFF缩略图URL
+  getTiffThumbnailUrl(documentId: string, pageNumber: number, width: number = 200, height: number = 200): string {
+    return `/documents/${documentId}/tiff-thumbnail/${pageNumber}?width=${width}&height=${height}`;
+  }
+
+  // 获取TIFF预览图URL
+  getTiffPreviewUrl(documentId: string, pageNumber: number, maxWidth: number = 1200, maxHeight: number = 1600): string {
+    return `/documents/${documentId}/tiff-preview/${pageNumber}?max_width=${maxWidth}&max_height=${maxHeight}`;
+  }
+
+  // 提取TIFF页面
+  async extractTiffPages(documentId: string, pageNumbers: number[], outputFormat: 'pdf' | 'tiff' = 'pdf'): Promise<Blob> {
+    const params = { page_numbers: pageNumbers, output_format: outputFormat };
+    const response = await api.post(`/documents/${documentId}/extract-tiff-pages`, null, {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // 获取TIFF缩略图（Blob格式）
+  async getTiffThumbnail(documentId: string, pageNumber: number, width: number = 200, height: number = 200): Promise<Blob> {
+    const response = await api.get(`/documents/${documentId}/tiff-thumbnail/${pageNumber}`, {
+      params: { width, height },
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // 获取TIFF预览图（Blob格式）
+  async getTiffPreview(documentId: string, pageNumber: number, quality: 'high' | 'low' = 'high'): Promise<Blob> {
+    const maxWidth = quality === 'high' ? 1200 : 600;
+    const maxHeight = quality === 'high' ? 1600 : 800;
+    const response = await api.get(`/documents/${documentId}/tiff-preview/${pageNumber}`, {
+      params: { max_width: maxWidth, max_height: maxHeight },
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+}
+
+export default new DocumentService();

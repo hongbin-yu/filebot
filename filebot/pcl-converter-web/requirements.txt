@@ -1,0 +1,9 @@
+# PCL转PDF转换器 - Windows版依赖
+Flask==3.0.0
+requests==2.31.0
+python-dotenv==1.0.0
+Werkzeug==3.0.1
+
+# 可选：Windows开发工具
+# pywin32==306  # Windows API访问（如果需要）
+# colorama==0.4.6  # Windows终端颜色支持

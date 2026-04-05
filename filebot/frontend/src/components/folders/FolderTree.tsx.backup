@@ -1,0 +1,266 @@
+import React, { useState } from 'react';
+import { Folder } from '../../services/folder.service';
+import { ChevronRightIcon, ChevronDownIcon, FolderIcon, FolderOpenIcon, TrashIcon } from '@heroicons/react/24/outline';
+
+interface FolderTreeProps {
+  folders: Folder[];
+  currentFolderId: string | null;
+  onFolderSelect: (folderId: string) => void;
+  onDeleteFolder?: (folderId: string) => void;
+}
+
+interface FolderTreeNode extends Folder {
+  children: FolderTreeNode[];
+  expanded: boolean;
+  level: number;
+}
+
+const FolderTree: React.FC<FolderTreeProps> = ({
+  folders,
+  currentFolderId,
+  onFolderSelect,
+  onDeleteFolder
+}) => {
+  // 构建树形结构
+  const buildTree = (): FolderTreeNode[] => {
+    // 创建节点映射
+    const nodeMap = new Map<string, FolderTreeNode>();
+    
+    // 初始化所有节点
+    folders.forEach(folder => {
+      nodeMap.set(folder.id, {
+        ...folder,
+        children: [],
+        expanded: false,
+        level: 0
+      });
+    });
+    
+    // 构建树
+    const tree: FolderTreeNode[] = [];
+    
+    nodeMap.forEach(node => {
+      if (node.parent_folder_id) {
+        const parent = nodeMap.get(node.parent_folder_id);
+        if (parent) {
+          parent.children.push(node);
+          // 设置子节点的层级
+          node.level = parent.level + 1;
+        } else {
+          // 父节点不存在，作为根节点
+          tree.push(node);
+        }
+      } else {
+        // 根节点
+        tree.push(node);
+      }
+    });
+    
+    // 排序：先按是否为系统文件夹，再按order_index，最后按名称
+    const sortNodes = (nodes: FolderTreeNode[]): FolderTreeNode[] => {
+      return nodes.sort((a, b) => {
+        // 系统文件夹在前
+        if (a.is_system_folder && !b.is_system_folder) return -1;
+        if (!a.is_system_folder && b.is_system_folder) return 1;
+        
+        // 按order_index排序
+        if (a.order_index !== undefined && b.order_index !== undefined) {
+          if (a.order_index < b.order_index) return -1;
+          if (a.order_index > b.order_index) return 1;
+        }
+        
+        // 按名称排序
+        return a.name.localeCompare(b.name);
+      });
+    };
+    
+    // 递归排序
+    const sortTree = (nodes: FolderTreeNode[]): FolderTreeNode[] => {
+      const sorted = sortNodes(nodes);
+      sorted.forEach(node => {
+        if (node.children.length > 0) {
+          node.children = sortTree(node.children);
+        }
+      });
+      return sorted;
+    };
+    
+    return sortTree(tree);
+  };
+  
+  // 展开/收起节点
+  const toggleExpand = (folderId: string) => {
+    const updateNode = (nodes: FolderTreeNode[]): FolderTreeNode[] => {
+      return nodes.map(node => {
+        if (node.id === folderId) {
+          return { ...node, expanded: !node.expanded };
+        }
+        
+        if (node.children.length > 0) {
+          return { ...node, children: updateNode(node.children) };
+        }
+        
+        return node;
+      });
+    };
+    
+    setTreeNodes(prev => updateNode(prev));
+  };
+  
+  // 递归展开到某个节点
+  const expandToFolder = (folderId: string, nodes: FolderTreeNode[]): FolderTreeNode[] => {
+    return nodes.map(node => {
+      let shouldExpand = false;
+      
+      // 检查是否是目标节点或其祖先
+      const findPath = (currentNode: FolderTreeNode): boolean => {
+        if (currentNode.id === folderId) return true;
+        
+        for (const child of currentNode.children) {
+          if (findPath(child)) return true;
+        }
+        
+        return false;
+      };
+      
+      shouldExpand = findPath(node);
+      
+      // 更新当前节点
+      const updatedNode = {
+        ...node,
+        expanded: shouldExpand || node.expanded
+      };
+      
+      // 递归更新子节点
+      if (node.children.length > 0) {
+        updatedNode.children = expandToFolder(folderId, node.children);
+      }
+      
+      return updatedNode;
+    });
+  };
+  
+  // 初始化树节点
+  const [treeNodes, setTreeNodes] = useState<FolderTreeNode[]>(() => {
+    const tree = buildTree();
+    if (currentFolderId) {
+      return expandToFolder(currentFolderId, tree);
+    }
+    return tree;
+  });
+  
+  // 当folders变化时重新构建树
+  React.useEffect(() => {
+    const newTree = buildTree();
+    if (currentFolderId) {
+      setTreeNodes(expandToFolder(currentFolderId, newTree));
+    } else {
+      setTreeNodes(newTree);
+    }
+  }, [folders, currentFolderId]);
+  
+  // 渲染树节点
+  const renderTreeNode = (node: FolderTreeNode) => {
+    const isCurrent = node.id === currentFolderId;
+    const hasChildren = node.children.length > 0;
+    
+    return (
+      <div key={node.id}>
+        {/* 文件夹行 */}
+        <div 
+          className={`
+            flex items-center py-2 px-2 rounded cursor-pointer hover:bg-gray-100
+            ${isCurrent ? 'bg-blue-50 border border-blue-200' : ''}
+            ${node.level > 0 ? `ml-${node.level * 4}` : ''}
+          `}
+          onClick={() => onFolderSelect(node.id)}
+          style={{ marginLeft: `${node.level * 16}px` }}
+        >
+          {/* 展开/收起按钮 */}
+          {hasChildren ? (
+            <button 
+              className="w-4 h-4 mr-1 flex-shrink-0 text-gray-500 hover:text-gray-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand(node.id);
+              }}
+            >
+              {node.expanded ? (
+                <ChevronDownIcon className="w-4 h-4" />
+              ) : (
+                <ChevronRightIcon className="w-4 h-4" />
+              )}
+            </button>
+          ) : (
+            <div className="w-5 mr-1"></div> // 占位，保持对齐
+          )}
+          
+          {/* 文件夹图标 */}
+          <div className="flex-shrink-0 mr-2">
+            {node.expanded ? (
+              <FolderOpenIcon className="w-5 h-5 text-yellow-500" />
+            ) : (
+              <FolderIcon className="w-5 h-5 text-yellow-500" />
+            )}
+          </div>
+          
+          {/* 文件夹信息 */}
+          <div className="flex-1 min-w-0">
+            <div className={`font-medium truncate ${isCurrent ? 'text-blue-600' : 'text-gray-800'}`}>
+              {node.name}
+            </div>
+            {node.description && (
+              <div className="text-xs text-gray-500 truncate">{node.description}</div>
+            )}
+          </div>
+          
+          {/* 文档计数 */}
+          <div className="flex-shrink-0 mr-2 text-sm text-gray-500">
+            {node.document_count || 0} 文档
+          </div>
+          
+          {/* 删除按钮 */}
+          {onDeleteFolder && !node.is_system_folder && (
+            <button 
+              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm(`确定要删除文件夹 "${node.name}" 吗？`)) {
+                  onDeleteFolder(node.id);
+                }
+              }}
+              title="删除文件夹"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        
+        {/* 子文件夹 */}
+        {node.expanded && hasChildren && (
+          <div>
+            {node.children.map(child => renderTreeNode(child))}
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  return (
+    <div className="folder-tree">
+      {treeNodes.length === 0 ? (
+        <div className="text-center py-6 text-gray-500">
+          <FolderIcon className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+          <p>暂无文件夹</p>
+          <p className="text-sm mt-1">创建第一个文件夹来开始管理文档</p>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {treeNodes.map(node => renderTreeNode(node))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FolderTree;

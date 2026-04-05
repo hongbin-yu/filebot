@@ -1,0 +1,247 @@
+{
+  "invoice_header": {
+    "INVOICE_NO": "1333333",
+    "CUSTOMER_NO": "3333",
+    "INVOICE_DATE": "04/",
+    "ORDER_NO": "04/17",
+    "CONTROL_CODE": "7/14",
+    "RELEASE_NO": "14",
+    "order_number": "333333",
+    "release_number": "001"
+  },
+  "invoice_lines": [
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-125",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "282.839",
+      "DISCOUNT_RATE": "3  .000",
+      "INVOICE_LINE": "0       848",
+      "line_number": 17,
+      "sequence": "002"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-212",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 20,
+      "sequence": "003"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-237",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 23,
+      "sequence": "004"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-250",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 26,
+      "sequence": "005"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-218",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.580",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,062",
+      "line_number": 29,
+      "sequence": "008"
+    },
+    {
+      "LINE_SEQ": "01",
+      "PART_NO": "NH-91011-256",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.580",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,062",
+      "line_number": 32,
+      "sequence": "010"
+    },
+    {
+      "LINE_SEQ": "01",
+      "PART_NO": "NH-91011-106",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "282.830",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,131",
+      "line_number": 35,
+      "sequence": "018"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-125",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "282.839",
+      "DISCOUNT_RATE": "3  .000",
+      "INVOICE_LINE": "0       848",
+      "line_number": 89,
+      "sequence": "002"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-212",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 92,
+      "sequence": "003"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-237",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 95,
+      "sequence": "004"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-250",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 98,
+      "sequence": "005"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-218",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.580",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,062",
+      "line_number": 101,
+      "sequence": "008"
+    },
+    {
+      "LINE_SEQ": "01",
+      "PART_NO": "NH-91011-256",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.580",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,062",
+      "line_number": 104,
+      "sequence": "010"
+    },
+    {
+      "LINE_SEQ": "01",
+      "PART_NO": "NH-91011-106",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "282.830",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,131",
+      "line_number": 107,
+      "sequence": "018"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-125",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "282.839",
+      "DISCOUNT_RATE": "3  .000",
+      "INVOICE_LINE": "0       848",
+      "line_number": 132,
+      "sequence": "002"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-212",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 135,
+      "sequence": "003"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-237",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 138,
+      "sequence": "004"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-250",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.582",
+      "DISCOUNT_RATE": "6  .000",
+      "INVOICE_LINE": "0       796",
+      "line_number": 141,
+      "sequence": "005"
+    },
+    {
+      "LINE_SEQ": "00",
+      "PART_NO": "NH-91011-218",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.580",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,062",
+      "line_number": 144,
+      "sequence": "008"
+    },
+    {
+      "LINE_SEQ": "01",
+      "PART_NO": "NH-91011-256",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "265.580",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,062",
+      "line_number": 147,
+      "sequence": "010"
+    },
+    {
+      "LINE_SEQ": "01",
+      "PART_NO": "NH-91011-106",
+      "WH_CODE": "1",
+      "QTY": "",
+      "UNIT_PRICE": "282.830",
+      "DISCOUNT_RATE": "0  .000",
+      "INVOICE_LINE": "0     1,131",
+      "line_number": 150,
+      "sequence": "018"
+    }
+  ],
+  "totals": {},
+  "metadata": {}
+}

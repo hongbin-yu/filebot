@@ -1,0 +1,144 @@
+{
+  "name": "Invoice_Report",
+  "description": "COLD_REPORT配置: Invoice_Report",
+  "report_id": 101,
+  "version": "1.0",
+  "source": "cold_report",
+  "metadata": {
+    "appid": 1,
+    "formid": 1,
+    "indexid": 101,
+    "levelid": 1,
+    "sourceid": 1001,
+    "comments": "发票报表配置",
+    "seperator": ",",
+    "allowdups": 0,
+    "reptable": "INVOICE_DATA",
+    "store_in_db": 1,
+    "index_pages": "Y",
+    "enter": 1,
+    "duration": null,
+    "durationunit": null
+  },
+  "field_groups": [
+    {
+      "name": "field_1",
+      "textfieldsid": 101,
+      "seq": 1,
+      "icolumn": 1,
+      "length": 15,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": true
+      },
+      "validation": {
+        "pattern": "^INV-\\d{8}$"
+      }
+    },
+    {
+      "name": "field_2",
+      "textfieldsid": 101,
+      "seq": 2,
+      "icolumn": 2,
+      "length": 10,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": false
+      },
+      "validation": {
+        "pattern": "^[0-9]{2}/[0-9]{2}/[0-9]{4}$"
+      }
+    },
+    {
+      "name": "field_3",
+      "textfieldsid": 101,
+      "seq": 3,
+      "icolumn": 3,
+      "length": 12,
+      "start_row": 1,
+      "end_row": 1,
+      "flags": {
+        "txtsrch_fld": true,
+        "export_fld": true,
+        "index_fld": true
+      },
+      "validation": {
+        "pattern": "^[A-Z]{3}-[0-9]{5}$"
+      }
+    }
+  ],
+  "index_fields": [
+    {
+      "name": "INVOICE_NO",
+      "start": 1,
+      "length": 15,
+      "levelid": 1,
+      "description": "Invoice Number",
+      "required": true,
+      "metadata": {
+        "cold_index_id": 101,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "key_field_name": null,
+        "date_format": null
+      },
+      "validation": {
+        "pattern": "^INV-\\d{8}$",
+        "use_pattern": true
+      }
+    },
+    {
+      "name": "INVOICE_DATE",
+      "start": 17,
+      "length": 10,
+      "levelid": 1,
+      "description": "Invoice Date",
+      "required": true,
+      "metadata": {
+        "cold_index_id": 101,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "key_field_name": null,
+        "date_format": "MM/DD/YYYY"
+      },
+      "validation": {
+        "pattern": "^[0-9]{2}/[0-9]{2}/[0-9]{4}$",
+        "use_pattern": true
+      }
+    },
+    {
+      "name": "CUSTOMER_CODE",
+      "start": 28,
+      "length": 12,
+      "levelid": 1,
+      "description": "Customer Code",
+      "required": true,
+      "metadata": {
+        "cold_index_id": 101,
+        "page": 1,
+        "irow": 1,
+        "table_name": "INVOICE_HEADER",
+        "key_field_name": null,
+        "date_format": null
+      },
+      "validation": {
+        "pattern": "^[A-Z]{3}-[0-9]{5}$",
+        "use_pattern": true
+      }
+    }
+  ],
+  "statistics": {
+    "total_field_groups": 3,
+    "total_index_fields": 3,
+    "has_fieldinfo_data": true,
+    "has_index_data": true
+  }
+}

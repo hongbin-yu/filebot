@@ -1,0 +1,188 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import MainLayout from './components/layout/MainLayout';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ClientLogin from './pages/ClientLogin';
+import CopilotSidebar from './components/copilot/CopilotSidebar';
+import { CopilotProvider, useCopilot } from './contexts/CopilotContext';
+import authService from './services/auth.service';
+import './App.css';
+
+// 导入Admin组件
+import AdminAppsDashboard from './pages/admin/AdminAppsDashboard';
+import AdminAppFolders from './pages/admin/AdminAppFolders';
+import AdminDocuments from './pages/admin/AdminDocuments';
+import AdminUpload from './pages/admin/AdminUpload';
+import AdminTasks from './pages/admin/AdminTasks';
+import DocumentDetail from './pages/DocumentDetail';
+
+// 导入Client组件（暂时使用占位符）
+import ClientAppSelection from './pages/ClientAppSelection';
+import ClientDashboard from './pages/ClientDashboard';
+import ClientDocuments from './pages/ClientDocuments';
+import ClientDocumentDetail from './pages/ClientDocumentDetail';
+
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = authService.isAuthenticated();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Client Protected Route Component
+const ClientProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  // 开发模式：绕过认证以测试前端界面
+  const DEV_MODE = true;
+  
+  if (!DEV_MODE) {
+    const isAuthenticated = authService.isAuthenticated();
+    
+    if (!isAuthenticated) {
+      return <Navigate to="/client/login" />;
+    }
+    
+    // 检查用户是否有适当的角色（viewer, user, admin都可以访问Client）
+    const userInfo = authService.getUserInfo();
+    if (!userInfo) {
+      console.warn('没有用户信息，但用户已认证');
+    }
+  } else {
+    console.log('🔧 开发模式：绕过Client认证检查');
+  }
+  
+  return <>{children}</>;
+};
+
+// Main App with Copilot integration
+const MainAppContent: React.FC = () => {
+  const { isOpen } = useCopilot();
+  
+  if (isOpen) {
+    // 两栏布局模式：左边主系统，右边FileBot聊天窗口
+    return (
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* 左边：主系统 (占主要空间) */}
+        <div className="flex-1 overflow-auto">
+          <MainLayout />
+        </div>
+        
+        {/* 右边：FileBot聊天窗口 (固定宽度) */}
+        <div className="w-96 border-l border-gray-200">
+          <CopilotSidebar />
+        </div>
+      </div>
+    );
+  }
+  
+  // 全屏模式：简化系统界面
+  return (
+    <div className="min-h-screen">
+      <MainLayout />
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <CopilotProvider>
+      <Router>
+        <Routes>
+          {/* ==================== 公共路由 ==================== */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* ==================== Client公共门户路由 ==================== */}
+          {/* Client登录 */}
+          <Route path="/client/login" element={<ClientLogin />} />
+          
+          {/* Client应用选择（公共门户入口） */}
+          <Route path="/apps" element={
+            <ClientProtectedRoute>
+              <ClientAppSelection />
+            </ClientProtectedRoute>
+          } />
+          
+          {/* Client应用详情（显示应用下的文件夹） */}
+          <Route path="/apps/:appSlug" element={
+            <ClientProtectedRoute>
+              <ClientDashboard />
+            </ClientProtectedRoute>
+          } />
+          
+          {/* Client文件夹文档列表 */}
+          <Route path="/apps/:appSlug/folders/:folderId/documents" element={
+            <ClientProtectedRoute>
+              <ClientDocuments />
+            </ClientProtectedRoute>
+          } />
+          
+          {/* Client文档详情 */}
+          <Route path="/documents/:id" element={
+            <ClientProtectedRoute>
+              <ClientDocumentDetail />
+            </ClientProtectedRoute>
+          } />
+          
+          {/* ==================== Admin管理后台路由 ==================== */}
+          {/* Admin主布局（受保护路由） */}
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <MainAppContent />
+            </ProtectedRoute>
+          }>
+            {/* Admin首页重定向到应用列表 */}
+            <Route index element={<Navigate to="/admin/apps" />} />
+            
+            {/* Admin应用列表 */}
+            <Route path="apps" element={<AdminAppsDashboard />} />
+            
+            {/* Admin应用文件夹管理 */}
+            <Route path="apps/:appSlug" element={<AdminAppFolders />} />
+            
+            {/* Admin文件夹文档列表 */}
+            <Route path="apps/:appSlug/folders/:folderId/documents" element={<AdminDocuments />} />
+            
+            {/* Admin文档上传 */}
+            <Route path="apps/:appSlug/folders/:folderId/upload" element={<AdminUpload />} />
+            
+            {/* Admin任务监控 */}
+            <Route path="tasks" element={<AdminTasks />} />
+            
+            {/* Admin文档详情 */}
+            <Route path="documents/:id" element={<DocumentDetail />} />
+            
+            {/* 旧路由重定向 */}
+            <Route path="*" element={<Navigate to="/admin/apps" />} />
+          </Route>
+          
+          {/* ==================== 旧路由重定向（兼容性） ==================== */}
+          {/* 根路径重定向：如果已登录重定向到Admin，否则重定向到Client */}
+          <Route path="/" element={
+            authService.isAuthenticated() ? 
+              <Navigate to="/admin/apps" /> : 
+              <Navigate to="/apps" />
+          } />
+          
+          {/* 旧Admin路由重定向 */}
+          <Route path="/dashboard" element={<Navigate to="/admin/apps" />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/admin/apps" />} />
+          
+          {/* 旧Client路由重定向 */}
+          <Route path="/client" element={<Navigate to="/apps" />} />
+          <Route path="/client/apps" element={<Navigate to="/apps" />} />
+          <Route path="/client/apps/:appId" element={<Navigate to="/apps/:appId" />} />
+          <Route path="/client/apps/:appId/drawers/:drawerSlug/documents" element={<Navigate to="/apps/:appId" />} />
+          
+          {/* 404重定向到根路径 */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </CopilotProvider>
+  );
+}
+
+export default App;

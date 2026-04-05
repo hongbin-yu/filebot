@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 PCL转PDF转换器 - 专业版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自定义样式 */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .file-dropzone {
+            border: 3px dashed #9ca3af;
+            transition: all 0.3s ease;
+        }
+        
+        .file-dropzone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #374151;
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .notification {
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen p-4 md:p-8">
+    <!-- 顶部通知栏 -->
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50 max-w-md"></div>
+    
+    <div class="max-w-6xl mx-auto">
+        <!-- 页眉 -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                <i class="fas fa-file-pdf mr-3"></i>PCL转PDF专业转换器
+            </h1>
+            <p class="text-xl text-gray-200">支持多种PCL格式，一键转换为高质量PDF</p>
+            <div class="mt-4 flex flex-wrap justify-center gap-3">
+                <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-sm">
+                    <i class="fas fa-check-circle mr-1"></i>Windows优化
+                </span>
+                <span class="bg-green-500 text-white px-3 py-1 rounded-full text-sm">
+                    <i class="fas fa-bolt mr-1"></i>快速转换
+                </span>
+                <span class="bg-purple-500 text-white px-3 py-1 rounded-full text-sm">
+                    <i class="fas fa-shield-alt mr-1"></i>安全可靠
+                </span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧面板：状态信息 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 card-hover">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-tachometer-alt mr-3 text-blue-500"></i>系统仪表板
+                    </h2>
+                    
+                    <!-- 系统状态卡片 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-microchip text-blue-500 mr-2"></i>
+                                <h3 class="font-semibold text-gray-700">系统平台</h3>
+                            </div>
+                            <div id="platformInfo" class="text-2xl font-bold text-gray-900">检测中...</div>
+                            <div class="text-sm text-gray-500 mt-1" id="platformDetails"></div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-tools text-green-500 mr-2"></i>
+                                <h3 class="font-semibold text-gray-700">可用工具</h3>
+                            </div>
+                            <div id="toolsCount" class="text-2xl font-bold text-gray-900">检测中...</div>
+                            <div class="text-sm text-gray-500 mt-1" id="toolsStatus"></div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-server text-purple-500 mr-2"></i>
+                                <h3 class="font-semibold text-gray-700">服务状态</h3>
+                            </div>
+                            <div id="serviceStatus" class="text-2xl font-bold text-green-600">正常</div>
+                            <div class="text-sm text-gray-500 mt-1">运行时间: <span id="uptime">刚刚启动</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-cloud-upload-alt mr-2 text-blue-500"></i>文件上传
+                        </h3>
+                        
+                        <div id="uploadArea" class="file-dropzone rounded-xl p-10 text-center cursor-pointer bg-gray-50">
+                            <div class="mb-6">
+                                <i class="fas fa-file-upload text-6xl text-gray-400 mb-4"></i>
+                                <p class="text-2xl font-semibold text-gray-700 mb-2">拖放文件到此处</p>
+                                <p class="text-gray-500 mb-4">或点击选择.pcl文件</p>
+                                <button onclick="document.getElementById('fileInput').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg transition duration-300">
+                                    <i class="fas fa-folder-open mr-2"></i>浏览文件
+                                </button>
+                                <p class="text-sm text-gray-500 mt-4">支持.pcl格式，最大100MB</p>
+                            </div>
+                        </div>
+                        
+                        <input type="file" id="fileInput" class="hidden" accept=".pcl" onchange="handleFileSelect(event)">
+                        
+                        <!-- 文件信息 -->
+                        <div id="selectedFile" class="mt-4 hidden">
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-file text-3xl text-blue-500 mr-4"></i>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <h4 id="fileName" class="font-semibold text-gray-800"></h4>
+                                                <p id="fileSize" class="text-sm text-gray-600 mt-1"></p>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button onclick="document.getElementById('fileInput').click()" 
+                                                        class="text-blue-500 hover:text-blue-700">
+                                                    <i class="fas fa-edit mr-1"></i>更换
+                                                </button>
+                                                <button onclick="clearFile()" class="text-red-500 hover:text-red-700">
+                                                    <i class="fas fa-trash mr-1"></i>清除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 转换按钮 -->
+                    <div class="mb-6">
+                        <button id="convertBtn" onclick="convertFile()" 
+                                class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 px-6 rounded-xl text-xl transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled>
+                            <i class="fas fa-play-circle mr-3"></i>开始转换
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 转换进度 -->
+                <div id="progressContainer" class="hidden bg-white rounded-2xl shadow-xl p-6 mb-6 card-hover">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-spinner fa-spin mr-3 text-blue-500"></i>转换进度
+                    </h2>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-semibold text-gray-700" id="progressLabel">正在准备转换...</span>
+                            <span class="font-bold text-blue-600" id="progressPercent">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div id="progressFill" class="bg-gradient-to-r from-blue-500 to-purple-600 h-4 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="progressDetails" class="text-sm text-gray-600 space-y-2">
+                        <div class="flex justify-between">
+                            <span>文件上传</span>
+                            <span class="font-semibold" id="stepUpload">等待</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>格式验证</span>
+                            <span class="font-semibold" id="stepValidate">等待</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>PCL转换</span>
+                            <span class="font-semibold" id="stepConvert">等待</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>PDF生成</span>
+                            <span class="font-semibold" id="stepGenerate">等待</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 转换结果 -->
+                <div id="resultContainer" class="hidden"></div>
+            </div>
+            
+            <!-- 右侧面板：工具信息和帮助 -->
+            <div class="space-y-6">
+                <!-- 工具状态 -->
+                <div class="bg-white rounded-2xl shadow-xl p-6 card-hover">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-tools mr-2 text-green-500"></i>PCL工具检测
+                    </h2>
+                    
+                    <div id="toolsList" class="space-y-3">
+                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <div class="mr-3">
+                                <i class="fas fa-spinner fa-spin text-gray-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-medium">正在检测工具...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="refreshTools()" class="w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 rounded-lg transition duration-300">
+                        <i class="fas fa-sync-alt mr-2"></i>刷新检测
+                    </button>
+                </div>
+                
+                <!-- 转换统计 -->
+                <div class="bg-white rounded-2xl shadow-xl p-6 card-hover">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-purple-500"></i>转换统计
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-gray-600">今日转换</span>
+                                <span class="font-semibold" id="todayCount">0</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-gray-600">成功率</span>
+                                <span class="font-semibold" id="successRate">100%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-gray-600">平均耗时</span>
+                                <span class="font-semibold" id="avgTime">0s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 快速帮助 -->
+                <div class="bg-white rounded-2xl shadow-xl p-6 card-hover">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-question-circle mr-2 text-blue-500"></i>快速帮助
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-start">
+                            <i class="fas fa-info-circle text-blue-500 mt-1 mr-2"></i>
+                            <div>
+                                <p class="text-sm text-gray-700">确保已安装PCL转换工具（如GhostPCL）</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-2"></i>
+                            <div>
+                                <p class="text-sm text-gray-700">转换大型文件可能需要较长时间</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-download text-green-500 mt-1 mr-2"></i>
+                            <div>
+                                <p class="text-sm text-gray-700">转换完成后及时下载文件</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <button onclick="showHelpModal()" class="w-full text-blue-500 hover:text-blue-700 font-medium">
+                            <i class="fas fa-book mr-2"></i>查看详细指南
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer class="mt-8 text-center text-gray-300">
+            <p class="mb-2">PCL转PDF专业转换器 v2.0 | FileBot Phase 2C</p>
+            <p class="text-sm">技术支持: 如需帮助请检查工具安装状态</p>
+        </footer>
+    </div>
+    
+    <!-- 帮助模态框 -->
+    <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-book mr-2"></i>PCL转换工具安装指南
+                    </h3>
+                    <button onclick="closeHelpModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="font-bold text-lg text-gray-800 mb-2 flex items-center">
+                            <i class="fas fa-ghost mr-2 text-purple-500"></i>GhostPCL安装
+                        </h4>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-2">GhostPCL是Artifex提供的专业PCL解释器，包含在Ghostscript商业版中。</p>
+                            <ol class="list-decimal pl-5 text-gray-600 space-y-1">
+                                <li>访问 <a href="https://www.artifex.com/downloads/" class="text-blue-500 hover:underline" target="_blank">Artifex下载页面</a></li>
+                                <li>下载Ghostscript商业版（包含GhostPCL）</li>
+                                <li>安装并添加<code>gpcl6.exe</code>到系统PATH</li>
+                                <li>验证安装：<code>gpcl6 --version</code></li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold text-lg text-gray-800 mb-2 flex items-center">
+                            <i class="fas fa-terminal mr-2 text-green-500"></i>WSL/Ubuntu安装
+                        </h4>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-2">在WSL环境中安装相关工具：</p>
+                            <pre class="bg-gray-800 text-gray-200 p-3 rounded text-sm overflow-x-auto">
+sudo apt update
+sudo apt install -y hplip ghostscript
+# 检查可用工具
+find /usr -name "*pcl*" -type f 2>/dev/null | head -10</pre>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold text-lg text-gray-800 mb-2 flex items-center">
+                            <i class="fas fa-cogs mr-2 text-orange-500"></i>手动配置工具路径
+                        </h4>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 mb-2">如果工具不在系统PATH中，可以手动配置：</p>
+                            <ol class="list-decimal pl-5 text-gray-600 space-y-1">
+                                <li>在应用目录创建<code>.env</code>文件</li>
+                                <li>添加配置：<code>PCL_TOOL_PATH=/path/to/your/tool.exe</code></li>
+                                <li>或使用<code>PCL_TOOL_PATH=auto</code>自动检测</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <button onclick="closeHelpModal()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg">
+                        关闭指南
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let selectedFile = null;
+        let conversionInProgress = false;
+        let availableTools = [];
+        let startTime = new Date();
+        
+        // 显示通知
+        function showNotification(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            
+            const icons = {
+                'success': 'fas fa-check-circle',
+                'error': 'fas fa-exclamation-circle',
+                'info': 'fas fa-info-circle',
+                'warning': 'fas fa-exclamation-triangle'
+            };
+            
+            const colors = {
+                'success': 'bg-green-500',
+                'error': 'bg-red-500',
+                'info': 'bg-blue-500',
+                'warning': 'bg-yellow-500'
+            };
+            
+            notification.className = `notification mb-3 ${colors[type]} text-white p-4 rounded-lg shadow-lg flex items-center`;
+            notification.innerHTML = `
+                <i class="${icons[type]} text-xl mr-3"></i>
+                <div class="flex-1">${message}</div>
+                <button onclick="this.parentElement.remove()" class="ml-3 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            container.appendChild(notification);
+            
+            if (duration > 0) {
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.style.opacity = '0';
+                        notification.style.transition = 'opacity 0.3s';
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                }, duration);
+            }
+        }
+        
+        // 更新系统信息
+        function updateSystemInfo() {
+            const now = new Date();
+            const uptime = Math.floor((now - startTime) / 1000);
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = uptime % 60;
+            
+            document.getElementById('uptime').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // 检测工具
+        function detectTools() {
+            fetch('/api/tools')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        availableTools = data.tools || [];
+                        
+                        // 更新平台信息
+                        document.getElementById('platformInfo').textContent = data.platform || 'Unknown';
+                        document.getElementById('platformDetails').textContent = 
+                            `Python ${data.python_version || ''}`;
+                        
+                        // 更新工具计数
+                        const count = availableTools.length;
+                        document.getElementById('toolsCount').textContent = `${count}`;
+                        document.getElementById('toolsStatus').textContent = 
+                            count > 0 ? '工具就绪' : '未检测到工具';
+                        
+                        // 更新工具列表显示
+                        updateToolsList(availableTools);
+                        
+                        if (count === 0) {
+                            showNotification('⚠️ 未检测到PCL转换工具，请查看安装指南', 'warning', 10000);
+                        } else {
+                            showNotification(`✅ 检测到 ${count} 个PCL转换工具`, 'success', 3000);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('检测工具失败:', error);
+                    document.getElementById('toolsCount').textContent = '0';
+                    document.getElementById('toolsStatus').textContent = '检测失败';
+                    showNotification('❌ 无法检测工具状态', 'error');
+                });
+        }
+        
+        // 更新工具列表显示
+        function updateToolsList(tools) {
+            const toolsList = document.getElementById('toolsList');
+            
+            if (tools.length === 0) {
+                toolsList.innerHTML = `
+                    <div class="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <i class="fas fa-exclamation-triangle text-yellow-500 text-2xl mb-2"></i>
+                        <p class="text-yellow-700 font-medium">未检测到PCL转换工具</p>
+                        <p class="text-yellow-600 text-sm mt-1">请查看安装指南安装必要工具</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            tools.forEach(tool => {
+                html += `
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div class="mr-3">
+                            <i class="fas fa-check-circle text-green-500"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-800">${tool.name}</div>
+                            <div class="text-sm text-gray-600 mt-1">${tool.command}</div>
+                            <div class="text-xs text-gray-500 mt-1 truncate">${tool.version || '版本未知'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            toolsList.innerHTML = html;
+        }
+        
+        // 刷新工具检测
+        function refreshTools() {
+            showNotification('🔄 正在重新检测PCL转换工具...', 'info');
+            detectTools();
+        }
+        
+        // 文件选择处理
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+        
+        // 处理文件
+        function processFile(file) {
+            // 验证文件类型
+            if (!file.name.toLowerCase().endsWith('.pcl')) {
+                showNotification('❌ 只支持.pcl格式文件', 'error');
+                return;
+            }
+            
+            // 验证文件大小（最大100MB）
+            if (file.size > 100 * 1024 * 1024) {
+                showNotification('❌ 文件太大（最大100MB）', 'error');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            // 显示文件信息
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('selectedFile').classList.remove('hidden');
+            
+            // 启用转换按钮
+            document.getElementById('convertBtn').disabled = false;
+            
+            showNotification(`✅ 已选择文件: ${file.name}`, 'success');
+        }
+        
+        // 清除文件
+        function clearFile() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('selectedFile').classList.add('hidden');
+            document.getElementById('convertBtn').disabled = true;
+            showNotification('🗑️ 已清除选择的文件', 'info');
+        }
+        
+        // 拖放功能
+        const uploadArea = document.getElementById('uploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length) {
+                const file = e.dataTransfer.files[0];
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                processFile(file);
+            }
+        });
+        
+        // 文件大小格式化
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 更新转换进度
+        function updateProgress(percent, label) {
+            const progressFill = document.getElementById('progressFill');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressLabel = document.getElementById('progressLabel');
+            
+            progressFill.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+            if (label) progressLabel.textContent = label;
+            
+            // 更新步骤状态
+            const steps = {
+                10: ['stepUpload', '完成'],
+                30: ['stepValidate', '完成'],
+                60: ['stepConvert', '进行中'],
+                90: ['stepGenerate', '进行中'],
+                100: ['stepGenerate', '完成']
+            };
+            
+            if (steps[percent]) {
+                const [stepId, status] = steps[percent];
+                document.getElementById(stepId).textContent = status;
+            }
+        }
+        
+        // 转换文件
+        function convertFile() {
+            if (!selectedFile || conversionInProgress) return;
+            
+            // 检查是否有可用工具
+            if (availableTools.length === 0) {
+                showNotification('❌ 未检测到PCL转换工具，请先安装工具', 'error');
+                return;
+            }
+            
+            // 重置UI
+            document.getElementById('resultContainer').classList.add('hidden');
+            document.getElementById('resultContainer').innerHTML = '';
+            
+            // 显示进度条
+            document.getElementById('progressContainer').classList.remove('hidden');
+            updateProgress(0, '正在准备转换...');
+            
+            // 禁用按钮
+            document.getElementById('convertBtn').disabled = true;
+            conversionInProgress = true;
+            
+            // 创建FormData
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('conversion_method', 'local');
+            
+            // 发送请求
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateProgress(100, '转换完成！');
+                    
+                    // 显示成功结果
+                    const resultContainer = document.getElementById('resultContainer');
+                    resultContainer.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-xl p-6 card-hover fade-in">
+                            <div class="text-center mb-6">
+                                <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                                    <i class="fas fa-check text-3xl text-green-500"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold text-gray-800 mb-2">转换成功！</h3>
+                                <p class="text-gray-600">文件已成功转换为PDF格式</p>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-xl p-4 mb-6">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">原始文件</p>
+                                        <p class="font-semibold text-gray-800">${data.original_filename}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">输出文件</p>
+                                        <p class="font-semibold text-gray-800">${data.converted_filename}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">文件大小</p>
+                                        <p class="font-semibold text-gray-800">${formatFileSize(data.file_size)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">转换状态</p>
+                                        <p class="font-semibold text-green-600">成功</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <a href="${data.download_url}" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-6 rounded-xl text-center transition duration-300" download="${data.converted_filename}">
+                                    <i class="fas fa-download mr-2"></i>下载PDF文件
+                                </a>
+                                <button onclick="clearFile(); location.reload();" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-xl transition duration-300">
+                                    <i class="fas fa-redo mr-2"></i>转换新文件
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    resultContainer.classList.remove('hidden');
+                    
+                    showNotification('✅ 转换成功！可下载PDF文件', 'success');
+                    
+                    // 更新统计
+                    updateStatistics();
+                    
+                } else {
+                    updateProgress(0, '转换失败');
+                    
+                    // 显示错误
+                    const resultContainer = document.getElementById('resultContainer');
+                    resultContainer.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-xl p-6 card-hover fade-in">
+                            <div class="text-center mb-6">
+                                <div class="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+                                    <i class="fas fa-times text-3xl text-red-500"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold text-gray-800 mb-2">转换失败</h3>
+                                <p class="text-gray-600">转换过程中发生错误</p>
+                            </div>
+                            
+                            <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                                <div class="flex items-start">
+                                    <i class="fas fa-exclamation-triangle text-red-500 mt-1 mr-3"></i>
+                                    <div>
+                                        <p class="font-semibold text-red-700 mb-1">错误信息</p>
+                                        <p class="text-red-600">${data.error}</p>
+                                        ${data.suggestion ? `<p class="text-red-600 mt-2">${data.suggestion}</p>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <button onclick="showHelpModal()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition duration-300">
+                                    <i class="fas fa-question-circle mr-2"></i>查看帮助
+                                </button>
+                                <button onclick="clearFile(); location.reload();" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-xl transition duration-300">
+                                    <i class="fas fa-redo mr-2"></i>重新尝试
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    resultContainer.classList.remove('hidden');
+                    
+                    showNotification(`❌ 转换失败: ${data.error}`, 'error');
+                }
+                
+                // 重置状态
+                conversionInProgress = false;
+                
+                // 5秒后隐藏进度条
+                setTimeout(() => {
+                    document.getElementById('progressContainer').classList.add('hidden');
+                }, 5000);
+            })
+            .catch(error => {
+                updateProgress(0, '网络错误');
+                
+                const resultContainer = document.getElementById('resultContainer');
+                resultContainer.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-xl p-6 card-hover fade-in">
+                        <div class="text-center mb-6">
+                            <div class="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+                                <i class="fas fa-wifi text-3xl text-red-500"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">网络错误</h3>
+                            <p class="text-gray-600">无法连接到转换服务</p>
+                        </div>
+                        
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
+                                <div>
+                                    <p class="font-semibold text-yellow-700 mb-1">请检查以下问题</p>
+                                    <ul class="list-disc pl-5 text-yellow-600 space-y-1">
+                                        <li>应用是否正常运行？</li>
+                                        <li>网络连接是否正常？</li>
+                                        <li>防火墙是否阻止了连接？</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="location.reload()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition duration-300">
+                            <i class="fas fa-sync-alt mr-2"></i>重新加载页面
+                        </button>
+                    </div>
+                `;
+                resultContainer.classList.remove('hidden');
+                
+                showNotification('❌ 网络连接失败，请检查应用状态', 'error');
+                
+                conversionInProgress = false;
+                document.getElementById('progressContainer').classList.add('hidden');
+            });
+        }
+        
+        // 更新统计信息
+        function updateStatistics() {
+            const todayCount = document.getElementById('todayCount');
+            const current = parseInt(todayCount.textContent) || 0;
+            todayCount.textContent = current + 1;
+            
+            // 这里可以添加更复杂的统计逻辑
+        }
+        
+        // 显示帮助模态框
+        function showHelpModal() {
+            document.getElementById('helpModal').classList.remove('hidden');
+        }
+        
+        // 关闭帮助模态框
+        function closeHelpModal() {
+            document.getElementById('helpModal').classList.add('hidden');
+        }
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 启动时间更新
+            updateSystemInfo();
+            setInterval(updateSystemInfo, 1000);
+            
+            // 检测工具
+            detectTools();
+            
+            // 每30秒检测一次工具状态
+            setInterval(detectTools, 30000);
+            
+            // 显示欢迎通知
+            setTimeout(() => {
+                showNotification('🚀 PCL转PDF专业转换器已就绪', 'success', 3000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

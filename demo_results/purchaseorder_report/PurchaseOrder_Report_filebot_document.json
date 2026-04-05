@@ -1,0 +1,19 @@
+{
+  "id": 102000,
+  "name": "PurchaseOrder_Report_Extracted_20260315_151027",
+  "content": "{\n  \"report_id\": 102,\n  \"report_name\": \"PurchaseOrder_Report\",\n  \"extraction_time\": \"2026-03-15T15:10:27.977377\",\n  \"total_records\": 3,\n  \"fields\": [\n    {\n      \"name\": \"field_1\",\n      \"value\": \"PO-2026031501\",\n      \"data_type\": \"code\",\n      \"validation_passed\": false,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^PO-\\\\d{9}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_2\",\n      \"value\": \"ABC Supplier Inc.\",\n      \"data_type\": \"string\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {}\n      }\n    },\n    {\n      \"name\": \"field_3\",\n      \"value\": \"USD 1250.75\",\n      \"data_type\": \"currency\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^USD \\\\d+\\\\.\\\\d{2}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_1\",\n      \"value\": \"PO-2026031502\",\n      \"data_type\": \"code\",\n      \"validation_passed\": false,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^PO-\\\\d{9}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_2\",\n      \"value\": \"Global Suppliers\",\n      \"data_type\": \"string\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {}\n      }\n    },\n    {\n      \"name\": \"field_3\",\n      \"value\": \"USD 3450.20\",\n      \"data_type\": \"currency\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^USD \\\\d+\\\\.\\\\d{2}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_1\",\n      \"value\": \"PO-2026031503\",\n      \"data_type\": \"code\",\n      \"validation_passed\": false,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^PO-\\\\d{9}$\"\n        }\n      }\n    },\n    {\n      \"name\": \"field_2\",\n      \"value\": \"Tech Solutions\",\n      \"data_type\": \"string\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {}\n      }\n    },\n    {\n      \"name\": \"field_3\",\n      \"value\": \"USD 890.50\",\n      \"data_type\": \"currency\",\n      \"validation_passed\": true,\n      \"metadata\": {\n        \"report_id\": 102,\n        \"field_type\": \"field_group\",\n        \"validation_rules\": {\n          \"pattern\": \"^USD \\\\d+\\\\.\\\\d{2}$\"\n        }\n      }\n    }\n  ]\n}",
+  "metadata": {
+    "source_report": "PurchaseOrder_Report",
+    "source_id": 102,
+    "appid": 1,
+    "formid": 2,
+    "extraction_config": {
+      "separator": "|",
+      "field_count": 3,
+      "index_count": 2
+    }
+  },
+  "created_at": "2026-03-15T15:10:27.977377",
+  "updated_at": "2026-03-15T15:10:27.977377",
+  "status": "processed"
+}

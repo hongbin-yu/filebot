@@ -1,0 +1,402 @@
+/**
+ * CanvasComponent 单元测试
+ * 测试核心组件的可访问性和功能
+ */
+
+import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { axe } from 'jest-axe';
+import '@testing-library/jest-dom';
+
+import CanvasComponent from './CanvasComponent';
+import type { ComponentInstance } from '../../services/api';
+
+// 模拟组件实例数据
+const mockButtonInstance: ComponentInstance = {
+  id: 'button-1',
+  template_id: 'wet-button-primary',
+  configuration: {
+    label: '测试按钮',
+    action: 'https://example.com',
+    size: 'medium',
+    variant: 'primary',
+    disabled: false,
+    block: false,
+  },
+  position_x: 100,
+  position_y: 200,
+  alignment: 'left',
+  created_at: '2026-03-27T00:00:00Z',
+  updated_at: '2026-03-27T00:00:00Z',
+};
+
+const mockDisabledButtonInstance: ComponentInstance = {
+  ...mockButtonInstance,
+  id: 'button-2',
+  configuration: {
+    ...mockButtonInstance.configuration,
+    label: '禁用按钮',
+    disabled: true,
+  },
+};
+
+const mockInputInstance: ComponentInstance = {
+  id: 'input-1',
+  template_id: 'wet-input-text',
+  configuration: {
+    label: '用户名',
+    placeholder: '请输入用户名',
+    type: 'text',
+    required: true,
+    disabled: false,
+  },
+  position_x: 300,
+  position_y: 200,
+  alignment: 'center',
+  created_at: '2026-03-27T00:00:00Z',
+  updated_at: '2026-03-27T00:00:00Z',
+};
+
+const mockTitleInstance: ComponentInstance = {
+  id: 'title-1',
+  template_id: 'wet-title',
+  configuration: {
+    text: '页面标题',
+    level: 1,
+    align: 'center',
+    size: 'large',
+  },
+  position_x: 500,
+  position_y: 100,
+  alignment: 'center',
+  created_at: '2026-03-27T00:00:00Z',
+  updated_at: '2026-03-27T00:00:00Z',
+};
+
+// 模拟hook
+vi.mock('../../hooks/useComponents', () => ({
+  useComponentInstances: () => ({
+    selectInstance: vi.fn(),
+    updateComponentPosition: vi.fn(),
+    deleteComponentInstance: vi.fn(),
+    updateComponentAlignment: vi.fn(),
+  }),
+}));
+
+vi.mock('../../hooks/useEditorState', () => ({
+  useEditorState: () => ({
+    openConfigDialog: vi.fn(),
+  }),
+}));
+
+vi.mock('../../stores/editorStore', () => ({
+  useEditorStore: () => ({
+    selectedInstanceId: null,
+  }),
+}));
+
+describe('CanvasComponent 可访问性测试', () => {
+  describe('按钮组件 (wet-button-primary)', () => {
+    it('渲染正常按钮，包含正确的可访问性属性', () => {
+      render(
+        <CanvasComponent
+          instance={mockButtonInstance}
+          previewMode={false}
+        />
+      );
+
+      // 检查按钮元素存在
+      const buttonElement = screen.getByRole('button', { name: /测试按钮/i });
+      expect(buttonElement).toBeInTheDocument();
+
+      // 检查可访问性属性
+      expect(buttonElement).toHaveAttribute('aria-label', '测试按钮');
+      expect(buttonElement).toHaveAttribute('aria-disabled', 'false');
+      expect(buttonElement).toHaveAttribute('role', 'button');
+      expect(buttonElement).toHaveAttribute('tabindex', '0');
+    });
+
+    it('渲染禁用按钮，包含正确的可访问性属性', () => {
+      render(
+        <CanvasComponent
+          instance={mockDisabledButtonInstance}
+          previewMode={false}
+        />
+      );
+
+      const buttonElement = screen.getByRole('button', { name: /禁用按钮/i });
+      expect(buttonElement).toBeInTheDocument();
+      
+      // 禁用按钮应该有 aria-disabled="true"
+      expect(buttonElement).toHaveAttribute('aria-disabled', 'true');
+      expect(buttonElement).toHaveAttribute('tabindex', '-1');
+      expect(buttonElement).toHaveClass(/not-allowed/);
+    });
+
+    it('按钮应通过键盘交互 (Enter键)', () => {
+      const mockWindowOpen = vi.fn();
+      window.open = mockWindowOpen;
+
+      render(
+        <CanvasComponent
+          instance={mockButtonInstance}
+          previewMode={false}
+        />
+      );
+
+      const buttonElement = screen.getByRole('button', { name: /测试按钮/i });
+      
+      // 模拟按下Enter键
+      fireEvent.keyDown(buttonElement, { key: 'Enter' });
+      
+      // 应该触发window.open (因为有action URL)
+      expect(mockWindowOpen).toHaveBeenCalledWith('https://example.com', '_blank');
+    });
+
+    it('按钮应通过键盘交互 (Space键)', () => {
+      const mockWindowOpen = vi.fn();
+      window.open = mockWindowOpen;
+
+      render(
+        <CanvasComponent
+          instance={mockButtonInstance}
+          previewMode={false}
+        />
+      );
+
+      const buttonElement = screen.getByRole('button', { name: /测试按钮/i });
+      
+      // 模拟按下空格键
+      fireEvent.keyDown(buttonElement, { key: ' ' });
+      
+      // 应该触发window.open
+      expect(mockWindowOpen).toHaveBeenCalledWith('https://example.com', '_blank');
+    });
+
+    it('禁用按钮不应响应键盘交互', () => {
+      const mockWindowOpen = vi.fn();
+      window.open = mockWindowOpen;
+
+      render(
+        <CanvasComponent
+          instance={mockDisabledButtonInstance}
+          previewMode={false}
+        />
+      );
+
+      const buttonElement = screen.getByRole('button', { name: /禁用按钮/i });
+      
+      // 模拟按下Enter键
+      fireEvent.keyDown(buttonElement, { key: 'Enter' });
+      
+      // 不应该触发window.open
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    it('应符合WCAG可访问性标准 (axe-core测试)', async () => {
+      const { container } = render(
+        <CanvasComponent
+          instance={mockButtonInstance}
+          previewMode={false}
+        />
+      );
+
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+  });
+
+  describe('输入框组件 (wet-input-text)', () => {
+    it('渲染输入框，包含正确的标签关联', () => {
+      render(
+        <CanvasComponent
+          instance={mockInputInstance}
+          previewMode={false}
+        />
+      );
+
+      // 检查标签存在
+      const labelElement = screen.getByText('用户名');
+      expect(labelElement).toBeInTheDocument();
+      expect(labelElement).toHaveAttribute('for', 'input-input-1');
+      expect(labelElement).toHaveAttribute('id', 'label-input-1');
+
+      // 检查输入框区域
+      const inputElement = screen.getByRole('textbox', { name: /请输入用户名/i });
+      expect(inputElement).toBeInTheDocument();
+
+      // 检查可访问性属性
+      expect(inputElement).toHaveAttribute('aria-label', '请输入用户名');
+      expect(inputElement).toHaveAttribute('aria-required', 'true');
+      expect(inputElement).toHaveAttribute('aria-disabled', 'false');
+    });
+
+    it('输入框应响应键盘交互 (Enter键选择)', () => {
+      const mockSelectInstance = vi.fn();
+      vi.mocked(require('../../hooks/useComponents').useComponentInstances).mockReturnValue({
+        selectInstance: mockSelectInstance,
+        updateComponentPosition: vi.fn(),
+        deleteComponentInstance: vi.fn(),
+        updateComponentAlignment: vi.fn(),
+      });
+
+      render(
+        <CanvasComponent
+          instance={mockInputInstance}
+          previewMode={false}
+        />
+      );
+
+      const inputElement = screen.getByRole('textbox', { name: /请输入用户名/i });
+      
+      // 模拟按下Enter键
+      fireEvent.keyDown(inputElement, { key: 'Enter' });
+      
+      // 应该触发selectInstance
+      expect(mockSelectInstance).toHaveBeenCalledWith('input-1');
+    });
+
+    it('应符合WCAG可访问性标准', async () => {
+      const { container } = render(
+        <CanvasComponent
+          instance={mockInputInstance}
+          previewMode={false}
+        />
+      );
+
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+  });
+
+  describe('标题组件 (wet-title)', () => {
+    it('渲染正确级别的标题元素', () => {
+      render(
+        <CanvasComponent
+          instance={mockTitleInstance}
+          previewMode={false}
+        />
+      );
+
+      // 检查h1元素存在
+      const headingElement = screen.getByRole('heading', { name: '页面标题', level: 1 });
+      expect(headingElement).toBeInTheDocument();
+      expect(headingElement.tagName).toBe('H1');
+
+      // 检查可访问性属性
+      expect(headingElement).toHaveAttribute('id', 'title-title-1');
+      expect(headingElement).toHaveAttribute('tabindex', '0');
+      expect(headingElement).toHaveAttribute('aria-label', '页面标题');
+    });
+
+    it('标题应响应键盘交互 (Enter键选择)', () => {
+      const mockSelectInstance = vi.fn();
+      vi.mocked(require('../../hooks/useComponents').useComponentInstances).mockReturnValue({
+        selectInstance: mockSelectInstance,
+        updateComponentPosition: vi.fn(),
+        deleteComponentInstance: vi.fn(),
+        updateComponentAlignment: vi.fn(),
+      });
+
+      render(
+        <CanvasComponent
+          instance={mockTitleInstance}
+          previewMode={false}
+        />
+      );
+
+      const headingElement = screen.getByRole('heading', { name: '页面标题', level: 1 });
+      
+      // 模拟按下Enter键
+      fireEvent.keyDown(headingElement, { key: 'Enter' });
+      
+      // 应该触发selectInstance
+      expect(mockSelectInstance).toHaveBeenCalledWith('title-1');
+    });
+
+    it('标题应响应点击选择', () => {
+      const mockSelectInstance = vi.fn();
+      vi.mocked(require('../../hooks/useComponents').useComponentInstances).mockReturnValue({
+        selectInstance: mockSelectInstance,
+        updateComponentPosition: vi.fn(),
+        deleteComponentInstance: vi.fn(),
+        updateComponentAlignment: vi.fn(),
+      });
+
+      render(
+        <CanvasComponent
+          instance={mockTitleInstance}
+          previewMode={false}
+        />
+      );
+
+      const headingElement = screen.getByRole('heading', { name: '页面标题', level: 1 });
+      
+      // 模拟点击
+      fireEvent.click(headingElement);
+      
+      // 应该触发selectInstance
+      expect(mockSelectInstance).toHaveBeenCalledWith('title-1');
+    });
+
+    it('应符合WCAG可访问性标准', async () => {
+      const { container } = render(
+        <CanvasComponent
+          instance={mockTitleInstance}
+          previewMode={false}
+        />
+      );
+
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+  });
+
+  describe('预览模式', () => {
+    it('在预览模式下，点击按钮不应选择组件', () => {
+      const mockSelectInstance = vi.fn();
+      vi.mocked(require('../../hooks/useComponents').useComponentInstances).mockReturnValue({
+        selectInstance: mockSelectInstance,
+        updateComponentPosition: vi.fn(),
+        deleteComponentInstance: vi.fn(),
+        updateComponentAlignment: vi.fn(),
+      });
+
+      render(
+        <CanvasComponent
+          instance={mockButtonInstance}
+          previewMode={true}
+        />
+      );
+
+      const buttonElement = screen.getByRole('button', { name: /测试按钮/i });
+      
+      // 模拟点击
+      fireEvent.click(buttonElement);
+      
+      // 在预览模式下不应触发selectInstance
+      expect(mockSelectInstance).not.toHaveBeenCalled();
+    });
+
+    it('在预览模式下，Enter键仍应打开链接', () => {
+      const mockWindowOpen = vi.fn();
+      window.open = mockWindowOpen;
+
+      render(
+        <CanvasComponent
+          instance={mockButtonInstance}
+          previewMode={true}
+        />
+      );
+
+      const buttonElement = screen.getByRole('button', { name: /测试按钮/i });
+      
+      // 模拟按下Enter键
+      fireEvent.keyDown(buttonElement, { key: 'Enter' });
+      
+      // 应该仍触发window.open
+      expect(mockWindowOpen).toHaveBeenCalledWith('https://example.com', '_blank');
+    });
+  });
+});

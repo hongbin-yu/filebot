@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>WebBot Page Navigation - Tree View</title>
+    
+    <!-- Canada.ca WET theme CSS -->
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/theme.min.css">
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/wet-boew.min.css">
+    
+    <!-- Simple custom styles -->
+    <style>
+        /* Hide Canada.ca default header/footer elements */
+        #wb-bnr, #wb-sm, #wb-info, #wb-srch, #wb-lng, .wb-srch, .gcweb-menu, #gcwu-sig {
+            display: none !important;
+        }
+        
+        /* Simple container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .header p {
+            color: #666;
+            margin: 0;
+        }
+        
+        /* Breadcrumb navigation */
+        .breadcrumb {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .breadcrumb-item {
+            display: inline-block;
+        }
+        
+        .breadcrumb-item:not(:last-child):after {
+            content: '›';
+            margin: 0 8px;
+            color: #6c757d;
+        }
+        
+        .breadcrumb-home {
+            color: #0078d4;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .breadcrumb-home:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb-current {
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        /* Page list */
+        .page-list-container {
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            padding: 20px;
+        }
+        
+        .page-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .page-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .page-item:last-child {
+            border-bottom: none;
+        }
+        
+        .page-item:hover {
+            background-color: #f0f7ff;
+        }
+        
+        .page-item.has-children {
+            position: relative;
+        }
+        
+        .page-item.has-children:after {
+            content: '›';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            font-size: 18px;
+        }
+        
+        .page-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        
+        .page-meta {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+        }
+        
+        .error {
+            background: #f2dede;
+            color: #a94442;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border: 1px solid #ebccd1;
+        }
+        
+        /* Status indicators */
+        .status-draft {
+            color: #856404;
+            background-color: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .status-published {
+            color: #155724;
+            background-color: #d4edda;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .language-en {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .language-fr {
+            color: #721c24;
+            background-color: #f8d7da;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .child-count {
+            color: #6c757d;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body vocab="http://schema.org/" resource="#wb-webpage" typeof="WebPage">
+    <div class="container">
+        <div class="header">
+            <h1>WebBot Page Navigation</h1>
+            <p>Browse pages hierarchically. Start from root pages and navigate down.</p>
+        </div>
+        
+        <!-- Breadcrumb navigation -->
+        <div class="breadcrumb" id="breadcrumb">
+            <span class="breadcrumb-item">
+                <a href="#" class="breadcrumb-home" onclick="goToRoot()">Root</a>
+            </span>
+        </div>
+        
+        <div class="page-list-container">
+            <div id="loading" class="loading">Loading pages...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <ul id="page-list" class="page-list" style="display: none;"></ul>
+        </div>
+    </div>
+
+    <!-- Canada.ca WET theme JS -->
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js"></script>
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js"></script>
+    
+    <!-- Tree navigation logic -->
+    <script>
+        const API_BASE = '/api/v1/pages';
+        let allPages = [];
+        let currentParentId = null; // null means root level
+        let navigationStack = []; // Stack for breadcrumb navigation
+        
+        // Load pages on startup
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch(API_BASE);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                allPages = await response.json();
+                
+                // Hide loading, show list
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('page-list').style.display = 'block';
+                
+                renderCurrentLevel();
+                updateBreadcrumb();
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                const errorEl = document.getElementById('error');
+                errorEl.textContent = `Failed to load pages: ${error.message}`;
+                errorEl.style.display = 'block';
+                console.error('Error loading pages:', error);
+            }
+        });
+        
+        // Render pages at current level
+        function renderCurrentLevel() {
+            const listEl = document.getElementById('page-list');
+            listEl.innerHTML = '';
+            
+            // Filter pages at current level
+            const pagesAtLevel = allPages.filter(page => {
+                if (currentParentId === null) {
+                    // Root level: pages with no parent or empty parent_id
+                    return !page.parent_id || page.parent_id === '';
+                } else {
+                    // Child level: pages with matching parent_id
+                    return page.parent_id === currentParentId;
+                }
+            });
+            
+            // Sort pages: folders (with children) first, then by title
+            const sortedPages = [...pagesAtLevel].sort((a, b) => {
+                // Check if page has children
+                const aHasChildren = hasChildren(a.id);
+                const bHasChildren = hasChildren(b.id);
+                
+                if (aHasChildren && !bHasChildren) return -1;
+                if (!aHasChildren && bHasChildren) return 1;
+                
+                // Both have or don't have children, sort by title
+                return (a.title || a.id).localeCompare(b.title || b.id);
+            });
+            
+            if (pagesAtLevel.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'page-item';
+                li.innerHTML = '<div class="page-title" style="color: #666; font-style: italic;">No pages at this level</div>';
+                listEl.appendChild(li);
+                return;
+            }
+            
+            sortedPages.forEach(page => {
+                const hasChildren = checkIfPageHasChildren(page.id);
+                const li = document.createElement('li');
+                li.className = 'page-item';
+                if (hasChildren) {
+                    li.classList.add('has-children');
+                }
+                
+                li.innerHTML = `
+                    <div class="page-title">${escapeHtml(page.title || page.id)}</div>
+                    <div class="page-meta">
+                        <span>ID: ${escapeHtml(page.id)}</span>
+                        <span class="language-${page.language || 'en'}">${page.language || 'en'}</span>
+                        <span class="status-${page.status || 'draft'}">${page.status || 'draft'}</span>
+                        ${hasChildren ? `<span class="child-count">${countChildren(page.id)} child pages</span>` : ''}
+                    </div>
+                `;
+                
+                if (hasChildren) {
+                    li.addEventListener('click', () => {
+                        navigateDown(page.id, page.title || page.id);
+                    });
+                } else {
+                    li.addEventListener('click', () => {
+                        selectPage(page.id);
+                    });
+                }
+                
+                listEl.appendChild(li);
+            });
+        }
+        
+        // Navigate down to child level
+        function navigateDown(parentId, parentTitle) {
+            navigationStack.push({
+                id: currentParentId,
+                title: getCurrentLevelTitle()
+            });
+            currentParentId = parentId;
+            renderCurrentLevel();
+            updateBreadcrumb(parentTitle);
+        }
+        
+        // Navigate up one level
+        function navigateUp() {
+            if (navigationStack.length > 0) {
+                const previousLevel = navigationStack.pop();
+                currentParentId = previousLevel.id;
+                renderCurrentLevel();
+                updateBreadcrumb(previousLevel.title);
+            } else {
+                goToRoot();
+            }
+        }
+        
+        // Go back to root level
+        function goToRoot() {
+            currentParentId = null;
+            navigationStack = [];
+            renderCurrentLevel();
+            updateBreadcrumb();
+            return false; // Prevent default link behavior
+        }
+        
+        // Update breadcrumb navigation
+        function updateBreadcrumb(currentTitle = null) {
+            const breadcrumbEl = document.getElementById('breadcrumb');
+            
+            // Start with Root link
+            let breadcrumbHtml = `
+                <span class="breadcrumb-item">
+                    <a href="#" class="breadcrumb-home" onclick="goToRoot(); return false;">Root</a>
+                </span>
+            `;
+            
+            // Add navigation stack levels
+            navigationStack.forEach(level => {
+                if (level.title) {
+                    breadcrumbHtml += `
+                        <span class="breadcrumb-item">
+                            <a href="#" class="breadcrumb-home" onclick="navigateToLevel('${level.id}'); return false;">${escapeHtml(level.title)}</a>
+                        </span>
+                    `;
+                }
+            });
+            
+            // Add current level if not root
+            if (currentParentId !== null && currentTitle) {
+                breadcrumbHtml += `
+                    <span class="breadcrumb-item breadcrumb-current">${escapeHtml(currentTitle)}</span>
+                `;
+            }
+            
+            breadcrumbEl.innerHTML = breadcrumbHtml;
+        }
+        
+        // Navigate to a specific level (for breadcrumb links)
+        function navigateToLevel(targetParentId) {
+            // Find the target level in navigation stack
+            const targetIndex = navigationStack.findIndex(level => level.id === targetParentId);
+            
+            if (targetIndex !== -1) {
+                // Truncate stack to this level
+                navigationStack = navigationStack.slice(0, targetIndex);
+                currentParentId = targetParentId;
+                renderCurrentLevel();
+                updateBreadcrumb();
+            }
+        }
+        
+        // Get title for current level
+        function getCurrentLevelTitle() {
+            if (currentParentId === null) return 'Root';
+            
+            const currentPage = allPages.find(page => page.id === currentParentId);
+            return currentPage ? (currentPage.title || currentPage.id) : 'Unknown';
+        }
+        
+        // Check if a page has children
+        function checkIfPageHasChildren(pageId) {
+            return allPages.some(page => page.parent_id === pageId);
+        }
+        
+        // Count children of a page
+        function countChildren(pageId) {
+            return allPages.filter(page => page.parent_id === pageId).length;
+        }
+        
+        // Helper: does page have children?
+        function hasChildren(pageId) {
+            return countChildren(pageId) > 0;
+        }
+        
+        // Select a page and navigate to editor
+        function selectPage(pageId) {
+            // Navigate to editor after a brief delay for visual feedback
+            setTimeout(() => {
+                window.location.href = `editor.html?pageId=${encodeURIComponent(pageId)}`;
+            }, 200);
+        }
+        
+        // Simple HTML escaping
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

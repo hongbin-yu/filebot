@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试前端API调用</title>
+</head>
+<body>
+    <h1>测试WebBot前端API调用</h1>
+    <div>
+        <button onclick="testAPI()">测试组件API</button>
+        <button onclick="testCORS()">测试CORS</button>
+    </div>
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; min-height: 100px;"></div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+        
+        function log(msg) {
+            document.getElementById('result').innerHTML += `<div>${new Date().toISOString()}: ${msg}</div>`;
+        }
+        
+        function clearLog() {
+            document.getElementById('result').innerHTML = '';
+        }
+        
+        async function testAPI() {
+            clearLog();
+            log('开始测试组件模板API...');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/components/templates`);
+                log(`API响应状态: ${response.status} ${response.statusText}`);
+                
+                const data = await response.json();
+                log(`API响应数据: ${JSON.stringify(data).substring(0, 200)}...`);
+                log(`组件数量: ${Array.isArray(data) ? data.length : (data.templates ? data.templates.length : 0)}`);
+                
+                // 检查响应头
+                log('响应头检查:');
+                for (const [key, value] of response.headers.entries()) {
+                    if (key.toLowerCase().includes('access-control')) {
+                        log(`  ${key}: ${value}`);
+                    }
+                }
+            } catch (error) {
+                log(`API调用失败: ${error.message}`);
+            }
+        }
+        
+        async function testCORS() {
+            clearLog();
+            log('开始测试CORS预检请求...');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/components/templates`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://localhost:5173',
+                        'Access-Control-Request-Method': 'GET'
+                    }
+                });
+                
+                log(`OPTIONS响应状态: ${response.status}`);
+                log('OPTIONS响应头:');
+                for (const [key, value] of response.headers.entries()) {
+                    if (key.toLowerCase().includes('access-control')) {
+                        log(`  ${key}: ${value}`);
+                    }
+                }
+            } catch (error) {
+                log(`CORS测试失败: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

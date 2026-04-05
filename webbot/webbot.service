@@ -1,0 +1,28 @@
+[Unit]
+Description=WebBot AI Content Management System
+Description=WebBot AI 内容管理系统
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=hongb
+Group=hongb
+WorkingDirectory=/home/hongb/.openclaw/workspace/webbot
+Environment="PATH=/usr/bin:/home/hongb/.local/bin"
+Environment="PYTHONPATH=/home/hongb/.openclaw/workspace/webbot"
+ExecStart=/usr/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=webbot
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/hongb/.openclaw/workspace/webbot
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

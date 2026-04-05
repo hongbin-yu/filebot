@@ -1,0 +1,41 @@
+============================================================
+DAILY STOCK ANALYSIS - 2026-03-13 16:59 EDT
+============================================================
+
+USO (US Oil Fund ETF):
+  Current Price: $119.89
+  Daily Change: $+1.50 (+1.27%)
+  RSI(14): 88.8
+    → OVERBOUGHT (consider taking profits)
+
+^GSPC (S&P 500 Index):
+  Current Price: $6632.19
+  Daily Change: $-40.43 (-0.61%)
+  RSI(14): 34.1
+    → NEUTRAL
+
+CL=F (WTI Crude Oil Futures):
+  Current Price: $98.88
+  Daily Change: $+3.15 (+3.29%)
+  20-day SMA: $75.26
+  vs SMA20: +31.38%
+  RSI(14): 78.4
+    → OVERBOUGHT (consider taking profits)
+
+============================================================
+USO SPECIFIC RECOMMENDATIONS
+============================================================
+
+Your Position: 250 shares @ $119.89
+Position Value: $29,972.50
+
+1. Moderate movement - monitor closely
+2. RSI indicates overbought - partial profit-taking advised
+
+NEXT ACTION:
+→ Consider selling 25-50 shares to lock in profits
+
+============================================================
+DISCLAIMER: This is automated analysis, not financial advice.
+Consult with a financial advisor before making investment decisions.
+============================================================

@@ -1,0 +1,1060 @@
+INFO:     Will watch for changes in these directories: ['/home/hongb/.openclaw/workspace/webbot']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [702269] using WatchFiles
+INFO:     Started server process [702272]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+⚠️  aiohttp模块未安装，文件上传转发到FileBot将不可用
+✅ 文件路由已加载
+✅ 组件路由已加载
+📁 静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../frontend
+📁 GCWeb静态文件目录: /home/hongb/.openclaw/workspace/webbot/app/../static
+🚀 WebBot启动中...
+✅ 组件表检查完成
+📊 数据库初始化完成
+✅ 数据库初始化完成
+INFO:     127.0.0.1:43736 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:34076 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:34076 - "GET /navigation.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42214 - "GET /editor.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42224 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8d3c0>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:42216 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44264 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44260 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44256 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44254 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8f9d0>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:44254 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8e500>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:60204 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48642 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48640 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48638 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48638 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48638 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48638 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48640 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48642 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48642 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48640 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48638 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48642 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48640 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48642 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48638 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48642 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60204 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa73610>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:48650 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54312 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:47552 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa73460>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:47552 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47562 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47598 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47578 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47562 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47562 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47562 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47578 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47598 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47562 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47598 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47578 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47562 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47598 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47578 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47562 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47554 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47578 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47578 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47578 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47552 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8fac0>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:47552 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59308 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8f8e0>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:59294 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54402 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:58210 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8f970>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:58214 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58232 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58228 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58234 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58234 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58232 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58228 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58228 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58234 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58232 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58234 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58228 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58232 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58234 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58214 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58234 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa7400>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:58220 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52670 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52670 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45320 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45320 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45342 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45320 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa4d30>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:45320 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47570 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47602 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa63e0>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:47570 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47602 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47606 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47622 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47626 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47570 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47606 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47602 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47626 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47622 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47602 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47626 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47606 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47622 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47626 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47602 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47622 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47606 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47602 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47626 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47586 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47622 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47606 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47606 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47622 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47606 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47570 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47622 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa6650>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:47622 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51190 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa49a0>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:51190 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51208 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51212 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51214 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51190 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51212 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51208 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51208 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51212 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51212 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51208 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51178 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51214 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51208 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51212 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51212 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51208 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51208 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8db40>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:51208 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34002 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8fbe0>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:33990 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34038 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34032 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34040 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34002 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34040 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34038 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34032 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34040 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34038 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34032 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34040 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34032 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34038 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34040 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34032 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:33990 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34040 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34032 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34032 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8ee60>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:34032 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47978 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47978 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47978 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47994 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48006 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48002 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48022 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48006 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48006 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48006 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48006 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48002 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48002 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47994 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48022 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48006 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47978 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48032 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47978 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48022 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47994 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48032 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48006 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47978 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47994 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48002 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48006 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48032 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:47978 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48022 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48022 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48022 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 304 Not Modified
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa7820>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:48022 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48022 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:48022 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/js/i18n/keynav/en.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:39836 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39836 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39836 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39836 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39842 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /favicon.ico HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39842 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa6a70>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:39842 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39844 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39844 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39844 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39844 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa4640>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:39844 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39846 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39864 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39846 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39846 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa5a50>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:39846 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35336 - "GET /editor.html?pageId=%2Fen%2Fheader HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:35336 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/header', normalized='/en/header'
+DEBUG: clean_path='en/header', path_parts=['en', 'header']
+DEBUG: page_id='header', parent_id='en'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('header', 'en')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa4040>
+DEBUG: Returning page with id=header
+INFO:     127.0.0.1:35336 - "GET /api/v1/pages/by-path?path=%2Fen%2Fheader HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35348 - "GET /editor.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35348 - "GET /favicon.ico HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38084 - "GET /editor.html?pageId=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38084 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/transparency/privacy/global-header-4423', normalized='/en/transparency/privacy/global-header-4423'
+DEBUG: clean_path='en/transparency/privacy/global-header-4423', path_parts=['en', 'transparency', 'privacy', 'global-header-4423']
+DEBUG: page_id='global-header-4423', parent_id='privacy'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('global-header-4423', 'privacy')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa6fe0>
+DEBUG: Returning page with id=global-header-4423
+INFO:     127.0.0.1:38084 - "GET /api/v1/pages/by-path?path=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38096 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38096 - "GET /editor.html?pageId=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38096 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38106 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38096 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/transparency/privacy/global-header-4423', normalized='/en/transparency/privacy/global-header-4423'
+DEBUG: clean_path='en/transparency/privacy/global-header-4423', path_parts=['en', 'transparency', 'privacy', 'global-header-4423']
+DEBUG: page_id='global-header-4423', parent_id='privacy'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('global-header-4423', 'privacy')
+DEBUG: found page=<sqlite3.Row object at 0x77207fa8fe80>
+DEBUG: Returning page with id=global-header-4423
+INFO:     127.0.0.1:38096 - "GET /api/v1/pages/by-path?path=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /editor.html?pageId=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50884 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50868 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50884 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50884 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50884 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50884 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50884 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50884 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50856 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/transparency/privacy/global-header-4423', normalized='/en/transparency/privacy/global-header-4423'
+DEBUG: clean_path='en/transparency/privacy/global-header-4423', path_parts=['en', 'transparency', 'privacy', 'global-header-4423']
+DEBUG: page_id='global-header-4423', parent_id='privacy'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('global-header-4423', 'privacy')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa5f00>
+DEBUG: Returning page with id=global-header-4423
+INFO:     127.0.0.1:50886 - "GET /api/v1/pages/by-path?path=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /editor.html?pageId=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/tinymce.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/jquery/2.2.4/jquery.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /wet-boew/js/wet-boew.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /GCWeb/js/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50868 - "GET /wet-boew/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/models/dom/model.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/themes/silver/theme.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/icons/default/icons.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/advlist/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/autolink/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/lists/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/link/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/image/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/charmap/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/preview/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/anchor/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/searchreplace/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/visualblocks/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/code/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/fullscreen/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/insertdatetime/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/media/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/table/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/help/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /external/tinymce/tinymce/js/tinymce/plugins/wordcount/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/plugins/pagebreak/plugin.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /wet-boew/js/i18n/en.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /wet-boew/js/wet-boew.min.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/skin.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /wet-boew/js/deps/jquery.magnific-popup.min.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /GCWeb/css/theme.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /external/tinymce/tinymce/js/tinymce/skins/ui/oxide/content.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /wet-boew/css/wet-boew.min.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /favicon.ico HTTP/1.1" 200 OK
+DEBUG get_page_by_path: input='/en/transparency/privacy/global-header-4423', normalized='/en/transparency/privacy/global-header-4423'
+DEBUG: clean_path='en/transparency/privacy/global-header-4423', path_parts=['en', 'transparency', 'privacy', 'global-header-4423']
+DEBUG: page_id='global-header-4423', parent_id='privacy'
+DEBUG: SQL='SELECT * FROM webbot_page WHERE id = ? AND parent_id = ?', params=('global-header-4423', 'privacy')
+DEBUG: found page=<sqlite3.Row object at 0x77207faa62f0>
+DEBUG: Returning page with id=global-header-4423
+INFO:     127.0.0.1:50882 - "GET /api/v1/pages/by-path?path=%2Fen%2Ftransparency%2Fprivacy%2Fglobal-header-4423 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /filebot-picker.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50882 - "GET /favicon.ico HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50896 - "GET /favicon.ico HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40702 - "GET /favicon.ico HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [702272]
+🛑 WebBot关闭中...
+INFO:     Stopping reloader process [702269]

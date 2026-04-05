@@ -1,0 +1,42 @@
+[
+  {
+    "id": "8fd43d09-65a7-4440-969e-e035fe140314",
+    "name": "[Smarti] Template",
+    "slug": "smarti-template",
+    "description": "从Smarti导入的应用: Template",
+    "settings": "{\"smarti_app_id\": 0, \"original_name\": \"Template\", \"create_date\": \"1999-12-07\", \"admin_id\": 0, \"disposition_id\": -99, \"formtitle\": null, \"import_source\": \"smarti\", \"import_time\": \"2026-04-01T09:53:27.955839\"}",
+    "created_at": "2026-04-01 13:53:27"
+  },
+  {
+    "id": "3dd82912-28f0-40eb-8ed9-263ba19c9420",
+    "name": "[Smarti] Sample Financial",
+    "slug": "smarti-sample-financial",
+    "description": "This is a sample application",
+    "settings": "{\"smarti_app_id\": 6, \"original_name\": \"Sample Financial\", \"create_date\": \"1998-10-06\", \"admin_id\": 5, \"disposition_id\": -99, \"formtitle\": \"Index 2+_+Filename+_\", \"import_source\": \"smarti\", \"import_time\": \"2026-04-01T09:53:27.955996\"}",
+    "created_at": "2026-04-01 13:53:27"
+  },
+  {
+    "id": "32a2a7d9-23b7-4577-825e-6fc499bdfd61",
+    "name": "[Smarti] Sample Hospital",
+    "slug": "smarti-sample-hospital",
+    "description": "This is a sample application containing hospital type information",
+    "settings": "{\"smarti_app_id\": 8, \"original_name\": \"Sample Hospital\", \"create_date\": \"1998-10-06\", \"admin_id\": 5, \"disposition_id\": -99, \"formtitle\": null, \"import_source\": \"smarti\", \"import_time\": \"2026-04-01T09:53:27.956019\"}",
+    "created_at": "2026-04-01 13:53:27"
+  },
+  {
+    "id": "af1aebdc-01b9-4065-be47-ad34ada037a0",
+    "name": "[Smarti] Sample Invoicing",
+    "slug": "smarti-sample-invoicing",
+    "description": "This is a sample application containing invoice related information",
+    "settings": "{\"smarti_app_id\": 10, \"original_name\": \"Sample Invoicing\", \"create_date\": \"1998-10-06\", \"admin_id\": 5, \"disposition_id\": -99, \"formtitle\": null, \"import_source\": \"smarti\", \"import_time\": \"2026-04-01T09:53:27.956033\"}",
+    "created_at": "2026-04-01 13:53:27"
+  },
+  {
+    "id": "2376165f-fb90-4854-9cc1-239f80a20a6b",
+    "name": "[Smarti] Sample Test",
+    "slug": "smarti-sample-test",
+    "description": "从Smarti导入的应用: Sample Test",
+    "settings": "{\"smarti_app_id\": 21, \"original_name\": \"Sample Test\", \"create_date\": \"2014-04-08\", \"admin_id\": 0, \"disposition_id\": null, \"formtitle\": \"\", \"import_source\": \"smarti\", \"import_time\": \"2026-04-01T09:53:27.956044\"}",
+    "created_at": "2026-04-01 13:53:27"
+  }
+]

@@ -1,0 +1,529 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from typing import List, Optional
+import uuid
+import logging
+import re
+import unicodedata
+from pydantic import BaseModel
+
+from app.db.database import get_db
+from app.models.folder import Folder
+from app.models.app import App
+from app.models.drawer import Drawer
+from app.models.user import User
+from app.schemas.app import FolderCreate, FolderUpdate, FolderResponse
+from app.core.security import get_current_active_user
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+def to_slug(text: str) -> str:
+    """
+    Convert a string to a URL-friendly slug
+    Similar to frontend toSlug function
+    """
+    if not text:
+        return ''
+    
+    # Convert to lowercase
+    text = text.lower()
+    
+    # Normalize and remove accents
+    text = unicodedata.normalize('NFD', text)
+    text = text.encode('ascii', 'ignore').decode('ascii')
+    
+    # Replace spaces and special characters
+    text = re.sub(r'[^a-z0-9\s-]', '', text)  # Remove non-alphanumeric except spaces and hyphens
+    text = re.sub(r'[\s-]+', '-', text)  # Replace spaces and multiple hyphens with single hyphen
+    text = text.strip('-')  # Trim hyphens from start and end
+    
+    return text
+
+
+def generate_folder_path(folder_name: str, app_name: str, drawer_name: str, parent_path: str = "") -> str:
+    """
+    Generate a hierarchical path for a folder
+    Format: /{app_slug}/{drawer_slug}/{folder_slug} or with parent folders
+    """
+    app_slug = to_slug(app_name)
+    drawer_slug = to_slug(drawer_name)
+    folder_slug = to_slug(folder_name)
+    
+    if parent_path:
+        # If parent path exists, append folder slug to it
+        return f"{parent_path.rstrip('/')}/{folder_slug}"
+    else:
+        # Root folder in drawer
+        return f"/{app_slug}/{drawer_slug}/{folder_slug}"
+
+
+from pydantic import BaseModel
+from typing import Optional
+
+class SimpleFolderCreate(BaseModel):
+    """简化的文件夹创建模型（适配前端调用）"""
+    name: str
+    description: Optional[str] = None
+    parent_folder_id: Optional[str] = None
+    app_id: str
+    drawer_id: Optional[str] = None  # 可选抽屉ID，如果未提供则使用应用下第一个抽屉
+
+
+class SimpleFolderResponse(BaseModel):
+    """简化的文件夹响应模型（适配前端调用）"""
+    id: str
+    name: str
+    description: Optional[str] = None
+    parent_folder_id: Optional[str] = None
+    app_id: str
+    created_by: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
+    drawer_id: str
+    path: str
+
+
+class MoveFolderRequest(BaseModel):
+    """移动文件夹请求模型（只能在同一抽屉内移动）"""
+    target_parent_folder_id: Optional[str] = None  # 目标父文件夹ID（留空表示移动到抽屉根目录）
+
+@router.post("/", response_model=SimpleFolderResponse)
+def create_folder(
+    folder_data: SimpleFolderCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """创建文件夹（兼容前端调用）"""
+    logger.info(f"创建文件夹请求: {folder_data.dict()}, 用户: {current_user.username}")
+    # 前端调用只传app_id，没有drawer_id
+    # 这里我们查找应用下的第一个抽屉来创建文件夹
+    # 如果应用没有抽屉，则创建失败
+    
+    app_identifier = folder_data.app_id
+    
+    # 验证应用存在且有权限（支持UUID和slug）
+    # 先尝试按UUID查找
+    app = db.query(App).filter(App.id == app_identifier).first()
+    # 如果没找到，尝试按slug查找
+    if not app:
+        app = db.query(App).filter(App.slug == app_identifier).first()
+    
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="应用不存在"
+        )
+    
+    if not current_user.is_superuser and app.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限在此应用下创建文件夹"
+        )
+    
+    # 确定要使用的抽屉：如果提供了drawer_id则使用，否则使用第一个抽屉
+    target_drawer = None
+    if folder_data.drawer_id:
+        # 验证抽屉属于此应用
+        target_drawer = db.query(Drawer).filter(
+            Drawer.id == folder_data.drawer_id,
+            Drawer.app_id == app.id
+        ).first()
+        if not target_drawer:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="抽屉不属于此应用"
+            )
+    else:
+        # 查找应用下的第一个抽屉（使用应用的实际ID）
+        target_drawer = db.query(Drawer).filter(Drawer.app_id == app.id).first()
+    
+    if not target_drawer:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="此应用下没有抽屉，请先创建抽屉"
+        )
+    
+    # 检查文件夹名称是否已存在（在同一抽屉和父文件夹下）
+    existing_folder = db.query(Folder).filter(
+        Folder.name == folder_data.name,
+        Folder.drawer_id == target_drawer.id,
+        Folder.parent_folder_id == folder_data.parent_folder_id
+    ).first()
+    
+    if existing_folder:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="此位置下已存在同名的文件夹"
+        )
+    
+    # 获取父文件夹路径（如果存在）
+    parent_path = ""
+    if folder_data.parent_folder_id:
+        parent_folder = db.query(Folder).filter(Folder.id == folder_data.parent_folder_id).first()
+        if parent_folder:
+            parent_path = parent_folder.path
+    
+    # 生成文件夹路径
+    # 格式: /{app_slug}/{drawer_slug}/{folder_slug} 或带有父文件夹路径
+    folder_path = generate_folder_path(
+        folder_name=folder_data.name,
+        app_name=app.name,
+        drawer_name=target_drawer.name,
+        parent_path=parent_path
+    )
+    
+    # 创建文件夹记录
+    db_folder = Folder(
+        id=str(uuid.uuid4()),
+        drawer_id=target_drawer.id,
+        parent_folder_id=folder_data.parent_folder_id,
+        name=folder_data.name,
+        path=folder_path,  # 使用生成的路径
+        description=folder_data.description,
+        created_by=current_user.username
+    )
+    
+    db.add(db_folder)
+    db.commit()
+    db.refresh(db_folder)
+    
+    # 返回响应时包含app_id（前端期望）
+    response_data = {
+        "id": db_folder.id,
+        "name": db_folder.name,
+        "description": db_folder.description,
+        "parent_folder_id": db_folder.parent_folder_id,
+        "app_id": app.id,  # 返回应用的实际ID（UUID）
+        "created_by": db_folder.created_by,
+        "created_at": db_folder.created_at.isoformat() if db_folder.created_at else None,
+        "updated_at": db_folder.updated_at.isoformat() if db_folder.updated_at else None,
+        "drawer_id": db_folder.drawer_id,
+        "path": db_folder.path
+    }
+    
+    return response_data
+
+
+@router.get("/{folder_id}", response_model=FolderResponse)
+def get_folder(
+    folder_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取文件夹详情"""
+    folder = db.query(Folder).filter(Folder.id == folder_id).first()
+    if not folder:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="文件夹不存在"
+        )
+    
+    # 验证权限
+    drawer = db.query(Drawer).filter(Drawer.id == folder.drawer_id).first()
+    if not drawer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="抽屉不存在"
+        )
+    
+    app = db.query(App).filter(App.id == drawer.app_id).first()
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="应用不存在"
+        )
+    
+    if not current_user.is_superuser and app.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限访问此文件夹"
+        )
+    
+    # 返回文件夹对象，让Pydantic自动转换
+    return folder
+
+
+@router.put("/{folder_id}", response_model=FolderResponse)
+def update_folder(
+    folder_id: str,
+    folder_data: FolderUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """更新文件夹"""
+    folder = db.query(Folder).filter(Folder.id == folder_id).first()
+    if not folder:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="文件夹不存在"
+        )
+    
+    # 验证权限
+    drawer = db.query(Drawer).filter(Drawer.id == folder.drawer_id).first()
+    if not drawer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="抽屉不存在"
+        )
+    
+    app = db.query(App).filter(App.id == drawer.app_id).first()
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="应用不存在"
+        )
+    
+    if not current_user.is_superuser and app.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限更新此文件夹"
+        )
+    
+    # 更新字段
+    if folder_data.name is not None:
+        # 检查名称是否冲突
+        existing_folder = db.query(Folder).filter(
+            Folder.name == folder_data.name,
+            Folder.drawer_id == folder.drawer_id,
+            Folder.parent_folder_id == folder.parent_folder_id,
+            Folder.id != folder_id
+        ).first()
+        
+        if existing_folder:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="此位置下已存在同名的文件夹"
+            )
+        folder.name = folder_data.name
+    
+    if folder_data.description is not None:
+        folder.description = folder_data.description
+    
+    if folder_data.parent_folder_id is not None:
+        # 验证父文件夹存在且在同一抽屉下
+        if folder_data.parent_folder_id:
+            parent_folder = db.query(Folder).filter(
+                Folder.id == folder_data.parent_folder_id,
+                Folder.drawer_id == folder.drawer_id
+            ).first()
+            
+            if not parent_folder:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="父文件夹不存在或不在同一抽屉下"
+                )
+            
+            # 检查循环引用
+            if folder_data.parent_folder_id == folder_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="不能将文件夹设置为其自己的父文件夹"
+                )
+        
+        folder.parent_folder_id = folder_data.parent_folder_id
+    
+    db.commit()
+    db.refresh(folder)
+    
+    # 构建响应
+    response_data = {
+        "id": folder.id,
+        "name": folder.name,
+        "description": folder.description,
+        "parent_folder_id": folder.parent_folder_id,
+        "app_id": drawer.app_id,  # 前端期望的字段
+        "created_by": folder.created_by,
+        "created_at": folder.created_at,
+        "updated_at": folder.updated_at,
+        "drawer_id": folder.drawer_id
+    }
+    
+    return response_data
+
+
+@router.delete("/{folder_id}")
+def delete_folder(
+    folder_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """删除文件夹"""
+    folder = db.query(Folder).filter(Folder.id == folder_id).first()
+    if not folder:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="文件夹不存在"
+        )
+    
+    # 验证权限
+    drawer = db.query(Drawer).filter(Drawer.id == folder.drawer_id).first()
+    if not drawer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="抽屉不存在"
+        )
+    
+    app = db.query(App).filter(App.id == drawer.app_id).first()
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="应用不存在"
+        )
+    
+    if not current_user.is_superuser and app.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限删除此文件夹"
+        )
+    
+    # 检查文件夹是否为空
+    subfolders_count = db.query(Folder).filter(Folder.parent_folder_id == folder_id).count()
+    # 检查文档数量（需要导入Document模型）
+    from app.models.document import Document
+    documents_count = db.query(Document).filter(Document.folder_id == folder_id).count()
+    
+    if subfolders_count > 0 or documents_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"文件夹包含 {subfolders_count} 个子文件夹和 {documents_count} 个文档，无法删除"
+        )
+    
+    db.delete(folder)
+    db.commit()
+    
+    return {"message": "文件夹删除成功"}
+
+
+@router.patch("/{folder_id}/move", response_model=FolderResponse)
+def move_folder(
+    folder_id: str,
+    move_request: MoveFolderRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """移动文件夹到新的父文件夹（只能在同一抽屉内移动）"""
+    # 获取要移动的文件夹
+    folder = db.query(Folder).filter(Folder.id == folder_id).first()
+    if not folder:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="文件夹不存在"
+        )
+    
+    # 验证权限（当前所在抽屉）
+    current_drawer = db.query(Drawer).filter(Drawer.id == folder.drawer_id).first()
+    if not current_drawer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="当前抽屉不存在"
+        )
+    
+    current_app = db.query(App).filter(App.id == current_drawer.app_id).first()
+    if not current_app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="当前应用不存在"
+        )
+    
+    if not current_user.is_superuser and current_app.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有权限移动此文件夹"
+        )
+    
+    # 检查移动参数（现在只支持同抽屉内移动）
+    target_parent_folder_id = move_request.target_parent_folder_id
+    
+    # 设置目标抽屉和应用（始终为当前抽屉和应用，因为不允许跨抽屉移动）
+    target_drawer_for_path = current_drawer
+    target_app_for_path = current_app
+    
+    # 处理移动到抽屉根目录（target_parent_folder_id为空）
+    if not target_parent_folder_id:
+        # 移动到抽屉根目录
+        folder.parent_folder_id = None
+    
+    # 处理同抽屉内移动（改变父文件夹）
+    else:
+        # 检查目标父文件夹是否存在
+        target_parent_folder = db.query(Folder).filter(Folder.id == target_parent_folder_id).first()
+        if not target_parent_folder:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="目标父文件夹不存在"
+            )
+        
+        # 检查目标父文件夹是否在同一抽屉内
+        if target_parent_folder.drawer_id != folder.drawer_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="目标父文件夹不在同一个抽屉内，文件夹只能在同一抽屉内移动"
+            )
+        
+        # 防止循环引用（不能移动到自己或自己的子文件夹下）
+        if target_parent_folder_id == folder_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="不能将文件夹移动到自身"
+            )
+        
+        # 递归检查是否移动到子文件夹下
+        def is_child_folder(parent_id, child_id):
+            """检查parent_id是否是child_id的子文件夹（递归向上查找）"""
+            if parent_id == child_id:
+                return True
+            current = db.query(Folder).filter(Folder.id == child_id).first()
+            if not current or not current.parent_folder_id:
+                return False
+            if current.parent_folder_id == parent_id:
+                return True
+            return is_child_folder(parent_id, current.parent_folder_id)
+        
+        if is_child_folder(folder_id, target_parent_folder_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="不能将文件夹移动到自己的子文件夹下"
+            )
+        
+        # 更新父文件夹ID
+        folder.parent_folder_id = target_parent_folder_id
+    
+    # 更新路径
+    # 需要重新生成路径，使用目标抽屉和父文件夹信息
+    # 这里简化处理：调用generate_folder_path函数
+    # 注意：generate_folder_path需要app_name, drawer_name, folder_name, parent_path
+    # 我们需要获取完整的父路径
+    def get_folder_path(folder_obj):
+        """获取文件夹的完整路径（递归构建）"""
+        if not folder_obj.parent_folder_id:
+            # 根文件夹，路径格式: /app_slug/drawer_slug/folder_slug
+            app_slug = to_slug(target_app_for_path.name)
+            drawer_slug = to_slug(target_drawer_for_path.name)
+            folder_slug = to_slug(folder_obj.name)
+            return f"/{app_slug}/{drawer_slug}/{folder_slug}"
+        else:
+            # 有父文件夹，递归获取父路径
+            parent_folder = db.query(Folder).filter(Folder.id == folder_obj.parent_folder_id).first()
+            if not parent_folder:
+                # 不应该发生，但处理异常情况
+                return f"/unknown/{to_slug(folder_obj.name)}"
+            parent_path = get_folder_path(parent_folder)
+            return f"{parent_path.rstrip('/')}/{to_slug(folder_obj.name)}"
+    
+    # 更新文件夹路径
+    folder.path = get_folder_path(folder)
+    
+    # 更新更新时间
+    folder.updated_at = func.now()
+    folder.updated_by = current_user.username
+    
+    db.commit()
+    
+    # 刷新对象以获取最新数据
+    db.refresh(folder)
+    
+    return folder

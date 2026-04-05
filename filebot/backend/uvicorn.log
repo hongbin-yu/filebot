@@ -1,0 +1,16 @@
+INFO:     Will watch for changes in these directories: ['/home/hongb/.openclaw/workspace/filebot/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [131051] using StatReload
+INFO:     Started server process [131053]
+INFO:     Waiting for application startup.
+2026-03-15 14:18:45,452 - main - INFO - 启动 FileBot 应用...
+2026-03-15 14:18:45,531 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-15 14:18:45,531 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+INFO:     127.0.0.1:58878 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-15 15:27:38,741 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [131053]
+INFO:     Stopping reloader process [131051]

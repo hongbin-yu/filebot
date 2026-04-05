@@ -1,0 +1,153 @@
+INFO:     Will watch for changes in these directories: ['/home/hongb/.openclaw/workspace/filebot/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [78990] using StatReload
+INFO:     Started server process [78992]
+INFO:     Waiting for application startup.
+2026-03-16 14:08:41,067 - main - INFO - 启动 FileBot 应用...
+2026-03-16 14:08:41,142 - app.core.security - INFO - 管理员用户已存在: admin
+2026-03-16 14:08:41,142 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+INFO:     127.0.0.1:35272 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37486 - "POST /api/v1/auth/logout HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38150 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36074 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33412 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33418 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33430 - "GET /api/v1/apps/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41262 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41276 - "GET /api/v1/apps/e7127854-1a78-4105-a6d5-1e225ead7295 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:48916 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48920 - "POST /api/v1/apps/ HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:50488 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50494 - "POST /api/v1/apps/ HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.ProgrammingError: Error binding parameter 4: type 'UUID' is not supported
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/app/routers/apps.py", line 77, in create_app
+    db.commit()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4331, in flush
+    self._flush(objects)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4427, in _flush
+    flush_context.execute()
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (sqlite3.ProgrammingError) Error binding parameter 4: type 'UUID' is not supported
+[SQL: INSERT INTO apps (id, name, description, owner_id, settings, created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING created_at]
+[parameters: ('6e0bc90a-b24c-4fe7-9554-560c2f4a502a', '测试集成应用', 'Smart iAdmin集成测试', UUID('21f8c4f9-ce64-4ef3-9e9f-f33651a50db4'), '{}', 'admin', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-16 14:28:31,978 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [78992]
+INFO:     Stopping reloader process [78990]

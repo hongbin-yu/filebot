@@ -1,0 +1,325 @@
+{
+  "lastHeartbeat": "2026-04-05T13:52:31Z",
+  "activeProcesses": {
+    "webbot": {
+      "pid": 531284,
+      "started": "2026-04-05T02:23:50Z",
+      "port": 8000,
+      "health": "healthy",
+      "notes": "Server running, PID changed from 241593, HTTP 405响应"
+    },
+    "filebot-backend": {
+      "pid": 120646,
+      "started": "2026-04-04T21:13:43Z",
+      "port": 8001,
+      "health": "healthy",
+      "notes": "HTTP 200 response, PID changed from previous 76107"
+    },
+    "filebot-frontend": {
+      "pid": 460,
+      "started": "2026-04-04T16:33:00Z",
+      "port": 5174,
+      "health": "healthy",
+      "notes": "HTTP 200 response"
+    },
+    "filebot-pcl": {
+      "pid": 363,
+      "started": "2026-04-04T16:33:00Z",
+      "port": 5000,
+      "health": "healthy",
+      "notes": "HTTP 200 response"
+    },
+    "doardingbot": {
+      "pid": null,
+      "started": null,
+      "port": 8002,
+      "health": "stopped",
+      "notes": "Port not listening"
+    },
+    "frontend-react": {
+      "pid": null,
+      "started": null,
+      "port": 5173,
+      "health": "stopped",
+      "notes": "Port not listening"
+    },
+    "webbot-frontend": {
+      "pid": null,
+      "started": null,
+      "port": 5175,
+      "health": "stopped",
+      "notes": "Port not listening"
+    },
+    "ollama": {
+      "pid": null,
+      "started": null,
+      "port": 11434,
+      "health": "healthy",
+      "notes": "HTTP 200 response"
+    },
+    "openclaw-gateway": {
+      "pid": 519932,
+      "started": "2026-04-05T02:23:50Z",
+      "port": 18789,
+      "health": "healthy",
+      "notes": "HTTP 200 response, PID changed from 232253"
+    },
+    "redis": {
+      "pid": 182,
+      "started": null,
+      "port": 6379,
+      "health": "healthy",
+      "notes": "Responds PONG"
+    },
+    "mysql": {
+      "pid": 335,
+      "started": null,
+      "port": 3306,
+      "health": "healthy",
+      "notes": "Port listening"
+    }
+  },
+  "recentTasks": [
+    {
+      "id": "heartbeat-check-20260405T135231",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T13:52:31Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 531284，HTTP 405响应，PID从241593变更)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 519932，HTTP 200响应，PID从232253变更)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存3.6Gi/7.3Gi used, 2.7Gi free, 3.7Gi available；📊 负载0.20, 0.31, 0.32；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T125447",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T12:54:47Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.2Gi/7.3Gi used, 2.3Gi free, 3.1Gi available；📊 负载0.21, 0.26, 0.26；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T122438",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T12:24:38Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.2Gi/7.3Gi used, 2.3Gi free, 3.1Gi available；📊 负载0.21, 0.28, 0.27；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T115454",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T11:54:54Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.2Gi/7.3Gi used, 2.3Gi free, 3.1Gi available；📊 负载0.39, 0.27, 0.26；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T112453",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T11:24:53Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.3Gi/7.3Gi used, 2.2Gi free, 3.0Gi available；📊 负载0.37, 0.35, 0.27；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T105449",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T10:54:49Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.2Gi/7.3Gi used, 2.3Gi free, 3.1Gi available；📊 负载0.62, 0.35, 0.24；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T102344",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T10:23:44Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.2Gi/7.3Gi used, 2.3Gi free, 3.1Gi available；📊 负载0.39, 0.28, 0.22；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T095200",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T09:52:00Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.2Gi/7.3Gi used, 2.3Gi free, 3.1Gi available；📊 负载0.11, 0.25, 0.21；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T091952",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T09:19:52Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.2Gi/7.3Gi used, 2.4Gi free, 3.1Gi available；📊 负载0.17, 0.23, 0.20；📋 无活动子任务，无运行中exec会话"
+    },
+    {
+      "id": "heartbeat-check-20260405T084734",
+      "description": "心跳检查 - 系统状态更新",
+      "completed": "2026-04-05T08:47:34Z",
+      "notified": false,
+      "status": "info",
+      "details": "✅ WebBot运行正常 (端口8000监听，PID 241593，HTTP 405响应)；✅ FileBot后端运行正常 (端口8001监听，PID 120646，HTTP 405响应)；✅ FileBot前端运行正常 (端口5174监听，HTTP 200响应)；✅ PCL转换器运行正常 (端口5000监听，HTTP 200响应)；❌ DoardingBot持续停止 (端口8002未监听)；❌ 前端React服务持续停止 (端口5173未监听)；❌ WebBot前端持续停止 (端口5175未监听)；✅ Ollama运行正常 (端口11434监听，HTTP 200响应)；✅ OpenClaw网关运行正常 (端口18789监听，PID 232253，HTTP 200响应)；✅ Redis运行正常 (响应PONG)；✅ MySQL运行正常 (端口3306监听)；💾 磁盘8%已用 (71G/1007G)；🧠 内存4.1Gi/7.3Gi used, 2.5Gi free, 3.2Gi available；📊 负载0.15, 0.19, 0.18；📋 无活动子任务，无运行中exec会话"
+    }
+  ],
+  "pendingNotifications": [
+    {
+      "id": "webbot-restart-20260405T022350",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 218092,
+      "newPid": 241593,
+      "timestamp": "2026-04-05T02:23:50Z",
+      "message": "WebBot服务器PID变更 (218092 → 241593)。服务正常运行，HTTP 307响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "openclaw-gateway-restart-20260405T022350",
+      "type": "service_restarted",
+      "service": "openclaw-gateway",
+      "oldPid": 197857,
+      "newPid": 232253,
+      "timestamp": "2026-04-05T02:23:50Z",
+      "message": "OpenClaw网关服务重启 (PID 197857 → 232253)。服务正常运行，HTTP 200响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-restart-20260405T011602",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 208644,
+      "newPid": 218092,
+      "timestamp": "2026-04-05T01:16:02Z",
+      "message": "WebBot服务器PID变更 (208644 → 218092)。服务正常运行，HTTP 307响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-restart-20260405T005732",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 154263,
+      "newPid": 208644,
+      "timestamp": "2026-04-05T00:57:32Z",
+      "message": "WebBot服务器PID变更 (154263 → 208644)。服务正常运行，HTTP 307响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "openclaw-gateway-restart-20260405T005732",
+      "type": "service_restarted",
+      "service": "openclaw-gateway",
+      "oldPid": 152215,
+      "newPid": 197857,
+      "timestamp": "2026-04-05T00:57:32Z",
+      "message": "OpenClaw网关服务重启 (PID 152215 → 197857)。服务正常运行，HTTP 200响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-restart-20260404T230409",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 147286,
+      "newPid": 154263,
+      "timestamp": "2026-04-04T23:04:09Z",
+      "message": "WebBot服务器PID变更 (147286 → 154263)。服务正常运行，HTTP 307响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "openclaw-gateway-restart-20260404T230409",
+      "type": "service_restarted",
+      "service": "openclaw-gateway",
+      "oldPid": 115275,
+      "newPid": 152215,
+      "timestamp": "2026-04-04T23:04:09Z",
+      "message": "OpenClaw网关服务重启 (PID 115275 → 152215)。服务正常运行，HTTP 200响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-restart-20260404T222227",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 130890,
+      "newPid": 147286,
+      "timestamp": "2026-04-04T22:22:27Z",
+      "message": "WebBot服务器因移除文件管理器按钮重启 (PID 130890 → 147286)。服务正常运行。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-frontend-stopped-20260404T202533",
+      "type": "service_stopped",
+      "service": "webbot-frontend",
+      "oldPid": "1568215",
+      "newPid": null,
+      "timestamp": "2026-04-04T20:25:33Z",
+      "message": "WebBot前端服务持续停止 (端口5175未监听)。前端界面不可访问。",
+      "priority": "medium",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-restart-20260404T211915",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 112858,
+      "newPid": 122792,
+      "timestamp": "2026-04-04T21:19:15Z",
+      "message": "WebBot服务器因面包屑修复重启 (PID 112858 → 122792)。服务正常运行。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "filebot-restart-20260404T211915",
+      "type": "service_restarted",
+      "service": "filebot-backend",
+      "oldPid": 76107,
+      "newPid": 120646,
+      "timestamp": "2026-04-04T21:19:15Z",
+      "message": "FileBot后端服务PID变更 (76107 → 120646)，可能在之前服务器中断后重启。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-restart-20260404T213900",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 122792,
+      "newPid": 130890,
+      "timestamp": "2026-04-04T21:39:00Z",
+      "message": "WebBot服务器因面包屑修复再次重启 (PID 122792 → 130890)。服务正常运行。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "webbot-restart-20260405T135231",
+      "type": "service_restarted",
+      "service": "webbot",
+      "oldPid": 241593,
+      "newPid": 531284,
+      "timestamp": "2026-04-05T13:52:31Z",
+      "message": "WebBot服务器PID变更 (241593 → 531284)。服务正常运行，HTTP 405响应。",
+      "priority": "low",
+      "acknowledged": false
+    },
+    {
+      "id": "openclaw-gateway-restart-20260405T135231",
+      "type": "service_restarted",
+      "service": "openclaw-gateway",
+      "oldPid": 232253,
+      "newPid": 519932,
+      "timestamp": "2026-04-05T13:52:31Z",
+      "message": "OpenClaw网关服务重启 (PID 232253 → 519932)。服务正常运行，HTTP 200响应。",
+      "priority": "low",
+      "acknowledged": false
+    }
+  ],
+  "lastChecks": {
+    "processes": "2026-04-05T13:52:31Z",
+    "tasks": "2026-04-05T13:52:31Z",
+    "system": "2026-04-05T13:52:31Z"
+  }
+}

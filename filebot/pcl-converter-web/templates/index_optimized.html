@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCL转PDF转换器 - 专业版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 基础重置与变量 */
+        :root {
+            --primary-color: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary-color: #7209b7;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --info-color: #3498db;
+            --light-color: #f8f9fa;
+            --dark-color: #2c3e50;
+            --gray-color: #7f8c8d;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 8px rgba(0,0,0,0.15);
+            --shadow-lg: 0 8px 16px rgba(0,0,0,0.2);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--dark-color);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* 主容器 */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* 顶部导航栏 */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-md);
+            padding: 15px 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .brand-text h1 {
+            font-size: 1.5rem;
+            color: var(--dark-color);
+            margin-bottom: 2px;
+        }
+        
+        .brand-text p {
+            font-size: 0.9rem;
+            color: var(--gray-color);
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: var(--light-color);
+            border-radius: 20px;
+        }
+        
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-color), var(--primary-dark));
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--light-color);
+            color: var(--dark-color);
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, var(--success-color), #27ae60);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* 主要内容区域 */
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+        }
+        
+        /* 主面板 */
+        .main-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-md);
+            padding: 30px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .panel-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light-color);
+        }
+        
+        .panel-header h2 {
+            font-size: 1.8rem;
+            color: var(--dark-color);
+            margin-bottom: 8px;
+        }
+        
+        .panel-header p {
+            color: var(--gray-color);
+        }
+        
+        /* 文件上传区域 */
+        .upload-area {
+            border: 3px dashed var(--primary-color);
+            border-radius: var(--radius-md);
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            transition: var(--transition);
+            background: rgba(67, 97, 238, 0.05);
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            background: rgba(67, 97, 238, 0.1);
+            border-color: var(--secondary-color);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            margin-bottom: 20px;
+        }
+        
+        .upload-text h3 {
+            margin-bottom: 8px;
+            color: var(--dark-color);
+        }
+        
+        .upload-text p {
+            color: var(--gray-color);
+            font-size: 0.9rem;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        /* 进度条 */
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: var(--light-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--gray-color);
+        }
+        
+        /* 文件列表 */
+        .file-list {
+            margin-top: 25px;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--light-color);
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            transition: var(--transition);
+        }
+        
+        .file-item:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .file-icon {
+            color: var(--primary-color);
+            font-size: 20px;
+        }
+        
+        .file-details h4 {
+            margin-bottom: 3px;
+        }
+        
+        .file-details p {
+            font-size: 0.85rem;
+            color: var(--gray-color);
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .sidebar-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-md);
+            padding: 25px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .card-header h3 {
+            font-size: 1.3rem;
+            color: var(--dark-color);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--light-color);
+            border-radius: var(--radius-sm);
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--gray-color);
+        }
+        
+        /* 工具状态 */
+        .tool-status {
+            padding: 15px;
+            background: var(--light-color);
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+        }
+        
+        .tool-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-dot.active {
+            background: var(--success-color);
+        }
+        
+        .status-dot.inactive {
+            background: var(--danger-color);
+        }
+        
+        /* 通知 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+            animation: slideInRight 0.5s ease;
+            display: none;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .notification.success {
+            background: linear-gradient(45deg, var(--success-color), #27ae60);
+        }
+        
+        .notification.error {
+            background: linear-gradient(45deg, var(--danger-color), #c0392b);
+        }
+        
+        .notification.info {
+            background: linear-gradient(45deg, var(--info-color), #2980b9);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 992px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .user-menu {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        /* 动画 */
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 顶部导航栏 -->
+        <nav class="navbar">
+            <div class="brand">
+                <div class="logo">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>PCL转PDF转换器</h1>
+                    <p>专业版 - 高效稳定的文档转换解决方案</p>
+                </div>
+            </div>
+            
+            <div class="user-menu">
+                {% if current_user and current_user.info %}
+                <div class="user-info">
+                    <div class="user-avatar">
+                        {{ current_user.info.username[0].upper() if current_user.info.username else 'U' }}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600;">{{ current_user.info.username }}</div>
+                        <div style="font-size: 0.8rem; color: #7f8c8d;">
+                            {{ current_user.info.role if current_user.info.role else '用户' }}
+                        </div>
+                    </div>
+                </div>
+                <a href="{{ url_for('profile_page') }}" class="btn btn-secondary">
+                    <i class="fas fa-user"></i> 个人资料
+                </a>
+                <a href="{{ url_for('logout_page') }}" class="btn btn-secondary" 
+                   onclick="return confirm('确定要登出吗？')">
+                    <i class="fas fa-sign-out-alt"></i> 登出
+                </a>
+                {% else %}
+                <a href="{{ url_for('login_page') }}" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> 登录
+                </a>
+                <a href="{{ url_for('register_page') }}" class="btn btn-success">
+                    <i class="fas fa-user-plus"></i> 注册
+                </a>
+                {% endif %}
+            </div>
+        </nav>
+        
+        <div class="content-wrapper">
+            <!-- 主面板 -->
+            <div class="main-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-cloud-upload-alt"></i> 文件上传与转换</h2>
+                    <p>上传您的PCL文件，我们将自动转换为高质量的PDF文档</p>
+                </div>
+                
+                <!-- 文件上传区域 -->
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <i class="fas fa-file-upload"></i>
+                    </div>
+                    <div class="upload-text">
+                        <h3>拖放文件到此处或点击选择</h3>
+                        <p>支持 .pcl 格式文件，最大文件大小 100MB</p>
+                    </div>
+                    <div class="file-input-wrapper">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-folder-open"></i> 选择文件
+                        </button>
+                        <input type="file" class="file-input" id="fileInput" accept=".pcl,.prn" multiple>
+                    </div>
+                    
+                    <!-- 进度条 -->
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span id="progressStatus">准备上传...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 文件列表 -->
+                <div class="file-list" id="fileList">
+                    <!-- 文件项将通过JavaScript动态添加 -->
+                </div>
+                
+                <!-- 转换按钮 -->
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-primary" id="convertBtn" style="padding: 15px 40px; font-size: 1.1rem;">
+                        <i class="fas fa-sync-alt"></i> 开始转换
+                    </button>
+                </div>
+                
+                <!-- 结果区域 -->
+                <div id="resultContainer" style="display: none; margin-top: 30px;">
+                    <!-- 转换结果将通过JavaScript动态显示 -->
+                </div>
+            </div>
+            
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <!-- 系统状态 -->
+                <div class="sidebar-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <h3>系统状态</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="toolCount">
+                                {{ tools|length if tools else 0 }}
+                            </div>
+                            <div class="stat-label">可用工具</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="fileCount">0</div>
+                            <div class="stat-label">待转换文件</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 工具状态 -->
+                <div class="sidebar-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <h3>转换工具状态</h3>
+                    </div>
+                    <div id="toolsStatus">
+                        {% if tools %}
+                            {% for tool in tools %}
+                            <div class="tool-status">
+                                <div class="tool-name">
+                                    <span class="status-dot active"></span>
+                                    <span style="font-weight: 600;">{{ tool.name }}</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: #7f8c8d;">
+                                    {{ tool.command }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="tool-status">
+                                <div class="tool-name">
+                                    <span class="status-dot inactive"></span>
+                                    <span style="font-weight: 600;">未检测到工具</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: #e74c3c;">
+                                    请确保已安装PCL转换工具
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- 快速操作 -->
+                <div class="sidebar-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3>快速操作</h3>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn btn-secondary" id="clearFilesBtn">
+                            <i class="fas fa-trash"></i> 清空文件列表
+                        </button>
+                        <button class="btn btn-secondary" id="testConversionBtn">
+                            <i class="fas fa-vial"></i> 测试转换功能
+                        </button>
+                        <a href="{{ url_for('get_tools') }}" class="btn btn-secondary" target="_blank">
+                            <i class="fas fa-code"></i> 查看API
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 通知 -->
+    <div class="notification" id="notification"></div>
+    
+    <!-- JavaScript -->
+    <script>
+        // 全局变量
+        let files = [];
+        let isConverting = false;
+        
+        // DOM元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const convertBtn = document.getElementById('convertBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressStatus = document.getElementById('progressStatus');
+        const progressPercent = document.getElementById('progressPercent');
+        const resultContainer = document.getElementById('resultContainer');
+        const notification = document.getElementById('notification');
+        const clearFilesBtn = document.getElementById('clearFilesBtn');
+        const testConversionBtn = document.getElementById('testConversionBtn');
+        const toolCount = document.getElementById('toolCount');
+        const fileCount = document.getElementById('fileCount');
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateFileCount();
+            setupEventListeners();
+        });
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 文件选择
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 拖放功能
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+            
+            // 转换按钮
+            convertBtn.addEventListener('click', handleConvert);
+            
+            // 清除按钮
+            clearFilesBtn.addEventListener('click', clearFiles);
+            
+            // 测试按钮
+            testConversionBtn.addEventListener('click', testConversion);
+        }
+        
+        // 处理文件选择
+        function handleFileSelect(e) {
+            const selectedFiles = Array.from(e.target.files);
+            addFiles(selectedFiles);
+            fileInput.value = ''; // 重置input
+        }
+        
+        // 处理拖放
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const droppedFiles = Array.from(e.dataTransfer.files);
+            addFiles(droppedFiles);
+        }
+        
+        // 添加文件到列表
+        function addFiles(fileArray) {
+            const validFiles = fileArray.filter(file => {
+                const ext = file.name.toLowerCase().split('.').pop();
+                return ['pcl', 'prn'].includes(ext);
+            });
+            
+            if (validFiles.length === 0) {
+                showNotification('请选择PCL格式文件 (.pcl, .prn)', 'error');
+                return;
+            }
+            
+            validFiles.forEach(file => {
+                const fileId = generateFileId();
+                files.push({
+                    id: fileId,
+                    file: file,
+                    status: 'pending',
+                    progress: 0
+                });
+                
+                renderFileItem(fileId, file);
+            });
+            
+            updateFileCount();
+            showNotification(`已添加 ${validFiles.length} 个文件`, 'success');
+        }
+        
+        // 渲染文件项
+        function renderFileItem(fileId, file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.id = `file-${fileId}`;
+            
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                    <div class="file-details">
+                        <h4>${escapeHtml(file.name)}</h4>
+                        <p>${fileSize} • 等待上传</p>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button class="btn btn-secondary" onclick="removeFile('${fileId}')" style="padding: 5px 10px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            fileList.appendChild(fileItem);
+        }
+        
+        // 移除文件
+        function removeFile(fileId) {
+            files = files.filter(f => f.id !== fileId);
+            const fileElement = document.getElementById(`file-${fileId}`);
+            if (fileElement) {
+                fileElement.remove();
+            }
+            updateFileCount();
+        }
+        
+        // 清空文件
+        function clearFiles() {
+            if (files.length === 0) return;
+            
+            if (confirm(`确定要清空 ${files.length} 个文件吗？`)) {
+                files = [];
+                fileList.innerHTML = '';
+                updateFileCount();
+                showNotification('已清空文件列表', 'info');
+            }
+        }
+        
+        // 更新文件计数
+        function updateFileCount() {
+            fileCount.textContent = files.length;
+            convertBtn.disabled = files.length === 0 || isConverting;
+        }
+        
+        // 处理转换
+        async function handleConvert() {
+            if (files.length === 0 || isConverting) return;
+            
+            isConverting = true;
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> 转换中...';
+            
+            // 显示进度条
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressStatus.textContent = '开始上传...';
+            progressPercent.textContent = '0%';
+            
+            const formData = new FormData();
+            files.forEach((fileObj, index) => {
+                formData.append('files', fileObj.file);
+            });
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 模拟转换进度
+                    simulateConversionProgress();
+                    
+                    // 实际发送转换请求
+                    setTimeout(() => {
+                        completeConversion(result);
+                    }, 1000);
+                    
+                } else {
+                    showNotification(`上传失败: ${result.error}`, 'error');
+                    resetConversionState();
+                }
+                
+            } catch (error) {
+                showNotification(`请求失败: ${error.message}`, 'error');
+                resetConversionState();
+            }
+        }
+        
+        // 模拟转换进度
+        function simulateConversionProgress() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress > 95) {
+                    clearInterval(interval);
+                    return;
+                }
+                
+                progressFill.style.width = `${progress}%`;
+                progressPercent.textContent = `${progress}%`;
+                progressStatus.textContent = `转换中... ${progress}%`;
+            }, 100);
+        }
+        
+        // 完成转换
+        function completeConversion(result) {
+            progressFill.style.width = '100%';
+            progressPercent.textContent = '100%';
+            progressStatus.textContent = '转换完成！';
+            
+            // 显示结果
+            resultContainer.innerHTML = `
+                <div style="background: linear-gradient(45deg, #d4edda, #c3e6cb); border-radius: 12px; padding: 25px; margin-top: 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <div style="font-size: 32px; color: #27ae60;">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #155724; margin-bottom: 5px;">转换成功！</h3>
+                            <p style="color: #155724;">已成功转换 ${files.length} 个文件</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        ${result.output_files ? result.output_files.map((file, index) => `
+                            <a href="/download/${file.filename}" class="btn btn-success" style="padding: 10px 20px;">
+                                <i class="fas fa-download"></i> 下载 ${file.original_name || `文件${index+1}`}
+                            </a>
+                        `).join('') : `
+                            <a href="/download/${result.output_path}" class="btn btn-success" style="padding: 10px 20px;">
+                                <i class="fas fa-download"></i> 下载PDF文件
+                            </a>
+                        `}
+                    </div>
+                </div>
+            `;
+            
+            resultContainer.style.display = 'block';
+            showNotification('转换完成！', 'success');
+            
+            // 重置状态
+            setTimeout(() => {
+                resetConversionState();
+                files = [];
+                fileList.innerHTML = '';
+                updateFileCount();
+            }, 3000);
+        }
+        
+        // 重置转换状态
+        function resetConversionState() {
+            isConverting = false;
+            convertBtn.disabled = files.length === 0;
+            convertBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 开始转换';
+            progressContainer.style.display = 'none';
+        }
+        
+        // 测试转换
+        async function testConversion() {
+            showNotification('正在测试转换功能...', 'info');
+            
+            try {
+                const response = await fetch('/api/tools');
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(`测试成功！检测到 ${result.tools.length} 个转换工具`, 'success');
+                    // 更新工具状态显示
+                    updateToolsStatus(result.tools);
+                } else {
+                    showNotification('测试失败：未检测到转换工具', 'error');
+                }
+            } catch (error) {
+                showNotification(`测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 更新工具状态
+        function updateToolsStatus(tools) {
+            toolCount.textContent = tools.length;
+            
+            const toolsStatus = document.getElementById('toolsStatus');
+            if (tools.length > 0) {
+                toolsStatus.innerHTML = tools.map(tool => `
+                    <div class="tool-status">
+                        <div class="tool-name">
+                            <span class="status-dot active"></span>
+                            <span style="font-weight: 600;">${tool.name}</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #7f8c8d;">
+                            ${tool.command}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 辅助函数
+        function generateFileId() {
+            return 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

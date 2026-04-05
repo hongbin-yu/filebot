@@ -1,0 +1,590 @@
+import api from './api';
+import axios from 'axios';
+
+// 开发模式标志 - 设为true使用模拟数据，false使用真实API
+const DEV_MODE = true;
+
+// 全局模拟抽屉数据 - 可在开发模式下动态修改
+let mockDrawersGlobal: any[] = [
+  // Service Canada App的drawers
+  {
+    id: '1624f4ce-fab3-49a0-9a90-828bfcc69d78',
+    name: '公共文档',
+    description: '供客户查看的公共PDF文档',
+    slug: 'public-docs',
+    app_id: 'c24d5b65-5a49-4237-ae93-1d2442638b04',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 1,
+    created_by: 'mock-user',
+    created_at: '2026-03-22T09:15:00Z',
+    updated_at: '2026-03-22T09:15:00Z'
+  },
+  {
+    id: 'b47f0ec2-5e79-4c06-9e99-944cbc0ef353',
+    name: '合同文件',
+    description: '客户合同和协议PDF',
+    slug: 'contracts',
+    app_id: 'c24d5b65-5a49-4237-ae93-1d2442638b04',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 2,
+    created_by: 'mock-user',
+    created_at: '2026-03-22T11:30:00Z',
+    updated_at: '2026-03-22T11:30:00Z'
+  },
+  // Canada Site App的drawers
+  {
+    id: 'mock-website-drawer',
+    name: '网站内容',
+    description: '加拿大网站PDF文档',
+    slug: 'website-content',
+    app_id: 'mock-canada-site',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 1,
+    created_by: 'mock-user',
+    created_at: '2026-03-26T11:30:00Z',
+    updated_at: '2026-03-26T11:30:00Z'
+  },
+  {
+    id: 'mock-en-drawer',
+    name: 'en',
+    description: '英文文档',
+    slug: 'en',
+    app_id: 'mock-canada-site',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 2,
+    created_by: 'mock-user',
+    created_at: '2026-03-27T10:00:00Z',
+    updated_at: '2026-03-27T10:00:00Z'
+  },
+  {
+    id: 'mock-fr-drawer',
+    name: 'fr',
+    description: '法文文档',
+    slug: 'fr',
+    app_id: 'mock-canada-site',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 3,
+    created_by: 'mock-user',
+    created_at: '2026-03-27T10:15:00Z',
+    updated_at: '2026-03-27T10:15:00Z'
+  },
+  // Smart Invoice App的drawers
+  {
+    id: 'smart-invoice-drawer-1',
+    name: '发票管理',
+    description: '电子发票和付款记录',
+    slug: 'invoice-management',
+    app_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 1,
+    created_by: 'mock-user',
+    created_at: '2026-03-25T10:00:00Z',
+    updated_at: '2026-03-25T10:00:00Z'
+  },
+  {
+    id: 'smart-invoice-drawer-2',
+    name: '客户账单',
+    description: '客户账单和收据',
+    slug: 'customer-billing',
+    app_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 2,
+    created_by: 'mock-user',
+    created_at: '2026-03-25T11:30:00Z',
+    updated_at: '2026-03-25T11:30:00Z'
+  },
+  {
+    id: 'smart-invoice-drawer-3',
+    name: '税务文件',
+    description: '税务申报和报表',
+    slug: 'tax-documents',
+    app_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 3,
+    created_by: 'mock-user',
+    created_at: '2026-03-25T14:45:00Z',
+    updated_at: '2026-03-25T14:45:00Z'
+  },
+  // TIFF测试应用的drawers
+  {
+    id: 'tiff-test-drawer-1',
+    name: 'TIFF图像',
+    description: 'TIFF格式图像文件',
+    slug: 'tiff-images',
+    app_id: 'mock-tiff-app',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 1,
+    created_by: 'mock-user',
+    created_at: '2026-03-27T09:20:00Z',
+    updated_at: '2026-03-27T09:20:00Z'
+  },
+  {
+    id: 'tiff-test-drawer-2',
+    name: '扫描文档',
+    description: '扫描的TIFF文档',
+    slug: 'scanned-documents',
+    app_id: 'mock-tiff-app',
+    drawer_type: 'document',
+    config: {},
+    is_default: false,
+    sort_order: 2,
+    created_by: 'mock-user',
+    created_at: '2026-03-27T11:15:00Z',
+    updated_at: '2026-03-27T11:15:00Z'
+  }
+];
+
+export interface App {
+  id: string;
+  name: string;
+  description?: string;
+  icon_url?: string;
+  app_type: string;
+  config?: Record<string, any>;
+  settings?: Record<string, any>;
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface HealthCheckResponse {
+  status: string;
+  service: string;
+  database?: string;
+  storage?: {
+    available: boolean;
+    free_space?: number;
+    total_space?: number;
+  };
+}
+
+export interface AppCreateRequest {
+  name: string;
+  description?: string;
+  icon_url?: string;
+  app_type: string;
+  config?: Record<string, any>;
+  owner_id?: string;
+}
+
+export interface AppUpdateRequest {
+  name?: string;
+  description?: string;
+  icon_url?: string;
+  config?: Record<string, any>;
+  settings?: Record<string, any>;
+  is_active?: boolean;
+}
+
+export interface Drawer {
+  id: string;
+  name: string;
+  description?: string;
+  slug?: string; // 抽屉的URL标识符
+  app_id: string;
+  drawer_type: string;
+  config?: Record<string, any>;
+  is_default: boolean;
+  sort_order: number;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface DrawerCreateRequest {
+  name: string;
+  description?: string;
+  drawer_type: string;
+  config?: Record<string, any>;
+  is_default?: boolean;
+  sort_order?: number;
+}
+
+export interface DrawerUpdateRequest {
+  name?: string;
+  description?: string;
+  drawer_type?: string;
+  config?: Record<string, any>;
+  is_default?: boolean;
+  sort_order?: number;
+}
+
+export interface MoveDrawerRequest {
+  target_app_id?: string;  // 跨APP移动
+  target_parent_drawer_id?: string;  // 同APP内改变父抽屉
+}
+
+// 树形抽屉接口 (支持嵌套)
+export interface DrawerTreeNode {
+  id: string;
+  name: string;
+  description?: string;
+  app_id: string;
+  parent_drawer_id?: string;
+  order_index?: number;
+  created_at?: string;
+  updated_at?: string;
+  children?: DrawerTreeNode[];  // 子抽屉
+}
+
+class AppService {
+  // 健康检查 - 使用完整URL，因为不在/api/v1路径下
+  async healthCheck(): Promise<HealthCheckResponse> {
+    // 创建临时的axios实例，不包含baseURL
+    const tempAxios = axios.create({
+      baseURL: 'http://localhost:8001',
+      timeout: 5000
+    });
+    
+    // 添加认证token
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      tempAxios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await tempAxios.get('/api/health');
+    return response.data;
+  }
+
+  // 获取应用列表
+  async getApps(params?: {
+    app_type?: string;
+    is_active?: boolean;
+    skip?: number;
+    limit?: number;
+  }): Promise<App[]> {
+    const response = await api.get('/apps/', { params });
+    return response.data;
+  }
+
+  // 获取单个应用详情
+  async getAppById(appId: string): Promise<App> {
+    // 检查appId是否是保留路径（如client, login, register等）
+    const reservedPaths = ['client', 'login', 'register', 'documents', 'folders', 'upload', 'apps', 'dashboard'];
+    if (reservedPaths.includes(appId.toLowerCase())) {
+      throw new Error(`"${appId}" is a reserved path and cannot be used as an application identifier`);
+    }
+    
+    // 检查是否为有效的UUID格式
+    const isValidUUID = (id: string): boolean => {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(id);
+    };
+    
+    // 如果是有效的UUID，直接调用API
+    if (isValidUUID(appId)) {
+      const response = await api.get(`/apps/${appId}`);
+      return response.data;
+    }
+    
+    // 如果不是UUID，可能是短ID或slug
+    // 先尝试直接调用（可能返回404）
+    try {
+      const response = await api.get(`/apps/${appId}`);
+      return response.data;
+    } catch (error: any) {
+      // 如果返回404，尝试通过获取所有应用来查找
+      if (error.response?.status === 404) {
+        // 获取所有应用
+        const allApps = await this.getApps();
+        
+        // 查找ID前8字符匹配的应用（短ID）
+        const appIdWithoutHyphens = appId.replace(/-/g, '');
+        const matchedApp = allApps.find(app => {
+          const appIdWithoutHyphensFull = app.id.replace(/-/g, '');
+          return appIdWithoutHyphensFull.startsWith(appIdWithoutHyphens);
+        });
+        
+        if (matchedApp) {
+          // 返回匹配的应用
+          return matchedApp;
+        }
+        
+        // 如果没有找到，查找名称slug匹配的应用
+        const slugMatchedApp = allApps.find(app => {
+          const appSlug = app.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+          return appSlug === appId;
+        });
+        
+        if (slugMatchedApp) {
+          return slugMatchedApp;
+        }
+        
+        // 如果都没有找到，重新抛出原始错误
+        throw error;
+      }
+      
+      // 如果不是404错误，重新抛出
+      throw error;
+    }
+  }
+
+  // 创建新应用
+  async createApp(data: AppCreateRequest): Promise<App> {
+    const response = await api.post('/apps/', data);
+    return response.data;
+  }
+
+  // 更新应用
+  async updateApp(appId: string, data: AppUpdateRequest): Promise<App> {
+    const response = await api.put(`/apps/${appId}`, data);
+    return response.data;
+  }
+
+  // 删除应用
+  async deleteApp(appId: string): Promise<void> {
+    await api.delete(`/apps/${appId}`);
+  }
+
+  // 获取应用统计
+  async getAppStats(appId: string): Promise<any> {
+    const response = await api.get(`/apps/${appId}/stats`);
+    return response.data;
+  }
+
+  // 获取应用中的文档
+  async getAppDocuments(appId: string, params?: {
+    skip?: number;
+    limit?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }): Promise<any[]> {
+    const response = await api.get(`/apps/${appId}/documents`, { params });
+    return response.data;
+  }
+
+  // 获取应用的抽屉
+  async getAppDrawers(appId: string): Promise<Drawer[]> {
+    // 开发模式：使用模拟数据
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：使用模拟抽屉数据, appId:', appId, '类型:', typeof appId);
+      
+      // 使用全局模拟抽屉数据
+      const mockDrawers = mockDrawersGlobal;
+      
+      // 过滤匹配当前appId的drawers（支持ID或slug匹配）
+      // 首先需要检查appId对应的应用
+      const mockApps = [
+        {
+          id: 'c24d5b65-5a49-4237-ae93-1d2442638b04',
+          slug: 'service-canada',
+          name: 'Service Canada'
+        },
+        {
+          id: '5d517cf2-6ccc-475c-a63f-f43aeb10815c', // 用户访问的真实App ID
+          slug: 'service-canada',
+          name: 'Service Canada'
+        },
+        {
+          id: 'ec2846ea-5a93-461d-981d-431c340693cb', // 另一个真实App ID
+          slug: 'service-canada',
+          name: 'Service Canada'
+        },
+        {
+          id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          slug: 'smart-invoice',
+          name: 'Smart Invoice'
+        },
+        {
+          id: 'smarti', // 别名：用户可能使用简写
+          slug: 'smart-invoice', // 映射到真实slug
+          name: 'Smart Invoice'
+        },
+        {
+          id: 'mock-tiff-app',
+          slug: 'tiff-test',
+          name: 'TIFF测试应用'
+        },
+        {
+          id: 'mock-canada-site',
+          slug: 'canada-site',
+          name: 'Canada Site'
+        }
+      ];
+      
+      // 找到匹配的应用
+      const app = mockApps.find(a => a.id === appId || a.slug === appId);
+      if (!app) {
+        console.warn(`❌ 未找到App: ${appId}，返回空抽屉列表`);
+        console.log('📋 可用的mockApps:', mockApps.map(a => ({ id: a.id, slug: a.slug, name: a.name })));
+        return [];
+      }
+      
+      console.log(`✅ 找到App: ${app.name} (id: ${app.id}, slug: ${app.slug})，过滤drawers`);
+      
+      // 抽屉映射：某些App ID可能对应相同的抽屉数据
+      const drawerAppIdMap: Record<string, string> = {
+        '5d517cf2-6ccc-475c-a63f-f43aeb10815c': 'c24d5b65-5a49-4237-ae93-1d2442638b04', // 新ID映射到旧ID
+        'ec2846ea-5a93-461d-981d-431c340693cb': 'c24d5b65-5a49-4237-ae93-1d2442638b04',  // 另一个新ID也映射到Service Canada
+        'canada-site': 'mock-canada-site' // canada-site映射到mock-canada-site
+      };
+      
+      const targetAppId = drawerAppIdMap[app.id] || app.id;
+      console.log(`🎯 目标App ID: ${targetAppId} (映射前: ${app.id})`);
+      
+      // 显示所有抽屉及其app_id用于调试
+      console.log('📁 所有模拟抽屉:', mockDrawers.map(d => ({ id: d.id, name: d.name, app_id: d.app_id })));
+      
+      const filteredDrawers = mockDrawers.filter(drawer => drawer.app_id === targetAppId);
+      console.log(`📊 找到 ${filteredDrawers.length} 个抽屉:`, filteredDrawers.map(d => d.name));
+      return filteredDrawers;
+    }
+    
+    // 生产模式：调用真实API
+    const response = await api.get(`/apps/${appId}/drawers`);
+    return response.data;
+  }
+
+  // 获取应用特定抽屉的详情
+  async getAppDrawerById(appId: string, drawerId: string): Promise<Drawer> {
+    const response = await api.get(`/apps/${appId}/drawers/${drawerId}`);
+    return response.data;
+  }
+
+  // 创建抽屉
+  async createDrawer(appId: string, data: DrawerCreateRequest): Promise<Drawer> {
+    // 开发模式：使用模拟数据
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：模拟创建抽屉, appId:', appId, 'data:', data);
+      
+      // 生成模拟抽屉ID（简单方法）
+      const mockId = `mock-drawer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // 创建模拟抽屉对象
+      const slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const mockDrawer: any = {
+        id: mockId,
+        name: data.name,
+        description: data.description || '',
+        slug: slug,
+        app_id: appId,
+        drawer_type: data.drawer_type || 'document',
+        config: data.config || {},
+        is_default: data.is_default || false,
+        sort_order: data.sort_order || 1,
+        created_by: 'mock-user',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // 添加到全局模拟抽屉数组
+      mockDrawersGlobal.push(mockDrawer);
+      console.log('📝 已添加到全局模拟抽屉数组，当前总数:', mockDrawersGlobal.length);
+      
+      console.log('✅ 模拟创建抽屉成功:', mockDrawer);
+      return mockDrawer;
+    }
+    
+    // 生产模式：调用真实API
+    const response = await api.post(`/apps/${appId}/drawers`, data);
+    return response.data;
+  }
+
+  // 搜索应用
+  async searchApps(params: {
+    name?: string;
+    description?: string;
+    app_type?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<App[]> {
+    const response = await api.get('/search/apps', { params });
+    return response.data;
+  }
+
+  // 获取应用下的抽屉树形结构
+  async getDrawersTree(appId: string): Promise<DrawerTreeNode[]> {
+    const response = await api.get(`/apps/${appId}/drawers-tree`);
+    return response.data;
+  }
+
+  // 创建嵌套抽屉 (支持父抽屉ID)
+  async createNestedDrawer(appId: string, data: {
+    name: string;
+    description?: string;
+    parent_drawer_id?: string;
+    order_index?: number;
+  }): Promise<any> {
+    // 使用扩展的创建请求，可以包含parent_drawer_id
+    const requestData = {
+      ...data,
+      app_id: appId,
+      drawer_type: 'standard',  // 默认类型
+      config: {},
+      is_default: false,
+      sort_order: data.order_index || 0
+    };
+    const response = await api.post(`/apps/${appId}/drawers`, requestData);
+    return response.data;
+  }
+
+  // 更新抽屉信息
+  async updateDrawer(appId: string, drawerId: string, data: DrawerUpdateRequest): Promise<Drawer> {
+    // 开发模式：使用模拟数据
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：模拟更新抽屉, appId:', appId, 'drawerId:', drawerId, 'data:', data);
+      
+      // 创建模拟更新后的抽屉对象
+      const mockDrawer: Drawer = {
+        id: drawerId,
+        name: data.name || 'Updated Drawer',
+        description: data.description || '',
+        app_id: appId,
+        drawer_type: data.drawer_type || 'document',
+        config: data.config || {},
+        is_default: data.is_default || false,
+        sort_order: data.sort_order || 1,
+        created_by: 'mock-user',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('✅ 模拟更新抽屉成功:', mockDrawer);
+      return mockDrawer;
+    }
+    
+    // 生产模式：调用真实API
+    const response = await api.put(`/apps/${appId}/drawers/${drawerId}`, data);
+    return response.data;
+  }
+
+  // 删除抽屉
+  async deleteDrawer(appId: string, drawerId: string): Promise<void> {
+    // 开发模式：使用模拟数据
+    if (DEV_MODE) {
+      console.log('🔧 开发模式：模拟删除抽屉, appId:', appId, 'drawerId:', drawerId);
+      console.log('✅ 模拟删除抽屉成功');
+      return;
+    }
+    
+    // 生产模式：调用真实API
+    await api.delete(`/apps/${appId}/drawers/${drawerId}`);
+  }
+
+  // 移动抽屉（跨APP移动或同APP内改变父抽屉）
+  async moveDrawer(appId: string, drawerId: string, moveRequest: MoveDrawerRequest): Promise<Drawer> {
+    const response = await api.patch(`/apps/${appId}/drawers/${drawerId}/move`, moveRequest);
+    return response.data;
+  }
+}
+
+export default new AppService();

@@ -1,0 +1,22 @@
+{
+  "url": "https://example.com/",
+  "title": "Example Domain",
+  "language": "en",
+  "downloaded_at": "2026-03-24T20:27:11.734405",
+  "original_metadata": {
+    "source_url": "https://example.com/",
+    "fetched_at": 1774398431.7339559,
+    "content_type": "text/html",
+    "encoding": "ISO-8859-1",
+    "meta_tags": {
+      "viewport": "width=device-width, initial-scale=1"
+    },
+    "open_graph": {},
+    "links": [
+      {
+        "text": "Learn more",
+        "href": "https://iana.org/domains/example"
+      }
+    ]
+  }
+}

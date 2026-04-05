@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # 后端API服务
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: filebot-backend
+    environment:
+      - DATABASE_URL=sqlite:///./filebot.db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - FILE_STORAGE_PATH=/app/data/files
+      - TEMP_STORAGE_PATH=/app/data/temp
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/app/data  # 包含数据库文件和上传文件
+    command: >
+      sh -c "python -c 'from app.db.database import init_db; init_db()' &&
+             uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # 前端开发服务器
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: filebot-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+    command: npm start

@@ -1,0 +1,31 @@
+{
+  "name": "Payment_Report",
+  "description": "COLD_REPORT配置: Payment_Report",
+  "report_id": 104,
+  "version": "1.0",
+  "source": "cold_report",
+  "metadata": {
+    "appid": 3,
+    "formid": 4,
+    "indexid": 104,
+    "levelid": 3,
+    "sourceid": 1004,
+    "comments": "付款报表配置",
+    "seperator": ",",
+    "allowdups": 0,
+    "reptable": "PAYMENT_DATA",
+    "store_in_db": 0,
+    "index_pages": "Y",
+    "enter": 1,
+    "duration": null,
+    "durationunit": null
+  },
+  "field_groups": [],
+  "index_fields": [],
+  "statistics": {
+    "total_field_groups": 0,
+    "total_index_fields": 0,
+    "has_fieldinfo_data": false,
+    "has_index_data": false
+  }
+}

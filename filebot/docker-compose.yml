@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: filebot-postgres
+    environment:
+      POSTGRES_USER: filebot
+      POSTGRES_PASSWORD: filebot
+      POSTGRES_DB: filebot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filebot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (用于缓存和Celery)
+  redis:
+    image: redis:7-alpine
+    container_name: filebot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 后端API服务
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: filebot-backend
+    environment:
+      - DATABASE_URL=postgresql://filebot:filebot@postgres:5432/filebot
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - FILE_STORAGE_PATH=/app/data/files
+      - TEMP_STORAGE_PATH=/app/data/temp
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./data/files:/app/data/files
+      - ./data/temp:/app/data/temp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # Celery worker (异步任务处理)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: filebot-worker
+    environment:
+      - DATABASE_URL=postgresql://filebot:filebot@postgres:5432/filebot
+      - REDIS_URL=redis://redis:6379/0
+      - FILE_STORAGE_PATH=/app/data/files
+      - TEMP_STORAGE_PATH=/app/data/temp
+    volumes:
+      - ./backend:/app/backend
+      - ./data/files:/app/data/files
+      - ./data/temp:/app/data/temp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A backend.app.tasks.celery_app worker --loglevel=info
+
+  # 前端开发服务器
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: filebot-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+    command: npm start
+
+volumes:
+  postgres_data:
+  redis_data:

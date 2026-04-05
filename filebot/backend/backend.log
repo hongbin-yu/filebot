@@ -1,0 +1,19 @@
+/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:383: UserWarning: Valid config keys have changed in V2:
+* 'schema_extra' has been renamed to 'json_schema_extra'
+  warnings.warn(message, UserWarning)
+/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:383: UserWarning: Valid config keys have changed in V2:
+* 'orm_mode' has been renamed to 'from_attributes'
+  warnings.warn(message, UserWarning)
+/home/hongb/.openclaw/workspace/filebot/backend/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:383: UserWarning: Valid config keys have changed in V2:
+* 'schema_extra' has been renamed to 'json_schema_extra'
+  warnings.warn(message, UserWarning)
+INFO:     Started server process [120693]
+INFO:     Waiting for application startup.
+2026-04-04 17:13:09,790 - main - INFO - 启动 FileBot 应用...
+2026-04-04 17:13:09,807 - app.core.security - INFO - 管理员用户已存在: admin
+2026-04-04 17:13:09,807 - main - INFO - 默认用户初始化完成
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8001): address already in use
+INFO:     Waiting for application shutdown.
+2026-04-04 17:13:09,807 - main - INFO - 关闭 FileBot 应用...
+INFO:     Application shutdown complete.

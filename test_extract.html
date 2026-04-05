@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Extract Function</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { margin: 20px; padding: 15px; border: 1px solid #ccc; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>Test extractMainContent Function</h1>
+    
+    <div id="test1" class="result">
+        <h3>Test 1: Simple HTML</h3>
+        <div id="test1-result"></div>
+    </div>
+    
+    <div id="test2" class="result">
+        <h3>Test 2: Canada.ca HTML</h3>
+        <div id="test2-result"></div>
+    </div>
+    
+    <div id="test3" class="result">
+        <h3>Test 3: addGCWebHeaderFooter Test</h3>
+        <div id="test3-result"></div>
+    </div>
+    
+    <script>
+        // 从 editor.html 复制 extractMainContent 函数
+        function extractMainContent(content) {
+            if (!content || typeof content !== 'string') return content;
+            
+            let cleaned = content;
+            
+            // Try to extract main content if it's HTML
+            if (content.includes('<') && content.includes('>')) {
+                // It's HTML content
+                // Try to find and extract main content area
+                // Common Canada.ca selectors for main content
+                const mainSelectors = [
+                    'main[property="mainContentOfPage"]',
+                    '#wb-cont',
+                    '.container',
+                    'article',
+                    '.col-md-9',
+                    '.col-md-8',
+                    '#main-content'
+                ];
+                
+                // Create a temporary DOM parser
+                const parser = new DOMParser();
+                try {
+                    const doc = parser.parseFromString(content, 'text/html');
+                    
+                    // Try to find main content using selectors
+                    let mainElement = null;
+                    for (const selector of mainSelectors) {
+                        mainElement = doc.querySelector(selector);
+                        if (mainElement) break;
+                    }
+                    
+                    // If found main element, extract its content
+                    if (mainElement) {
+                        cleaned = mainElement.innerHTML;
+                        
+                        // Clean up any remaining header/footer elements
+                        const headerFooterSelectors = [
+                            '#wb-bnr', '#wb-sm', '#wb-info', '#wb-srch', '#wb-lng',
+                            '#wb-sec', '#wb-sm', '#wb-dtmd', '#wb-glb-mn',
+                            '.pagedetails', '.brand', '.subsite', '.gc-footer'
+                        ];
+                        
+                        headerFooterSelectors.forEach(selector => {
+                            const elements = doc.querySelectorAll(selector);
+                            elements.forEach(el => {
+                                const removeText = el.textContent || '';
+                                cleaned = cleaned.replace(new RegExp(removeText, 'gi'), '');
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.warn('HTML parsing failed, falling back to text cleaning:', e);
+                }
+            }
+            
+            // For plain text content, use pattern matching
+            if (!cleaned.includes('<') || cleaned === content) {
+                // Remove "Page details YYYY-MM-DD" footer
+                cleaned = cleaned.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
+                
+                // Remove common Canada.ca footer patterns
+                const footerPatterns = [
+                    /Date modified:.*$/im,
+                    /Government of Canada.*$/im,
+                    /©.*$/im,
+                    /All rights reserved.*$/im,
+                    /Report a problem.*$/im,
+                    /Contact us.*$/im,
+                    /Terms and conditions.*$/im,
+                    /Privacy.*$/im,
+                    /Canada\.ca.*$/im
+                ];
+                
+                footerPatterns.forEach(pattern => {
+                    cleaned = cleaned.replace(pattern, '').trim();
+                });
+                
+                // Remove duplicate title at beginning (if content starts with the title)
+                const lines = cleaned.split('\n');
+                if (lines.length > 1) {
+                    const firstLine = lines[0].trim();
+                    // If first line is short and appears again, remove it
+                    if (firstLine.length < 100 && cleaned.indexOf(firstLine, firstLine.length) !== -1) {
+                        lines.shift(); // Remove first line
+                        cleaned = lines.join('\n').trim();
+                    }
+                }
+            }
+            
+            return cleaned;
+        }
+        
+        // 从 editor.html 复制简化版的 addGCWebHeaderFooter 函数
+        function addGCWebHeaderFooter(content) {
+            if (!content || typeof content !== 'string') return content;
+            
+            // Extract main content if needed
+            let mainContent = extractMainContent(content);
+            
+            // Simple GCWeb header
+            const gcwebHeader = '<header id="gcweb-header">' +
+                '<div class="container">' +
+                '<div class="row">' +
+                '<div class="col-md-12">' +
+                '<h1>Canada.ca Page Preview</h1>' +
+                '<p class="text-muted">Composing mode - Showing main content with GCWeb theme</p>' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '</header>' +
+                '<main class="container"><div class="row"><div class="col-md-12">';
+            
+            // Simple GCWeb footer
+            const gcwebFooter = '</div></div></main>' +
+                '<footer id="gcweb-footer" class="bg-light py-3 mt-4">' +
+                '<div class="container">' +
+                '<div class="row">' +
+                '<div class="col-md-12 text-center">' +
+                '<p class="mb-0">Canada.ca Government of Canada</p>' +
+                '<p class="text-muted small">Preview generated by WebBot Editor</p>' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '</footer>';
+            
+            return gcwebHeader + mainContent + gcwebFooter;
+        }
+        
+        // Test 1: Simple HTML
+        const simpleHtml = '<html><body><main><h1>Test Title</h1><p>Test content</p></main></body></html>';
+        const result1 = extractMainContent(simpleHtml);
+        document.getElementById('test1-result').innerHTML = 
+            `<p><strong>Input:</strong> ${simpleHtml.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` +
+            `<p><strong>Output:</strong> ${result1.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` +
+            `<p><strong>Length:</strong> ${result1.length} chars</p>`;
+        
+        if (result1.includes('<h1>Test Title</h1>')) {
+            document.getElementById('test1').classList.add('success');
+        } else {
+            document.getElementById('test1').classList.add('error');
+        }
+        
+        // Test 2: Fetch actual Canada.ca page content
+        fetch('http://localhost:8000/api/v1/pages/contact')
+            .then(response => response.json())
+            .then(data => {
+                const canadaHtml = data.content || '';
+                const result2 = extractMainContent(canadaHtml);
+                const result2preview = addGCWebHeaderFooter(canadaHtml);
+                
+                document.getElementById('test2-result').innerHTML = 
+                    `<p><strong>API Response:</strong> ${canadaHtml ? 'Yes' : 'No'}</p>` +
+                    `<p><strong>Content Length:</strong> ${canadaHtml.length} chars</p>` +
+                    `<p><strong>Extracted Length:</strong> ${result2.length} chars</p>` +
+                    `<p><strong>Extracted Preview (first 200 chars):</strong><br>` +
+                    `<code>${result2.substring(0, 200).replace(/</g, '&lt;').replace(/>/g, '&gt;')}...</code></p>` +
+                    `<p><strong>GCWeb Preview Length:</strong> ${result2preview.length} chars</p>`;
+                
+                if (result2.length > 0 && result2.length < canadaHtml.length) {
+                    document.getElementById('test2').classList.add('success');
+                    document.getElementById('test2-result').innerHTML += 
+                        '<p><strong>✅ Success:</strong> Content was extracted and reduced in size.</p>';
+                } else if (result2.length > 0) {
+                    document.getElementById('test2').classList.add('success');
+                    document.getElementById('test2-result').innerHTML += 
+                        '<p><strong>⚠️ Note:</strong> Content extracted but size not reduced.</p>';
+                } else {
+                    document.getElementById('test2').classList.add('error');
+                    document.getElementById('test2-result').innerHTML += 
+                        '<p><strong>❌ Error:</strong> No content extracted.</p>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('test2-result').innerHTML = 
+                    `<p><strong>Error:</strong> ${error.message}</p>`;
+                document.getElementById('test2').classList.add('error');
+            });
+        
+        // Test 3: addGCWebHeaderFooter with simple content
+        const test3Content = '<div><h2>Test Content</h2><p>This is a test paragraph.</p></div>';
+        const result3 = addGCWebHeaderFooter(test3Content);
+        
+        document.getElementById('test3-result').innerHTML = 
+            `<p><strong>Input:</strong> ${test3Content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` +
+            `<p><strong>Output Length:</strong> ${result3.length} chars</p>` +
+            `<p><strong>Output (first 300 chars):</strong><br>` +
+            `<code>${result3.substring(0, 300).replace(/</g, '&lt;').replace(/>/g, '&gt;')}...</code></p>` +
+            `<p><strong>Contains header:</strong> ${result3.includes('gcweb-header') ? 'Yes' : 'No'}</p>` +
+            `<p><strong>Contains footer:</strong> ${result3.includes('gcweb-footer') ? 'Yes' : 'No'}</p>`;
+        
+        if (result3.includes('gcweb-header') && result3.includes('gcweb-footer')) {
+            document.getElementById('test3').classList.add('success');
+        } else {
+            document.getElementById('test3').classList.add('error');
+        }
+    </script>
+</body>
+</html>
