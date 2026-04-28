@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import appService, { App, CreateAppRequest } from '../../services/app.service';
 
 interface CreateAppModalProps {
@@ -48,6 +49,7 @@ interface AppNotFoundError {
 type AppError = string | SlugConflictError | PermissionDeniedError | AppNotFoundError | null;
 
 const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<CreateAppRequest>({
     name: '',
     slug: '',
@@ -95,11 +97,11 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      setError('应用名称不能为空');
+      setError(t('appModal.appNameRequiredError'));
       return;
     }
     if (!formData.slug.trim()) {
-      setError('应用标识不能为空');
+      setError(t('appModal.appSlugRequiredError'));
       return;
     }
 
@@ -137,7 +139,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
           // 智能slug冲突错误
           const slugConflictError = {
             type: 'slug_conflict' as const,
-            message: errorDetail.message || '该slug已被使用',
+            message: errorDetail.message || t('appModal.slugAlreadyUsed'),
             existingApp: {
               id: errorDetail.existing_app.id,
               name: errorDetail.existing_app.name,
@@ -155,7 +157,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
       }
       
       // 普通错误
-      setError(err.response?.data?.detail?.message || err.response?.data?.detail || err.message || '创建应用失败，请稍后重试。');
+      setError(err.response?.data?.detail?.message || err.response?.data?.detail || err.message || t('appModal.createAppFailed'));
     } finally {
       setLoading(false);
     }
@@ -180,7 +182,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
     try {
       await appService.deleteApp(appId);
       // 重新提交表单
-      await handleSubmit(new Event('submit') as React.FormEvent);
+      await handleSubmit(new Event('submit') as unknown as React.FormEvent);
     } catch (err: any) {
       console.error('删除应用失败:', err);
       
@@ -188,20 +190,20 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
         // 权限不足错误
         setError({
           type: 'permission_denied',
-          message: '您没有权限删除此应用',
-          details: '此应用可能属于其他用户，或者您没有管理员权限。',
+          message: t('appModal.noPermissionToDeleteApp'),
+          details: t('appModal.permissionDeniedDetails'),
           existingApp: currentConflictError?.existingApp // 保持现有应用信息显示
         });
       } else if (err.response?.status === 404) {
         // 应用不存在
         setError({
           type: 'app_not_found',
-          message: '应用不存在或已被删除',
-          details: '该应用可能已被其他用户删除。请刷新页面或尝试其他应用标识。'
+          message: t('appModal.appNotFoundOrDeleted'),
+          details: t('appModal.appDeletedByOtherUser')
         });
       } else {
         // 其他错误
-        setError('删除现有应用失败，请手动删除后重试。错误代码：' + (err.response?.status || '未知'));
+        setError(t('appModal.deleteExistingAppFailed') + (err.response?.status || t('common.unknown')));
       }
     } finally {
       setLoading(false);
@@ -220,8 +222,8 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
         <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md">
           {/* 标题 */}
           <div className="px-6 py-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-900">创建新应用</h3>
-            <p className="text-sm text-gray-600 mt-1">应用是文件夹和文档的容器</p>
+            <h3 className="text-lg font-semibold text-gray-900">{t('appModal.createAppTitle')}</h3>
+            <p className="text-sm text-gray-600 mt-1">{t('appModal.appContainerDescription')}</p>
           </div>
 
           {/* 表单 */}
@@ -238,14 +240,14 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                       </p>
                       <div className="mt-2 p-3 bg-white rounded border border-yellow-100">
                         <p className="font-medium text-gray-800 mb-1">
-                          📦 现有应用：{error.existingApp.name}
+                          {t('appModal.existingApp')}{error.existingApp.name}
                         </p>
                         <p className="text-xs text-gray-600 mb-2">
-                          ID: {error.existingApp.id}
+                          {t('appModal.id')} {error.existingApp.id}
                         </p>
                         <div className="text-xs text-gray-500 space-y-1 mb-3">
-                          <p>创建者: {error.existingApp.created_by || '未知'}</p>
-                          <p>创建时间: {new Date(error.existingApp.created_at).toLocaleString()}</p>
+                          <p>{t('appModal.creator')} {error.existingApp.created_by || t('common.unknown')}</p>
+                          <p>{t('appModal.creationTime')} {new Date(error.existingApp.created_at).toLocaleString()}</p>
                         </div>
                         <div className="mt-3 flex space-x-2">
                           <button
@@ -254,18 +256,18 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                             className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                             disabled={loading}
                           >
-                            🗑️ 删除旧应用并重试
+{t('appModal.deleteOldAppAndRetry')}
                           </button>
                           <button
                             type="button"
                             onClick={() => window.open(`/admin/apps/${error.existingApp.slug}`)}
                             className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            👁️ 查看旧应用
+{t('appModal.viewOldApp')}
                           </button>
                         </div>
                         <p className="text-xs text-yellow-700 mt-2">
-                          💡 提示：删除操作不可恢复，但可以重新创建同名应用
+                          {t('appModal.deleteTip')}
                         </p>
                       </div>
                     </div>
@@ -282,17 +284,17 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                         {error.existingApp && (
                           <>
                             <p className="font-medium text-gray-800 mb-1">
-                              📦 现有应用：{error.existingApp.name}
+                              {t('appModal.existingApp')}{error.existingApp.name}
                             </p>
                             <div className="text-xs text-gray-500 space-y-1 mb-3">
-                              <p>创建者: {error.existingApp.created_by || '未知'}</p>
-                              <p>所有者ID: {error.existingApp.owner_id}</p>
+                              <p>{t('appModal.creator')} {error.existingApp.created_by || t('common.unknown')}</p>
+                              <p>{t('appModal.ownerId')} {error.existingApp.owner_id}</p>
                             </div>
                           </>
                         )}
                         <div className="mt-3 space-y-2">
                           <p className="text-xs text-orange-700">
-                            💡 建议方案：
+                            {t('appModal.suggestion')}
                           </p>
                           <div className="flex flex-col space-y-2">
                             <button
@@ -305,7 +307,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                               }}
                               className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
                             >
-                              ✏️ 修改应用标识（添加随机后缀）
+{t('appModal.modifySlugWithSuffix')}
                             </button>
                             <button
                               type="button"
@@ -315,7 +317,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                               }}
                               className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 text-left"
                             >
-                              🔄 清空应用标识，手动输入新标识
+{t('appModal.clearSlugAndInput')}
                             </button>
                             <button
                               type="button"
@@ -323,11 +325,11 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                               className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-left"
                               disabled={!error.existingApp}
                             >
-                              👁️ 查看现有应用详情
+{t('appModal.viewExistingAppDetails')}
                             </button>
                           </div>
                           <p className="text-xs text-orange-700 mt-2">
-                            ℹ️ 您没有删除此应用的权限，建议使用不同的应用标识。
+                            {t('appModal.noPermissionSuggestDifferentSlug')}
                           </p>
                         </div>
                       </div>
@@ -349,14 +351,14 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                           }}
                           className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                         >
-                          🔄 重试创建应用
+{t('appModal.retryCreateApp')}
                         </button>
                       </div>
                     </div>
                   ) : (
                     /* 普通错误提示 */
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                      <p className="text-sm text-red-800">{typeof error === 'string' ? error : error.message}</p>
+                      <p className="text-sm text-red-800">{typeof error === 'string' ? error : (error as any)?.message || 'Unknown error'}</p>
                     </div>
                   )}
                 </>
@@ -365,46 +367,46 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
               {/* 应用名称 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  应用名称 <span className="text-red-500">*</span>
+{t('appModal.appNameLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={handleNameChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: Service Canada"
+                  placeholder={t('appModal.appNamePlaceholder')}
                   disabled={loading}
                   autoFocus
                 />
-                <p className="text-xs text-gray-500 mt-1">应用显示名称</p>
+                <p className="text-xs text-gray-500 mt-1">{t('appModal.appDisplayName')}</p>
               </div>
 
               {/* 应用标识 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  应用标识 <span className="text-red-500">*</span>
+{t('appModal.appSlugLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={handleSlugChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: service-canada"
+                  placeholder={t('appModal.slugPlaceholder')}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">URL中使用的唯一标识，仅限小写字母、数字和连字符</p>
+                <p className="text-xs text-gray-500 mt-1">{t('appModal.slugUsageHint')}</p>
               </div>
 
               {/* 应用描述 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  应用描述
+                  {t('appModal.appDescriptionLabel')}
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={handleDescriptionChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="简要描述应用的用途..."
+                  placeholder={t('appModal.appDescriptionPlaceholder')}
                   rows={3}
                   disabled={loading}
                 />
@@ -413,41 +415,41 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
               {/* 索引字段 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  文档索引字段
+{t('appModal.documentIndexFields')}
                 </label>
                 <input
                   type="text"
                   value={formData.settings.indices.join(',')}
                   onChange={handleIndicesChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: Department,DocumentType,Status (用逗号分隔，无需空格)"
+                  placeholder={t('appModal.indexFieldsPlaceholder')}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">文档的自定义字段，用逗号分隔（无需空格）</p>
+                <p className="text-xs text-gray-500 mt-1">{t('appModal.indexFieldsHint')}</p>
               </div>
 
               {/* 重定向URL - 用于统一仪表板 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  重定向URL（统一仪表板）
+{t('appModal.redirectUrlLabel')}
                 </label>
                 <input
                   type="text"
                   value={formData.redirect_url || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, redirect_url: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: http://localhost:8000 （WebBot应用）"
+                  placeholder={t('appModal.redirectUrlPlaceholder')}
                   disabled={loading}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  在统一仪表板中点击此应用时重定向到的URL，留空则进入FileBot内部应用
+                  {t('appModal.redirectUrlHint')}
                 </p>
               </div>
 
               {/* 图标 - 用于统一仪表板 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  图标（统一仪表板）
+{t('appModal.iconLabel')}
                 </label>
                 <div className="flex items-center space-x-2">
                   <input
@@ -455,7 +457,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                     value={formData.icon || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="例如: 🌐 🏛️ 📁 🧾 🔍"
+                    placeholder={t('appModal.iconPlaceholder')}
                     disabled={loading}
                   />
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -463,15 +465,15 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  在统一仪表板中显示的图标，可以使用Emoji或图标代码
+                  {t('appModal.iconHint')}
                 </p>
                 <div className="text-xs text-gray-500 mt-1">
-                  <span className="font-medium">示例:</span>
-                  <span className="mx-2">📁 文档管理</span>
-                  <span className="mx-2">🌐 WebBot应用</span>
-                  <span className="mx-2">🏛️ 政府服务</span>
-                  <span className="mx-2">🧾 发票系统</span>
-                  <span className="mx-2">🔍 数据分析</span>
+                  <span className="font-medium">{t('appModal.examples')}</span>
+                  <span className="mx-2">{t('appModal.documentManagement')}</span>
+                  <span className="mx-2">{t('appModal.webBotApp')}</span>
+                  <span className="mx-2">{t('appModal.governmentServices')}</span>
+                  <span className="mx-2">{t('appModal.invoiceSystem')}</span>
+                  <span className="mx-2">{t('appModal.dataAnalysis')}</span>
                 </div>
               </div>
             </div>
@@ -484,7 +486,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
                 disabled={loading}
               >
-                取消
+{t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -494,9 +496,9 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                 {loading ? (
                   <>
                     <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                    创建中...
+{t('appModal.creating')}
                   </>
-                ) : '创建应用'}
+                ) : t('appModal.createApplication')}
               </button>
             </div>
           </form>

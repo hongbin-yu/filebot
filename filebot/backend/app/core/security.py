@@ -3,8 +3,9 @@ from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.security.utils import get_authorization_scheme_param
 import logging
 
 from .config import settings
@@ -172,6 +173,50 @@ async def get_current_active_user(
     db: Session = Depends(get_db)
 ) -> Optional[User]:
     """获取当前活跃用户（依赖注入）"""
+    user = get_current_user(db, token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的认证凭据",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户未激活"
+        )
+    return user
+
+
+async def get_current_active_user_allow_query(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """获取当前活跃用户 - 支持Authorization header或token查询参数
+    
+    用于需要在iframe中加载的端点（如HTML预览），因为iframe无法设置Authorization header。
+    手动从请求header或query参数中提取token，不依赖OAuth2PasswordBearer（它会直接抛出401）。
+    """
+    # 手动从Authorization header提取token
+    authorization = request.headers.get("Authorization")
+    token = None
+    if authorization:
+        from fastapi.security.utils import get_authorization_scheme_param
+        scheme, param = get_authorization_scheme_param(authorization)
+        if scheme.lower() == "bearer":
+            token = param
+    
+    # 如果header里没有，尝试query参数
+    if not token:
+        token = request.query_params.get("token")
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     user = get_current_user(db, token)
     if not user:
         raise HTTPException(

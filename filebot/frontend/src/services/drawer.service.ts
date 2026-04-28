@@ -1,10 +1,11 @@
 import api from './api';
+import i18n from '../i18n';
 
 // 抽屉服务 - 已弃用
 // 抽屉层已从FileBot架构中移除，现在使用两层结构：应用 → 文件夹 → 文档
 // 此服务仅用于向后兼容，返回空数据或重定向到新API
 
-console.warn('⚠️ drawer.service.ts 已弃用：抽屉层已从FileBot架构中移除');
+console.warn(i18n.t('services.drawerService.deprecationWarning'));
 
 export interface Drawer {
   id: string;
@@ -12,6 +13,7 @@ export interface Drawer {
   description?: string;
   slug?: string;
   app_id: string;
+  is_default?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -50,7 +52,7 @@ class DrawerService {
    * 抽屉层已移除，请使用folderService.getFolders(appId)替代
    */
   async getDrawers(): Promise<Drawer[]> {
-    console.warn('⚠️ drawerService.getDrawers() 已弃用：抽屉层已移除');
+    console.warn(i18n.t('services.drawerService.getDrawersDeprecated'));
     return [];
   }
   
@@ -76,7 +78,7 @@ class DrawerService {
         updated_at: app.updated_at
       }));
     } catch (error) {
-      console.error('获取App列表失败:', error);
+      console.error(i18n.t('services.drawerService.fetchAppListFailed'), error);
       return [];
     }
   }
@@ -86,7 +88,7 @@ class DrawerService {
    * 请使用appService.getAppById(appId)替代
    */
   async getAppWithSettings(appId: string): Promise<ClientApp | null> {
-    console.warn(`⚠️ drawerService.getAppWithSettings(${appId}) 已弃用：请使用appService.getAppById()`);
+    console.warn(i18n.t('services.drawerService.getAppWithSettingsDeprecated', { appId }));
     
     try {
       const response = await api.get(`/apps/${appId}`);
@@ -104,7 +106,7 @@ class DrawerService {
         updated_at: app.updated_at
       };
     } catch (error) {
-      console.error(`获取App详情失败 (${appId}):`, error);
+      console.error(i18n.t('services.drawerService.fetchAppDetailFailed', { appId }), error);
       return null;
     }
   }
@@ -114,7 +116,7 @@ class DrawerService {
    * 抽屉层已移除，请使用folderService.getFolders(appId)替代
    */
   async getDrawersByApp(appId: string): Promise<Drawer[]> {
-    console.warn(`⚠️ drawerService.getDrawersByApp(${appId}) 已弃用：抽屉层已移除，请使用folderService.getFolders()`);
+    console.warn(i18n.t('services.drawerService.getDrawersByAppDeprecated', { appId }));
     return [];
   }
 
@@ -122,15 +124,15 @@ class DrawerService {
    * 获取单个drawer详情 - 已弃用
    */
   async getDrawerById(drawerId: string): Promise<Drawer> {
-    console.warn(`⚠️ drawerService.getDrawerById(${drawerId}) 已弃用：抽屉层已移除`);
-    throw new Error('抽屉层已移除，此方法不再可用');
+    console.warn(i18n.t('services.drawerService.getDrawerByIdDeprecated', { drawerId }));
+    throw new Error(i18n.t('services.appService.drawerLayerRemoved'));
   }
 
   /**
    * 根据slug获取drawer - 已弃用
    */
   async getDrawerBySlug(slug: string): Promise<Drawer | null> {
-    console.warn(`⚠️ drawerService.getDrawerBySlug(${slug}) 已弃用：抽屉层已移除`);
+    console.warn(i18n.t('services.drawerService.getDrawerBySlugDeprecated', { slug }));
     return null;
   }
 
@@ -138,7 +140,7 @@ class DrawerService {
    * 获取drawer下的PDF文档统计 - 已弃用
    */
   async getDrawerDocumentStats(drawerId: string): Promise<{ total: number; pdf_count: number }> {
-    console.warn(`⚠️ drawerService.getDrawerDocumentStats(${drawerId}) 已弃用：抽屉层已移除`);
+    console.warn(i18n.t('services.drawerService.getDrawerDocumentStatsDeprecated', { drawerId }));
     return { total: 0, pdf_count: 0 };
   }
 
@@ -147,7 +149,7 @@ class DrawerService {
    * 请使用folderService.getFolderDocuments(folderId)或documentService.searchDocuments()替代
    */
   async getDrawerDocuments(drawerId: string, options?: any): Promise<any[]> {
-    console.warn(`⚠️ drawerService.getDrawerDocuments(${drawerId}) 已弃用：抽屉层已移除`);
+    console.warn(i18n.t('services.drawerService.getDrawerDocumentsDeprecated', { drawerId }));
     return [];
   }
 
@@ -155,7 +157,7 @@ class DrawerService {
    * 获取drawer的页面索引数据（application indices） - 已弃用
    */
   async getDrawerPageIndices(drawerId: string): Promise<any[]> {
-    console.warn(`⚠️ drawerService.getDrawerPageIndices(${drawerId}) 已弃用：抽屉层已移除`);
+    console.warn(i18n.t('services.drawerService.getDrawerPageIndicesDeprecated', { drawerId }));
     return [];
   }
 }

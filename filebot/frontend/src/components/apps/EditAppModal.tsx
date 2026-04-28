@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import appService, { App } from '../../services/app.service';
 
 interface EditAppModalProps {
@@ -9,6 +10,7 @@ interface EditAppModalProps {
 }
 
 const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess, app }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<{
     name: string;
     slug: string;
@@ -107,15 +109,15 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      setError('应用名称不能为空');
+      setError(t('appModal.appNameRequiredError'));
       return;
     }
     if (!formData.slug.trim()) {
-      setError('应用标识不能为空');
+      setError(t('appModal.appSlugRequiredError'));
       return;
     }
     if (!app) {
-      setError('应用数据未找到');
+      setError(t('appModal.appDataNotFound'));
       return;
     }
 
@@ -153,7 +155,7 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
       onClose();
     } catch (err: any) {
       console.error('更新应用失败:', err);
-      setError(err.response?.data?.detail || err.message || '更新应用失败，请稍后重试。');
+      setError(err.response?.data?.detail || err.message || t('appModal.updateAppFailed'));
     } finally {
       setLoading(false);
     }
@@ -184,8 +186,8 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
         <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md">
           {/* 标题 */}
           <div className="px-6 py-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-900">编辑应用</h3>
-            <p className="text-sm text-gray-600 mt-1">修改应用信息</p>
+            <h3 className="text-lg font-semibold text-gray-900">{t('appModal.editApp')}</h3>
+            <p className="text-sm text-gray-600 mt-1">{t('appModal.editAppSubtitle')}</p>
           </div>
 
           {/* 表单 */}
@@ -201,7 +203,7 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
               {/* 应用ID显示（只读） */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  应用ID
+                  {t('appModal.appId')}
                 </label>
                 <input
                   type="text"
@@ -210,52 +212,52 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
                   readOnly
                   disabled
                 />
-                <p className="text-xs text-gray-500 mt-1">应用唯一标识符，不可修改</p>
+                <p className="text-xs text-gray-500 mt-1">{t('appModal.appIdDescription')}</p>
               </div>
 
               {/* 应用名称 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  应用名称 <span className="text-red-500">*</span>
+                  {t('appModal.appNameLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={handleNameChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: Service Canada"
+                  placeholder={t('appModal.appNamePlaceholder')}
                   disabled={loading}
                   autoFocus
                 />
-                <p className="text-xs text-gray-500 mt-1">应用显示名称</p>
+                <p className="text-xs text-gray-500 mt-1">{t('appModal.appDisplayName')}</p>
               </div>
 
               {/* 应用标识 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  应用标识 <span className="text-red-500">*</span>
+                  {t('appModal.appSlugLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={handleSlugChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: service-canada"
+                  placeholder={t('appModal.slugPlaceholder')}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">URL中使用的唯一标识，仅限小写字母、数字和连字符</p>
+                <p className="text-xs text-gray-500 mt-1">{t('appModal.slugUsageHint')}</p>
               </div>
 
               {/* 应用描述 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  应用描述
+                  {t('appModal.appDescriptionLabel')}
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={handleDescriptionChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="简要描述应用的用途..."
+                  placeholder={t('appModal.appDescriptionPlaceholder')}
                   rows={3}
                   disabled={loading}
                 />
@@ -264,41 +266,41 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
               {/* 索引字段 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  文档索引字段
+                  {t('appModal.documentIndexFields')}
                 </label>
                 <input
                   type="text"
                   value={formData.settings.indices?.join(',') || ''}
                   onChange={handleIndicesChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: Department,DocumentType,Status (用逗号分隔，无需空格)"
+                  placeholder={t('appModal.indexFieldsPlaceholder')}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">文档的自定义字段，用逗号分隔（空格可选）</p>
+                <p className="text-xs text-gray-500 mt-1">{t('appModal.indexFieldsHint')}</p>
               </div>
 
               {/* 重定向URL - 用于统一仪表板 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  重定向URL（统一仪表板）
+                  {t('appModal.redirectUrlLabel')}
                 </label>
                 <input
                   type="text"
                   value={formData.redirect_url}
                   onChange={handleRedirectUrlChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="例如: http://localhost:8000 （WebBot应用）"
+                  placeholder={t('appModal.redirectUrlPlaceholder')}
                   disabled={loading}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  在统一仪表板中点击此应用时重定向到的URL，留空则进入FileBot内部应用
+                  {t('appModal.redirectUrlHint')}
                 </p>
               </div>
 
               {/* 图标 - 用于统一仪表板 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  图标（统一仪表板）
+                  {t('appModal.iconLabel')}
                 </label>
                 <div className="flex items-center space-x-2">
                   <input
@@ -306,7 +308,7 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
                     value={formData.icon}
                     onChange={handleIconChange}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="例如: 🌐 🏛️ 📁 🧾 🔍"
+                    placeholder={t('appModal.iconPlaceholder')}
                     disabled={loading}
                   />
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -314,25 +316,25 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  在统一仪表板中显示的图标，可以使用Emoji或图标代码
+                  {t('appModal.iconHint')}
                 </p>
                 <div className="text-xs text-gray-500 mt-1">
-                  <span className="font-medium">示例:</span>
-                  <span className="mx-2">📁 文档管理</span>
-                  <span className="mx-2">🌐 WebBot应用</span>
-                  <span className="mx-2">🏛️ 政府服务</span>
-                  <span className="mx-2">🧾 发票系统</span>
-                  <span className="mx-2">🔍 数据分析</span>
+                  <span className="font-medium">{t('appModal.examples')}</span>
+                  <span className="mx-2">📁 {t('appModal.documentManagement')}</span>
+                  <span className="mx-2">🌐 {t('appModal.webBotApp')}</span>
+                  <span className="mx-2">🏛️ {t('appModal.governmentServices')}</span>
+                  <span className="mx-2">🧾 {t('appModal.invoiceSystem')}</span>
+                  <span className="mx-2">🔍 {t('appModal.dataAnalysis')}</span>
                 </div>
               </div>
 
               {/* 创建信息（只读） */}
               <div className="pt-4 border-t border-gray-100">
                 <div className="text-sm text-gray-500">
-                  <p>创建者: {app.created_by || '未知'}</p>
-                  <p>创建时间: {app.created_at ? new Date(app.created_at).toLocaleString() : '未知'}</p>
+                  <p>{t('appModal.creator')}: {app.created_by || t('common.unknown')}</p>
+                  <p>{t('appModal.creationTime')}: {app.created_at ? new Date(app.created_at).toLocaleString() : t('common.unknown')}</p>
                   {app.updated_at && (
-                    <p>最后更新: {new Date(app.updated_at).toLocaleString()}</p>
+                    <p>{t('appModal.lastUpdated')}: {new Date(app.updated_at).toLocaleString()}</p>
                   )}
                 </div>
               </div>
@@ -346,7 +348,7 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
                 disabled={loading}
               >
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -356,9 +358,9 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
                 {loading ? (
                   <>
                     <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                    保存中...
+                    {t('appModal.saving')}
                   </>
-                ) : '保存更改'}
+                ) : t('appModal.saveChanges')}
               </button>
             </div>
           </form>

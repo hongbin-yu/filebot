@@ -27,45 +27,21 @@ import documentService, { Document } from '../services/document.service';
 import folderService, { Folder } from '../services/folder.service';
 import appService, { App } from '../services/app.service';
 import TiffPreview from '../components/TiffPreview';
-import { extractIdFromSlug } from '../utils/slugUtils';
 
 const DocumentDetail: React.FC = () => {
-  console.log('=== DocumentDetail组件开始渲染 ===');
-  const { id: idParam } = useParams<{ id: string }>();
-  console.log('DocumentDetail: useParams返回的idParam:', idParam);
+  console.log('=== DocumentDetail component starts rendering ===');
   const navigate = useNavigate();
   
-  // Parse document ID from possible slug format
-  const parseDocumentId = (param: string | undefined): string => {
-    console.log('DocumentDetail: parseDocumentId输入:', param);
-    
-    if (!param) {
-      console.log('DocumentDetail: 参数为空，返回空字符串');
-      return '';
-    }
-    
-    // 如果是UUID格式（xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx），直接返回
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-    const match = param.match(uuidPattern);
-    if (match) {
-      console.log('DocumentDetail: 匹配到UUID格式，返回:', match[0]);
-      return match[0];
-    }
-    
-    // 如果参数包含'-'但不是标准UUID，尝试提取第一部分
-    if (param.includes('-')) {
-      const parts = param.split('-');
-      const possibleUuid = parts[0];
-      console.log('DocumentDetail: 参数包含"-"，提取第一部分:', possibleUuid);
-      return possibleUuid;
-    }
-    
-    console.log('DocumentDetail: 返回原始参数:', param);
-    return param;
-  };
-
-  const id = parseDocumentId(idParam);
-  console.log('DocumentDetail: 最终id:', id, '类型:', typeof id);
+  // 从URL获取标识符（支持UUID和路径）
+  const splat = useParams()['*'] || '';
+  const identifier = splat.startsWith('/') ? splat : '/' + splat;
+  console.log('DocumentDetail: identifier from URL:', identifier);
+  
+  // 判断是否为UUID
+  const uuidPattern = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const isUuid = uuidPattern.test(identifier);
+  const urlDocIdentifier = isUuid ? identifier.slice(1) : identifier; // UUID去掉前面加的/
+  console.log('DocumentDetail: 最终标识符:', urlDocIdentifier, '类型:', isUuid ? 'UUID' : '路径');
   
   const [document, setDocument] = useState<Document | null>(null);
   const [folder, setFolder] = useState<Folder | null>(null);
@@ -80,34 +56,30 @@ const DocumentDetail: React.FC = () => {
   const [imagePreviewError, setImagePreviewError] = useState<string | null>(null);
 
   // 根据文档类型计算布尔值（支持document为null的情况）
+  // 文档标识符：优先path，回退到UUID（用于后续API操作）
+  const docApiIdentifier = document?.path || document?.storage_path || document?.id || '';
+  
   const isImageFile = document?.file_type?.toLowerCase().match(/(tiff|tif|jpeg|jpg|png|bmp|gif)/) !== null;
   const isPdfFile = document?.file_type?.toLowerCase() === 'pdf';
   const isTiffFile = document?.file_type?.toLowerCase().match(/(tiff|tif)/) !== null;
   const isHtmlFile = document ? /html|htm/i.test(document.file_type || '') : false;
-  const isPreviewableFile = isImageFile || isHtmlFile; // 可以预览的文件类型
+  const isPreviewableFile = isImageFile || isHtmlFile; // File types that can be previewed
 
   useEffect(() => {
-    console.log('DocumentDetail: useEffect触发，依赖项[id]变化:', id);
-    console.log('DocumentDetail: useParams的idParam:', idParam);
-    console.log('DocumentDetail: 当前loading状态:', loading);
+    console.log('DocumentDetail: useEffect触发，标识符:', urlDocIdentifier);
     
     const fetchDocument = async () => {
-      console.log('DocumentDetail: fetchDocument开始执行');
-      console.log('DocumentDetail: 检查id是否为空，id值为:', id);
-      
-      if (!id) {
-        console.error('DocumentDetail: ID为空，无法获取文档');
-        console.error('DocumentDetail: 设置错误状态和loading=false');
-        setError('文档ID无效或为空。请检查URL是否正确。');
+      if (!urlDocIdentifier) {
+        console.error('DocumentDetail: 标识符为空');
+        setError('Document identifier is invalid or empty.');
         setLoading(false);
         return;
       }
       
       try {
-        console.log('DocumentDetail: 调用documentService.getDocumentById，ID:', id);
-        console.log('DocumentDetail: 当前API基础URL:', documentService);
+        console.log('DocumentDetail: 获取文档:', urlDocIdentifier);
         setLoading(true);
-        const data = await documentService.getDocumentById(id);
+        const data = await documentService.getDocumentByIdentifier(urlDocIdentifier);
         console.log('DocumentDetail: 获取文档成功:', { 
           id: data.id, 
           filename: data.original_filename,
@@ -125,9 +97,11 @@ const DocumentDetail: React.FC = () => {
         
         // 获取文件夹和应用信息以构建导航路径
         try {
-          if (data.folder_id) {
-            console.log('DocumentDetail: 获取文件夹信息，folder_id:', data.folder_id);
-            const folderData = await folderService.getFolderById(data.folder_id);
+          // 优先使用路径获取文件夹，避免UUID调用
+          const folderIdentifier = data.folder_path || data.folder_id;
+          if (folderIdentifier) {
+            console.log('DocumentDetail: 获取文件夹信息，使用:', folderIdentifier);
+            const folderData = await folderService.getFolder(folderIdentifier);
             console.log('DocumentDetail: 获取文件夹成功:', { id: folderData.id, name: folderData.name, app_id: folderData.app_id });
             setFolder(folderData);
             
@@ -153,7 +127,7 @@ const DocumentDetail: React.FC = () => {
         console.error('DocumentDetail: 错误状态码:', err.response?.status);
         console.error('DocumentDetail: 错误响应数据:', err.response?.data);
         console.error('DocumentDetail: 错误消息:', err.message);
-        setError(err.message || '加载文档详情失败');
+        setError(err.message || 'Failed to load document details');
       } finally {
         console.log('DocumentDetail: fetchDocument完成，设置loading=false');
         setLoading(false);
@@ -162,7 +136,7 @@ const DocumentDetail: React.FC = () => {
 
     console.log('DocumentDetail: 立即调用fetchDocument');
     fetchDocument();
-  }, [id]);
+  }, [urlDocIdentifier]);
 
   const handleBack = () => {
     navigate(-1);
@@ -183,7 +157,7 @@ const DocumentDetail: React.FC = () => {
       });
       
       // 调用API更新发布状态
-      const updatedDocument = await documentService.updateDocument(document.id, {
+      const updatedDocument = await documentService.updateDocument(docApiIdentifier, {
         publish_status: newStatus
       });
       
@@ -204,7 +178,7 @@ const DocumentDetail: React.FC = () => {
     if (!document) return;
     
     try {
-      const blob = await documentService.downloadDocument(document.id, downloadType);
+      const blob = await documentService.downloadDocument(docApiIdentifier, downloadType);
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
@@ -220,106 +194,59 @@ const DocumentDetail: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!document || !window.confirm(`确定要删除文档 "${document.original_filename}" 吗？`)) {
+    if (!document) return;
+    const docPathStr = document.storage_path || document.path || '';
+    const docPathInfo = docPathStr ? `\n存储路径: ${docPathStr}` : '';
+    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete document "${document.original_filename}"?${docPathInfo}`);
+    if (!confirmed) {
       return;
     }
     
     try {
-      await documentService.deleteDocument(document.id);
-      navigate('/documents', { state: { message: '文档删除成功' } });
+      await documentService.deleteDocument(docApiIdentifier);
+      navigate('/documents', { state: { message: 'Document deleted successfully' } });
     } catch (err: any) {
-      setError('删除失败: ' + err.message);
+      setError('Delete failed: ' + err.message);
     }
   };
 
   const handleExtractPages = () => {
     if (!document) return;
     // TODO: 实现页面提取功能
-    alert('页面提取功能开发中...');
+    window.showWetAlert('Page extraction feature is under development...');
   };
 
-  // 处理HTML预览内容加载
+  // 处理HTML预览内容加载 - 使用后端preview/html端点（同源，/etc/designs等资源正常加载）
   useEffect(() => {
-    // 使用ref来跟踪当前的Blob URL，避免依赖循环
-    let currentBlobUrl: string | null = null;
+    if (!document || !isHtmlFile || activeTab !== 'preview') {
+      return;
+    }
+
+    console.log('DocumentDetail: 设置HTML预览加载，文档ID:', document.id);
+    setPreviewLoading(true);
     
-    const loadHtmlContent = async () => {
-      if (!document || !isHtmlFile || activeTab !== 'preview') {
-        return;
-      }
-
-      console.log('DocumentDetail: 开始加载HTML预览内容，文档ID:', document.id);
-      
-      // 如果已经有内容URL，先释放
-      if (currentBlobUrl) {
-        URL.revokeObjectURL(currentBlobUrl);
-        currentBlobUrl = null;
-      }
-      
-      // 也清除状态中的URL
-      if (htmlContentUrl) {
-        setHtmlContentUrl(null);
-      }
-
-      setPreviewLoading(true);
-      
-      try {
-        // 使用documentService下载文档内容（带认证）
-        const blob = await documentService.downloadDocument(document.id, 'original');
-        
-        // 检查文件是否为空
-        if (blob.size === 0) {
-          console.warn('DocumentDetail: HTML文件大小为0，可能为空文件');
-          // 创建空HTML的Blob
-          const emptyHtml = '<html><body><h3>文件内容为空</h3><p>此HTML文件大小为0字节，可能是爬虫下载时出现问题。</p></body></html>';
-          const emptyBlob = new Blob([emptyHtml], { type: 'text/html' });
-          const url = URL.createObjectURL(emptyBlob);
-          currentBlobUrl = url;
-          setHtmlContentUrl(url);
-        } else {
-          // 检查Blob类型
-          console.log('DocumentDetail: 下载的Blob信息:', {
-            size: blob.size,
-            type: blob.type,
-            slice: blob.slice(0, 100).text ? '(可读取)' : '(不可直接读取)'
-          });
-          
-          // 创建Blob URL
-          const url = URL.createObjectURL(blob);
-          currentBlobUrl = url;
-          setHtmlContentUrl(url);
-          console.log('DocumentDetail: HTML预览内容加载成功，Blob大小:', blob.size, 'Blob类型:', blob.type, 'Blob URL:', url);
-        }
-      } catch (error: any) {
-        console.error('DocumentDetail: 加载HTML预览内容失败:', error);
-        // 创建错误信息的HTML
-        const errorHtml = `<html><body>
-          <h3 style="color: #d32f2f;">加载HTML预览失败</h3>
-          <p>错误信息: ${error.message || '未知错误'}</p>
-          <p>请检查网络连接或文件是否损坏。</p>
-        </body></html>`;
-        const errorBlob = new Blob([errorHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(errorBlob);
-        currentBlobUrl = url;
-        setHtmlContentUrl(url);
-      } finally {
-        setPreviewLoading(false);
-      }
-    };
-
-    loadHtmlContent();
-
-    // 清理函数：组件卸载或依赖变化时释放Blob URL
+    // 使用后端预览API URL（inline content-disposition，同源iframe可正常加载/etc/designs/canada/wet-boew/等资源）
+    // 将token通过query参数传递，因为iframe无法设置Authorization header
+    const token = localStorage.getItem('access_token');
+    const encodedDocId = encodeURIComponent(docApiIdentifier);
+    const apiUrl = token
+      ? `/api/v1/documents/${encodedDocId}/preview/html?token=${encodeURIComponent(token)}`
+      : `/api/v1/documents/${encodedDocId}/preview/html`;
+    setHtmlContentUrl(apiUrl);
+    
+    // 简短延迟后移除loading状态
+    const timer = setTimeout(() => {
+      setPreviewLoading(false);
+    }, 3000);
+    
     return () => {
-      if (currentBlobUrl) {
-        URL.revokeObjectURL(currentBlobUrl);
-      }
+      clearTimeout(timer);
     };
-  }, [document, isHtmlFile, activeTab]);
+  }, [document?.id, activeTab]);
 
-  // 处理图片预览内容加载
+  // Handle image preview content loading
   useEffect(() => {
-    console.log('DocumentDetail: 图片预览useEffect触发', {
+    console.log('DocumentDetail: Image preview useEffect triggered', {
       documentId: document?.id,
       documentFileType: document?.file_type,
       isImageFile,
@@ -349,7 +276,7 @@ const DocumentDetail: React.FC = () => {
         return;
       }
 
-      console.log('DocumentDetail: 开始加载图片预览内容，文档ID:', document.id);
+      console.log('DocumentDetail: Starting to load image preview content, document ID:', document.id);
       
       // 如果已经有内容URL，先释放
       if (currentBlobUrl) {
@@ -401,17 +328,17 @@ const DocumentDetail: React.FC = () => {
         }
         
         // 如果没有原始URL或解析失败，使用原有的Blob方案
-        console.log('DocumentDetail: 使用Blob方案加载图片');
-        const blob = await documentService.downloadDocument(document.id, 'original');
+        console.log('DocumentDetail: Using blob scheme to load image');
+        const blob = await documentService.downloadDocument(docApiIdentifier, 'original');
         
         // 检查文件是否为空
         if (blob.size === 0) {
-          console.warn('DocumentDetail: 图片文件大小为0，可能为空文件');
+          console.warn('DocumentDetail: Image file size is 0, may be empty file');
           // 设置错误信息
-          setImagePreviewError('图片文件为空或损坏');
+          setImagePreviewError('Image file is empty or corrupted');
         } else {
           // 检查Blob类型
-          console.log('DocumentDetail: 下载的图片Blob信息:', {
+          console.log('DocumentDetail: Downloaded image blob info:', {
             size: blob.size,
             type: blob.type,
           });
@@ -420,12 +347,12 @@ const DocumentDetail: React.FC = () => {
           const url = URL.createObjectURL(blob);
           currentBlobUrl = url;
           setImagePreviewUrl(url);
-          console.log('DocumentDetail: 图片预览内容加载成功，Blob大小:', blob.size, 'Blob类型:', blob.type, 'Blob URL:', url);
+          console.log('DocumentDetail: Image preview content loaded successfully, blob size:', blob.size, 'blob type:', blob.type, 'blob URL:', url);
         }
       } catch (error: any) {
-        console.error('DocumentDetail: 加载图片预览内容失败:', error);
+        console.error('DocumentDetail: Failed to load image preview content:', error);
         // 设置错误信息
-        setImagePreviewError(`加载图片预览失败: ${error.message || '未知错误'}`);
+        setImagePreviewError(`Failed to load image preview: ${error.message || 'Unknown error'}`);
       } finally {
         setImagePreviewLoading(false);
       }
@@ -452,22 +379,22 @@ const DocumentDetail: React.FC = () => {
   };
 
   if (loading) {
-    console.log('DocumentDetail: 显示加载状态，id:', id, 'idParam:', idParam);
+    console.log('DocumentDetail: 显示加载状态, identifier:', urlDocIdentifier);
     console.log('DocumentDetail: 当前URL:', window.location.href);
     console.log('DocumentDetail: 完整路由信息:', window.location);
     
     return (
       <Container maxWidth="lg" sx={{ mt: 4, display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center' }}>
         <CircularProgress />
-        <Typography sx={{ mt: 2 }}>正在加载文档详情...</Typography>
+        <Typography sx={{ mt: 2 }}>Loading document details...</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          ID: {id || '无'} | 参数: {idParam || '无'}
+          identifier: {urlDocIdentifier || 'None'}
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-          当前URL: {window.location.pathname}
+          Current URL: {window.location.pathname}
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-          如果长时间停留在此页面，请按F12查看控制台日志
+          If stuck on this page for a long time, press F12 to view console logs
         </Typography>
       </Container>
     );
@@ -478,13 +405,13 @@ const DocumentDetail: React.FC = () => {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error || '文档不存在'}
+          {error || 'Document does not exist'}
           <Typography variant="body2" sx={{ mt: 1 }}>
-            ID: {id || '无'} | 参数: {idParam || '无'}
+            identifier: {urlDocIdentifier || 'None'}
           </Typography>
         </Alert>
         <Button startIcon={<ArrowBackIcon />} onClick={handleBack}>
-          返回文档列表
+          Back to Documents
         </Button>
       </Container>
     );
@@ -494,7 +421,7 @@ const DocumentDetail: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* 面包屑导航 */}
+      {/* Breadcrumb navigation */}
       <Breadcrumbs sx={{ mb: 3 }}>
         {app && folder ? (
           [
@@ -504,7 +431,7 @@ const DocumentDetail: React.FC = () => {
               onClick={() => navigate('/admin/apps')} 
               sx={{ cursor: 'pointer' }}
             >
-              应用管理
+              App Management
             </MuiLink>,
             <MuiLink 
               key="app"
@@ -517,7 +444,7 @@ const DocumentDetail: React.FC = () => {
             <MuiLink 
               key="folder"
               color="inherit" 
-              onClick={() => navigate(`/admin/apps/${app.slug || app.id}/folders/${folder.id}/documents`)} 
+              onClick={() => navigate(`/admin/apps/${app.slug || app.id}/folders/${encodeURIComponent(folder.path)}/documents`)} 
               sx={{ cursor: 'pointer' }}
             >
               {folder.name}
@@ -532,7 +459,7 @@ const DocumentDetail: React.FC = () => {
               onClick={() => navigate('/documents')} 
               sx={{ cursor: 'pointer' }}
             >
-              文档列表
+              Documents
             </MuiLink>,
             <Typography key="folder-name" color="text.primary">{folder.name}</Typography>,
             <Typography key="filename-2" color="text.primary">{document.original_filename}</Typography>
@@ -545,13 +472,13 @@ const DocumentDetail: React.FC = () => {
               onClick={() => navigate('/documents')} 
               sx={{ cursor: 'pointer' }}
             >
-              文档列表
+              Documents
             </MuiLink>,
             <Typography key="filename-default" color="text.primary">{document.original_filename}</Typography>
           ]
         )}
       </Breadcrumbs>
-      {/* 标题和操作按钮 */}
+      {/* Title and action buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
@@ -559,7 +486,7 @@ const DocumentDetail: React.FC = () => {
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <Chip 
-              label={document.file_type?.toUpperCase() || '未知格式'} 
+              label={document.file_type?.toUpperCase() || 'Unknown Format'} 
               color="primary" 
               size="small" 
             />
@@ -569,13 +496,13 @@ const DocumentDetail: React.FC = () => {
               size="small" 
             />
             <Chip 
-              label={document.conversion_status === 'completed' ? '已转换' : '未转换'} 
+              label={document.conversion_status === 'completed' ? 'Converted' : 'Not Converted'} 
               color={document.conversion_status === 'completed' ? 'success' : 'warning'}
               size="small"
             />
-            <Tooltip title="点击切换发布状态">
+            <Tooltip title="Click to toggle publish status">
               <Chip 
-                label={(document.publish_status || 'UNPUBLISHED') === 'PUBLISHED' ? '已发布' : '未发布'} 
+                label={(document.publish_status || 'UNPUBLISHED') === 'PUBLISHED' ? 'Published' : 'Not Published'} 
                 color={(document.publish_status || 'UNPUBLISHED') === 'PUBLISHED' ? 'success' : 'default'}
                 variant={(document.publish_status || 'UNPUBLISHED') === 'PUBLISHED' ? 'filled' : 'outlined'}
                 size="small"
@@ -591,22 +518,22 @@ const DocumentDetail: React.FC = () => {
             onClick={handleBack}
             variant="outlined"
           >
-            返回
+            Back
           </Button>
-          <Tooltip title="下载原始文件">
+          <Tooltip title="Download Original File">
             <IconButton onClick={() => handleDownload('original')}>
               <DownloadIcon />
             </IconButton>
           </Tooltip>
           {isPdfFile && (
-            <Tooltip title="下载PDF版本">
+            <Tooltip title="Download PDF version">
               <IconButton onClick={() => handleDownload('pdf')}>
                 <PdfIcon />
               </IconButton>
             </Tooltip>
           )}
           {isTiffFile && (
-            <Tooltip title="提取TIFF页面">
+            <Tooltip title="Extract TIFF pages">
               <Button 
                 startIcon={<ImageIcon />} 
                 onClick={handleExtractPages}
@@ -617,7 +544,7 @@ const DocumentDetail: React.FC = () => {
               </Button>
             </Tooltip>
           )}
-          <Tooltip title="删除文档">
+          <Tooltip title="Delete document">
             <IconButton onClick={handleDelete} color="error">
               <DeleteIcon />
             </IconButton>
@@ -641,7 +568,7 @@ const DocumentDetail: React.FC = () => {
                 setActiveTab('info');
               }}
             >
-              文档信息
+              Document Info
             </Button>
             {(isImageFile || isHtmlFile) && (
               <Button
@@ -657,7 +584,7 @@ const DocumentDetail: React.FC = () => {
                   setActiveTab('preview');
                 }}
               >
-                {isImageFile ? '图像预览' : 'HTML预览'}
+                {isImageFile ? 'Image Preview' : 'HTML Preview'}
               </Button>
             )}
             {(isPdfFile || isTiffFile) && (
@@ -674,13 +601,13 @@ const DocumentDetail: React.FC = () => {
                   setActiveTab('pages');
                 }}
               >
-                页面管理
+                Page Management
               </Button>
             )}
           </Box>
         </Box>
       </Paper>
-      {/* 标签页内容 */}
+      {/* Tab content */}
       {activeTab === 'info' && (
         <Paper sx={{ p: 3 }}>
           <Grid container spacing={3}>
@@ -689,31 +616,31 @@ const DocumentDetail: React.FC = () => {
                 xs: 12,
                 md: 6
               }}>
-              <Typography variant="h6" gutterBottom>基本信息</Typography>
+              <Typography variant="h6" gutterBottom>Basic Information</Typography>
               <Divider sx={{ mb: 2 }} />
               
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">文件名</Typography>
+                <Typography variant="subtitle2" color="text.secondary">File Name</Typography>
                 <Typography variant="body1">{document.original_filename}</Typography>
               </Box>
               
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">文件类型</Typography>
-                <Typography variant="body1">{document.file_type?.toUpperCase() || '未知'}</Typography>
+                <Typography variant="subtitle2" color="text.secondary">File Type</Typography>
+                <Typography variant="body1">{document.file_type?.toUpperCase() || 'Unknown'}</Typography>
               </Box>
               
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">文件大小</Typography>
+                <Typography variant="subtitle2" color="text.secondary">File Size</Typography>
                 <Typography variant="body1">{formatFileSize(document.file_size)}</Typography>
               </Box>
               
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">页数</Typography>
-                <Typography variant="body1">{document.page_count || '未知'}</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Page Count</Typography>
+                <Typography variant="body1">{document.page_count || 'Unknown'}</Typography>
               </Box>
               
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">上传时间</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Upload Time</Typography>
                 <Typography variant="body1">{formatDate(document.created_at)}</Typography>
               </Box>
             </Grid>
@@ -723,43 +650,70 @@ const DocumentDetail: React.FC = () => {
                 xs: 12,
                 md: 6
               }}>
-              <Typography variant="h6" gutterBottom>文档属性</Typography>
+              <Typography variant="h6" gutterBottom>Document Properties</Typography>
               <Divider sx={{ mb: 2 }} />
               
               {document.title && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary">标题</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Title</Typography>
                   <Typography variant="body1">{document.title}</Typography>
                 </Box>
               )}
               
               {document.description && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary">描述</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Description</Typography>
                   <Typography variant="body1">{document.description}</Typography>
                 </Box>
               )}
               
               {document.document_number && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary">文档编号</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Document Number</Typography>
                   <Typography variant="body1">{document.document_number}</Typography>
                 </Box>
               )}
               
+              {/* Path Solution - Display document path information */}
+              {(document.storage_path || document.path || document.parent_folder_path) && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary">Path Information</Typography>
+                  <Box sx={{ mt: 1 }}>
+                    {document.storage_path && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Storage Path:</Typography>
+                        <Typography variant="body2">{document.storage_path}</Typography>
+                      </Box>
+                    )}
+                    {document.path && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">URL Path:</Typography>
+                        <Typography variant="body2">{document.path}</Typography>
+                      </Box>
+                    )}
+                    {document.parent_folder_path && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Parent Folder Path:</Typography>
+                        <Typography variant="body2">{document.parent_folder_path}</Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              )}
+              
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">转换状态</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Conversion Status</Typography>
                 <Chip 
-                  label={document.conversion_status === 'completed' ? '已完成' : '进行中'} 
+                  label={document.conversion_status === 'completed' ? 'Completed' : 'In Progress'} 
                   color={document.conversion_status === 'completed' ? 'success' : 'warning'}
                   size="small"
                 />
               </Box>
               
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">文档状态</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Document Status</Typography>
                 <Chip 
-                  label={document.status === 'active' ? '活跃' : '已归档'} 
+                  label={document.status === 'active' ? 'Active' : 'Archived'} 
                   color={document.status === 'active' ? 'success' : 'default'}
                   size="small"
                 />
@@ -771,20 +725,20 @@ const DocumentDetail: React.FC = () => {
       {activeTab === 'preview' && (isImageFile || isHtmlFile) && (
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
-            {isImageFile ? '图像预览' : 'HTML预览'}
+            {isImageFile ? 'Image Preview' : 'HTML Preview'}
           </Typography>
           <Divider sx={{ mb: 3 }} />
           
           {isImageFile ? (
             <>
               {isTiffFile ? (
-                <TiffPreview documentId={document.id} />
+                <TiffPreview documentId={docApiIdentifier} />
               ) : (
                 <Box sx={{ textAlign: 'center', p: 4 }}>
                   {imagePreviewLoading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
                       <CircularProgress />
-                      <Typography sx={{ ml: 2 }}>正在加载图片...</Typography>
+                      <Typography sx={{ ml: 2 }}>Loading image...</Typography>
                     </Box>
                   ) : imagePreviewUrl ? (
                     <>
@@ -799,7 +753,7 @@ const DocumentDetail: React.FC = () => {
                           startIcon={<DownloadIcon />}
                           onClick={() => handleDownload('original')}
                         >
-                          下载图像
+                          Download Image
                         </Button>
                       </Box>
                     </>
@@ -815,9 +769,9 @@ const DocumentDetail: React.FC = () => {
                   ) : (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
                       <Alert severity="info">
-                        <Typography>点击"图像预览"标签页时自动加载图片</Typography>
+                        <Typography>Image will load automatically when clicking the "Image Preview" tab</Typography>
                         <Typography variant="body2" sx={{ mt: 1 }}>
-                          如果图片未自动加载，请确保文件存在且有内容。
+                          If the image does not load automatically, ensure the file exists and has content.
                         </Typography>
                       </Alert>
                     </Box>
@@ -831,7 +785,7 @@ const DocumentDetail: React.FC = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                   <Box sx={{ textAlign: 'center' }}>
                     <CircularProgress />
-                    <Typography sx={{ mt: 2 }}>正在加载HTML内容...</Typography>
+                    <Typography sx={{ mt: 2 }}>Loading HTML content...</Typography>
                   </Box>
                 </Box>
               ) : htmlContentUrl ? (
@@ -850,16 +804,16 @@ const DocumentDetail: React.FC = () => {
                       startIcon={<DownloadIcon />}
                       onClick={() => handleDownload('original')}
                     >
-                      下载HTML文件
+                      Download HTML file
                     </Button>
                   </Box>
                 </>
               ) : (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                   <Alert severity="info">
-                    <Typography>点击"HTML预览"标签页时自动加载内容</Typography>
+                    <Typography>Content will load automatically when clicking the "HTML Preview" tab</Typography>
                     <Typography variant="body2" sx={{ mt: 1 }}>
-                      如果内容未自动加载，请确保文件存在且有内容。
+                      If content does not load automatically, ensure the file exists and has content.
                     </Typography>
                   </Alert>
                 </Box>
@@ -870,13 +824,13 @@ const DocumentDetail: React.FC = () => {
       )}
       {activeTab === 'pages' && (isPdfFile || isTiffFile) && (
         <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>页面管理</Typography>
+          <Typography variant="h6" gutterBottom>Page Management</Typography>
           <Divider sx={{ mb: 3 }} />
           
           <Alert severity="info" sx={{ mb: 3 }}>
             {isTiffFile 
-              ? 'TIFF页面管理功能正在开发中，将支持页面提取、预览和下载。'
-              : 'PDF页面管理功能正在开发中，将支持页面预览、重命名和重新排序。'
+              ? 'TIFF page management feature is under development, will support page extraction, preview, and download.'
+              : 'PDF page management feature is under development, will support page preview, renaming, and reordering.'
             }
           </Alert>
           
@@ -887,14 +841,14 @@ const DocumentDetail: React.FC = () => {
               onClick={handleExtractPages}
               disabled={!isTiffFile}
             >
-              提取TIFF页面
+              Extract TIFF Pages
             </Button>
             <Button 
               variant="outlined" 
               startIcon={<PdfIcon />}
               disabled={!isPdfFile}
             >
-              导出为PDF
+              Export as PDF
             </Button>
           </Box>
         </Paper>

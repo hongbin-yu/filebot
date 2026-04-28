@@ -149,10 +149,10 @@ def to_windows_path_if_wsl(path):
     return path
 
 # FileBot API配置
-FILEBOT_API_URL = os.environ.get('FILEBOT_API_URL', 'http://localhost:8000/api/v1')
+FILEBOT_API_URL = os.environ.get('FILEBOT_API_URL', 'http://localhost:8001/api/v1')
 FILEBOT_USERNAME = os.environ.get('FILEBOT_USERNAME', 'admin')
 FILEBOT_PASSWORD = os.environ.get('FILEBOT_PASSWORD', 'admin123')
-USE_FILEBOT_API = os.environ.get('USE_FILEBOT_API', 'false').lower() == 'true'
+USE_FILEBOT_API = os.environ.get('USE_FILEBOT_API', 'true').lower() == 'true'
 
 # Windows特定路径配置
 PCL_TOOL_PATHS = [

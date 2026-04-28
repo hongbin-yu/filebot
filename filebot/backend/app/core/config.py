@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     # 文件存储配置
     FILE_STORAGE_PATH: str = os.getenv("FILE_STORAGE_PATH", "./data/files")
     TEMP_STORAGE_PATH: str = os.getenv("TEMP_STORAGE_PATH", "./data/temp")
+    DATA_ROOT: str = os.getenv("DATA_ROOT", "./data")  # 数据根目录
+    STATIC_FILES_PATH: str = os.getenv("STATIC_FILES_PATH", "./static/files")  # 静态文件目录（已发布文件）
     MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB
     ALLOWED_EXTENSIONS: List[str] = [
         ".tiff", ".tif", ".pdf", ".doc", ".docx", 

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import DataTable from 'react-data-table-component';
 import appService, { App } from '../../services/app.service';
 import folderService, { Folder } from '../../services/folder.service';
 import documentService, { Document } from '../../services/document.service';
@@ -15,7 +16,6 @@ const AdminDocuments: React.FC = () => {
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
@@ -40,18 +40,18 @@ const AdminDocuments: React.FC = () => {
         }
         setApp(foundApp);
 
-        // 2. 获取文件夹信息
-        const folders = await folderService.getFolders(foundApp.id);
-        const foundFolder = folders.find(f => f.id === folderId);
+        // 2. 获取文件夹信息 - 直接通过标识符（UUID或路径）获取
+        const folderIdentifier = decodeURIComponent(folderId);
+        const foundFolder = await folderService.getFolder(folderIdentifier);
         if (!foundFolder) {
-          setError(`文件夹 "${folderId}" 不存在`);
+          setError(`文件夹 "${folderIdentifier}" 不存在`);
           setLoading(false);
           return;
         }
         setFolder(foundFolder);
 
         // 3. 获取文档列表
-        const docs = await documentService.getDocumentsByFolderId(folderId);
+        const docs = await documentService.getDocuments(folderIdentifier);
         setDocuments(docs);
 
       } catch (err: any) {
@@ -66,10 +66,9 @@ const AdminDocuments: React.FC = () => {
   }, [appSlug, folderId]);
 
   // 预览文档
-  const handlePreview = (documentId: string) => {
-    console.log('AdminDocuments: 预览文档，ID:', documentId);
-    // 导航到文档详情页面（管理员路由）
-    navigate(`/admin/documents/${documentId}`);
+  const handlePreview = (doc: any) => {
+    const docPath = doc.path || doc.storage_path || doc.id;
+    navigate(`/admin/documents/${docPath.replace(/^\//, '')}`);
   };
 
   // 开始编辑文档
@@ -84,12 +83,12 @@ const AdminDocuments: React.FC = () => {
     if (!editingDoc) return;
     
     try {
-      const updatedDoc = await documentService.updateDocument(editingDoc.id, {
+      const editDocId = editingDoc.path || editingDoc.storage_path || editingDoc.id;
+      const updatedDoc = await documentService.updateDocument(editDocId, {
         title: editTitle,
         description: editDescription
       });
       
-      // 更新本地文档列表
       setDocuments(docs => docs.map(doc => 
         doc.id === updatedDoc.id ? updatedDoc : doc
       ));
@@ -99,7 +98,7 @@ const AdminDocuments: React.FC = () => {
       setEditDescription('');
     } catch (err: any) {
       console.error('更新文档失败:', err);
-      alert(`更新文档失败: ${err.message || '未知错误'}`);
+      window.showWetAlert(`更新文档失败: ${err.message || '未知错误'}`);
     }
   };
 
@@ -112,44 +111,45 @@ const AdminDocuments: React.FC = () => {
 
   // 删除文档
   const handleDelete = async (documentId: string) => {
-    if (!window.confirm('确定要删除这个文档吗？此操作不可撤销。')) {
-      return;
-    }
+    const targetDoc = documents.find(d => d.id === documentId);
+    const docName = targetDoc?.original_filename || targetDoc?.title || '此文档';
+    const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
+    const docPathInfo = docPathStr ? `\n存储路径: ${docPathStr}` : '';
+    const confirmedDel = await window.wetYesOrNo(`确定要删除 "${docName}" 吗？此操作不可撤销。${docPathInfo}`);
+    if (!confirmedDel) return;
     
     try {
-      await documentService.deleteDocument(documentId);
-      
-      // 从本地列表中移除
+      const deleteIdentifier = targetDoc?.path || targetDoc?.storage_path || documentId;
+      await documentService.deleteDocument(deleteIdentifier);
       setDocuments(docs => docs.filter(doc => doc.id !== documentId));
-      
-      alert('文档删除成功');
+      window.showWetAlert('文档删除成功');
     } catch (err: any) {
       console.error('删除文档失败:', err);
-      alert(`删除文档失败: ${err.message || '未知错误'}`);
+      window.showWetAlert(`删除文档失败: ${err.message || '未知错误'}`);
     }
   };
 
   // 删除所有文档
   const handleDeleteAllDocuments = async () => {
     if (documents.length === 0) {
-      alert('当前文件夹没有文档可删除');
+      window.showWetAlert('当前文件夹没有文档可删除');
       return;
     }
     
     const folderName = folder?.name || '当前文件夹';
-    if (!window.confirm(`确定要删除 ${folderName} 中的所有 ${documents.length} 个文档吗？此操作不可撤销，且会删除所有文件。`)) {
-      return;
-    }
+    const folderPathStr = folder?.path ? `\n目标路径: ${folder.path}` : '';
+    const confirmedAll = await window.wetYesOrNo(`确定要删除 ${folderName} 中的所有 ${documents.length} 个文档吗？此操作不可撤销，且会删除所有文件。${folderPathStr}`);
+    if (!confirmedAll) return;
     
     try {
       setDeletingAll(true);
       let deletedCount = 0;
       let failedCount = 0;
       
-      // 逐个删除文档
       for (const doc of documents) {
         try {
-          await documentService.deleteDocument(doc.id);
+          const deleteId = doc.path || doc.storage_path || doc.id;
+          await documentService.deleteDocument(deleteId);
           deletedCount++;
         } catch (err: any) {
           console.error(`删除文档 ${doc.original_filename} 失败:`, err);
@@ -157,21 +157,119 @@ const AdminDocuments: React.FC = () => {
         }
       }
       
-      // 清空本地文档列表
       setDocuments([]);
       
       if (failedCount === 0) {
-        alert(`成功删除所有 ${deletedCount} 个文档`);
+        window.showWetAlert(`成功删除所有 ${deletedCount} 个文档`);
       } else {
-        alert(`删除完成：成功删除 ${deletedCount} 个文档，${failedCount} 个文档删除失败`);
+        window.showWetAlert(`删除完成：成功删除 ${deletedCount} 个文档，${failedCount} 个文档删除失败`);
       }
     } catch (err: any) {
       console.error('批量删除文档失败:', err);
-      alert(`批量删除失败: ${err.message || '未知错误'}`);
+      window.showWetAlert(`批量删除失败: ${err.message || '未知错误'}`);
     } finally {
       setDeletingAll(false);
     }
   };
+
+  // DataTable列定义
+  const columns = useMemo(() => [
+    {
+      name: '文档',
+      selector: (row: Document) => row.title,
+      sortable: true,
+      grow: 2,
+      cell: (row: Document) => (
+        <div>
+          <div className="font-medium text-gray-900">{row.title}</div>
+          <div className="text-xs text-gray-500">{row.original_filename}</div>
+        </div>
+      ),
+    },
+    {
+      name: '类型',
+      selector: (row: Document) => row.file_type,
+      sortable: true,
+      width: '80px',
+      cell: (row: Document) => (
+        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
+          {row.file_type.toUpperCase()}
+        </span>
+      ),
+    },
+    {
+      name: '状态',
+      selector: (row: Document) => row.conversion_status,
+      sortable: true,
+      width: '100px',
+      cell: (row: Document) => (
+        <span className={`px-2 py-1 text-xs font-medium rounded ${
+          row.conversion_status === 'completed' 
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {row.conversion_status === 'completed' ? '已转换' : '待转换'}
+        </span>
+      ),
+    },
+    {
+      name: '大小',
+      selector: (row: Document) => row.file_size,
+      sortable: true,
+      width: '100px',
+      format: (row: Document) => `${(row.file_size / 1024 / 1024).toFixed(2)} MB`,
+    },
+    {
+      name: '上传时间',
+      selector: (row: Document) => row.created_at,
+      sortable: true,
+      width: '120px',
+      format: (row: Document) => new Date(row.created_at).toLocaleDateString(),
+    },
+    {
+      name: '操作',
+      width: '180px',
+      cell: (row: Document) => (
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => handlePreview(row)}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            预览
+          </button>
+          <button 
+            onClick={() => handleEdit(row)}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            编辑
+          </button>
+          <button 
+            onClick={() => handleDelete(row.id)}
+            className="text-red-600 hover:text-red-800 text-sm"
+          >
+            删除
+          </button>
+        </div>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+    },
+  ], []);
+
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">加载文档列表中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 错误状态
   if (error) {
@@ -193,20 +291,6 @@ const AdminDocuments: React.FC = () => {
             >
               返回应用列表
             </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 加载状态
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">加载文档列表中...</p>
           </div>
         </div>
       </div>
@@ -250,7 +334,7 @@ const AdminDocuments: React.FC = () => {
           </div>
           <div className="flex space-x-3">
             <Link 
-              to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}/folders/${folderId}/upload`}
+              to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}/upload?folder=${encodeURIComponent(folder?.path || folderId)}`}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
               + 上传文档
@@ -309,7 +393,7 @@ const AdminDocuments: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">暂无文档</h3>
           <p className="text-gray-500 mb-4">此文件夹还没有任何文档。上传第一个文档开始使用。</p>
           <Link 
-            to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}/folders/${folderId}/upload`}
+            to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}/upload?folder=${encodeURIComponent(folder?.path || folderId)}`}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             上传文档
@@ -317,90 +401,19 @@ const AdminDocuments: React.FC = () => {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-4 border-b flex justify-between items-center">
-            <h3 className="font-medium">所有文档 ({documents.length})</h3>
-            <div className="flex space-x-2">
-              <input 
-                type="text" 
-                placeholder="搜索文档..." 
-                className="px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <select className="px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option>按日期排序</option>
-                <option>按名称排序</option>
-                <option>按大小排序</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">文档</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">大小</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">上传时间</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {documents.map(doc => (
-                  <tr key={doc.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-medium text-gray-900">{doc.title}</div>
-                        <div className="text-sm text-gray-500">{doc.original_filename}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-                        {doc.file_type.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        doc.conversion_status === 'completed' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {doc.conversion_status === 'completed' ? '已转换' : '待转换'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {(doc.file_size / 1024 / 1024).toFixed(2)} MB
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(doc.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handlePreview(doc.id)}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          预览
-                        </button>
-                        <button 
-                          onClick={() => handleEdit(doc)}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          编辑
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(doc.id)}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={documents}
+            pagination
+            paginationPerPage={20}
+            paginationRowsPerPageOptions={[10, 20, 50, 100]}
+            defaultSortFieldId={5}
+            defaultSortAsc={false}
+            highlightOnHover
+            striped
+            responsive
+            noHeader
+          />
         </div>
       )}
 

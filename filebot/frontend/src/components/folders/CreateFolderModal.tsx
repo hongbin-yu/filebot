@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Folder } from '../../services/folder.service';
 import { XMarkIcon, FolderIcon } from '@heroicons/react/24/outline';
 
 interface CreateFolderModalProps {
-  appId: string;
-  parentFolderId?: string | null;
+  appSlug: string; // 应用slug（必需）
+  parentFolderPath?: string | null; // 父文件夹路径（可选，路径格式）
   onClose: () => void;
   onSubmit: (data: {
     name: string;
     description?: string;
-    parent_folder_id?: string;
-    app_id: string;
+    parent_folder_id?: string; // 可以接收路径
+    app_id: string; // 应用slug
   }) => Promise<void>;
   folders: Folder[];
   mode?: 'create' | 'edit';
@@ -18,48 +19,104 @@ interface CreateFolderModalProps {
 }
 
 const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
-  appId,
-  parentFolderId,
+  appSlug,
+  parentFolderPath,
   onClose,
   onSubmit,
   folders,
   mode = 'create',
   folderToEdit = null
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedParentFolderId, setSelectedParentFolderId] = useState<string | ''>(parentFolderId || '');
+  // 直接使用路径，而不是UUID
+  const [selectedParentFolderPath, setSelectedParentFolderPath] = useState<string | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // 直接使用parentFolderPath作为路径，尝试将UUID转换为路径
+  useEffect(() => {
+    if (!parentFolderPath) {
+      setSelectedParentFolderPath('');
+      return;
+    }
+    
+    // 检查是否为UUID格式
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentFolderPath);
+    
+    let finalPath = parentFolderPath;
+    
+    if (isUUID) {
+      console.warn(`⚠️ CreateFolderModal收到UUID格式的parentFolderPath: ${parentFolderPath}，尝试转换为路径`);
+      // 在folders中查找对应UUID的文件夹
+      const foundFolder = folders.find(f => f.id === parentFolderPath);
+      if (foundFolder?.path) {
+        console.log(`✅ 找到对应路径: ${foundFolder.path}`);
+        finalPath = foundFolder.path;
+      } else {
+        console.warn(`⚠️ 未找到UUID对应的文件夹，保留UUID格式: ${parentFolderPath}`);
+      }
+    }
+    
+    // 使用路径（或转换后的路径）
+    setSelectedParentFolderPath(finalPath);
+  }, [parentFolderPath, folders]);
   
   // 根据编辑模式初始化表单
   useEffect(() => {
     if (mode === 'edit' && folderToEdit) {
       setName(folderToEdit.name);
       setDescription(folderToEdit.description || '');
-      setSelectedParentFolderId(folderToEdit.parent_folder_id || '');
+      
+      // 确定父文件夹路径：优先使用parent_folder_path，否则尝试转换parent_folder_id
+      let parentPath = folderToEdit.parent_folder_path || '';
+      
+      if (!parentPath && folderToEdit.parent_folder_id) {
+        const parentId = folderToEdit.parent_folder_id;
+        // 检查是否为UUID
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId);
+        if (isUUID) {
+          // 尝试在folders中查找对应UUID的文件夹
+          const foundFolder = folders.find(f => f.id === parentId);
+          if (foundFolder?.path) {
+            console.log(`✅ 编辑模式：找到父文件夹路径: ${foundFolder.path}`);
+            parentPath = foundFolder.path;
+          } else {
+            console.warn(`⚠️ 编辑模式：未找到父文件夹UUID对应的路径: ${parentId}`);
+            parentPath = parentId; // 保留UUID
+          }
+        } else {
+          // 不是UUID，可能是路径
+          parentPath = parentId;
+        }
+      }
+      
+      setSelectedParentFolderPath(parentPath);
     } else {
       // 创建模式，重置表单
       setName('');
       setDescription('');
-      setSelectedParentFolderId(parentFolderId || '');
+      // parentFolderPath转换已经在上面useEffect中处理
     }
-  }, [mode, folderToEdit, parentFolderId]);
+  }, [mode, folderToEdit, folders]);
   
-  // 构建文件夹选择选项
+  // 构建文件夹选择选项（使用路径）
   const getFolderOptions = () => {
     const options: { value: string; label: string; path: string }[] = [
-      { value: '', label: '根目录（应用下）', path: '' }
+      { value: '', label: t('folderModal.rootDirectoryOption'), path: '' }
     ];
     
     // 递归构建带缩进的选项
     const buildOptions = (folderList: Folder[], level = 0) => {
       folderList.forEach(folder => {
         const indent = '  '.repeat(level);
+        // 使用folder.path作为value，如果path不存在则使用一个基于id的占位符
+        const folderPath = folder.path || `/unknown/${folder.id}`;
         options.push({
-          value: folder.id,
+          value: folderPath,
           label: `${indent}${folder.name}`,
-          path: folder.path || folder.name
+          path: folderPath
         });
         
         // 查找子文件夹
@@ -79,18 +136,29 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   
   const folderOptions = getFolderOptions();
   
-  // 获取当前选中的父文件夹信息
+  // 获取当前选中的父文件夹信息（使用路径）
   const getSelectedParentInfo = () => {
-    if (!selectedParentFolderId) {
-      return { name: '根目录', path: '应用根目录' };
+    if (!selectedParentFolderPath) {
+      return { name: t('folderModal.root'), path: `/${appSlug}` };
     }
     
-    const folder = folders.find(f => f.id === selectedParentFolderId);
+    // 尝试通过路径查找文件夹
+    const folder = folders.find(f => f.path === selectedParentFolderPath);
     if (folder) {
       return { name: folder.name, path: folder.path || folder.name };
     }
     
-    return { name: '未知文件夹', path: '' };
+    // 如果找不到，可能是UUID格式或无效路径
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedParentFolderPath);
+    if (isUUID) {
+      // UUID格式，尝试通过id查找
+      const folderById = folders.find(f => f.id === selectedParentFolderPath);
+      if (folderById) {
+        return { name: folderById.name, path: folderById.path || folderById.name };
+      }
+    }
+    
+    return { name: t('folderModal.unknownFolder'), path: selectedParentFolderPath };
   };
   
   const selectedParentInfo = getSelectedParentInfo();
@@ -98,25 +166,26 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   // 验证表单
   const validateForm = () => {
     if (!name.trim()) {
-      setError('文件夹名称不能为空');
+      setError(t('folderModal.folderNameRequired'));
       return false;
     }
     
     if (name.length > 100) {
-      setError('文件夹名称不能超过100个字符');
+      setError(t('folderModal.folderNameMaxLength'));
       return false;
     }
     
     if (description.length > 500) {
-      setError('描述不能超过500个字符');
+      setError(t('folderModal.descriptionMaxLength'));
       return false;
     }
     
     // 检查名称是否在同一父文件夹下已存在
     const existingFolder = folders.find(f => 
       f.name === name.trim() && 
-      f.app_id === appId &&
-      f.parent_folder_id === (selectedParentFolderId || null)
+      f.app_id === appSlug && // 使用appSlug
+      (f.parent_folder_path === selectedParentFolderPath || 
+       f.parent_folder_id === selectedParentFolderPath) // 支持路径或UUID
     );
     
     if (existingFolder) {
@@ -124,7 +193,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       if (mode === 'edit' && folderToEdit && existingFolder.id === folderToEdit.id) {
         // 名称未改变，允许通过
       } else {
-        setError('此位置下已存在同名的文件夹');
+        setError(t('folderModal.duplicateFolderName'));
         return false;
       }
     }
@@ -148,8 +217,8 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       const folderData = {
         name: name.trim(),
         description: description.trim() || undefined,
-        parent_folder_id: selectedParentFolderId || undefined,
-        app_id: appId
+        parent_folder_id: selectedParentFolderPath || undefined, // 直接传递路径
+        app_id: appSlug // 使用appSlug
       };
       
       await onSubmit(folderData);
@@ -157,12 +226,12 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       // 清空表单
       setName('');
       setDescription('');
-      setSelectedParentFolderId('');
+      setSelectedParentFolderPath('');
       
       // 不需要手动关闭，父组件会在成功提交后关闭模态框
     } catch (err: any) {
       console.error('创建文件夹失败:', err);
-      setError(err.response?.data?.detail || err.message || '创建文件夹失败');
+      setError(err.response?.data?.detail || err.message || t('folderModal.createFolderFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -181,15 +250,17 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     
     const nameSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     
-    if (!selectedParentFolderId) {
+    if (!selectedParentFolderPath) {
       // 根目录
-      return `/${appId}/${nameSlug}`;
+      return `/${appSlug}/${nameSlug}`;
     } else {
-      const parentFolder = folders.find(f => f.id === selectedParentFolderId);
+      const parentFolder = folders.find(f => f.path === selectedParentFolderPath);
       if (parentFolder?.path) {
+        // 如果父文件夹有path，直接使用它
         return `${parentFolder.path}/${nameSlug}`;
       } else {
-        return `/${appId}/.../${nameSlug}`;
+        // 父文件夹没有path，直接使用selectedParentFolderPath
+        return `${selectedParentFolderPath}/${nameSlug}`;
       }
     }
   };
@@ -207,7 +278,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
           <div className="flex items-center">
             <FolderIcon className="w-6 h-6 text-yellow-500 mr-2" />
             <h2 className="text-lg font-semibold text-gray-800">
-              {mode === 'edit' ? '编辑文件夹' : '创建文件夹'}
+              {mode === 'edit' ? t('folderModal.editFolder') : t('folderModal.createFolder')}
             </h2>
           </div>
           <button 
@@ -224,11 +295,11 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
           <form onSubmit={handleSubmit}>
             {/* 父文件夹信息 */}
             <div className="mb-6 p-3 bg-blue-50 rounded-lg">
-              <div className="text-sm text-blue-800 mb-1">父文件夹</div>
+              <div className="text-sm text-blue-800 mb-1">{t('folderModal.parentFolder')}</div>
               <div className="font-medium">{selectedParentInfo.name}</div>
               {selectedParentInfo.path && (
                 <div className="text-sm text-blue-600 mt-1 truncate">
-                  路径: {selectedParentInfo.path}
+                  {t('folderModal.pathLabel')} {selectedParentInfo.path}
                 </div>
               )}
             </div>
@@ -236,7 +307,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             {/* 文件夹名称 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                文件夹名称 *
+                {t('folderModal.folderNameLabel')}
               </label>
               <input
                 type="text"
@@ -246,25 +317,25 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                   setError(null);
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="请输入文件夹名称"
+                placeholder={t('folderModal.folderNamePlaceholder')}
                 autoFocus
                 disabled={isSubmitting}
                 maxLength={100}
               />
               <div className="text-xs text-gray-500 mt-1">
-                最多100个字符，名称应具有描述性
+                {t('folderModal.folderNameHint')}
               </div>
             </div>
             
             {/* 路径预览 */}
             {name.trim() && (
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600 mb-1">路径预览</div>
+                <div className="text-sm text-gray-600 mb-1">{t('folderModal.pathPreview')}</div>
                 <div className="font-mono text-sm text-gray-800 truncate">
                   {pathPreview}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  系统将基于此路径存储文件夹中的文档
+                  {t('folderModal.pathPreviewHint')}
                 </div>
               </div>
             )}
@@ -272,7 +343,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             {/* 文件夹描述 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                描述（可选）
+                {t('folderModal.descriptionLabel')}
               </label>
               <textarea
                 value={description}
@@ -281,24 +352,24 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                   setError(null);
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="请输入文件夹描述"
+                placeholder={t('folderModal.descriptionPlaceholder')}
                 rows={3}
                 disabled={isSubmitting}
                 maxLength={500}
               />
               <div className="text-xs text-gray-500 mt-1">
-                最多500个字符，描述文件夹的用途和内容
+                {t('folderModal.descriptionHint')}
               </div>
             </div>
             
             {/* 选择父文件夹 */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                选择父文件夹（可选）
+                {t('folderModal.selectParentFolderLabel')}
               </label>
               <select
-                value={selectedParentFolderId}
-                onChange={(e) => setSelectedParentFolderId(e.target.value)}
+                value={selectedParentFolderPath}
+                onChange={(e) => setSelectedParentFolderPath(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isSubmitting}
               >
@@ -309,7 +380,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                 ))}
               </select>
               <div className="text-xs text-gray-500 mt-1">
-                留空将在应用根目录下创建文件夹
+                {t('folderModal.selectParentFolderHint')}
               </div>
             </div>
             
@@ -328,7 +399,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
                 disabled={isSubmitting}
               >
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -338,10 +409,10 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                 {isSubmitting ? (
                   <span className="flex items-center">
                     <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                    {mode === 'edit' ? '保存中...' : '创建中...'}
+                    {mode === 'edit' ? t('folderModal.saving') : t('folderModal.creating')}
                   </span>
                 ) : (
-                  mode === 'edit' ? '保存更改' : '创建文件夹'
+                  mode === 'edit' ? t('folderModal.saveChanges') : t('folderModal.createFolderButton')
                 )}
               </button>
             </div>

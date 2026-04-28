@@ -147,9 +147,11 @@ const AppsDashboard: React.FC = () => {
       // 创建应用，包含owner_id
       const newApp = await appService.createApp({
         name: name,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
         description: description,
         app_type: "document_management",
-        owner_id: userInfo.id
+        owner_id: userInfo.id,
+        settings: { indices: [] }
       });
       
       console.log('Application created:', newApp);
@@ -277,7 +279,7 @@ const AppsDashboard: React.FC = () => {
   const handleRemoveIndex = (index: number) => {
     const currentConfig = editForm.config || {};
     const currentIndices = currentConfig.indices || [];
-    const updatedIndices = currentIndices.filter((_, idx) => idx !== index);
+    const updatedIndices = currentIndices.filter((_: any, idx: number) => idx !== index);
     setEditForm({ 
       ...editForm, 
       config: {
@@ -329,7 +331,8 @@ const AppsDashboard: React.FC = () => {
       
       // 将 config 字段转换为 settings 字段，因为后端使用 settings 而非 config
       if (formDataToSend.config) {
-        formDataToSend.settings = formDataToSend.config;
+        // 确保 settings 包含 indices 数组
+        formDataToSend.settings = { indices: formDataToSend.config.indices || [] };
         delete formDataToSend.config;
       }
       
@@ -360,7 +363,7 @@ const AppsDashboard: React.FC = () => {
       setApps(prevApps => 
         prevApps.map(app => 
           app.id === editingApp.id ? updatedApp : app
-        )
+        ) as App[]
       );
       
       // 注释掉fetchApps，因为它可能不返回完整的config数据
@@ -441,6 +444,11 @@ const AppsDashboard: React.FC = () => {
       // 准备要保存的配置数据
       const configToSave = { ...configForm };
       
+      // 确保configToSave包含indices数组（AppUpdateRequest.settings要求）
+      if (!configToSave.indices) {
+        configToSave.indices = [];
+      }
+      
       // 验证和清理配置数据
       // 确保maxFileSize是数字
       if (configToSave.maxFileSize) {
@@ -483,7 +491,11 @@ const AppsDashboard: React.FC = () => {
       });
       
       // 发送更新请求 - 将config转换为settings，因为后端使用settings而非config
-      await appService.updateApp(configuringApp.id, { settings: configToSave });
+      // 注意：AppUpdateRequest.settings 只需要 indices 数组，其他配置字段通过 config 传递
+      await appService.updateApp(configuringApp.id, { 
+        settings: { indices: configToSave.indices || [] },
+        config: configToSave
+      });
       
       // 刷新应用列表
       await fetchApps();
@@ -750,7 +762,7 @@ const AppsDashboard: React.FC = () => {
                     <span>{app.created_by}</span>
                   </div>
                   <div>
-                    {new Date(app.created_at).toLocaleDateString()}
+                    {app.created_at ? new Date(app.created_at).toLocaleDateString() : ''}
                   </div>
                 </div>
                 

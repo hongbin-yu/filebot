@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyc.backup
+backend/venv/
+*.egg-info/
+dist/
+build/
+
+# Data & Uploads
+backend/data/
+backend/filebot.db
+backend/filebot*.db
+backend/backups/
+*.sqlite3
+*.db-shm
+*.db-wal
+*.db.backup*
+
+# Logs
+*.log
+backend/uvicorn.log
+backend/backend.log
+pcl-converter-web/logs/
+
+# Environment
+.env
+.env.backup*
+.env.local
+backend/.env
+backend/.env.*
+
+# Backups & temporary files
+*.backup
+*.bak
+*.tmp
+*.tmp1
+*.tmp2
+*.tmp3
+*.tmp4
+*.tmp5
+backend/scripts/
+
+# Test files
+test_*.py
+check_*.py
+query_*.py
+fix_*.py
+demo_*.py
+list_*.py
+search_*.py
+migrate_*.py
+add_*.py
+create_*.py
+insert_*.py
+update_*.py
+simple_*.py
+
+# Node
+node_modules/
+dist/
+
+# Vite
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Workspace
+memory/

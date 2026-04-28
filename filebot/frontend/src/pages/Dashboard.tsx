@@ -38,22 +38,19 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       
       // Fetch documents count
-      const documents = await documentService.getDocuments();
+      const documents = await documentService.searchDocuments({});
       
       // Fetch folders using correct nested API path
       let folders: any[] = [];
       try {
-        // First, get user's apps to know the app_id
+        // First, get user's apps to know the app_slug
         const apps = await appService.getApps();
         if (apps && apps.length > 0) {
           const firstApp = apps[0];
-          // Get drawers for the first app
-          const drawers = await appService.getAppDrawers(firstApp.id);
-          if (drawers && drawers.length > 0) {
-            const firstDrawer = drawers[0];
-            // Now get folders for this app and drawer
-            folders = await folderService.getFolders(firstApp.id, firstDrawer.id);
-          }
+          // Now get folders for this app using the app slug
+          folders = await folderService.getFolders(firstApp.slug || firstApp.id, { 
+            parent_folder_path: `/${firstApp.slug || firstApp.id}`
+          });
         }
       } catch (folderError) {
         console.warn('Could not fetch folders, setting to empty:', folderError);

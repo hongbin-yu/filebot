@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 from typing import List, Optional, Dict, Any
 import uuid
+import traceback
 
 from app.db.database import get_db
 from app.core.security import get_current_active_user
@@ -80,6 +81,9 @@ def search_documents(
     # 归档状态
     is_archived: Optional[bool] = Query(None, description="是否已归档"),
     
+    # 路径筛选
+    path: Optional[str] = Query(None, description="路径前缀匹配 (LIKE 'path%')"),
+    
     # 分页参数
     skip: int = Query(0, ge=0, description="跳过记录数"),
     limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
@@ -95,99 +99,113 @@ def search_documents(
     
     支持多条件组合搜索，包括文档属性、状态、文件夹层级、时间范围等。
     """
-    # 构建基础查询（已应用权限筛选）
-    query = build_permission_query(current_user, db)
+    try:
+        # 构建基础查询（已应用权限筛选）
+        query = build_permission_query(current_user, db)
     
-    # ===== 文档属性搜索 =====
-    if title:
-        query = query.filter(Document.title.ilike(f"%{title}%"))
+        # ===== 文档属性搜索 =====
+        if title:
+            query = query.filter(Document.title.ilike(f"%{title}%"))
     
-    if description:
-        query = query.filter(Document.description.ilike(f"%{description}%"))
+        if description:
+            query = query.filter(Document.description.ilike(f"%{description}%"))
     
-    if document_number:
-        query = query.filter(Document.document_number == document_number)
+        if document_number:
+            query = query.filter(Document.document_number == document_number)
     
-    # ===== 文档状态筛选 =====
-    if status:
-        query = query.filter(Document.status == status)
+        # ===== 文档状态筛选 =====
+        if status:
+            query = query.filter(Document.status == status)
     
-    if document_type:
-        query = query.filter(Document.type == document_type)
+        if document_type:
+            query = query.filter(Document.type == document_type)
     
-    if conversion_status:
-        query = query.filter(Document.conversion_status == conversion_status)
+        if conversion_status:
+            query = query.filter(Document.conversion_status == conversion_status)
     
-    # ===== 文件属性筛选 =====
-    if file_type:
-        query = query.filter(Document.file_type == file_type)
+        # ===== 文件属性筛选 =====
+        if file_type:
+            query = query.filter(Document.file_type == file_type)
     
-    if mime_type:
-        query = query.filter(Document.mime_type.ilike(f"%{mime_type}%"))
+        if mime_type:
+            query = query.filter(Document.mime_type.ilike(f"%{mime_type}%"))
     
-    # ===== 文件夹层级筛选 =====
-    if folder_id:
-        # 验证用户是否有权限访问该文件夹
-        try:
-            # 使用文档路由中的权限检查函数
-            from app.routers.documents import check_folder_access
-            check_folder_access(folder_id, current_user, db)
-            query = query.filter(Document.folder_id == str(folder_id))  # 转换为字符串
-        except HTTPException:
-            # 用户没有权限访问该文件夹，返回空结果
-            return []
+        # ===== 文件夹层级筛选 =====
+        if folder_id:
+            # 验证用户是否有权限访问该文件夹
+            try:
+                # 使用文档路由中的权限检查函数
+                from app.routers.documents import check_folder_access
+                check_folder_access(folder_id, current_user, db)
+                query = query.filter(Document.folder_id == str(folder_id))  # 转换为字符串
+            except HTTPException:
+                # 用户没有权限访问该文件夹，返回空结果
+                return []
     
-    if drawer_id:
-        # 抽屉层已移除，此参数不再支持
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="抽屉层已移除，请使用app_id参数"
-        )
+        if drawer_id:
+            # 抽屉层已移除，此参数不再支持
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="抽屉层已移除，请使用app_id参数"
+            )
     
-    if app_id:
-        # 通过文件夹直接关联到应用（移除抽屉层）
-        query = query.join(Folder).filter(Folder.app_id == app_id)
+        if app_id:
+            # 通过文件夹直接关联到应用（移除抽屉层）
+            query = query.join(Folder).filter(Folder.app_id == app_id)
     
-    # ===== 上传者筛选 =====
-    if uploaded_by:
-        query = query.filter(Document.uploaded_by == uploaded_by)
+        # ===== 上传者筛选 =====
+        if uploaded_by:
+            query = query.filter(Document.uploaded_by == uploaded_by)
     
-    # ===== 时间范围筛选 =====
-    if created_after:
-        query = query.filter(Document.created_at >= created_after)
+        # ===== 路径筛选 =====
+        if path:
+            # 使用LIKE进行前缀匹配
+            query = query.filter(Document.path.like(f"{path}%"))
     
-    if created_before:
-        query = query.filter(Document.created_at <= created_before)
+        # ===== 时间范围筛选 =====
+        if created_after:
+            query = query.filter(Document.created_at >= created_after)
     
-    if updated_after:
-        query = query.filter(Document.updated_at >= updated_after)
+        if created_before:
+            query = query.filter(Document.created_at <= created_before)
     
-    if updated_before:
-        query = query.filter(Document.updated_at <= updated_before)
+        if updated_after:
+            query = query.filter(Document.updated_at >= updated_after)
     
-    # ===== 归档状态筛选 =====
-    if is_archived is not None:
-        query = query.filter(Document.is_archived == is_archived)
+        if updated_before:
+            query = query.filter(Document.updated_at <= updated_before)
     
-    # ===== 排序 =====
-    sort_field_map = {
-        "created_at": Document.created_at,
-        "updated_at": Document.updated_at,
-        "title": Document.title,
-        "file_size": Document.file_size,
-    }
+        # ===== 归档状态筛选 =====
+        if is_archived is not None:
+            query = query.filter(Document.is_archived == is_archived)
     
-    sort_field = sort_field_map.get(sort_by, Document.created_at)
-    if sort_order == "asc":
-        query = query.order_by(sort_field.asc())
-    else:
-        query = query.order_by(sort_field.desc())
+        # ===== 排序 =====
+        sort_field_map = {
+            "created_at": Document.created_at,
+            "updated_at": Document.updated_at,
+            "title": Document.title,
+            "file_size": Document.file_size,
+        }
     
-    # ===== 分页 =====
-    documents = query.offset(skip).limit(limit).all()
+        sort_field = sort_field_map.get(sort_by, Document.created_at)
+        if sort_order == "asc":
+            query = query.order_by(sort_field.asc())
+        else:
+            query = query.order_by(sort_field.desc())
     
-    return documents
+        # ===== 分页 =====
+        documents = query.offset(skip).limit(limit).all()
+    
+        return documents
 
+    except Exception as e:
+        print(f"[FileBot Search Error] {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"搜索失败: {str(e)}"
+        )
 
 @router.get("/pages", response_model=List[PageResponse])
 def search_pages(

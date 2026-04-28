@@ -1,11 +1,11 @@
 /**
- * AI服务
- * 提供AI相关功能，如网站爬取、文档分类等
+ * AI Service
+ * Provides AI-related functionality, such as website crawling, document classification, etc.
  */
 
 import api from './api';
 
-// 网站爬取请求接口
+// Website crawling request interface
 export interface WebsiteCrawlRequest {
   url: string;
   depth: number;
@@ -15,7 +15,7 @@ export interface WebsiteCrawlRequest {
   respect_robots_txt?: boolean;
 }
 
-// 网站爬取响应接口
+// Website crawling response interface
 export interface WebsiteCrawlResponse {
   task_id: string;
   status: string;
@@ -26,7 +26,7 @@ export interface WebsiteCrawlResponse {
   message?: string;
 }
 
-// 网站爬取状态接口
+// Website crawling status interface
 export interface WebsiteCrawlStatus {
   task_id: string;
   status: string;
@@ -41,7 +41,7 @@ export interface WebsiteCrawlStatus {
   estimated_completion?: string;
 }
 
-// 网站爬取任务列表接口
+// Website crawling task list interface
 export interface WebsiteCrawlTaskList {
   tasks: WebsiteCrawlStatus[];
   total: number;
@@ -83,7 +83,7 @@ export interface AICategory {
 
 const aiService = {
   /**
-   * 爬取网站内容
+   * Crawl website content
    */
   async crawlWebsite(request: WebsiteCrawlRequest): Promise<WebsiteCrawlResponse> {
     const response = await api.post<WebsiteCrawlResponse>('/ai/crawl-website', request);
@@ -91,7 +91,7 @@ const aiService = {
   },
 
   /**
-   * 获取网站爬取任务状态
+   * Get website crawling task status
    */
   async getCrawlStatus(taskId: string): Promise<WebsiteCrawlStatus> {
     const response = await api.get<WebsiteCrawlStatus>(`/ai/crawl-status/${taskId}`);
@@ -99,7 +99,7 @@ const aiService = {
   },
 
   /**
-   * 获取所有网站爬取任务列表
+   * Get all website crawling task list
    */
   async getCrawlTasks(params?: {
     limit?: number;
@@ -148,7 +148,35 @@ const aiService = {
   }> {
     const response = await api.get('/ai/categories');
     return response.data;
+  },
+
+  // ===== Sitemap 导入 =====
+
+  /**
+   * Import from sitemap.xml
+   */
+  async importFromSitemap(request: SitemapImportRequest): Promise<SitemapImportResponse> {
+    const response = await api.post<SitemapImportResponse>('/ai/crawl-from-sitemap', request);
+    return response.data;
   }
 };
 
 export default aiService;
+
+// Sitemap import interfaces
+export interface SitemapImportRequest {
+  sitemap_url: string;
+  folder_id: string;
+  include_images?: boolean;
+  depth?: number;
+}
+
+export interface SitemapImportResponse {
+  task_id: string;
+  status: string;
+  sitemap_url: string;
+  depth: number;
+  total_urls?: number;
+  started_at: string;
+  message?: string;
+}

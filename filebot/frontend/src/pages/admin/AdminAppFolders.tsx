@@ -1,39 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import appService, { App } from '../../services/app.service';
 import folderService, { Folder, FolderCreateRequest } from '../../services/folder.service';
-import aiService, { WebsiteCrawlRequest } from '../../services/ai.service';
-import FolderTree from '../../components/folders/FolderTree';
+import documentService, { Document } from '../../services/document.service';
+import aiService, { WebsiteCrawlRequest, SitemapImportRequest, SitemapImportResponse } from '../../services/ai.service';
+
 import CreateFolderModal from '../../components/folders/CreateFolderModal';
 import { ChevronRightIcon, ChevronDownIcon, FolderIcon, DocumentIcon } from '@heroicons/react/24/outline';
 
 const AdminAppFolders: React.FC = () => {
   const { appSlug } = useParams<{ appSlug: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const search = location.search;
   
-  // 状态管理
+  // State
   const [app, setApp] = useState<App | null>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentFolderPath, _setCurrentFolderPath] = useState<string | null>(null);
+  const [forwardStack, setForwardStack] = useState<string[]>([]);
+  const setCurrentFolderPath = useCallback((newPath: string | null) => {
+    if (newPath === null) {
+      console.error('🔴 setCurrentFolderPath(null) called! Stack:', new Error().stack);
+    } else {
+      console.log('🟢 setCurrentFolderPath:', newPath);
+    }
+    _setCurrentFolderPath(newPath);
+  }, []);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showImportWebsiteModal, setShowImportWebsiteModal] = useState(false);
-  const [parentFolderId, setParentFolderId] = useState<string | null>(null);
+  const [parentFolderPath, setParentFolderPath] = useState<string | null>(null);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   
-  // 导入网站表单状态
+  // Website import form
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [crawlDepth, setCrawlDepth] = useState(1);
   const [importingWebsite, setImportingWebsite] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   
-  // 当前文件夹详情
+  // Sitemap import state
+  const [sitemapUrl, setSitemapUrl] = useState('');
+  const [sitemapDepth, setSitemapDepth] = useState(0);
+  const [importingSitemap, setImportingSitemap] = useState(false);
+  const [importTab, setImportTab] = useState<'website' | 'sitemap'>('website');
+  
+  // Current folder details
   const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
   const [subfolders, setSubfolders] = useState<Folder[]>([]);
   
-  // 加载应用信息
+  // Document state
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  
+  // Load app info
   useEffect(() => {
     const loadAppInfo = async () => {
       if (!appSlug) return;
@@ -43,20 +66,20 @@ const AdminAppFolders: React.FC = () => {
         const appData = await appService.getAppById(appSlug);
         setApp(appData);
         
-        // 加载所有文件夹
+        // Load all folders
         if (appData) {
-          await loadFolders(appData.id || appSlug);
+          await loadFolders(appSlug || appData.id);
         }
       } catch (error: any) {
-        console.error('加载应用信息失败:', error);
+        console.error('Failed to load app info:', error);
         
-        // 检查错误类型
+        // Check error type
         if (error.response?.status === 403) {
-          setError('没有权限访问此应用。此应用可能属于其他用户。');
+          setError('No permission to access this app. It may belong to another user.');
         } else if (error.response?.status === 404) {
-          setError('应用不存在，可能已被删除或URL不正确。');
+          setError('App not found. It may have been deleted or the URL may be incorrect.');
         } else {
-          setError('加载应用信息失败，请稍后重试。');
+          setError('Failed to load app info. Please try again later.');
         }
       } finally {
         setLoading(false);
@@ -66,58 +89,128 @@ const AdminAppFolders: React.FC = () => {
     loadAppInfo();
   }, [appSlug]);
   
-  // 加载文件夹
+  // Load folders
   const loadFolders = async (appIdentifier: string) => {
     try {
       const foldersData = await folderService.getFolders(appIdentifier);
       setFolders(foldersData);
       
-      // 如果没有当前文件夹，设置第一个根文件夹为当前文件夹
-      if (!currentFolderId && foldersData.length > 0) {
-        const rootFolder = foldersData.find(f => !f.parent_folder_id);
-        if (rootFolder) {
-          setCurrentFolderId(rootFolder.id);
-        } else if (foldersData[0]) {
-          setCurrentFolderId(foldersData[0].id);
-        }
+      // Read folder path from URL params — no auto-select
+      const urlParams = new URLSearchParams(search);
+      const folderPathFromUrl = urlParams.get('folder');
+      if (folderPathFromUrl) {
+        setCurrentFolderPath(folderPathFromUrl);
       }
     } catch (error) {
-      console.error('加载文件夹失败:', error);
+      console.error('Failed to load folders:', error);
     }
   };
   
-  // 当当前文件夹变化时，加载其详情和子文件夹
+  // Load folder details and subfolders when current folder changes
   useEffect(() => {
     const loadCurrentFolderDetails = async () => {
-      if (!currentFolderId) return;
+      if (!currentFolderPath) {
+        console.log('📂 loadCurrentFolderDetails: no path, skipping - clearing old state');
+        setCurrentFolder(null);
+        setSubfolders([]);
+        setDocuments([]);
+        return;
+      }
+      
+      console.log('📂 loadCurrentFolderDetails: starting', { currentFolderPath, appId: app?.id, appSlug });
       
       try {
-        // 加载当前文件夹详情
-        const folderDetails = await folderService.getFolderById(currentFolderId);
-        setCurrentFolder(folderDetails);
+        // Load folder details using path
+        let folderDetails: Folder | null = null;
+        try {
+          folderDetails = await folderService.getFolder(currentFolderPath);
+        } catch (err: any) {
+          // getFolder可能因路径在DB中不存在而失败(如根路径/boarding)
+          // 从已加载的folders数组中查找
+          console.warn('⚠️ getFolder failed, trying local lookup:', currentFolderPath);
+          folderDetails = folders.find(f => f.path === currentFolderPath) || null;
+        }
         
-        // 加载子文件夹
-        const subfoldersData = await folderService.getFolders(app?.id || appSlug || '', {
-          parent_folder_id: currentFolderId
+        if (folderDetails) {
+          setCurrentFolder(folderDetails);
+        } else {
+          setCurrentFolder(null);
+        }
+        
+        // Load subfolders using parent_folder_path
+        const subfoldersData = await folderService.getFolders(appSlug || app?.id || '', {
+          parent_folder_path: currentFolderPath
         });
         setSubfolders(subfoldersData);
+        
+        // Load documents
+        await loadDocuments(currentFolderPath);
       } catch (error) {
-        console.error('加载文件夹详情失败:', error);
+        console.error('Failed to load folder details:', error);
       }
     };
     
     loadCurrentFolderDetails();
-  }, [currentFolderId, app?.id, appSlug]);
+  }, [currentFolderPath, app?.id, appSlug]);
+
+  // Sync URL → state when search string changes (browser back/forward)
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const urlFolder = params.get('folder');
+    console.log('🔍 URL search changed:', { 
+      search,
+      folder: urlFolder, 
+      currentFolderPath,
+      foldersCount: folders.length
+    });
+    
+    if (urlFolder && urlFolder !== currentFolderPath) {
+      console.log('🔍 Syncing URL→state: setting currentFolderPath to', urlFolder);
+      setCurrentFolderPath(urlFolder);
+    }
+  }, [search]);
   
-  // 处理文件夹点击
-  const handleFolderClick = (folderId: string) => {
-    setCurrentFolderId(folderId);
+  // DEBUG: Watch currentFolderPath changes
+  useEffect(() => {
+    console.log('📂 currentFolderPath changed:', currentFolderPath);
+  }, [currentFolderPath]);
+  
+  // Load documents
+  const loadDocuments = async (folderPath: string) => {
+    try {
+      setDocumentsLoading(true);
+      const docs = await documentService.getDocuments(folderPath);
+      setDocuments(docs);
+    } catch (error) {
+      console.error('Failed to load documents:', error);
+      setDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
   };
   
-  // 处理创建文件夹
+  // Handle folder click
+  const handleFolderClick = (folderPath: string) => {
+    console.log('🍞 handleFolderClick:', { folderPath, currentFolderPath, foldersCount: folders.length });
+    // Clear forward stack when navigating to a new folder
+    setForwardStack([]);
+    // Use navigate to update URL - append ?folder= to current path
+    // IMPORTANT: navigate FIRST so URL updates trigger the sync effect
+    navigate(`?folder=${encodeURIComponent(folderPath)}`, { replace: false });
+  };
+  
+  // Handle forward navigation (re-enter a previously exited folder)
+  const handleForward = () => {
+    if (forwardStack.length === 0) return;
+    const path = forwardStack[forwardStack.length - 1];
+    setForwardStack(prev => prev.slice(0, -1));
+    navigate(`?folder=${encodeURIComponent(path)}`, { replace: false });
+  };
+  
+  // Handle create folder
   const handleCreateFolder = async (data: FolderCreateRequest) => {
     try {
-      // 确保应用ID正确
+      // Ensure app ID is correct
       const folderData: FolderCreateRequest = {
         ...data,
         app_id: app?.id || appSlug || ''
@@ -125,205 +218,263 @@ const AdminAppFolders: React.FC = () => {
       
       await folderService.createFolder(folderData);
       
-      // 重新加载文件夹
+      // Reload folders
       if (app) {
-        await loadFolders(app.id);
+        await loadFolders(appSlug || app.id);
       }
       
       setShowCreateModal(false);
     } catch (error) {
-      console.error('创建文件夹失败:', error);
-      alert('创建文件夹失败，请检查网络或权限');
+      console.error('Failed to create folder:', error);
+      alert('Failed to create folder. Check network or permissions.');
     }
   };
   
-  // 处理删除文件夹
-  const handleDeleteFolder = async (folderId: string) => {
-    // 检查文件夹是否有子文件夹
-    const subfoldersCount = folders.filter(f => f.parent_folder_id === folderId).length;
+  // Handle delete folder
+  const handleDeleteFolder = async (folderPath: string) => {
+    // Check if folder has subfolders
+    const subfoldersCount = folders.filter(f => f.parent_folder_path === folderPath).length;
     
     let recursive = false;
     
     if (subfoldersCount > 0) {
-      // 询问用户是否递归删除
-      const folderName = folders.find(f => f.id === folderId)?.name || '此文件夹';
-      const confirmMessage = `文件夹 "${folderName}" 包含 ${subfoldersCount} 个子文件夹。\n\n` +
-                           `选择"确定"递归删除所有子文件夹及其文档。\n` +
-                           `选择"取消"只删除空文件夹。`;
+      // Ask user about recursive delete
+      const folderName = folders.find(f => f.path === folderPath)?.name || 'This folder';
+      const confirmMessage = `Folder "${folderName}" has ${subfoldersCount} subfolder(s).\n\n` +
+                           `Click "OK" to recursively delete all subfolders and documents.\n` +
+                           `Click "Cancel" to delete only the empty folder.`;
       
       if (!window.confirm(confirmMessage)) {
-        return; // 用户取消
+        return;
       }
       
       recursive = true;
     } else {
-      // 没有子文件夹，简单确认
-      if (!confirm('确定要删除这个文件夹吗？文件夹内的所有文档也将被删除。')) {
+      // No subfolders, simple confirmation
+      if (!confirm('Delete this folder? All documents inside will also be deleted.')) {
         return;
       }
     }
     
     try {
-      await folderService.deleteFolder(folderId, recursive);
+      await folderService.deleteFolder(folderPath, recursive);
       
-      // 如果删除的是当前文件夹，导航到父文件夹或根目录
-      if (currentFolderId === folderId) {
-        const folderToDelete = folders.find(f => f.id === folderId);
-        setCurrentFolderId(folderToDelete?.parent_folder_id || null);
+      // If deleting current folder, navigate to parent or root
+      if (currentFolderPath === folderPath) {
+        const folderToDelete = folders.find(f => f.path === folderPath);
+        setCurrentFolderPath(folderToDelete?.parent_folder_path || null);
       }
       
-      // 重新加载文件夹
+      // Reload folders
       if (app) {
-        await loadFolders(app.id);
+        await loadFolders(appSlug || app.id);
       }
     } catch (error: any) {
-      console.error('删除文件夹失败:', error);
+      console.error('Delete Folder Failed:', error);
       
-      // 提供更详细的错误信息
+      // Provide detailed error message
       if (error.response?.status === 400) {
-        const errorDetail = error.response?.data?.detail || '文件夹不为空';
-        alert(`删除失败: ${errorDetail}\n\n请使用递归删除选项。`);
+        const errorDetail = error.response?.data?.detail || 'Folder is not empty';
+        alert(`Delete failed: ${errorDetail}\n\nPlease use the recursive delete option.`);
       } else {
-        alert('删除文件夹失败，文件夹可能不为空或没有权限');
+        alert('Failed to delete folder. It may not be empty or you may not have permission.');
       }
     }
   };
   
-  // 处理编辑文件夹
-  const handleEditFolder = async (folderId: string) => {
-    const folderToEdit = folders.find(f => f.id === folderId);
+  // Handle preview document
+  const handlePreviewDocument = (document: Document) => {
+    console.log('Preview document:', document);
+    // Navigate to document detail page
+    navigate(`/admin/documents/${document.id}`);
+  };
+  
+  // Handle edit document
+  const handleEditDocument = (document: Document) => {
+    console.log('Edit document:', document);
+    alert(`Edit document: ${document.title || document.original_filename} (not yet implemented)`);
+  };
+  
+  // Handle delete document
+  const handleDeleteDocument = async (document: Document) => {
+    if (!confirm(`Delete document "${document.title || document.original_filename}"?`)) {
+      return;
+    }
+    
+    try {
+      await documentService.deleteDocument(document.id);
+      // Reload documents
+      if (currentFolderPath) {
+        await loadDocuments(currentFolderPath);
+      }
+      alert('Document deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      alert('Failed to delete document. Check network or permissions.');
+    }
+  };
+  
+  // Handle edit folder
+  const handleEditFolder = async (folderPath: string) => {
+    const folderToEdit = folders.find(f => f.path === folderPath);
     if (!folderToEdit) return;
     
     setEditingFolder(folderToEdit);
     setShowEditModal(true);
   };
   
-  // 处理保存编辑后的文件夹
+  // Handle save edited folder
   const handleSaveEditFolder = async (data: {
     name: string;
     description?: string;
     parent_folder_id?: string;
   }) => {
-    if (!editingFolder || !app) return;
+    if (!editingFolder || !app || !editingFolder.path) return;
     
     try {
-      // 调用更新文件夹API
-      await folderService.updateFolder(editingFolder.id, data);
+      // Call update folder API using path
+      await folderService.updateFolder(editingFolder.path, data);
       
-      // 重新加载文件夹
-      await loadFolders(app.id);
+      // Reload folders
+      await loadFolders(appSlug || app?.id || '');
       
-      // 如果编辑的是当前文件夹，更新当前文件夹状态
-      if (currentFolderId === editingFolder.id) {
-        const updatedCurrentFolder = folders.find(f => f.id === editingFolder.id);
+      // Update current folder state if editing current folder
+      if (currentFolderPath === editingFolder.path) {
+        const updatedCurrentFolder = await folderService.getFolder(editingFolder.path);
         if (updatedCurrentFolder) {
           setCurrentFolder(updatedCurrentFolder);
         }
       }
       
-      // 关闭编辑模态框
+      // Close edit modal
       setShowEditModal(false);
       setEditingFolder(null);
       
-      console.log('文件夹更新成功');
+      console.log('Folder updated successfully');
     } catch (error) {
-      console.error('更新文件夹失败:', error);
-      alert('更新文件夹失败：' + (error as any).response?.data?.detail || '未知错误');
+      console.error('Failed to update folder:', error);
+      alert('Failed to update folder: ' + (error as any).response?.data?.detail || 'Unknown error');
       throw error;
     }
   };
   
-  // 处理移动文件夹
-  const handleMoveFolder = async (folderId: string, targetParentFolderId?: string) => {
+  // Handle move folder
+  const handleMoveFolder = async (folderPath: string, targetParentFolderPath?: string) => {
     try {
-      // 调用API移动文件夹
-      await folderService.moveFolder(folderId, targetParentFolderId);
+      // Call move folder API
+      await folderService.moveFolder(folderPath, targetParentFolderPath);
       
-      // 重新加载文件夹以更新树形结构
+      // Reload folders to update tree
       if (app) {
-        await loadFolders(app.id);
+        await loadFolders(appSlug || app.id);
       }
       
-      // 如果移动的是当前文件夹，更新当前文件夹ID
-      if (currentFolderId === folderId && targetParentFolderId) {
-        // 移动到新位置后，可能需要重新选择
-        setCurrentFolderId(folderId);
+      // Update current folder path if moving it
+      if (currentFolderPath === folderPath && targetParentFolderPath) {
+        setCurrentFolderPath(folderPath);
       }
       
-      // 显示成功消息
-      console.log('文件夹移动成功');
+      console.log('Folder moved successfully');
     } catch (error) {
-      console.error('移动文件夹失败:', error);
-      alert('移动文件夹失败：' + (error as any).response?.data?.detail || '未知错误');
-      throw error; // 重新抛出错误，让FolderTree组件可以处理
+      console.error('Failed to move folder:', error);
+      alert('Failed to move folder: ' + (error as any).response?.data?.detail || 'Unknown error');
+      throw error;
     }
   };
   
-  // 构建面包屑路径
+  // Build breadcrumb path
   const buildBreadcrumbs = () => {
-    if (!currentFolderId || !folders.length) return [];
+    console.log('🍞 buildBreadcrumbs:', { currentFolderPath, foldersCount: folders.length });
+    if (!folders.length && !currentFolderPath && !app) return [];
     
     const breadcrumbs = [];
-    let current = folders.find(f => f.id === currentFolderId);
     
-    while (current) {
-      breadcrumbs.unshift({
-        id: current.id,
-        name: current.name,
-        path: current.id === currentFolderId ? undefined : `/admin/apps/${appSlug}?folder=${current.id}`
-      });
-      
-      if (current.parent_folder_id) {
-        current = folders.find(f => f.id === current.parent_folder_id);
-      } else {
-        current = null;
+    let current = folders.find(f => f.path === currentFolderPath);
+    
+    if (current) {
+      // Walk up via parent_folder_path (deepest → shallowest, unshift to reverse)
+      while (current) {
+        breadcrumbs.unshift({
+          path: current.path,
+          name: current.name,
+        });
+        
+        if (current.parent_folder_path) {
+          current = folders.find(f => f.path === current.parent_folder_path);
+        } else {
+          current = undefined;
+        }
+      }
+    } else if (currentFolderPath) {
+      // Fallback: build breadcrumbs from path segments
+      const segments = currentFolderPath.split('/').filter(Boolean);
+      // Skip first segment (app prefix); app breadcrumb already represents it
+      const pathSegments = segments.slice(1);
+      let accumulatedPath = '/' + segments[0]; // start with the skipped prefix
+      for (const segment of pathSegments) {
+        accumulatedPath += '/' + segment;
+        const match = folders.find(f => f.path === accumulatedPath);
+        breadcrumbs.push({
+          path: accumulatedPath,
+          name: match?.name || segment,
+        });
       }
     }
     
-    // 添加应用作为根
+    // Add app as root (last so it shows first via unshift)
     if (app) {
       breadcrumbs.unshift({
-        id: 'app',
+        path: 'app',
         name: app.name,
-        path: `/admin/apps/${appSlug}`
       });
+    }
+    
+    // Remove duplicate first folder if it matches the app name
+    // (DB paths have double prefix like /boarding/boarding/...)
+    if (breadcrumbs.length >= 2 && breadcrumbs[0].path === 'app') {
+      const firstFolder = breadcrumbs[1];
+      if (firstFolder.name?.toLowerCase() === app?.name?.toLowerCase()) {
+        breadcrumbs.splice(1, 1);
+      }
     }
     
     return breadcrumbs;
   };
   
-  // 处理导航到文档列表
-  const handleNavigateToDocuments = (folderId: string) => {
-    navigate(`/admin/apps/${appSlug}/folders/${folderId}/documents`);
+  // Handle navigate to documents
+  const handleNavigateToDocuments = (folderPath: string) => {
+    const encodedPath = encodeURIComponent(folderPath);
+    navigate(`/admin/apps/${appSlug}/folders/${encodedPath}/documents`);
   };
   
-  // 处理导航到上传页面
-  const handleNavigateToUpload = (folderId: string) => {
-    navigate(`/admin/apps/${appSlug}/folders/${folderId}/upload`);
+  // Handle navigate to upload
+  const handleNavigateToUpload = (folderPath: string) => {
+    // 使用查询参数传递文件夹路径，避免 %2F 在 React Router 中的路径解析问题
+    navigate(`/admin/apps/${appSlug}/upload?folder=${encodeURIComponent(folderPath)}`);
   };
 
-  // 处理导航到文件夹导入页面
-  const handleImportFolder = (folderId: string) => {
-    navigate(`/admin/apps/${appSlug}/folders/${folderId}/upload?mode=import`);
+  // Handle navigate to import folder
+  const handleImportFolder = (folderPath: string) => {
+    navigate(`/admin/apps/${appSlug}/upload?folder=${encodeURIComponent(folderPath)}&mode=import`);
   };
 
-  // 处理导入网站
-  const handleImportWebsite = (folderId: string) => {
+  // Handle website import
+  const handleImportWebsite = (folderPath: string) => {
     setShowImportWebsiteModal(true);
   };
 
-  // 提交导入网站表单
+  // Handle website crawl submission
   const handleSubmitImportWebsite = async () => {
-    if (!websiteUrl.trim() || !currentFolderId || !app) {
-      setImportError('请填写URL并确保已选择文件夹');
+    if (!websiteUrl.trim() || !currentFolderPath || !app) {
+      setImportError('Please fill in the URL and ensure a folder is selected');
       return;
     }
     
-    // 验证URL格式
+    // Validate URL
     try {
       new URL(websiteUrl);
     } catch {
-      setImportError('请输入有效的URL（如 https://example.com）');
+      setImportError('Please enter a valid URL (e.g., https://example.com)');
       return;
     }
     
@@ -331,95 +482,126 @@ const AdminAppFolders: React.FC = () => {
     setImportError(null);
     
     try {
-      // 构建请求
+      // Build request
       const request: WebsiteCrawlRequest = {
         url: websiteUrl.trim(),
         depth: crawlDepth,
-        folder_id: currentFolderId,
+        folder_id: currentFolderPath,
         include_images: true,
         follow_external_links: false,
         respect_robots_txt: true
       };
       
-      // 调用后端API
+      // Call backend API
       const response = await aiService.crawlWebsite(request);
       
-      // 显示成功消息
-      alert(`网站爬取任务已开始！\n任务ID: ${response.task_id}\nURL: ${response.url}\n深度: ${response.depth}\n状态: ${response.status}\n\n任务将在后台执行，您可以继续其他操作。`);
+      // Show success message
+      alert(`Website crawl started!\nTask ID: ${response.task_id}\nURL: ${response.url}\nDepth: ${response.depth}\nStatus: ${response.status}\n\nThe task will run in the background.`);
       
-      // 关闭模态框
+      // Close modal
       setShowImportWebsiteModal(false);
       setWebsiteUrl('');
       setCrawlDepth(1);
     } catch (error: any) {
-      console.error('导入网站失败:', error);
+      console.error('Website import failed:', error);
       setImportError(
         error.response?.data?.detail || 
         error.message || 
-        '导入网站失败，请检查网络连接或后端服务'
+        'Website import failed. Check network or backend service.'
       );
     } finally {
       setImportingWebsite(false);
     }
   };
+
+  // Handle sitemap import
+  const handleSubmitImportSitemap = async () => {
+    if (!sitemapUrl.trim() || !currentFolderPath || !app) {
+      setImportError('Please fill in the sitemap URL and ensure a folder is selected');
+      return;
+    }
+    try {
+      new URL(sitemapUrl);
+    } catch {
+      setImportError('Please enter a valid sitemap URL (e.g., https://example.com/sitemap.xml)');
+      return;
+    }
+    setImportingSitemap(true);
+    setImportError(null);
+    try {
+      const request: SitemapImportRequest = {
+        sitemap_url: sitemapUrl.trim(),
+        folder_id: currentFolderPath,
+        include_images: true,
+        depth: sitemapDepth
+      };
+      const response: SitemapImportResponse = await aiService.importFromSitemap(request);
+      window.showWetAlert(`Sitemap import started!\nTask ID: ${response.task_id}\nURLs: ${response.total_urls || 'Unknown'}\nDepth: ${response.depth}`);
+      setShowImportWebsiteModal(false);
+      setSitemapUrl('');
+      setSitemapDepth(0);
+    } catch (error: any) {
+      setImportError(error.response?.data?.detail || error.message || 'Sitemap import failed');
+    } finally {
+      setImportingSitemap(false);
+    }
+  };
   
-  // 渲染加载状态
+  // Render loading state
   if (loading) {
     return (
       <div className="p-6 text-center py-12">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="mt-4 text-gray-600">加载文件夹管理中...</p>
+        <p className="mt-4 text-gray-600">Loading folders...</p>
       </div>
     );
   }
   
-  // 渲染错误状态
+  // Render error state
   if (!app) {
-    const isPermissionError = error?.includes('没有权限');
-    const errorTitle = isPermissionError ? '没有访问权限' : '应用不存在';
+    const isPermissionError = error?.includes('permission');
+    const errorTitle = isPermissionError ? 'No Access Permission' : 'App Not Found';
     
     return (
       <div className="p-6">
         <div className="mb-6">
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-            <Link to="/admin/apps" className="hover:text-blue-600">应用管理</Link>
+            <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
             <span>›</span>
-            <span className="text-gray-700">未知应用</span>
+            <span className="text-gray-700">Unknown App</span>
           </div>
         </div>
         
         {isPermissionError ? (
-          // 权限错误 - 橙色主题
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 text-center">
             <h3 className="text-lg font-medium text-orange-800 mb-2">{errorTitle}</h3>
-            <p className="text-orange-700 mb-4">{error || '您没有权限访问此应用。'}</p>
+            <p className="text-orange-700 mb-4">{error || 'You do not have permission to access this app.'}</p>
             <div className="space-y-3">
               <Link to="/admin/apps" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-block">
-                返回应用列表
+                Back to App List
               </Link>
               <div className="mt-4 pt-4 border-t border-orange-100">
-                <p className="text-sm text-orange-600 mb-2">如果您需要访问此应用，可以：</p>
+                <p className="text-sm text-orange-600 mb-2">To access this app:</p>
                 <div className="space-y-2 text-sm text-orange-700">
-                  <p>1. 使用应用所有者的账户登录</p>
-                  <p>2. 联系管理员为您添加访问权限</p>
-                  <p>3. 创建自己的新应用</p>
+                  <p>1. Log in with the app owner account</p>
+                  <p>2. Contact an admin to grant access</p>
+                  <p>3. Create your own app</p>
                 </div>
                 <button
                   onClick={() => navigate('/admin/apps?create=true')}
                   className="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 >
-                  创建新应用
+                  Create New App
                 </button>
               </div>
             </div>
           </div>
         ) : (
-          // 应用不存在错误 - 红色主题
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
             <h3 className="text-lg font-medium text-red-800 mb-2">{errorTitle}</h3>
-            <p className="text-red-700 mb-4">{error || '无法找到指定的应用，请检查URL或返回应用列表。'}</p>
+            <p className="text-red-700 mb-4">{error || 'Could not find the specified app. Check the URL or go back.'}</p>
             <Link to="/admin/apps" className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-              返回应用列表
+              Back to App List
             </Link>
           </div>
         )}
@@ -431,17 +613,32 @@ const AdminAppFolders: React.FC = () => {
   
   return (
     <div className="p-6">
-      {/* 面包屑导航 */}
+      {/* Breadcrumb Navigation */}
       <div className="mb-6">
         <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-          <Link to="/admin/apps" className="hover:text-blue-600">应用管理</Link>
+          <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
           {breadcrumbs.map((crumb, index) => (
-            <React.Fragment key={crumb.id}>
+            <React.Fragment key={crumb.path}>
               <span>›</span>
-              {crumb.path ? (
-                <Link to={crumb.path} className="hover:text-blue-600">
+              {index < breadcrumbs.length - 1 ? (
+                <button
+                  type="button"
+                  className="hover:text-blue-600 underline underline-offset-2"
+                  onClick={() => {
+                    if (crumb.path === 'app') {
+                      // Navigate to app root (clear folder selection)
+                      if (currentFolderPath) {
+                        setForwardStack(prev => [...prev, currentFolderPath]);
+                      }
+                      setCurrentFolderPath(null);
+                      navigate('');
+                    } else {
+                      handleFolderClick(crumb.path);
+                    }
+                  }}
+                >
                   {crumb.name}
-                </Link>
+                </button>
               ) : (
                 <span className="text-gray-700 font-medium">{crumb.name}</span>
               )}
@@ -453,77 +650,191 @@ const AdminAppFolders: React.FC = () => {
       </div>
       
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">文件夹管理</h2>
+        <h2 className="text-xl font-semibold">Folder Management</h2>
         <div className="flex space-x-2">
           <button 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
             onClick={() => {
-              setParentFolderId(null);
+              setParentFolderPath(null);
               setShowCreateModal(true);
             }}
           >
-            <span>+ 创建根文件夹</span>
+            <span>+ Create Root Folder</span>
           </button>
-          {currentFolderId && (
+          {currentFolderPath && (
             <button 
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center"
               onClick={() => {
-                setParentFolderId(currentFolderId);
+                setParentFolderPath(currentFolderPath);
                 setShowCreateModal(true);
               }}
             >
-              <span>+ 在此文件夹下创建</span>
+              <span>+ Create Subfolder</span>
             </button>
           )}
         </div>
       </div>
       
-      {/* 两栏布局 */}
+      {/* Two-Column Layout */}
       <div className="flex space-x-6">
-        {/* 左侧：文件夹树 */}
-        <div className="w-1/3">
+        {/* Left: Subfolders + AI Operations */}
+        <div className="w-1/3 space-y-4">
+          {/* Subfolders Card */}
           <div className="bg-white rounded-lg shadow">
-            <div className="p-4 border-b">
-              <h3 className="font-medium">文件夹树</h3>
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <h3 className="font-medium">Folders</h3>
+              <button
+                className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                disabled={forwardStack.length === 0}
+                onClick={handleForward}
+                title="Forward"
+              >
+                <svg className="w-4 h-4 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
             <div className="p-4">
-              {folders.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">暂无文件夹</p>
-              ) : (
-                <FolderTree
-                  folders={folders}
-                  currentFolderId={currentFolderId}
-                  onFolderSelect={handleFolderClick}
-                  onDeleteFolder={handleDeleteFolder}
-                  onMoveFolder={handleMoveFolder}
-                />
-              )}
+              {(() => {
+                // Show subfolders when a folder is selected, otherwise show all folders
+                const displayFolders = currentFolder ? subfolders : folders;
+                
+                return displayFolders.length > 0 ? (
+                  <div className="space-y-2">
+                    {displayFolders.map(folder => (
+                      <div
+                        key={folder.path || folder.id}
+                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleFolderClick(folder.path || '')}
+                      >
+                        <div className="flex items-center">
+                          <FolderIcon className="w-5 h-5 text-yellow-500 mr-2" />
+                          <div className="flex-1">
+                            <div className="font-medium">{folder.name}</div>
+                          </div>
+                          <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </div>
+                    ))}
+                    <div className="text-sm text-gray-500 mt-2">
+                      {displayFolders.length} folder{displayFolders.length !== 1 ? 's' : ''} total
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No folders yet</p>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* AI Operations Card */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 border-b">
+              <h3 className="font-medium">AI Operations</h3>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-1 gap-3">
+                <button
+                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                  onClick={() => {
+                    setParentFolderPath(currentFolder.path || '');
+                    setShowCreateModal(true);
+                  }}
+                >
+                  <div className="font-medium">Create Subfolder</div>
+                  <div className="text-sm text-gray-500">Create a new subfolder in the current folder</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                  onClick={() => handleNavigateToUpload(currentFolder.path || currentFolder.id)}
+                >
+                  <div className="font-medium">Upload</div>
+                  <div className="text-sm text-gray-500">Upload files to this folder</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                  onClick={() => handleNavigateToDocuments(currentFolder.path || currentFolder.id)}
+                >
+                  <div className="font-medium">Documents</div>
+                  <div className="text-sm text-gray-500">Browse documents in this folder</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-blue-50 text-left border-blue-200"
+                  onClick={() => handleEditFolder(currentFolder.path || '')}
+                >
+                  <div className="font-medium text-blue-600">Edit Folder</div>
+                  <div className="text-sm text-blue-500">Edit folder name and description</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
+                  onClick={() => handleDeleteFolder(currentFolder.path || '')}
+                >
+                  <div className="font-medium text-red-600">Delete Folder</div>
+                  <div className="text-sm text-red-500">Delete this folder and all its contents</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-green-50 text-left border-green-200"
+                  onClick={() => handleImportFolder(currentFolder.path || currentFolder.id)}
+                >
+                  <div className="font-medium text-green-600">Import Folder</div>
+                  <div className="text-sm text-green-500">Import an entire folder from local drive</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-purple-50 text-left border-purple-200"
+                  onClick={() => handleImportWebsite(currentFolder.path || '')}
+                >
+                  <div className="font-medium text-purple-600">Import Website</div>
+                  <div className="text-sm text-purple-500">Crawl web pages and images from a URL</div>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        
-        {/* 右侧：当前文件夹内容 */}
+
+        {/* Right: Folder Content */}
         <div className="w-2/3">
           <div className="bg-white rounded-lg shadow">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-medium">
-                {currentFolder ? `${currentFolder.name} 的内容` : '选择文件夹'}
-              </h3>
-              {currentFolder && (
-                <div className="flex space-x-2">
-                  <button 
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                    onClick={() => handleNavigateToUpload(currentFolder.id)}
-                  >
-                    上传文档
-                  </button>
-                  <button 
-                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                    onClick={() => handleNavigateToDocuments(currentFolder.id)}
-                  >
-                    查看文档
-                  </button>
+            <div className="p-4 border-b">
+              {currentFolder ? (
+                <div className="flex justify-between items-start">
+                  <details className="text-sm flex-1">
+                    <summary className="cursor-pointer">
+                      <h3 className="font-medium inline">{currentFolder.name} - Content</h3>
+                    </summary>
+                    <div className="mt-2 mb-2 text-xs text-gray-500 space-y-1 pl-1">
+                      <div><span className="text-gray-400">Path:</span> <span className="font-mono">{currentFolder.path}</span></div>
+                      <div><span className="text-gray-400">Created:</span> {new Date(currentFolder.created_at).toLocaleString()}</div>
+                      {currentFolder.description && (
+                        <div><span className="text-gray-400">Description:</span> {currentFolder.description}</div>
+                      )}
+                      {(() => {
+                        const p = currentFolder.path;
+                        if (!p) return null;
+                        const parentPath = currentFolder.parent_folder_path || p.substring(0, p.lastIndexOf('/'));
+                        if (!parentPath || parentPath === '') return null;
+                        return (
+                          <div className="pt-1">
+                            <button
+                              className="text-blue-600 hover:text-blue-800 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setForwardStack(prev => [...prev, currentFolder.path]);
+                                handleFolderClick(parentPath);
+                              }}
+                            >
+                              ← Go to parent folder
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </details>
+                  <div className="text-sm text-gray-500 shrink-0 pt-0.5">
+                    Documents ({documents.length})
+                  </div>
                 </div>
+              ) : (
+                <h3 className="font-medium">Select a Folder</h3>
               )}
             </div>
             
@@ -531,124 +842,107 @@ const AdminAppFolders: React.FC = () => {
               {!currentFolder ? (
                 <div className="text-center py-8 text-gray-500">
                   <FolderIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <p>请从左侧选择一个文件夹</p>
+                  <p>Select a folder from the left panel</p>
                 </div>
               ) : (
                 <>
-                  {/* 文件夹信息 */}
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium mb-2">文件夹信息</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">名称:</span> 
-                        <span className="ml-2 font-medium">{currentFolder.name}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">创建者:</span> 
-                        <span className="ml-2">{currentFolder.created_by}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">路径:</span> 
-                        <span className="ml-2 font-mono text-sm">{currentFolder.path || 'N/A'}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">创建时间:</span> 
-                        <span className="ml-2">{new Date(currentFolder.created_at).toLocaleString()}</span>
-                      </div>
-                      {currentFolder.description && (
-                        <div className="col-span-2">
-                          <span className="text-gray-500">描述:</span> 
-                          <span className="ml-2">{currentFolder.description}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+  
                   
-                  {/* 子文件夹列表 */}
-                  {subfolders.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="font-medium mb-3">子文件夹 ({subfolders.length})</h4>
-                      <div className="space-y-2">
-                        {subfolders.map(folder => (
-                          <div 
-                            key={folder.id} 
-                            className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                            onClick={() => handleFolderClick(folder.id)}
-                          >
-                            <div className="flex items-center">
-                              <FolderIcon className="w-5 h-5 text-yellow-500 mr-2" />
-                              <div className="flex-1">
-                                <div className="font-medium">{folder.name}</div>
-                                {folder.description && (
-                                  <div className="text-sm text-gray-500">{folder.description}</div>
-                                )}
-                              </div>
-                              <ChevronRightIcon className="w-5 h-5 text-gray-400" />
-                            </div>
-                          </div>
-                        ))}
+
+                  
+                  {/* Documents */}
+                  {documents.length > 0 && (
+                    <div className="mb-6 border-t pt-6">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {documents.map(doc => (
+                              <tr key={doc.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4">
+                                  <div>
+                                    <div className="font-medium text-gray-900">{doc.title || doc.original_filename || 'Untitled'}</div>
+                                    <div className="text-sm text-gray-500">{doc.original_filename}</div>
+                                    {doc.folder_path && <div className="text-xs text-gray-400 font-mono mt-0.5">{doc.folder_path}</div>}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-right text-sm font-medium">
+                                  <button 
+                                    className="text-blue-600 hover:text-blue-900 mr-3"
+                                    onClick={() => handlePreviewDocument(doc)}
+                                  >
+                                    Preview
+                                  </button>
+                                  <button 
+                                    className="text-green-600 hover:text-green-900 mr-3"
+                                    onClick={() => handleEditDocument(doc)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button 
+                                    className="text-red-600 hover:text-red-900"
+                                    onClick={() => handleDeleteDocument(doc)}
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {doc.file_type || 'Unknown'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : 'Unknown'}
+                                </td>
+                                <td className="px-6 py-4">
+                                  {doc.created_at ? new Date(doc.created_at).toLocaleString() : 'Unknown'}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    doc.conversion_status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    doc.conversion_status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                    doc.conversion_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {doc.conversion_status === 'completed' ? 'Completed' :
+                                     doc.conversion_status === 'processing' ? 'Processing' :
+                                     doc.conversion_status === 'failed' ? 'Failed' :
+                                     'Pending'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}
                   
-                  {/* AI 操作 */}
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3">AI 操作</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <button 
-                        className="p-3 border rounded-lg hover:bg-gray-50 text-left"
-                        onClick={() => {
-                          setParentFolderId(currentFolder.id);
-                          setShowCreateModal(true);
-                        }}
-                      >
-                        <div className="font-medium">创建子文件夹</div>
-                        <div className="text-sm text-gray-500">在当前文件夹下创建新文件夹</div>
-                      </button>
-                      <button 
-                        className="p-3 border rounded-lg hover:bg-gray-50 text-left"
-                        onClick={() => handleNavigateToUpload(currentFolder.id)}
-                      >
-                        <div className="font-medium">上传文档</div>
-                        <div className="text-sm text-gray-500">上传文件到此文件夹</div>
-                      </button>
-                      <button 
-                        className="p-3 border rounded-lg hover:bg-gray-50 text-left"
-                        onClick={() => handleNavigateToDocuments(currentFolder.id)}
-                      >
-                        <div className="font-medium">查看文档</div>
-                        <div className="text-sm text-gray-500">浏览此文件夹中的文档</div>
-                      </button>
-                      <button 
-                        className="p-3 border rounded-lg hover:bg-blue-50 text-left border-blue-200"
-                        onClick={() => handleEditFolder(currentFolder.id)}
-                      >
-                        <div className="font-medium text-blue-600">编辑文件夹</div>
-                        <div className="text-sm text-blue-500">修改文件夹名称和描述</div>
-                      </button>
-                      <button 
-                        className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
-                        onClick={() => handleDeleteFolder(currentFolder.id)}
-                      >
-                        <div className="font-medium text-red-600">删除文件夹</div>
-                        <div className="text-sm text-red-500">删除此文件夹及其所有内容</div>
-                      </button>
-                      <button 
-                        className="p-3 border rounded-lg hover:bg-green-50 text-left border-green-200"
-                        onClick={() => handleImportFolder(currentFolder.id)}
-                      >
-                        <div className="font-medium text-green-600">导入文件夹</div>
-                        <div className="text-sm text-green-500">从本地驱动器导入整个文件夹</div>
-                      </button>
-                      <button 
-                        className="p-3 border rounded-lg hover:bg-purple-50 text-left border-purple-200"
-                        onClick={() => handleImportWebsite(currentFolder.id)}
-                      >
-                        <div className="font-medium text-purple-600">导入网站</div>
-                        <div className="text-sm text-purple-500">爬取指定URL的网页和图像</div>
-                      </button>
+                  {documents.length === 0 && currentFolder && (
+                    <div className="mb-6 border-t pt-6">
+                      <h4 className="font-medium mb-3">Documents</h4>
+                      <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+                        <DocumentIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                        <p>No documents in this folder</p>
+                        <button 
+                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          onClick={() => handleNavigateToUpload(currentFolder.path || currentFolder.id)}
+                        >
+                          Upload First Document
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  
                 </>
               )}
             </div>
@@ -656,11 +950,12 @@ const AdminAppFolders: React.FC = () => {
         </div>
       </div>
       
-      {/* 创建文件夹模态框 */}
+      {/* Create Folder Modal */}
       {showCreateModal && (
         <CreateFolderModal
           appId={app.id}
-          parentFolderId={parentFolderId}
+          appSlug={appSlug}
+          parentFolderPath={parentFolderPath}
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateFolder}
           folders={folders}
@@ -668,11 +963,12 @@ const AdminAppFolders: React.FC = () => {
         />
       )}
       
-      {/* 编辑文件夹模态框 */}
+      {/* Edit Folder Modal */}
       {showEditModal && editingFolder && (
         <CreateFolderModal
           appId={app.id}
-          parentFolderId={editingFolder.parent_folder_id}
+          appSlug={appSlug}
+          parentFolderPath={editingFolder.parent_folder_path}
           onClose={() => {
             setShowEditModal(false);
             setEditingFolder(null);
@@ -684,97 +980,202 @@ const AdminAppFolders: React.FC = () => {
         />
       )}
       
-      {/* 导入网站模态框 */}
+      {/* Import Website Modal */}
       {showImportWebsiteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-purple-800">导入网站</h3>
-              <button
-                onClick={() => setShowImportWebsiteModal(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  网站URL
-                </label>
-                <input
-                  type="url"
-                  value={websiteUrl}
-                  onChange={(e) => setWebsiteUrl(e.target.value)}
-                  placeholder="https://example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  disabled={importingWebsite}
-                />
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-purple-800">Import Content</h3>
+                <button
+                  onClick={() => setShowImportWebsiteModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  ✕
+                </button>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  爬取深度
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={crawlDepth}
-                    onChange={(e) => setCrawlDepth(parseInt(e.target.value))}
-                    className="flex-1"
-                    disabled={importingWebsite}
-                  />
-                  <span className="text-sm font-medium text-purple-600 w-8">{crawlDepth}</span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>1 (仅首页)</span>
-                  <span>3</span>
-                  <span>5 (深度爬取)</span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  深度 {crawlDepth}: {getDepthDescription(crawlDepth)}
-                </p>
+              {/* Tab switcher */}
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  onClick={() => { setImportTab('website'); setImportError(null); }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                    importTab === 'website'
+                      ? 'border-purple-600 text-purple-700'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Website Crawl
+                </button>
+                <button
+                  onClick={() => { setImportTab('sitemap'); setImportError(null); }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                    importTab === 'sitemap'
+                      ? 'border-green-600 text-green-700'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Sitemap Import
+                </button>
               </div>
               
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-sm text-gray-600">
-                  <strong>目标文件夹:</strong> {currentFolder?.name || '未选择'} <br />
-                  <strong>应用:</strong> {app?.name || '未知'}
-                </p>
-              </div>
-              
-              {importError && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                  <p className="text-sm text-red-700">{importError}</p>
+              {importTab === 'website' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Website URL
+                    </label>
+                    <input
+                      type="url"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      placeholder="https://example.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      disabled={importingWebsite}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Crawl Depth
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="range"
+                        min="1"
+                        max="5"
+                        value={crawlDepth}
+                        onChange={(e) => setCrawlDepth(parseInt(e.target.value))}
+                        className="flex-1"
+                        disabled={importingWebsite}
+                      />
+                      <span className="text-sm font-medium text-purple-600 w-8">{crawlDepth}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>1 (Homepage only)</span>
+                      <span>3</span>
+                      <span>5 (Deep crawl)</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Depth {crawlDepth}: {getDepthDescription(crawlDepth)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      <strong>Target Folder:</strong> {currentFolder?.name || 'Not selected'} <br />
+                      <strong>App:</strong> {app?.name || 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  {importError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                      <p className="text-sm text-red-700">{importError}</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      onClick={() => setShowImportWebsiteModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      disabled={importingWebsite}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitImportWebsite}
+                      disabled={importingWebsite || !websiteUrl.trim()}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    >
+                      {importingWebsite ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Importing...
+                        </>
+                      ) : (
+                        'Start Import'
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
               
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => setShowImportWebsiteModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                  disabled={importingWebsite}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSubmitImportWebsite}
-                  disabled={importingWebsite || !websiteUrl.trim()}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  {importingWebsite ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      导入中...
-                    </>
-                  ) : (
-                    '开始导入'
+              {importTab === 'sitemap' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Sitemap URL
+                    </label>
+                    <input
+                      type="url"
+                      value={sitemapUrl}
+                      onChange={(e) => setSitemapUrl(e.target.value)}
+                      placeholder="https://www.canada.ca/sitemap.xml"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      disabled={importingSitemap}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter a sitemap.xml URL to bulk-import all listed pages
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Recursion Depth
+                    </label>
+                    <select
+                      value={sitemapDepth}
+                      onChange={(e) => setSitemapDepth(parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      disabled={importingSitemap}
+                    >
+                      <option value={0}>0 - Sitemap URLs only (no link tracking)</option>
+                      <option value={1}>1 - Sitemap URLs + direct child links</option>
+                      <option value={2}>2 - Sitemap URLs + 2 levels deep</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Recommended: depth = 0 (sitemaps already contain all desired URLs)
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      <strong>Target Folder:</strong> {currentFolder?.name || 'Not selected'} <br />
+                      <strong>App:</strong> {app?.name || 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  {importError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                      <p className="text-sm text-red-700">{importError}</p>
+                    </div>
                   )}
-                </button>
-              </div>
+                  
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      onClick={() => setShowImportWebsiteModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      disabled={importingSitemap}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitImportSitemap}
+                      disabled={importingSitemap || !sitemapUrl.trim()}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    >
+                      {importingSitemap ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Importing...
+                        </>
+                      ) : (
+                        'Start Sitemap Import'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -783,17 +1184,17 @@ const AdminAppFolders: React.FC = () => {
   );
 };
 
-// 辅助函数：获取深度描述
+// Helper: get depth description
 const getDepthDescription = (depth: number): string => {
   const descriptions = [
-    '仅首页',
-    '首页 + 直接链接',
-    '首页 + 2层链接',
-    '首页 + 3层链接',
-    '深度爬取（可能较慢）',
-    '非常深度爬取（可能非常慢）'
+    'Homepage only',
+    'Homepage + direct links',
+    'Homepage + 2 levels',
+    'Homepage + 3 levels',
+    'Deep crawl (may be slow)',
+    'Very deep crawl (may be very slow)'
   ];
-  return descriptions[Math.min(depth - 1, descriptions.length - 1)] || '自定义深度';
+  return descriptions[Math.min(depth - 1, descriptions.length - 1)] || 'Custom depth';
 };
 
 export default AdminAppFolders;

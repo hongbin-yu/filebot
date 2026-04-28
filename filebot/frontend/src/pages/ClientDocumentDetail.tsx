@@ -5,7 +5,10 @@ import folderService, { Folder } from '../services/folder.service';
 import appService, { App } from '../services/app.service';
 
 const ClientDocumentDetail: React.FC = () => {
-  const { id: idParam } = useParams<{ id: string }>();
+  // 从URL获取标识符（支持UUID和路径）
+  const splat = useParams()['*'] || '';
+  const identifier = splat.startsWith('/') ? splat : '/' + splat;
+  
   const navigate = useNavigate();
   
   const [document, setDocument] = useState<Document | null>(null);
@@ -16,28 +19,22 @@ const ClientDocumentDetail: React.FC = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [htmlContentUrl, setHtmlContentUrl] = useState<string | null>(null);
 
-  // 解析文档ID
-  const parseDocumentId = (param: string | undefined): string => {
-    if (!param) return '';
-    
-    // 如果是UUID格式，直接返回
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-    const match = param.match(uuidPattern);
-    if (match) {
-      return match[0];
+  // 解析文档标识符
+  const getDocIdentifier = (): string => {
+    // UUID去掉前面加的/
+    const uuidPattern = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+    if (uuidPattern.test(identifier)) {
+      return identifier.slice(1);
     }
-    
-    // 否则尝试从可能的slug中提取ID
-    const idMatch = param.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
-    return idMatch ? idMatch[1] : param;
+    return identifier;
   };
 
-  const id = parseDocumentId(idParam);
+  const docIdentifier = getDocIdentifier();
 
   useEffect(() => {
     const fetchDocument = async () => {
-      if (!id) {
-        setError('文档ID无效');
+      if (!docIdentifier) {
+        setError('文档标识符无效');
         setLoading(false);
         return;
       }
@@ -46,13 +43,14 @@ const ClientDocumentDetail: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const data = await documentService.getDocumentById(id);
+        const data = await documentService.getDocumentByIdentifier(docIdentifier);
         setDocument(data);
         
-        // 获取文件夹和应用信息
-        if (data.folder_id) {
+        // 获取文件夹和应用信息（优先使用路径）
+        const folderIdentifier = data.folder_path || data.folder_id;
+        if (folderIdentifier) {
           try {
-            const folderData = await folderService.getFolderById(data.folder_id);
+            const folderData = await folderService.getFolder(folderIdentifier);
             setFolder(folderData);
             
             if (folderData.app_id) {
@@ -73,7 +71,7 @@ const ClientDocumentDetail: React.FC = () => {
     };
 
     fetchDocument();
-  }, [id]);
+  }, [docIdentifier]);
 
   // 处理HTML预览内容加载
   useEffect(() => {
@@ -97,7 +95,8 @@ const ClientDocumentDetail: React.FC = () => {
       setPreviewLoading(true);
       
       try {
-        const blob = await documentService.downloadDocument(document.id, 'original');
+        const docApiId = document.path || document.storage_path || document.id;
+        const blob = await documentService.downloadDocument(docApiId, 'original');
         
         if (blob.size === 0) {
           const emptyHtml = '<html><body><h3>文件内容为空</h3></body></html>';
@@ -138,7 +137,8 @@ const ClientDocumentDetail: React.FC = () => {
     if (!document) return;
     
     try {
-      const blob = await documentService.downloadDocument(document.id, downloadType);
+      const docApiId = document.path || document.storage_path || document.id;
+      const blob = await documentService.downloadDocument(docApiId, downloadType);
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
@@ -149,13 +149,13 @@ const ClientDocumentDetail: React.FC = () => {
       window.document.body.removeChild(a);
     } catch (err: any) {
       console.error('下载失败:', err);
-      alert('下载失败: ' + err.message);
+      window.showWetAlert('下载失败: ' + err.message);
     }
   };
 
   const handleBack = () => {
     if (folder && app) {
-      navigate(`/apps/${app.slug || app.id}/folders/${folder.id}/documents`);
+      navigate(`/apps/${app.slug || app.id}/folders/${encodeURIComponent(folder.path)}/documents`);
     } else {
       navigate('/apps');
     }
@@ -218,7 +218,7 @@ const ClientDocumentDetail: React.FC = () => {
             {folder && (
               <>
                 <Link 
-                  to={`/apps/${app?.slug || app?.id}/folders/${folder.id}/documents`} 
+                  to={`/apps/${app?.slug || app?.id}/folders/${encodeURIComponent(folder.path)}/documents`} 
                   className="hover:text-blue-600"
                 >
                   {folder.name}

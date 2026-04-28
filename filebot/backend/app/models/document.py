@@ -16,6 +16,15 @@ class ConversionStatus(enum.Enum):
     FAILED = "failed"
 
 
+class ThumbnailStatus(enum.Enum):
+    """缩略图生成状态枚举"""
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    GENERATED = "GENERATED"
+    FAILED = "FAILED"
+    NOT_APPLICABLE = "NOT_APPLICABLE"  # 对于无法生成缩略图的文件类型
+
+
 class FileType(enum.Enum):
     """文件类型枚举"""
     TIFF = "tiff"
@@ -83,7 +92,7 @@ class Document(Base):
     
     # 文件信息
     original_filename = Column(String(255), nullable=False, index=True)
-    stored_filename = Column(String(255), nullable=False)  # UUID格式的实际存储文件名
+    stored_filename = Column(String(255), nullable=False)  # 安全化的存储文件名（纯path结构，不使用UUID）
     file_size = Column(BigInteger, nullable=False)  # 字节数
     file_type = Column(Enum(FileType), nullable=False)
     mime_type = Column(String(100), nullable=False)
@@ -93,10 +102,22 @@ class Document(Base):
     storage_subfolder = Column(String(255), nullable=True)  # 存储子文件夹路径（相对路径）
     full_storage_path = Column(String(500), nullable=True)  # 完整存储路径（计算字段）
     
+    # 路径系统重构 - 新字段
+    # 注意: url_path已重命名为path
+    storage_path = Column(String(500), nullable=True, index=True)  # 物理存储路径 (相对于DATA_ROOT)
+    path = Column(String(500), nullable=True, index=True)          # 公共URL路径（原url_path）
+    parent_folder_path = Column(String(500), nullable=True, index=True)  # 父文件夹路径，用于快速构建完整路径
+    
     # 转换信息
     conversion_status = Column(Enum(ConversionStatus), default=ConversionStatus.PENDING)
     converted_pdf_path = Column(String(500), nullable=True)  # 转换后的PDF路径
     conversion_error = Column(String(1000), nullable=True)  # 转换错误信息
+    
+    # 缩略图信息
+    thumbnail_status = Column(Enum(ThumbnailStatus), default=ThumbnailStatus.PENDING)  # 缩略图生成状态
+    thumbnail_path = Column(String(500), nullable=True)  # 缩略图存储路径
+    thumbnail_generated_at = Column(DateTime(timezone=True), nullable=True)  # 缩略图生成时间
+    thumbnail_error = Column(String(1000), nullable=True)  # 缩略图生成错误信息
     
     # 元数据
     page_count = Column(Integer, nullable=True)  # 页数
@@ -131,3 +152,16 @@ class Document(Base):
 
     def __repr__(self):
         return f"<Document(id={self.id}, filename={self.original_filename}, status={self.conversion_status})>"
+
+    @property
+    def folder_path(self) -> str:
+        """获取文件夹路径（计算属性）"""
+        # 优先使用parent_folder_path，如果不存在则尝试从folder关系获取
+        if self.parent_folder_path:
+            return self.parent_folder_path
+        
+        # 如果parent_folder_path为空但有folder关系，尝试获取folder.path
+        if hasattr(self, 'folder') and self.folder:
+            return self.folder.path or ''
+        
+        return ''

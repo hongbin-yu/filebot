@@ -12,6 +12,7 @@ const Documents: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchPath, setSearchPath] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [edition, setEdition] = useState<string>('basic');
 
@@ -23,7 +24,17 @@ const Documents: React.FC = () => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const data = await documentService.getDocuments();
+      const searchParams: any = {};
+      
+      if (searchTerm) {
+        searchParams.q = searchTerm;
+      }
+      
+      if (searchPath) {
+        searchParams.path = searchPath;
+      }
+      
+      const data = await documentService.searchDocuments(searchParams);
       setDocuments(data || []);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
@@ -50,7 +61,12 @@ const Documents: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) {
+    const targetDoc = documents.find(d => d.id === id);
+    const docName = targetDoc?.original_filename || targetDoc?.title || 'this document';
+    const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
+    const docPathInfo = docPathStr ? `\n存储路径: ${docPathStr}` : '';
+    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete "${docName}"?${docPathInfo}`);
+    if (!confirmed) {
       return;
     }
     
@@ -59,7 +75,7 @@ const Documents: React.FC = () => {
       setDocuments(documents.filter(doc => doc.id !== id));
     } catch (error) {
       console.error('Failed to delete document:', error);
-      alert('Failed to delete document. Please try again.');
+      window.showWetAlert('Failed to delete document. Please try again.');
     }
   };
 
@@ -242,7 +258,7 @@ const Documents: React.FC = () => {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Documents
@@ -276,6 +292,21 @@ const Documents: React.FC = () => {
             </select>
           </div>
           
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Search by Path
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by path (e.g., /content/dam/...)"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={searchPath}
+                onChange={(e) => setSearchPath(e.target.value)}
+              />
+            </div>
+          </div>
+          
           <div className="flex items-end">
             <button
               onClick={fetchDocuments}
@@ -300,7 +331,7 @@ const Documents: React.FC = () => {
                   <div className="text-3xl">{getFileIcon(doc.file_type)}</div>
                   <div className="flex space-x-2">
                     <Link
-                      to={`/documents/${doc.id}-${generateDocumentSlug(doc.title || doc.original_filename, doc.id)}`}
+                      to={`/documents/${(doc.path || doc.storage_path || doc.id).replace(/^\//, '')}`}
                       className="text-blue-600 hover:text-blue-800"
                       title="View Details"
                     >
@@ -374,7 +405,7 @@ const Documents: React.FC = () => {
                 <div className="mt-6 pt-4 border-t border-gray-100">
                   <div className="flex justify-between">
                     <Link
-                      to={`/documents/${doc.id}-${generateDocumentSlug(doc.title || doc.original_filename, doc.id)}`}
+                      to={`/documents/${(doc.path || doc.storage_path || doc.id).replace(/^\//, '')}`}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
                       View Details →

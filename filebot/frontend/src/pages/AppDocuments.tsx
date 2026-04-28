@@ -59,8 +59,15 @@ const AppDocuments: React.FC = () => {
     console.error('folderIdParam为空！');
   }
   
-  // 生成上传路径
-  const uploadPath = `/${effectiveAppSlug}/folders/${folderIdParam}/upload`;
+  // 生成上传路径（如果folder已加载，使用path；否则用原始param并编码）
+  const [uploadPath, setUploadPath] = React.useState(`/${effectiveAppSlug}/folders/${encodeURIComponent(folderIdParam)}/upload`);
+
+  // 当folder加载后更新uploadPath
+  React.useEffect(() => {
+    if (folder?.path) {
+      setUploadPath(`/${effectiveAppSlug}/folders/${encodeURIComponent(folder.path)}/upload`);
+    }
+  }, [folder?.path, effectiveAppSlug]);
   
   const [documents, setDocuments] = useState<Document[]>([]);
   const [folder, setFolder] = useState<Folder | null>(null);
@@ -89,7 +96,7 @@ const AppDocuments: React.FC = () => {
     return '';
   };
 
-  // 解析folderId：从"uuid-slug"格式中提取实际的UUID
+  // 解析folderId：支持UUID或路径
   const parseFolderId = (folderIdParam: string): string => {
     console.log('🔧 解析folderId参数:', folderIdParam);
     
@@ -98,26 +105,36 @@ const AppDocuments: React.FC = () => {
       return '';
     }
     
+    // 首先解码参数（如果它是编码的路径）
+    const decodedParam = decodeURIComponent(folderIdParam);
+    console.log('🔧 解码后的参数:', decodedParam);
+    
+    // 检查是否是路径（以/开头）
+    if (decodedParam.startsWith('/')) {
+      console.log('✅ 识别为路径:', decodedParam);
+      return decodedParam;
+    }
+    
     // 如果参数包含"-"，则可能是"uuid-slug"格式
-    if (folderIdParam.includes('-')) {
+    if (decodedParam.includes('-')) {
       // 检查是否以UUID开头（UUID格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx）
       const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-      const match = folderIdParam.match(uuidPattern);
+      const match = decodedParam.match(uuidPattern);
       if (match) {
         console.log('✅ 提取到UUID:', match[0]);
         return match[0]; // 返回UUID部分
       }
       
       // 如果不是标准UUID格式，尝试提取ID部分
-      const parts = folderIdParam.split('-');
+      const parts = decodedParam.split('-');
       // 假设ID是第一部分（或前几部分）
       const extractedId = parts[0];
       console.log('⚠️ 非标准格式，提取ID部分:', extractedId);
       return extractedId;
     }
     
-    console.log('ℹ️ 直接使用folderIdParam:', folderIdParam);
-    return folderIdParam;
+    console.log('ℹ️ 直接使用参数:', decodedParam);
+    return decodedParam;
   };
 
   const folderId = parseFolderId(folderIdParam || '');
@@ -291,7 +308,7 @@ const AppDocuments: React.FC = () => {
       // 获取文件夹详情
       if (folderId) {
         try {
-          const folderData = await folderService.getFolderById(folderId);
+          const folderData = await folderService.getFolder(folderId);
           setFolder(folderData);
           console.log('📁 文件夹详情:', folderData);
         } catch (folderError) {
@@ -303,7 +320,7 @@ const AppDocuments: React.FC = () => {
       // 获取该文件夹的文档
       console.log('📋 获取文档，folder_id:', folderId);
       console.log('📋 调用documentService.getDocuments({ folder_id:', folderId, '})');
-      const folderDocuments = await documentService.getDocuments({ folder_id: folderId });
+      const folderDocuments = await documentService.getDocuments(folderId);
       console.log('✅ 获取到文档数量:', folderDocuments.length);
       console.log('📄 文档列表:', folderDocuments.map(doc => ({ id: doc.id, title: doc.title, folder_id: doc.folder_id })));
       setDocuments(folderDocuments);
@@ -325,7 +342,12 @@ const AppDocuments: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) {
+    const targetDoc = documents.find(d => d.id === id);
+    const docName = targetDoc?.original_filename || targetDoc?.title || 'this document';
+    const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
+    const docPathInfo = docPathStr ? `\n存储路径: ${docPathStr}` : '';
+    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete "${docName}"?${docPathInfo}`);
+    if (!confirmed) {
       return;
     }
     
@@ -334,7 +356,7 @@ const AppDocuments: React.FC = () => {
       setDocuments(documents.filter(doc => doc.id !== id));
     } catch (error) {
       console.error('Failed to delete document:', error);
-      alert('Failed to delete document. Please try again.');
+      window.showWetAlert('Failed to delete document. Please try again.');
     }
   };
 
@@ -739,7 +761,7 @@ const AppDocuments: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Link
-                            to={`/documents/${doc.id}-${generateDocumentSlug(doc.title || doc.original_filename, doc.id)}`}
+                            to={`/documents/${(doc.path || doc.storage_path || doc.id).replace(/^\//, '')}`}
                             className="text-blue-600 hover:text-blue-900"
                             title="View Details"
                           >

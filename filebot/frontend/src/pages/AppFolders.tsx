@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import folderService, { Folder } from '../services/folder.service';
-import appService, { App, Drawer } from '../services/app.service';
+import appService, { App } from '../services/app.service';
+import { Drawer } from '../services/drawer.service';
 import { generateFolderSlug, extractAppIdFromSlug, generateDrawerSlug, extractDrawerIdFromSlug, toSlug } from '../utils/slugUtils';
 
 const AppFolders: React.FC = () => {
@@ -193,7 +194,7 @@ const AppFolders: React.FC = () => {
     console.log('fetchFolders called', { appId, drawerId });
     try {
       setLoading(true);
-      const data = await folderService.getFolders(appId, drawerId);
+      const data = await folderService.getFolders(appId, drawerId ? { parent_folder_id: drawerId } : undefined);
       console.log('folders data received', data);
       setFolders(data || []);
     } catch (err: any) {
@@ -251,7 +252,7 @@ const AppFolders: React.FC = () => {
         name: actualFolderName,
         description: newFolderDescription || undefined,
         app_id: appId,
-        drawer_id: selectedDrawer.id
+        parent_folder_id: selectedDrawer.id
       });
 
       // 刷新文件夹列表
@@ -494,11 +495,10 @@ const AppFolders: React.FC = () => {
 
     try {
       setLoading(true);
-      const effectiveAppId = app?.id || appId;
+      // 使用文件夹路径（如果存在）否则使用ID
+      const folderPath = editingFolder.path || editingFolder.id;
       await folderService.updateFolder(
-        effectiveAppId,
-        selectedDrawer.id,
-        editingFolder.id,
+        folderPath,
         {
           name: editFolderName,
           description: editFolderDescription
@@ -544,8 +544,9 @@ const AppFolders: React.FC = () => {
 
     try {
       setLoading(true);
-      const effectiveAppId = app?.id || appId;
-      await folderService.deleteFolder(effectiveAppId, selectedDrawer.id, folderToDelete.id);
+      // 使用文件夹路径（如果存在）否则使用ID
+      const folderPath = folderToDelete.path || folderToDelete.id;
+      await folderService.deleteFolder(folderPath, true); // true表示递归删除
       
       // 刷新文件夹列表
       await fetchFolders(appId, selectedDrawer.id);

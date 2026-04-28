@@ -1,0 +1,94 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyc.backup
+venv/
+*.egg-info/
+dist/
+build/
+
+# Data & Uploads
+**/data/
+*.db
+*.db-shm
+*.db-wal
+*.db.backup*
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.backup*
+.env.local
+.env.*
+
+# Backups
+*.backup*
+*.bak
+*.tmp
+*.tmp1
+*.tmp2
+*.tmp3
+*.tmp4
+*.tmp5
+*.tar.gz
+backups/
+
+# Test/scratch scripts (root level)
+/test_*.py
+/check_*.py
+/query_*.py
+/fix_*.py
+/demo_*.py
+/list_*.py
+/search_*.py
+/migrate_*.py
+/add_*.py
+/create_*.py
+/insert_*.py
+/update_*.py
+/simple_*.py
+/get_*.py
+
+# Node
+node_modules/
+
+# Vite build
+frontend/dist/
+webbot/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.idxscript
+*.old
+*.swp
+*.swo
+
+# OpenClaw workspace files - not part of filebot/webbot project
+/IDENTITY.md
+/MEMORY.md
+/AGENTS.md
+/SOUL.md
+/TOOLS.md
+/HEARTBEAT.md
+/BOOTSTRAP.md
+/memory/
+
+# Workspace scripts and tmp
+/update_heartbeat.py
+/heartbeat_check_*.json
+/.openclaw/
+
+# Python wheel
+wheelhouse/
+*.whl

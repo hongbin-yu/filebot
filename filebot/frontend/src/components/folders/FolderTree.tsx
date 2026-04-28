@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Folder } from '../../services/folder.service';
 import { 
   ChevronRightIcon, 
@@ -12,7 +13,7 @@ import {
 
 interface FolderTreeProps {
   folders: Folder[];
-  currentFolderId: string | null;
+  currentFolderId: string | null; // 当前选中的文件夹标识符（可以是UUID或path）
   onFolderSelect: (folderId: string) => void;
   onDeleteFolder?: (folderId: string) => void;
   onMoveFolder?: (folderId: string, targetParentFolderId?: string) => Promise<void>;
@@ -48,6 +49,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   onDeleteFolder,
   onMoveFolder
 }) => {
+  const { t } = useTranslation();
   // 拖拽状态
   const [dragState, setDragState] = useState<DragState>({
     draggedFolderId: null,
@@ -132,12 +134,13 @@ const FolderTree: React.FC<FolderTreeProps> = ({
     return sortTree(tree);
   };
   
-  // 查找节点
-  const findNode = (nodes: FolderTreeNode[], folderId: string): FolderTreeNode | null => {
+  // 查找节点（支持UUID或path）
+  const findNode = (nodes: FolderTreeNode[], folderIdentifier: string): FolderTreeNode | null => {
     for (const node of nodes) {
-      if (node.id === folderId) return node;
+      // 支持UUID或path作为标识符
+      if (node.id === folderIdentifier || node.path === folderIdentifier) return node;
       if (node.children.length > 0) {
-        const found = findNode(node.children, folderId);
+        const found = findNode(node.children, folderIdentifier);
         if (found) return found;
       }
     }
@@ -201,14 +204,15 @@ const FolderTree: React.FC<FolderTreeProps> = ({
     setTreeNodes(prev => updateNode(prev));
   };
   
-  // 递归展开到某个节点
-  const expandToFolder = (folderId: string, nodes: FolderTreeNode[]): FolderTreeNode[] => {
+  // 递归展开到某个节点（支持UUID或path）
+  const expandToFolder = (folderIdentifier: string, nodes: FolderTreeNode[]): FolderTreeNode[] => {
     return nodes.map(node => {
       let shouldExpand = false;
       
       // 检查是否是目标节点或其祖先
       const findPath = (currentNode: FolderTreeNode): boolean => {
-        if (currentNode.id === folderId) return true;
+        // 支持UUID或path作为标识符
+        if (currentNode.id === folderIdentifier || currentNode.path === folderIdentifier) return true;
         
         for (const child of currentNode.children) {
           if (findPath(child)) return true;
@@ -227,7 +231,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
       
       // 递归更新子节点
       if (node.children.length > 0) {
-        updatedNode.children = expandToFolder(folderId, node.children);
+        updatedNode.children = expandToFolder(folderIdentifier, node.children);
       }
       
       return updatedNode;
@@ -373,10 +377,10 @@ const FolderTree: React.FC<FolderTreeProps> = ({
       }
       
       // 成功提示
-      console.log(`成功移动文件夹 "${draggedNode.name}" 到 "${targetNode.name}"`);
+      console.log(t('folderTree.moveSuccess', { from: draggedNode.name, to: targetNode.name }));
       
     } catch (error) {
-      console.error('移动文件夹失败:', error);
+      console.error(t('folderTree.moveFailed'), error);
       // 可以添加错误提示
     } finally {
       resetDragState();
@@ -400,10 +404,12 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   
   // 渲染树节点
   const renderTreeNode = (node: FolderTreeNode): React.ReactNode => {
-    const isCurrent = node.id === currentFolderId;
+    // 支持UUID或path作为标识符
+    // 支持UUID或path作为标识符
+    const isCurrent = node.id === currentFolderId || node.path === currentFolderId;
     const hasChildren = node.children.length > 0;
-    const isDragged = dragState.draggedFolderId === node.id;
-    const isDropTarget = dropTarget.targetFolderId === node.id;
+    const isDragged = dragState.draggedFolderId === node.id || dragState.draggedFolderId === node.path;
+    const isDropTarget = dropTarget.targetFolderId === node.id || dropTarget.targetFolderId === node.path;
     
     return (
       <div key={node.id} className="relative">
@@ -462,24 +468,22 @@ const FolderTree: React.FC<FolderTreeProps> = ({
             <div className={`font-medium truncate ${isCurrent ? 'text-blue-600' : 'text-gray-800'}`}>
               {node.name}
               {dragState.isDragging && dragState.draggedFolderId === node.id && (
-                <span className="ml-2 text-xs text-gray-500">(拖拽中)</span>
+                <span className="ml-2 text-xs text-gray-500">{t('folderTree.dragging')}</span>
               )}
             </div>
-            {node.description && (
-              <div className="text-xs text-gray-500 truncate">{node.description}</div>
-            )}
+            {/* Description removed as requested */}
           </div>
           
           {/* 文档计数 */}
           <div className="flex-shrink-0 mr-2 text-sm text-gray-500">
-            {node.document_count || 0} 文档
+            {node.document_count || 0} {t('folderTree.documents')}
           </div>
           
           {/* 拖拽手柄（只在可拖拽时显示） */}
           {!node.is_system_folder && (
             <div 
               className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-600 cursor-grab active:cursor-grabbing"
-              title="拖拽移动文件夹"
+              title={t('folderTree.dragToMove')}
               onClick={(e) => e.stopPropagation()}
             >
               <ArrowsUpDownIcon className="w-4 h-4" />
@@ -490,13 +494,17 @@ const FolderTree: React.FC<FolderTreeProps> = ({
           {onDeleteFolder && !node.is_system_folder && (
             <button 
               className="flex-shrink-0 p-1 text-gray-400 hover:text-red-600"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
-                if (window.confirm(`确定要删除文件夹 "${node.name}" 吗？`)) {
+                const nodePathInfo = (node as any).path ? `\n目标路径: ${(node as any).path}` : '';
+                const confirmed = await window.wetYesOrNo(
+                  `${t('folderTree.confirmDelete', { name: node.name })}${nodePathInfo}`
+                );
+                if (confirmed) {
                   onDeleteFolder(node.id);
                 }
               }}
-              title="删除文件夹"
+              title={t('folderTree.deleteFolder')}
             >
               <TrashIcon className="w-4 h-4" />
             </button>
@@ -542,7 +550,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
         <div className="p-2 mb-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
           <div className="flex items-center">
             <ArrowDownOnSquareIcon className="w-4 h-4 mr-2" />
-            <span>拖拽文件夹到目标位置释放以移动</span>
+            <span>{t('folderTree.dragHint')}</span>
           </div>
         </div>
       )}
@@ -550,8 +558,8 @@ const FolderTree: React.FC<FolderTreeProps> = ({
       {treeNodes.length === 0 ? (
         <div className="text-center py-6 text-gray-500">
           <FolderIcon className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-          <p>暂无文件夹</p>
-          <p className="text-sm mt-1">创建第一个文件夹来开始管理文档</p>
+          <p>{t('folderTree.noFolders')}</p>
+          <p className="text-sm mt-1">{t('folderTree.createFirstFolder')}</p>
         </div>
       ) : (
         <div className="space-y-1">

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import aiService, { WebsiteCrawlStatus } from '../../services/ai.service';
 
 const AdminTasks: React.FC = () => {
-  // 状态管理
   const [tasks, setTasks] = useState<WebsiteCrawlStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,17 +10,15 @@ const AdminTasks: React.FC = () => {
 
 
 
-  // 加载初始数据
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        // 从API获取真实的任务列表
         const result = await aiService.getCrawlTasks({ limit: 50 });
         setTasks(result.tasks);
       } catch (err) {
-        console.error('加载任务列表失败:', err);
-        setError('无法加载任务列表。');
+        console.error('Failed to load tasks:', err);
+        setError('Unable to load task list.');
       } finally {
         setLoading(false);
       }
@@ -30,7 +27,7 @@ const AdminTasks: React.FC = () => {
     loadInitialData();
   }, []);
 
-  // 自动刷新进行中的任务
+  // Auto-refresh running tasks
   useEffect(() => {
     const interval = setInterval(() => {
       const runningTasks = tasks.filter(task => 
@@ -45,7 +42,6 @@ const AdminTasks: React.FC = () => {
     return () => clearInterval(interval);
   }, [tasks]);
 
-  // 刷新单个任务状态
   const refreshTaskStatus = async (taskId: string) => {
     try {
       setRefreshingTasks(prev => new Set(prev).add(taskId));
@@ -57,7 +53,7 @@ const AdminTasks: React.FC = () => {
         )
       );
     } catch (err) {
-      console.error(`刷新任务状态失败 ${taskId}:`, err);
+      console.error(`Failed to refresh task status ${taskId}:`, err);
     } finally {
       setRefreshingTasks(prev => {
         const newSet = new Set(prev);
@@ -67,10 +63,9 @@ const AdminTasks: React.FC = () => {
     }
   };
 
-  // 手动添加任务
   const handleAddTask = async () => {
     if (!manualTaskId.trim()) {
-      alert('请输入任务ID');
+      window.showWetAlert('Please enter a task ID');
       return;
     }
 
@@ -87,28 +82,26 @@ const AdminTasks: React.FC = () => {
       });
       setManualTaskId('');
     } catch (err) {
-      console.error('获取任务状态失败:', err);
-      alert(`无法获取任务 ${manualTaskId} 的状态：${err}`);
+      console.error('Failed to get task status:', err);
+      window.showWetAlert(`Cannot get status for task ${manualTaskId}: ${err}`);
     }
   };
 
-  // 刷新所有任务
   const refreshAllTasks = async () => {
     try {
       setLoading(true);
       // 从API获取所有任务
       const result = await aiService.getCrawlTasks({ limit: 50 });
       setTasks(result.tasks);
-      setError(null); // 清除错误状态
+      setError(null);
     } catch (err) {
-      console.error('刷新任务列表失败:', err);
-      setError('刷新失败，请稍后重试。');
+      console.error('Failed to refresh task list:', err);
+      setError('Refresh failed, please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 获取状态颜色
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -121,7 +114,6 @@ const AdminTasks: React.FC = () => {
     }
   };
 
-  // 获取状态图标
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending': return '⏳';
@@ -134,10 +126,9 @@ const AdminTasks: React.FC = () => {
     }
   };
 
-  // 格式化时间
   const formatTime = (timeString: string) => {
     const date = new Date(timeString);
-    return date.toLocaleString('zh-CN', {
+    return date.toLocaleString('en-CA', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -145,7 +136,6 @@ const AdminTasks: React.FC = () => {
     });
   };
 
-  // 计算进度百分比
   const calculateProgress = (task: WebsiteCrawlStatus) => {
     if (task.status === 'completed') return 100;
     if (task.status === 'failed' || task.status === 'cancelled') return 0;
@@ -163,20 +153,20 @@ const AdminTasks: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* 页面标题 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">任务监控</h1>
-          <p className="mt-2 text-gray-600">监控网站爬取和其他后台任务的进度和状态</p>
+          <h1 className="text-3xl font-bold text-gray-900">Task Monitor</h1>
+          <p className="mt-2 text-gray-600">Monitor website crawling and other background task progress and status</p>
         </div>
 
-        {/* 手动添加任务区域 */}
+        {/* Add task section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">手动添加任务</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Add Task</h2>
           <div className="flex gap-4">
             <div className="flex-1">
               <input
                 type="text"
                 value={manualTaskId}
                 onChange={(e) => setManualTaskId(e.target.value)}
-                placeholder="输入任务ID（如：crawl_abc123def456）"
+                placeholder="Enter task ID (e.g., crawl_abc123def456)"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -184,25 +174,25 @@ const AdminTasks: React.FC = () => {
               onClick={handleAddTask}
               className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
-              添加任务
+              Add Task
             </button>
           </div>
           <p className="mt-3 text-sm text-gray-500">
-            提示：任务ID可以在网站爬取后从API响应或日志中获取，格式通常为 "crawl_xxxxxxxxxxxx"
+            Tip: Task ID can be obtained from API response or logs after website crawling, usually in format "crawl_xxxxxxxxxxxx"
           </p>
         </div>
 
         {/* 任务列表区域 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">任务列表</h2>
+            <h2 className="text-xl font-semibold text-gray-800">Task List</h2>
             <div className="flex gap-3">
               <button
                 onClick={refreshAllTasks}
                 disabled={loading}
                 className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? '刷新中...' : '刷新列表'}
+                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -211,7 +201,7 @@ const AdminTasks: React.FC = () => {
           {loading && (
             <div className="p-8 text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="mt-2 text-gray-600">加载任务列表中...</p>
+              <p className="mt-2 text-gray-600">Loading task list...</p>
             </div>
           )}
 
@@ -230,16 +220,16 @@ const AdminTasks: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      任务ID / 状态
+                      Task ID / Status
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      URL / 深度
+                      URL / Depth
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      进度 / 统计
+                      Progress / Stats
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      时间 / 操作
+                      Time / Action
                     </th>
                   </tr>
                 </thead>
@@ -276,7 +266,7 @@ const AdminTasks: React.FC = () => {
                               {task.url}
                             </div>
                             <div className="text-gray-500">
-                              深度: {task.depth}
+                              Depth: {task.depth}
                             </div>
                           </div>
                         </td>
@@ -285,7 +275,7 @@ const AdminTasks: React.FC = () => {
                             {/* 进度条 */}
                             <div>
                               <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                <span>进度</span>
+                                <span>Progress</span>
                                 <span>{progress}%</span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -304,14 +294,14 @@ const AdminTasks: React.FC = () => {
                             {/* 统计信息 */}
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div className="text-gray-600">
-                                页面: <span className="font-medium">{task.pages_crawled} / {task.pages_processed}</span>
+                                Pages: <span className="font-medium">{task.pages_crawled} / {task.pages_processed}</span>
                               </div>
                               <div className="text-gray-600">
-                                图片: <span className="font-medium">{task.images_crawled}</span>
+                                Images: <span className="font-medium">{task.images_crawled}</span>
                               </div>
                               {task.errors.length > 0 && (
                                 <div className="col-span-2 text-red-600">
-                                  错误: <span className="font-medium">{task.errors.length}</span>
+                                  Errors: <span className="font-medium">{task.errors.length}</span>
                                 </div>
                               )}
                             </div>
@@ -320,10 +310,10 @@ const AdminTasks: React.FC = () => {
                         <td className="px-6 py-4">
                           <div className="space-y-2">
                             <div className="text-sm text-gray-900">
-                              开始: {formatTime(task.started_at)}
+                              Start: {formatTime(task.started_at)}
                             </div>
                             <div className="text-sm text-gray-500">
-                              更新: {formatTime(task.updated_at)}
+                              Updated: {formatTime(task.updated_at)}
                             </div>
                             <div className="pt-2">
                               <button
@@ -331,7 +321,7 @@ const AdminTasks: React.FC = () => {
                                 disabled={isRefreshing}
                                 className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                               >
-                                {isRefreshing ? '刷新中...' : '刷新状态'}
+                                {isRefreshing ? 'Refreshing...' : 'Refresh'}
                               </button>
                             </div>
                           </div>
@@ -348,10 +338,10 @@ const AdminTasks: React.FC = () => {
                   <div className="inline-block p-4 bg-gray-100 rounded-full">
                     <span className="text-3xl">📋</span>
                   </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">暂无任务</h3>
-                  <p className="mt-2 text-gray-600">没有找到任何任务记录。</p>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No Tasks</h3>
+                  <p className="mt-2 text-gray-600">No task records found.</p>
                   <p className="mt-1 text-sm text-gray-500">
-                    使用上方的输入框添加任务ID，或执行新的网站爬取任务。
+                    Use the input box above to add a task ID, or execute a new website crawling task.
                   </p>
                 </div>
               )}
@@ -361,35 +351,35 @@ const AdminTasks: React.FC = () => {
           {/* 页脚信息 */}
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
             <div className="text-sm text-gray-600">
-              <p>系统会自动刷新进行中的任务状态（每10秒一次）。</p>
-              <p className="mt-1">状态说明: ⏳ 等待中 | 🌐 爬取中 | ⚙️ 处理中 | ✅ 已完成 | ❌ 失败 | 🚫 已取消</p>
+              <p>Running tasks are automatically refreshed every 10 seconds.</p>
+              <p className="mt-1">Status: ⏳ Waiting | 🌐 Crawling | ⚙️ Processing | ✅ Completed | ❌ Failed | 🚫 Cancelled</p>
             </div>
           </div>
         </div>
 
         {/* 使用说明 */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">如何使用任务监控</h3>
+          <h3 className="text-lg font-semibold text-blue-800 mb-2">How to Use Task Monitor</h3>
           <ul className="space-y-2 text-blue-700">
             <li className="flex items-start">
               <span className="inline-block mr-2">1.</span>
-              <span>当您执行网站爬取时，会获得一个唯一的任务ID</span>
+              <span>When you execute a website crawl, you will receive a unique task ID</span>
             </li>
             <li className="flex items-start">
               <span className="inline-block mr-2">2.</span>
-              <span>将任务ID输入到上方输入框中，即可跟踪任务进度</span>
+              <span>Enter the task ID in the input box above to track task progress</span>
             </li>
             <li className="flex items-start">
               <span className="inline-block mr-2">3.</span>
-              <span>系统会自动刷新进行中任务的状态</span>
+              <span>The system automatically refreshes running task status</span>
             </li>
             <li className="flex items-start">
               <span className="inline-block mr-2">4.</span>
-              <span>点击"刷新状态"按钮可以手动更新单个任务</span>
+              <span>Click "Refresh" button to manually update individual task</span>
             </li>
             <li className="flex items-start">
               <span className="inline-block mr-2">5.</span>
-              <span>已完成的任务会显示绿色，失败的任务会显示红色并有错误信息</span>
+              <span>Completed tasks show green, failed tasks show red with error details</span>
             </li>
           </ul>
         </div>

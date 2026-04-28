@@ -99,7 +99,7 @@ class AIDocumentUpdate(BaseModel):
 class WebsiteCrawlRequest(BaseModel):
     """网站爬取请求"""
     url: str = Field(..., description="要爬取的网站URL")
-    depth: int = Field(1, ge=1, le=5, description="爬取深度（1-5）")
+    depth: int = Field(1, ge=1, le=10, description="爬取深度（1-10）")
     folder_id: str = Field(..., description="目标文件夹ID")
     include_images: bool = Field(True, description="是否包含图像")
     follow_external_links: bool = Field(False, description="是否跟踪外部链接")
@@ -215,5 +215,46 @@ class WebsiteCrawlTaskList(BaseModel):
                 "active": 1,
                 "completed": 1,
                 "failed": 0
+            }
+        }
+
+
+class SitemapImportRequest(BaseModel):
+    """Sitemap 导入请求"""
+    sitemap_url: str = Field(..., description="Sitemap.xml 的 URL")
+    folder_id: str = Field(..., description="目标文件夹ID")
+    include_images: bool = Field(True, description="是否包含图像")
+    depth: int = Field(0, ge=0, le=10, description="递归爬取深度（0=只抓sitemap页，1=抓子链接，2=再往下一层）")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "sitemap_url": "https://www.canada.ca/sitemap.xml",
+                "folder_id": "123e4567-e89b-12d3-a456-426614174000",
+                "include_images": True,
+                "depth": 1
+            }
+        }
+
+
+class SitemapImportResponse(BaseModel):
+    """Sitemap 导入响应"""
+    task_id: str = Field(..., description="任务ID")
+    status: str = Field(..., description="任务状态")
+    sitemap_url: str = Field(..., description="Sitemap URL")
+    depth: int = Field(0, description="递归爬取深度")
+    total_urls: Optional[int] = Field(None, description="Sitemap 中的 URL 总数")
+    started_at: datetime = Field(default_factory=datetime.now, description="开始时间")
+    message: Optional[str] = Field(None, description="状态消息")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "task_id": "sitemap_123e4567",
+                "status": "pending",
+                "sitemap_url": "https://www.canada.ca/sitemap.xml",
+                "total_urls": 4200,
+                "started_at": "2026-04-27T17:00:00Z",
+                "message": "Sitemap 导入任务已开始"
             }
         }

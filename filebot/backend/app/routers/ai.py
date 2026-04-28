@@ -15,10 +15,11 @@ from ..models.crawl_task import CrawlTask
 from ..schemas.ai import (
     AIClassifyRequest, AIClassifyResponse, AICategoryResult,
     WebsiteCrawlRequest, WebsiteCrawlResponse, WebsiteCrawlStatus,
-    WebsiteCrawlTaskList
+    WebsiteCrawlTaskList, SitemapImportRequest, SitemapImportResponse
 )
 from ..ai.ai_classifier import classifier, AICategory
 from ..ai.website_crawler import crawl_website_task
+from ..ai.scrapling_crawler import parse_sitemap_urls
 from ..routers.auth import get_current_active_user
 
 logger = logging.getLogger(__name__)
@@ -421,6 +422,157 @@ def crawl_website_background(
                 db.commit()
         except:
             pass  # 忽略更新错误
+
+
+# ===== Sitemap 导入 =====
+
+def sitemap_import_background(
+    task_id: str,
+    sitemap_url: str,
+    folder_id: str,
+    include_images: bool,
+    max_depth: int = 0,
+    db: Session = None
+):
+    """
+    后台 sitemap 导入任务
+    """
+    from ..models.crawl_task import CrawlTask, CrawlTaskStatus
+    from datetime import datetime
+    from ..ai.scrapling_crawler import ScraplingCrawler
+    
+    logger.info(f"开始 Sitemap 导入: {sitemap_url}, 文件夹ID: {folder_id}")
+    
+    try:
+        # 更新任务状态
+        crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
+        if crawl_task:
+            crawl_task.status = CrawlTaskStatus.CRAWLING
+            crawl_task.current_status = f"Parsing sitemap: {sitemap_url}..."
+            crawl_task.started_at = datetime.now()
+            db.commit()
+        
+        # 读取爬取深度（从 CrawlTask 记录中获取）
+        depth = max_depth
+        if crawl_task:
+            depth = crawl_task.depth if crawl_task.depth is not None else max_depth
+        
+        # 创建爬虫并执行 sitemap 导入
+        crawler = ScraplingCrawler(db, task_id=task_id, use_stealth=False, use_dynamic=False)
+        stats = crawler.crawl_from_sitemap(
+            sitemap_url=sitemap_url,
+            folder_id=folder_id,
+            include_images=include_images,
+            max_depth=depth
+        )
+        
+        # 更新任务状态
+        if crawl_task:
+            crawl_task.status = CrawlTaskStatus.COMPLETED
+            crawl_task.current_status = f"Sitemap import complete: {stats.get('successful_pages', 0)} pages imported"
+            crawl_task.stats = stats
+            crawl_task.pages_crawled = stats.get('total_pages', 0)
+            crawl_task.pages_processed = stats.get('successful_pages', 0)
+            crawl_task.images_crawled = stats.get('total_images', 0)
+            crawl_task.total_pages = stats.get('total_from_sitemap', 0)
+            crawl_task.progress = 100
+            crawl_task.completed_at = datetime.now()
+            logger.info(f"Sitemap 导入完成: {sitemap_url}, 结果: {stats}")
+            db.commit()
+            
+    except Exception as e:
+        logger.error(f"Sitemap 导入失败: {task_id}, 错误: {str(e)}")
+        try:
+            crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
+            if crawl_task:
+                crawl_task.status = CrawlTaskStatus.FAILED
+                crawl_task.current_status = f"Sitemap import failed: {str(e)[:200]}"
+                crawl_task.error_message = str(e)
+                crawl_task.error_traceback = str(e)
+                db.commit()
+        except:
+            pass
+
+
+@router.post("/crawl-from-sitemap", response_model=SitemapImportResponse)
+async def crawl_from_sitemap(
+    request: SitemapImportRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    从 sitemap.xml 导入并爬取网站内容
+    
+    解析 sitemap.xml 获取所有 URL 列表，然后逐个爬取每个页面
+    支持标准 sitemap 和 sitemap index（自动递归解析子 sitemap）
+    """
+    import uuid
+    from datetime import datetime
+    from ..models.folder import Folder
+    from ..models.crawl_task import CrawlTask, CrawlTaskStatus
+    
+    # 验证文件夹
+    folder = db.query(Folder).filter(Folder.id == request.folder_id).first()
+    if not folder:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"文件夹 {request.folder_id} 不存在"
+        )
+    
+    # 先快速解析 sitemap 获取 URL 总数（用于估算）
+    total_urls = None
+    try:
+        urls = parse_sitemap_urls(request.sitemap_url, max_urls=100)
+        total_urls = max(len(urls), 0) if urls else None
+    except:
+        pass
+    
+    # 生成任务 ID
+    task_id = f"sitemap_{uuid.uuid4().hex[:12]}"
+    
+    # 创建爬取任务记录
+    crawl_task = CrawlTask(
+        task_id=task_id,
+        status=CrawlTaskStatus.PENDING,
+        url=request.sitemap_url,
+        depth=request.depth,
+        folder_id=request.folder_id,
+        include_images=1 if request.include_images else 0,
+        follow_external_links=0,
+        respect_robots_txt=1,
+        total_pages=total_urls or 0,
+        started_at=datetime.now(),
+        created_by=current_user.username if current_user else "system",
+        current_status="Sitemap import task created, parsing sitemap..."
+    )
+    
+    db.add(crawl_task)
+    db.commit()
+    db.refresh(crawl_task)
+    
+    logger.info(f"创建 Sitemap 导入任务: {task_id}, URL: {request.sitemap_url}")
+    
+    # 启动后台任务
+    background_tasks.add_task(
+        sitemap_import_background,
+        task_id=task_id,
+        sitemap_url=request.sitemap_url,
+        folder_id=request.folder_id,
+        include_images=request.include_images,
+        max_depth=request.depth,
+        db=db
+    )
+    
+    return SitemapImportResponse(
+        task_id=task_id,
+        status="pending",
+        sitemap_url=request.sitemap_url,
+        total_urls=total_urls,
+        started_at=datetime.now(),
+        message="Sitemap import task started, will run in background"
+    )
+
 
 def estimate_page_count(url: str, depth: int) -> int:
     """预估页面数量（简单实现）"""

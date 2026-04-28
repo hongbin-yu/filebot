@@ -141,6 +141,12 @@ class DocumentResponse(DocumentBase):
     created_at: datetime
     updated_at: Optional[datetime]
     
+    # 路径字段
+    storage_path: Optional[str] = None
+    path: Optional[str] = None  # 公共URL路径（原url_path）
+    folder_path: Optional[str] = None  # 父文件夹路径
+    parent_folder_path: Optional[str] = None  # 与folder_path相同，保持兼容性
+    
     class Config:
         from_attributes = True
 

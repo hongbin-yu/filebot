@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Paper,
@@ -68,6 +69,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
   const [thumbnailSize, setThumbnailSize] = useState<'small' | 'medium' | 'large'>('medium');
   const [previewQuality, setPreviewQuality] = useState<'thumbnail' | 'preview'>('preview');
   const [imageLoading, setImageLoading] = useState<Record<number, boolean>>({});
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchTiffInfo();
@@ -87,7 +89,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
         setCurrentPage(1);
       }
     } catch (err: any) {
-      setError(err.message || '获取TIFF文件信息失败');
+      setError(err.message || t('tiffPreview.getTiffInfoFailed'));
       console.error('Error fetching TIFF info:', err);
     } finally {
       setLoading(false);
@@ -158,7 +160,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
       document.body.removeChild(a);
     } catch (err: any) {
       console.error('Download failed:', err);
-      setError(`下载失败: ${err.message}`);
+      setError(`${t('tiffPreview.downloadFailed')}: ${err.message}`);
     }
   };
 
@@ -208,7 +210,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
           startIcon={<RefreshIcon />}
           sx={{ ml: 2 }}
         >
-          重试
+          {t('tiffPreview.retry')}
         </Button>
       </Alert>
     );
@@ -217,7 +219,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
   if (!tiffInfo) {
     return (
       <Alert severity="warning">
-        未找到TIFF文件信息
+        {t('tiffPreview.fileNotFound')}
       </Alert>
     );
   }
@@ -238,7 +240,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
             }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="subtitle1">
-                页码: {currentPage} / {total_pages}
+                {t('tiffPreview.page')}: {currentPage} / {total_pages}
               </Typography>
               
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -287,7 +289,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
               {/* 缩放控制 */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Tooltip title="缩小">
+                <Tooltip title={t('tiffPreview.zoomOut')}>
                   <IconButton onClick={handleZoomOut} size="small">
                     <ZoomOutIcon />
                   </IconButton>
@@ -295,12 +297,12 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
                 <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'center' }}>
                   {Math.round(zoom * 100)}%
                 </Typography>
-                <Tooltip title="放大">
+                <Tooltip title={t('tiffPreview.zoomIn')}>
                   <IconButton onClick={handleZoomIn} size="small">
                     <ZoomInIcon />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="重置缩放">
+                <Tooltip title={t('tiffPreview.resetZoom')}>
                   <IconButton onClick={handleResetZoom} size="small">
                     <FitScreenIcon />
                   </IconButton>
@@ -315,12 +317,12 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
                 size="small"
               >
                 <ToggleButton value="single">
-                  <Tooltip title="单页视图">
+                  <Tooltip title={t('tiffPreview.singlePageView')}>
                     <ViewListIcon />
                   </Tooltip>
                 </ToggleButton>
                 <ToggleButton value="grid">
-                  <Tooltip title="网格视图">
+                  <Tooltip title={t('tiffPreview.gridView')}>
                     <GridViewIcon />
                   </Tooltip>
                 </ToggleButton>
@@ -328,33 +330,33 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
 
               {/* 缩略图尺寸 */}
               <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel>缩略图尺寸</InputLabel>
+                <InputLabel>{t('tiffPreview.thumbnailSize')}</InputLabel>
                 <Select
                   value={thumbnailSize}
-                  label="缩略图尺寸"
+                  label={t('tiffPreview.thumbnailSize')}
                   onChange={handleThumbnailSizeChange}
                 >
-                  <MenuItem value="small">小</MenuItem>
-                  <MenuItem value="medium">中</MenuItem>
-                  <MenuItem value="large">大</MenuItem>
+                  <MenuItem value="small">{t('tiffPreview.small')}</MenuItem>
+                  <MenuItem value="medium">{t('tiffPreview.medium')}</MenuItem>
+                  <MenuItem value="large">{t('tiffPreview.large')}</MenuItem>
                 </Select>
               </FormControl>
 
               {/* 预览质量 */}
               <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel>预览质量</InputLabel>
+                <InputLabel>{t('tiffPreview.previewQuality')}</InputLabel>
                 <Select
                   value={previewQuality}
-                  label="预览质量"
+                  label={t('tiffPreview.previewQuality')}
                   onChange={handlePreviewQualityChange}
                 >
-                  <MenuItem value="thumbnail">缩略图</MenuItem>
-                  <MenuItem value="preview">高质量</MenuItem>
+                  <MenuItem value="thumbnail">{t('tiffPreview.thumbnail')}</MenuItem>
+                  <MenuItem value="preview">{t('tiffPreview.highQuality')}</MenuItem>
                 </Select>
               </FormControl>
 
               {/* 刷新按钮 */}
-              <Tooltip title="刷新">
+              <Tooltip title={t('tiffPreview.refresh')}>
                 <IconButton onClick={fetchTiffInfo} size="small">
                   <RefreshIcon />
                 </IconButton>
@@ -379,7 +381,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
             
             <img
               src={getImageUrl(currentPage)}
-              alt={`第 ${currentPage} 页`}
+              alt={`Page ${currentPage}`}
               style={{
                 maxWidth: '100%',
                 maxHeight: '600px',
@@ -400,35 +402,35 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
               startIcon={<DownloadIcon />}
               onClick={() => downloadPage(currentPage, 'jpg')}
             >
-              下载JPEG
+              {t('tiffPreview.downloadJPEG')}
             </Button>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
               onClick={() => downloadPage(currentPage, 'pdf')}
             >
-              下载PDF
+              {t('tiffPreview.downloadPDF')}
             </Button>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
               onClick={() => downloadPage(currentPage, 'tiff')}
             >
-              下载TIFF
+              {t('tiffPreview.downloadTIFF')}
             </Button>
             <Button
               variant="contained"
               startIcon={<FullscreenIcon />}
               onClick={() => window.open(getImageUrl(currentPage), '_blank')}
             >
-              全屏查看
+              {t('tiffPreview.fullscreenView')}
             </Button>
           </Box>
         </Paper>
       ) : (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>
-            所有页面 ({total_pages} 页)
+            {t('tiffPreview.allPages', { count: total_pages })}
           </Typography>
           <Divider sx={{ mb: 2 }} />
           
@@ -468,7 +470,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
                     <CardMedia
                       component="img"
                       image={getThumbnailUrl(pageNumber)}
-                      alt={`第 ${pageNumber} 页缩略图`}
+                      alt={`Thumbnail for page ${pageNumber}`}
                       sx={{ 
                         height: 120,
                         objectFit: 'contain',
@@ -480,7 +482,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
                   </Box>
                   <CardContent sx={{ p: 1 }}>
                     <Typography variant="body2" align="center">
-                      第 {pageNumber} 页
+                      {t('tiffPreview.pageNumber', { number: pageNumber })}
                     </Typography>
                     {page_dimensions?.[pageNumber - 1] && (
                       <Typography variant="caption" color="text.secondary" align="center" display="block">
@@ -489,7 +491,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
                     )}
                   </CardContent>
                   <CardActions sx={{ p: 1, justifyContent: 'center' }}>
-                    <Tooltip title="下载">
+                    <Tooltip title={t('tiffPreview.download')}>
                       <IconButton 
                         size="small"
                         onClick={(e) => {
@@ -510,7 +512,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
       {/* 文件信息 */}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>
-          文件信息
+          {t('tiffPreview.fileInfo')}
         </Typography>
         <Divider sx={{ mb: 2 }} />
         
@@ -520,7 +522,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
               xs: 12,
               md: 6
             }}>
-            <Typography variant="body2" color="text.secondary">文件名</Typography>
+            <Typography variant="body2" color="text.secondary">{t('tiffPreview.fileName')}</Typography>
             <Typography variant="body1">{tiffInfo.original_filename}</Typography>
           </Grid>
           <Grid
@@ -528,7 +530,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
               xs: 12,
               md: 6
             }}>
-            <Typography variant="body2" color="text.secondary">总页数</Typography>
+            <Typography variant="body2" color="text.secondary">{t('tiffPreview.totalPages')}</Typography>
             <Typography variant="body1">{tiffInfo.total_pages}</Typography>
           </Grid>
           <Grid
@@ -536,7 +538,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
               xs: 12,
               md: 6
             }}>
-            <Typography variant="body2" color="text.secondary">文件格式</Typography>
+            <Typography variant="body2" color="text.secondary">{t('tiffPreview.fileFormat')}</Typography>
             <Typography variant="body1">{tiffInfo.format}</Typography>
           </Grid>
           <Grid
@@ -544,7 +546,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
               xs: 12,
               md: 6
             }}>
-            <Typography variant="body2" color="text.secondary">文件大小</Typography>
+            <Typography variant="body2" color="text.secondary">{t('tiffPreview.fileSize')}</Typography>
             <Typography variant="body1">
               {(tiffInfo.file_size_bytes / 1024).toFixed(2)} KB
             </Typography>
@@ -554,7 +556,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
               xs: 12,
               md: 6
             }}>
-            <Typography variant="body2" color="text.secondary">MIME类型</Typography>
+            <Typography variant="body2" color="text.secondary">{t('tiffPreview.mimeType')}</Typography>
             <Typography variant="body1">{tiffInfo.mime_type}</Typography>
           </Grid>
           <Grid
@@ -562,7 +564,7 @@ const TiffPreview: React.FC<TiffPreviewProps> = ({ documentId }) => {
               xs: 12,
               md: 6
             }}>
-            <Typography variant="body2" color="text.secondary">文档ID</Typography>
+            <Typography variant="body2" color="text.secondary">{t('tiffPreview.documentId')}</Typography>
             <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
               {tiffInfo.document_id}
             </Typography>

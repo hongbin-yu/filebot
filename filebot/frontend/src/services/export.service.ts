@@ -1,4 +1,5 @@
 import api from './api';
+import i18n from '../i18n';
 
 export interface ExportOptions {
   format?: 'json' | 'csv';
@@ -219,7 +220,7 @@ class ExportService {
    */
   async exportAndDownloadApp(appId: string, appName: string, format: 'json' | 'csv' = 'json'): Promise<void> {
     try {
-      console.log(`📤 开始导出应用数据: ${appName} (${appId})`);
+      console.log(i18n.t('services.exportService.exportingAppData', { appName, appId }));
       
       const data = await this.exportApp(appId, {
         format,
@@ -236,9 +237,9 @@ class ExportService {
         this.downloadJson(data, filename);
       }
       
-      console.log(`✅ 应用数据导出完成: ${filename}`);
+      console.log(i18n.t('services.exportService.appExportCompleted', { filename }));
     } catch (error) {
-      console.error('❌ 应用数据导出失败:', error);
+      console.error(i18n.t('services.exportService.appExportFailed'), error);
       throw error;
     }
   }
@@ -251,7 +252,7 @@ class ExportService {
    */
   async exportAndDownloadFolder(folderId: string, folderName: string, format: 'json' | 'csv' = 'json'): Promise<void> {
     try {
-      console.log(`📤 开始导出文件夹数据: ${folderName} (${folderId})`);
+      console.log(i18n.t('services.exportService.exportingFolderData', { folderName, folderId }));
       
       const data = await this.exportFolder(folderId, {
         format,
@@ -267,9 +268,9 @@ class ExportService {
         this.downloadJson(data, filename);
       }
       
-      console.log(`✅ 文件夹数据导出完成: ${filename}`);
+      console.log(i18n.t('services.exportService.folderExportCompleted', { filename }));
     } catch (error) {
-      console.error('❌ 文件夹数据导出失败:', error);
+      console.error(i18n.t('services.exportService.folderExportFailed'), error);
       throw error;
     }
   }

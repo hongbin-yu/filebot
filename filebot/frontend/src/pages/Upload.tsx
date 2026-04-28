@@ -129,58 +129,36 @@ const Upload: React.FC = () => {
       
       let data: any[] = [];
       if (effectiveAppId) {
-        if (effectiveDrawerSlug) {
-          // 抽屉模式：获取特定抽屉的文件夹
-          console.log(`🔍 抽屉上传模式：正在查找抽屉 "${effectiveDrawerSlug}"`);
-          console.log(`🔍 正在调用 appService.getAppDrawers("${effectiveAppId}")`);
-          const drawers = await appService.getAppDrawers(effectiveAppId);
-          console.log(`📁 获取到抽屉列表 (${drawers.length} 个):`, drawers.map(d => ({ id: d.id, slug: d.slug, name: d.name, app_id: d.app_id })));
-          
-          // 查找匹配的抽屉：先尝试slug匹配，再尝试id匹配
-          const targetDrawer = drawers.find(d => d.slug === effectiveDrawerSlug) || 
-                              drawers.find(d => d.id === effectiveDrawerSlug);
-          
-          if (targetDrawer) {
-            console.log(`✅ 找到目标抽屉:`, { 
-              id: targetDrawer.id, 
-              slug: targetDrawer.slug, 
-              name: targetDrawer.name,
-              app_id: targetDrawer.app_id
-            });
-            // 保存抽屉信息以供显示
-            setDrawerInfo(targetDrawer);
-            
-            // 获取该抽屉下的所有文件夹
-            console.log(`📂 调用 folderService.getFolders(appId="${effectiveAppId}", drawerId="${targetDrawer.id}")`);
-            const drawerFolders = await folderService.getFolders(effectiveAppId, targetDrawer.id);
-            console.log(`📊 获取到抽屉文件夹 (${drawerFolders.length} 个):`, drawerFolders.map(f => ({ id: f.id, name: f.name, description: f.description })));
-            data = drawerFolders;
-            
-            // 如果没有找到文件夹，记录警告
-            if (drawerFolders.length === 0) {
-              console.warn(`⚠️ 抽屉 "${targetDrawer.name}" (${targetDrawer.slug}) 中没有文件夹`);
+        // 抽屉概念已被移除，直接获取应用的文件夹
+        console.log(`📁 直接获取应用 "${effectiveAppId}" 的文件夹（抽屉已弃用）`);
+        
+        // 如果有folderId，尝试获取父文件夹路径
+        let parentFolderPath = null;
+        if (folderId) {
+          try {
+            const currentFolder = await folderService.getFolder(folderId);
+            if (currentFolder) {
+              parentFolderPath = currentFolder.path || currentFolder.id;
+              console.log(`📂 找到当前文件夹路径: ${parentFolderPath}`);
             }
-          } else {
-            console.error(`❌ 未找到抽屉: slug/id="${effectiveDrawerSlug}"，在 ${drawers.length} 个抽屉中未找到匹配项`);
-            console.error(`❌ 可用抽屉 slugs:`, drawers.map(d => d.slug));
-            console.error(`❌ 可用抽屉 IDs:`, drawers.map(d => d.id));
-            setErrors([`Cannot find drawer "${effectiveDrawerSlug}". Please check the drawer name or ID.`]);
+          } catch (e) {
+            console.warn('获取当前文件夹详情失败:', e);
           }
-        } else {
-          // 文件夹模式：获取应用的所有抽屉的所有文件夹
-          console.log(`📁 文件夹上传模式：获取应用 "${effectiveAppId}" 的所有抽屉文件夹`);
-          const drawers = await appService.getAppDrawers(effectiveAppId);
-          if (drawers && drawers.length > 0) {
-            console.log(`📁 获取到 ${drawers.length} 个抽屉，正在获取所有文件夹`);
-            // 获取所有抽屉的文件夹
-            const allFolders = await Promise.all(
-              drawers.map(drawer => folderService.getFolders(effectiveAppId, drawer.id))
-            );
-            data = allFolders.flat();
-            console.log(`📦 获取到总共 ${data.length} 个文件夹`);
-          } else {
-            console.warn(`⚠️ 应用 "${effectiveAppId}" 没有抽屉`);
-          }
+        }
+        
+        // 直接调用folderService.getFolders，传递应用slug和可能的父文件夹路径
+        console.log(`📂 调用 folderService.getFolders(appSlug="${effectiveAppId}", parentFolderPath=${parentFolderPath})`);
+        data = await folderService.getFolders(effectiveAppId, parentFolderPath ? { parent_folder_path: parentFolderPath } : undefined);
+        console.log(`📊 获取到文件夹 (${data.length} 个):`, data.map(f => ({ 
+          id: f.id, 
+          name: f.name, 
+          path: f.path,
+          description: f.description 
+        })));
+        
+        // 如果没有找到文件夹，记录警告
+        if (data.length === 0) {
+          console.warn(`⚠️ 应用 "${effectiveAppId}" 中没有文件夹`);
         }
         
         // 确保当前选中的文件夹在列表中
@@ -188,7 +166,7 @@ const Upload: React.FC = () => {
           try {
             console.log(`🔍 当前folderId "${folderId}" 不在文件夹列表中，尝试获取文件夹详情`);
             // 如果当前文件夹不在列表中，尝试获取该文件夹详情
-            const currentFolder = await folderService.getFolderById(folderId);
+            const currentFolder = await folderService.getFolder(folderId);
             if (currentFolder) {
               console.log(`✅ 找到文件夹详情:`, { id: currentFolder.id, name: currentFolder.name });
               data.unshift(currentFolder);
@@ -381,8 +359,7 @@ const Upload: React.FC = () => {
             file,
             folder_id: actualFolderId || '',
             title: undefined,
-            description: description || undefined,
-            document_type: undefined
+            description: description || undefined
           });
           
           // Update progress
@@ -505,7 +482,7 @@ const Upload: React.FC = () => {
             <>
               <span className="mx-2">›</span>
               <button
-                onClick={() => navigate(`/${effectiveAppId}/folders/${folderId}/documents`)}
+                onClick={() => navigate(`/${effectiveAppId}/folders/${encodeURIComponent(folder?.path || folderId)}/documents`)}
                 className="hover:text-blue-600"
               >
                 Folder Documents
@@ -751,7 +728,7 @@ const Upload: React.FC = () => {
           <button
             onClick={() => {
               if (effectiveAppId && folderId) {
-                navigate(`/${effectiveAppId}/folders/${folderId}/documents`);
+                navigate(`/${effectiveAppId}/folders/${encodeURIComponent(folder?.path || folderId)}/documents`);
               } else {
                 navigate('/');
               }

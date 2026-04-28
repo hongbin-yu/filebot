@@ -36,10 +36,10 @@ const FolderTree: React.FC<FolderTreeProps> = ({
       <div key={node.id} className="select-none">
         <div
           className={`flex items-center py-2 px-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-            currentFolderId === node.id ? 'bg-blue-50 border border-blue-200' : ''
+            (currentFolderId === node.id || currentFolderId === node.path) ? 'bg-blue-50 border border-blue-200' : ''
           }`}
           style={{ paddingLeft: `${level * 20 + 12}px` }}
-          onClick={() => onFolderClick(node.id)}
+          onClick={() => onFolderClick(node.path || node.id)}
         >
           {/* 展开/折叠图标 */}
           {node.children && node.children.length > 0 && (
@@ -144,48 +144,62 @@ const ClientDocuments: React.FC = () => {
         // 获取文件夹树
         const treeData = await folderService.getFolderTree(appData.id);
         // 初始化所有节点为展开状态（可选，根据需求调整）
-        const initializeTree = (nodes: any[]): FolderTreeNode[] => {
+        const initializeTree = (nodes: any[], level: number = 0): FolderTreeNode[] => {
           return nodes.map(node => ({
             ...node,
             expanded: true, // 默认展开所有节点
-            children: node.children ? initializeTree(node.children) : []
+            level: level,
+            children: node.children ? initializeTree(node.children, level + 1) : []
           }));
         };
-        setFolderTree(initializeTree(treeData));
+        setFolderTree(initializeTree(treeData, 0));
         
-        // 获取当前文件夹详情（如果有folderId）
+        // 获取当前文件夹详情（如果有folderId，支持UUID或path）
+        let currentFolderData = folder;
         if (folderId) {
-          const folderData = await folderService.getFolderById(folderId);
-          setFolder(folderData);
+          // 解码可能的URL编码（特别是path包含斜杠的情况）
+          const folderIdentifier = decodeURIComponent(folderId);
+          currentFolderData = await folderService.getFolder(folderIdentifier);
+          setFolder(currentFolderData);
         } else if (treeData.length > 0) {
           // 如果没有folderId，默认选择第一个文件夹
           const firstFolder = findFirstFolder(treeData);
           if (firstFolder) {
+            currentFolderData = firstFolder;
             setFolder(firstFolder);
-            // 更新URL中的folderId（可选）
-            navigate(`/apps/${appSlug}/folders/${firstFolder.id}`, { replace: true });
+            // 更新URL中的folderId（可选），优先使用path
+            const folderIdentifier = getFolderIdentifier(firstFolder);
+            const encodedIdentifier = encodeFolderIdentifier(folderIdentifier);
+            navigate(`/apps/${appSlug}/folders/${encodedIdentifier}`, { replace: true });
             return;
           }
         }
         
         // 获取文件夹文档（带分页）
-        const targetFolderId = folderId || (folder ? folder.id : '');
-        if (targetFolderId) {
-          const documentsData = await documentService.getDocumentsByFolderId(targetFolderId, {
-            skip: (currentPage - 1) * pageSize,
-            limit: pageSize,
-            sort_by: 'created_at',
-            sort_order: 'desc'
-          });
-          setDocuments(documentsData);
-          
-          // 获取文档总数用于分页（需要后端支持总数查询，暂时使用简单分页）
-          // 这里假设返回的数组长度小于limit时表示最后一页
-          if (documentsData.length < pageSize) {
-            setTotalPages(currentPage);
+        const targetFolderIdentifier = folderId || (folder ? getFolderIdentifier(folder) : '');
+        if (targetFolderIdentifier) {
+          // 检查文件夹深度，如果深度>=6，获取所有子孙文档
+          const folderNode = findFolderInTree(folderTree, currentFolderData?.id || '');
+          if (folderNode && folderNode.level !== undefined && folderNode.level >= 6) {
+            console.log(`📁 文件夹深度 ${folderNode.level} >= 6，获取所有子孙文档`);
+            await fetchAllDescendantDocuments(folderNode);
           } else {
-            // 暂时设置为当前页+5，实际应该从API获取总数
-            setTotalPages(currentPage + 5);
+            const documentsData = await documentService.getDocuments(targetFolderIdentifier, {
+              skip: (currentPage - 1) * pageSize,
+              limit: pageSize,
+              sort_by: 'created_at',
+              sort_order: 'desc'
+            });
+            setDocuments(documentsData);
+            
+            // 获取文档总数用于分页（需要后端支持总数查询，暂时使用简单分页）
+            // 这里假设返回的数组长度小于limit时表示最后一页
+            if (documentsData.length < pageSize) {
+              setTotalPages(currentPage);
+            } else {
+              // 暂时设置为当前页+5，实际应该从API获取总数
+              setTotalPages(currentPage + 5);
+            }
           }
         }
         
@@ -205,6 +219,20 @@ const ClientDocuments: React.FC = () => {
     return null;
   };
 
+  // 获取文件夹标识符（优先使用path，其次使用id）
+  const getFolderIdentifier = (folder: any): string => {
+    return folder?.path || folder?.id || '';
+  };
+
+  // 编码文件夹标识符用于URL（对path进行编码）
+  const encodeFolderIdentifier = (identifier: string): string => {
+    // 如果是path（以/开头），进行URI编码
+    if (identifier.startsWith('/')) {
+      return encodeURIComponent(identifier);
+    }
+    return identifier;
+  };
+
   // 递归查找文件夹节点
   const findFolderInTree = (nodes: FolderTreeNode[], folderId: string): FolderTreeNode | null => {
     for (const node of nodes) {
@@ -217,6 +245,61 @@ const ClientDocuments: React.FC = () => {
       }
     }
     return null;
+  };
+
+  // 递归获取文件夹的所有子孙文件夹标识符（路径优先）
+  const getAllDescendantFolderIdentifiers = (node: FolderTreeNode): string[] => {
+    const identifiers: string[] = [];
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        // 使用路径优先的标识符
+        const childIdentifier = getFolderIdentifier(child);
+        identifiers.push(childIdentifier);
+        identifiers.push(...getAllDescendantFolderIdentifiers(child));
+      }
+    }
+    return identifiers;
+  };
+
+  // 获取文件夹及其所有子孙文件夹的文档
+  const fetchAllDescendantDocuments = async (folderNode: FolderTreeNode) => {
+    try {
+      // 获取当前文件夹和所有子孙文件夹的标识符
+      const currentFolderIdentifier = getFolderIdentifier(folderNode);
+      const folderIdentifiers = [currentFolderIdentifier, ...getAllDescendantFolderIdentifiers(folderNode)];
+      console.log(`📁 获取 ${folderIdentifiers.length} 个文件夹的文档（深度 ${folderNode.level}）`);
+      
+      // 为每个文件夹获取文档
+      const allDocuments: any[] = [];
+      for (const folderId of folderIdentifiers) {
+        try {
+          const documents = await documentService.getDocuments(folderId, {
+            skip: (currentPage - 1) * pageSize,
+            limit: pageSize,
+            sort_by: 'created_at',
+            sort_order: 'desc'
+          });
+          allDocuments.push(...documents);
+        } catch (err) {
+          console.error(`获取文件夹 ${folderId} 的文档失败:`, err);
+        }
+      }
+      
+      // 去重（按ID）
+      const uniqueDocuments = allDocuments.filter((doc, index, self) => 
+        index === self.findIndex(d => d.id === doc.id)
+      );
+      
+      console.log(`✅ 共获取 ${uniqueDocuments.length} 个文档`);
+      setDocuments(uniqueDocuments);
+      
+      // 更新分页信息
+      setTotalPages(1);
+      setCurrentPage(1);
+    } catch (err: any) {
+      console.error('获取子孙文档失败:', err);
+      setDocuments([]);
+    }
   };
 
   // 更新树节点的展开状态
@@ -233,8 +316,9 @@ const ClientDocuments: React.FC = () => {
   };
 
   // 处理文件夹点击
-  const handleFolderClick = (folderId: string) => {
-    navigate(`/apps/${appSlug}/folders/${folderId}`);
+  const handleFolderClick = (folderIdentifier: string) => {
+    const encodedIdentifier = encodeFolderIdentifier(folderIdentifier);
+    navigate(`/apps/${appSlug}/folders/${encodedIdentifier}`);
   };
 
   // 处理树节点展开/折叠
@@ -269,26 +353,27 @@ const ClientDocuments: React.FC = () => {
       console.log('文档下载完成:', filename);
     } catch (err: any) {
       console.error('下载失败:', err);
-      alert(`下载失败: ${err.message || '未知错误'}`);
+      window.showWetAlert(`下载失败: ${err.message || '未知错误'}`);
     }
   };
 
   // 处理文档预览
-  const handlePreview = (documentId: string) => {
-    // 在新标签页中打开文档详情页面
-    window.open(`/documents/${documentId}`, '_blank');
+  const handlePreview = (doc: any) => {
+    const docPath = doc.path || doc.storage_path || doc.id;
+    window.open(`/documents/${docPath.replace(/^\//, '')}`, '_blank');
   };
 
   // 处理文件上传
   const handleFileUpload = async (files: FileList) => {
     if (!folderId && !folder?.id) {
-      alert('请先选择一个文件夹');
+      window.showWetAlert('请先选择一个文件夹');
       return;
     }
 
-    const targetFolderId = folderId || folder?.id;
-    if (!targetFolderId) {
-      alert('无法确定目标文件夹');
+    // 获取文件夹标识符（路径优先）
+    const targetFolderIdentifier = folderId || (folder ? getFolderIdentifier(folder) : '');
+    if (!targetFolderIdentifier) {
+      window.showWetAlert('无法确定目标文件夹');
       return;
     }
 
@@ -297,12 +382,21 @@ const ClientDocuments: React.FC = () => {
 
     const uploadPromises = Array.from(files).map(async (file, index) => {
       try {
-        const uploadRequest = {
+        // 构建上传请求，优先使用folder_path
+        const uploadRequest: any = {
           file,
-          folder_id: targetFolderId,
           title: file.name.replace(/\.[^/.]+$/, ""), // 移除扩展名作为标题
           description: `Uploaded on ${new Date().toLocaleDateString()}`
         };
+        
+        // 路径优先：如果是路径，使用folder_path；否则使用folder_id（向后兼容）
+        if (targetFolderIdentifier.startsWith('/')) {
+          uploadRequest.folder_path = targetFolderIdentifier;
+          console.log('🔍 [DEBUG] ClientDocuments upload: using folder_path:', targetFolderIdentifier);
+        } else {
+          uploadRequest.folder_id = targetFolderIdentifier;
+          console.warn('⚠️ ClientDocuments upload: using deprecated folder_id:', targetFolderIdentifier);
+        }
 
         // 模拟上传进度（实际API可能不支持进度事件）
         const progressInterval = setInterval(() => {
@@ -335,10 +429,10 @@ const ClientDocuments: React.FC = () => {
       fetchData();
       
       const successCount = results.filter(r => r !== null).length;
-      alert(`上传完成！成功: ${successCount} 个文件, 失败: ${files.length - successCount} 个文件`);
+      window.showWetAlert(`上传完成！成功: ${successCount} 个文件, 失败: ${files.length - successCount} 个文件`);
     } catch (error) {
       console.error('上传过程中出错:', error);
-      alert('上传过程中出现错误');
+      window.showWetAlert('上传过程中出现错误');
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -440,7 +534,7 @@ const ClientDocuments: React.FC = () => {
     }
     
     if (!folderId) {
-      alert('文件夹ID缺失，无法搜索');
+      window.showWetAlert('文件夹ID缺失，无法搜索');
       return;
     }
     
@@ -454,7 +548,7 @@ const ClientDocuments: React.FC = () => {
       setSearchResults(results);
     } catch (error) {
       console.error('搜索失败:', error);
-      alert('搜索失败，请稍后重试');
+      window.showWetAlert('搜索失败，请稍后重试');
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -538,7 +632,7 @@ const ClientDocuments: React.FC = () => {
                   <div className="p-4 max-h-[600px] overflow-y-auto">
                     <FolderTree 
                       folders={folderTree}
-                      currentFolderId={folderId || folder?.id}
+                      currentFolderId={folderId ? decodeURIComponent(folderId) : (folder ? getFolderIdentifier(folder) : undefined)}
                       onFolderClick={handleFolderClick}
                       onToggleExpand={handleToggleExpand}
                     />
@@ -860,13 +954,13 @@ const ClientDocuments: React.FC = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-2">
                                 <button 
-                                  onClick={() => handleDownload(doc.id, doc.original_filename)}
+                                  onClick={() => handleDownload(doc.path || doc.storage_path || doc.id, doc.original_filename)}
                                   className="text-blue-600 hover:text-blue-900 px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
                                 >
                                   下载
                                 </button>
                                 <button 
-                                  onClick={() => handlePreview(doc.id)}
+                                  onClick={() => handlePreview(doc)}
                                   className="text-gray-600 hover:text-gray-900 px-3 py-1 bg-gray-50 hover:bg-gray-100 rounded text-sm"
                                 >
                                   预览

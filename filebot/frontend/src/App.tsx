@@ -15,12 +15,16 @@ import AdminDocuments from './pages/admin/AdminDocuments';
 import AdminUpload from './pages/admin/AdminUpload';
 import AdminTasks from './pages/admin/AdminTasks';
 import DocumentDetail from './pages/DocumentDetail';
+import AdminPathView from './pages/admin/AdminPathView';
+import PathDocumentView from './pages/PathDocumentView';
 
 // 导入Client组件（暂时使用占位符）
 import ClientAppSelection from './pages/ClientAppSelection';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientDocuments from './pages/ClientDocuments';
 import ClientDocumentDetail from './pages/ClientDocumentDetail';
+import ClientNavigation from './pages/ClientNavigation';
+import ClientLayout from './components/layout/ClientLayout';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -95,35 +99,60 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
+          {/* ==================== 路径式文档预览（Board文档） ==================== */}
+          {/* URL示例: /boarding/canadasite/en/employment-social-development.html */}
+          <Route path="/boarding/*" element={<PathDocumentView />} />
+          
           {/* ==================== Client公共门户路由 ==================== */}
           {/* Client登录 */}
-          <Route path="/client/login" element={<ClientLogin />} />
+          <Route path="/client/login" element={
+            <ClientLayout>
+              <ClientLogin />
+            </ClientLayout>
+          } />
           
           {/* Client应用选择（公共门户入口） */}
           <Route path="/apps" element={
             <ClientProtectedRoute>
-              <ClientAppSelection />
+              <ClientLayout>
+                <ClientAppSelection />
+              </ClientLayout>
             </ClientProtectedRoute>
           } />
           
           {/* Client应用详情（显示应用下的文件夹） */}
           <Route path="/apps/:appSlug" element={
             <ClientProtectedRoute>
-              <ClientDashboard />
+              <ClientLayout>
+                <ClientDashboard />
+              </ClientLayout>
+            </ClientProtectedRoute>
+          } />
+          
+          {/* Client导航页面（侧边栏应用列表 + 缩略图网格） */}
+          <Route path="/apps/:appSlug/navigation" element={
+            <ClientProtectedRoute>
+              <ClientLayout>
+                <ClientNavigation />
+              </ClientLayout>
             </ClientProtectedRoute>
           } />
           
           {/* Client文件夹文档列表 */}
           <Route path="/apps/:appSlug/folders/:folderId/documents" element={
             <ClientProtectedRoute>
-              <ClientDocuments />
+              <ClientLayout>
+                <ClientDocuments />
+              </ClientLayout>
             </ClientProtectedRoute>
           } />
           
           {/* Client文档详情 */}
-          <Route path="/documents/:id" element={
+          <Route path="/documents/*" element={
             <ClientProtectedRoute>
-              <ClientDocumentDetail />
+              <ClientLayout>
+                <ClientDocumentDetail />
+              </ClientLayout>
             </ClientProtectedRoute>
           } />
           
@@ -146,14 +175,19 @@ function App() {
             {/* Admin文件夹文档列表 */}
             <Route path="apps/:appSlug/folders/:folderId/documents" element={<AdminDocuments />} />
             
-            {/* Admin文档上传 */}
+            {/* Admin文档上传 - 新路由使用查询参数传递文件夹路径 */}
+            <Route path="apps/:appSlug/upload" element={<AdminUpload />} />
+            {/* Admin文档上传 - 旧路由保留兼容 */}
             <Route path="apps/:appSlug/folders/:folderId/upload" element={<AdminUpload />} />
             
             {/* Admin任务监控 */}
             <Route path="tasks" element={<AdminTasks />} />
             
-            {/* Admin文档详情 */}
-            <Route path="documents/:id" element={<DocumentDetail />} />
+            {/* Admin路径视图（新URL模式：/admin/{app}/{path}） */}
+            <Route path=":appSlug/*" element={<AdminPathView />} />
+            
+            {/* Admin文档详情 - 支持path和UUID */}
+            <Route path="documents/*" element={<DocumentDetail />} />
             
             {/* 旧路由重定向 */}
             <Route path="*" element={<Navigate to="/admin/apps" />} />

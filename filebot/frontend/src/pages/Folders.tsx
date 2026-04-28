@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import folderService, { Folder, FolderTreeItem } from '../services/folder.service';
-import appService from '../services/app.service';
-
-interface App {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-interface Drawer {
-  id: string;
-  name: string;
-  description?: string;
-}
+import appService, { App } from '../services/app.service';
 
 const Folders: React.FC = () => {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -20,9 +8,7 @@ const Folders: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
-  const [selectedDrawer, setSelectedDrawer] = useState<Drawer | null>(null);
   const [apps, setApps] = useState<App[]>([]);
-  const [drawers, setDrawers] = useState<Drawer[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDescription, setNewFolderDescription] = useState('');
@@ -35,21 +21,12 @@ const Folders: React.FC = () => {
 
   useEffect(() => {
     if (selectedApp) {
-      fetchDrawers(selectedApp.id);
-    } else {
-      setDrawers([]);
-      setSelectedDrawer(null);
-    }
-  }, [selectedApp]);
-
-  useEffect(() => {
-    if (selectedApp && selectedDrawer) {
-      fetchFolders(selectedApp.id, selectedDrawer.id);
+      fetchFolders(selectedApp.slug || selectedApp.id);
     } else {
       setFolders([]);
       setFolderTree([]);
     }
-  }, [selectedApp, selectedDrawer]);
+  }, [selectedApp]);
 
   const fetchApps = async (retryCount = 0) => {
     try {
@@ -88,37 +65,16 @@ const Folders: React.FC = () => {
     }
   };
 
-  const fetchDrawers = async (appId: string, retryCount = 0) => {
-    try {
-      setLoading(true);
-      const data = await appService.getAppDrawers(appId);
-      setDrawers(data || []);
-      if (data && data.length > 0) {
-        setSelectedDrawer(data[0]);
-      } else {
-        setSelectedDrawer(null);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch drawers:', err);
-      
-      // 如果是认证错误（401）且还可以重试，等待后重试一次
-      if (err.response?.status === 401 && retryCount < 1) {
-        console.log('Authentication error in fetchDrawers, retrying after 500ms...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return fetchDrawers(appId, retryCount + 1);
-      }
-      
-      setError('Failed to load drawers. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const fetchFolders = async (appId: string, drawerId: string, retryCount = 0) => {
+
+  const fetchFolders = async (appSlug: string, retryCount = 0) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await folderService.getFolders(appId, drawerId);
+      // 使用应用slug获取文件夹，默认获取应用根目录下的文件夹
+      const data = await folderService.getFolders(appSlug, { 
+        parent_folder_path: `/${appSlug}` 
+      });
       setFolders(data || []);
       // 构建简单的树形结构（这里简化处理，实际应该使用后端返回的树形结构）
       const treeData = buildFolderTree(data || []);
@@ -130,7 +86,7 @@ const Folders: React.FC = () => {
       if (err.response?.status === 401 && retryCount < 1) {
         console.log('Authentication error in fetchFolders, retrying after 500ms...');
         await new Promise(resolve => setTimeout(resolve, 500));
-        return fetchFolders(appId, drawerId, retryCount + 1);
+        return fetchFolders(appSlug, retryCount + 1);
       }
       
       setError('Failed to load folders. Please try again.');
@@ -193,12 +149,12 @@ const Folders: React.FC = () => {
         name: newFolderName,
         description: newFolderDescription || undefined,
         parent_folder_id: parentFolderId,
-        app_id: selectedApp.id
+        app_id: selectedApp.slug || selectedApp.id
       });
 
       // 刷新文件夹列表
-      if (selectedApp && selectedDrawer) {
-        await fetchFolders(selectedApp.id, selectedDrawer.id);
+      if (selectedApp) {
+        await fetchFolders(selectedApp.slug || selectedApp.id);
       }
 
       // 重置表单
@@ -219,17 +175,28 @@ const Folders: React.FC = () => {
   };
 
   const handleDeleteFolder = async (folderId: string) => {
-    if (!window.confirm('Are you sure you want to delete this folder? All subfolders and documents will be deleted.')) {
+    // 先查找文件夹信息，以便显示路径
+    const folderToDelete = folders.find(f => f.id === folderId);
+    const folderPathStr = folderToDelete?.path ? `\n目标路径: ${folderToDelete.path}` : '';
+    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete this folder? All subfolders and documents will be deleted.${folderPathStr}`);
+    if (!confirmed) {
       return;
     }
 
     try {
       setLoading(true);
-      await folderService.deleteFolder(folderId);
+      
+      if (!folderToDelete) {
+        throw new Error('找不到要删除的文件夹');
+      }
+      
+      // 使用文件夹路径进行删除（如果存在路径，否则使用ID）
+      const folderPath = folderToDelete.path || folderToDelete.id;
+      await folderService.deleteFolder(folderPath, true);
       
       // 刷新文件夹列表
-      if (selectedApp && selectedDrawer) {
-        await fetchFolders(selectedApp.id, selectedDrawer.id);
+      if (selectedApp) {
+        await fetchFolders(selectedApp.slug || selectedApp.id);
       }
       setError(null);
     } catch (err) {
@@ -354,10 +321,10 @@ const Folders: React.FC = () => {
           </div>
         )}
 
-        {/* App and Drawer Selection */}
+        {/* App Selection */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Select Application & Drawer</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Select Application</h2>
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Application
@@ -377,32 +344,6 @@ const Folders: React.FC = () => {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Drawer
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={selectedDrawer?.id || ''}
-                onChange={(e) => {
-                  const drawer = drawers.find(d => d.id === e.target.value);
-                  setSelectedDrawer(drawer || null);
-                }}
-                disabled={!selectedApp || drawers.length === 0}
-              >
-                <option value="">Select a drawer</option>
-                {drawers.map(drawer => (
-                  <option key={drawer.id} value={drawer.id}>
-                    {drawer.name} {drawer.description && `- ${drawer.description}`}
-                  </option>
-                ))}
-              </select>
-              {selectedApp && drawers.length === 0 && (
-                <p className="mt-2 text-sm text-yellow-600">
-                  No drawers found for this application. Please create a drawer first.
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -497,13 +438,13 @@ const Folders: React.FC = () => {
             </div>
           ) : folders.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              {selectedApp && selectedDrawer ? (
+              {selectedApp ? (
                 <>
-                  <p className="text-lg">No folders found for this drawer.</p>
+                  <p className="text-lg">No folders found for this application.</p>
                   <p className="mt-2">Click "New Folder" to create your first folder.</p>
                 </>
               ) : (
-                <p className="text-lg">Please select an application and drawer to view folders.</p>
+                <p className="text-lg">Please select an application to view folders.</p>
               )}
             </div>
           ) : (

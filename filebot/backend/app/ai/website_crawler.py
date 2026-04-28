@@ -1,6 +1,6 @@
 """
-网站爬取服务
-爬取网站内容并导入为文档
+Website crawling service
+Crawl website content and import as documents
 """
 
 import logging
@@ -12,6 +12,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from sqlalchemy.orm import Session
+import email.utils  # 用于解析HTTP日期格式
 
 from ..models.document import Document, DocumentType, DocumentStatus, FileType, ConversionStatus
 from ..models.folder import Folder
@@ -20,11 +21,15 @@ import os
 import hashlib
 from pathlib import Path
 
+# Scrapling爬虫导入
+from .scrapling_crawler import ScraplingCrawler
+
 def create_document(db: Session, document_data: DocumentCreate, folder_id: str, html_content: str = None) -> Document:
     """
     创建文档记录并保存文件内容
     
     实际实现：保存文件到文件系统并创建数据库记录
+    现在支持纯path架构: {app_slug}/{folder_path}/{safe_filename}
     """
     logger = logging.getLogger(__name__)
     
@@ -40,21 +45,113 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
             logger.error(f"文件夹不存在: {folder_id}")
             raise ValueError(f"文件夹 {folder_id} 不存在")
         
-        # 创建基于文件夹ID的文档存储目录
+        # 获取应用信息（用于纯path架构）
+        from ..models.app import App
+        from ..core.path_utils import generate_storage_paths, make_filename_safe
+        from ..core.config import settings
+        
+        app = db.query(App).filter(App.id == folder.app_id).first()
+        if not app:
+            logger.error(f"应用不存在: {folder.app_id}")
+            raise ValueError(f"应用 {folder.app_id} 不存在")
+        
+        # 使用纯path架构生成存储路径
+        app_slug = app.slug or to_slug(app.name)
+        folder_path = folder.path if folder.path else f"/{folder.name}"
+        original_filename = document_data.original_filename or f"{file_id}.{document_data.file_type.value}"
+        safe_filename = make_filename_safe(original_filename)
+        data_root = Path(settings.DATA_ROOT)
+        
+        # ====== PATH-BASED DEDUP: Check DB before filesystem numbering ======
+        # Compute the expected URL path without generate_unique_filename's -N suffix
+        clean_folder = folder_path
+        if clean_folder.startswith(f'/{app_slug}'):
+            clean_folder = clean_folder[len(app_slug)+1:]
+            if clean_folder and not clean_folder.startswith('/'):
+                clean_folder = '/' + clean_folder
+        expected_url_path = f"/{app_slug}{clean_folder}/{safe_filename}"
+        
+        existing_by_path = db.query(Document).filter(
+            Document.path == expected_url_path
+        ).first()
+        
+        if existing_by_path:
+            logger.info(f"Found document with same path, updating instead of creating numbered file: path={expected_url_path}, id={existing_by_path.id}")
+            # Reuse existing document's storage info
+            final_filename = existing_by_path.stored_filename or safe_filename
+            url_path = existing_by_path.path
+            
+            if existing_by_path.storage_path:
+                storage_path = data_root / existing_by_path.storage_path
+            else:
+                storage_path = data_root / f"{app_slug}{clean_folder}/{final_filename}"
+            
+            # Ensure directory exists and write content
+            storage_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Update existing document metadata (content will be written later by caller)
+            existing_by_path.original_filename = original_filename
+            existing_by_path.stored_filename = final_filename
+            existing_by_path.storage_path = str(storage_path.relative_to(data_root))
+            existing_by_path.path = url_path
+            existing_by_path.parent_folder_path = folder_path
+            existing_by_path.document_metadata = document_data.document_metadata or {}
+            existing_by_path.updated_at = func.now()
+            if document_data.uploaded_by:
+                existing_by_path.updated_by = str(document_data.uploaded_by)
+            
+            db.commit()
+            db.refresh(existing_by_path)
+            logger.info(f"Updated document by path: ID={existing_by_path.id}, path={url_path}")
+            return existing_by_path
+        
+        # ====== Check for orphaned files on filesystem (no DB record but file exists) ======
+        expected_storage_path = data_root / f"{app_slug}{clean_folder}" / safe_filename
+        if expected_storage_path.exists():
+            logger.info(f"Found orphaned file at {expected_storage_path}, will reuse path instead of creating numbered version")
+            storage_path = expected_storage_path
+            url_path = expected_url_path
+            final_filename = safe_filename
+        else:
+            # ====== No collision: create with normal filesystem dedup ======
+            storage_path, url_path, final_filename = generate_storage_paths(
+                original_filename=original_filename,
+                app_slug=app_slug,
+                folder_path=folder_path,
+                data_root=data_root
+            )
+        
+        # 确保目录存在
+        storage_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 旧路径兼容（向后兼容）
         # 格式: data/documents/{folder_id}/
         docs_dir = Path("data/documents") / folder_id
         docs_dir.mkdir(parents=True, exist_ok=True)
         
-        # 构建文件路径 - 使用original_filename作为基础
-        file_name = document_data.original_filename or f"{file_id}.{document_data.file_type.value}"
-        file_path = docs_dir / file_name
+        # 构建文件路径 - 使用safe_filename（纯path架构）
+        file_name = final_filename  # 使用生成的安全文件名
+        file_path = storage_path  # 使用纯path架构的存储路径
         
-        # 检查是否已存在相同存储文件名的文档（防止重复）
-        stored_filename = f"{folder_id}/{file_name}"
-        existing_doc = db.query(Document).filter(Document.stored_filename == stored_filename).first()
+        # 检查是否已存在相同存储路径的文档（防止重复）
+        existing_doc = db.query(Document).filter(
+            (Document.storage_path == str(storage_path.relative_to(data_root))) |
+            (Document.stored_filename == final_filename)
+        ).first()
         if existing_doc:
-            logger.warning(f"文档已存在，跳过创建: stored_filename='{stored_filename}', 现有ID={existing_doc.id}")
+            logger.warning(f"文档已存在，跳过创建: storage_path='{storage_path}', 现有ID={existing_doc.id}")
             return existing_doc
+        
+        # 同时创建旧路径兼容文件（可选，用于向后兼容）
+        # 如果需要，可以在这里复制文件到旧路径
+        old_file_path = docs_dir / file_name
+        if not old_file_path.exists() and file_path.exists():
+            try:
+                import shutil
+                shutil.copy2(file_path, old_file_path)
+                logger.debug(f"创建向后兼容文件: {old_file_path}")
+            except Exception as e:
+                logger.warning(f"创建向后兼容文件失败: {e}")
         
         # 对于HTML文档，保存实际内容或创建占位符
         logger.debug(f"create_document: 文件类型: {document_data.file_type}, 路径: {file_path}")
@@ -105,10 +202,10 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
 </head>
 <body>
     <h1>{document_data.title}</h1>
-    <p>原始URL: <a href="{document_data.original_url}">{document_data.original_url}</a></p>
+    <p>Original URL: <a href="{document_data.original_url}">{document_data.original_url}</a></p>
     <hr>
     <pre>{metadata_content[:5000]}</pre>
-    <p><i>注意：此文件只包含提取的文本内容，原始HTML未保存。</i></p>
+    <p><i>Note: This file contains extracted text content only. Original HTML was not saved.</i></p>
 </body>
 </html>"""
                     content_to_write = wrapped_html
@@ -160,12 +257,12 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
 </head>
 <body>
     <h1>{document_data.title}</h1>
-    <p>从 <a href="{document_data.original_url}">{document_data.original_url}</a> 爬取的网页</p>
-    <p>爬取时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}</p>
+    <p>Crawled from <a href="{document_data.original_url}">{document_data.original_url}</a></p>
+    <p>Crawl time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}</p>
     <hr>
     <div>
-        <p>原始内容未在此文件中保存。实际内容应爬取时获取并保存。</p>
-        <p>此文件为占位符，用于演示文档创建流程。</p>
+        <p>Original content was not saved in this file. Content should be obtained during crawling.</p>
+        <p>This file is a placeholder for document creation workflow.</p>
     </div>
 </body>
 </html>"""
@@ -209,14 +306,17 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
         if document_data.document_metadata:
             original_url = document_data.document_metadata.get('url') or document_data.document_metadata.get('original_url')
         
-        # 创建数据库记录
+        # 创建数据库记录（使用纯path架构）
         logger.debug(f"file_type: {document_data.file_type}, type: {type(document_data.file_type)}")
         document = Document(
             id=file_id,
             title=document_data.title,
             description=document_data.description,
             original_filename=document_data.original_filename,
-            stored_filename=f"{folder_id}/{file_name}",
+            stored_filename=safe_filename,  # 只存储安全文件名，不包含路径
+            storage_path=str(storage_path.relative_to(data_root)),  # 相对存储路径
+            path=url_path,  # 公共URL路径
+            parent_folder_path=folder_path,  # 父文件夹路径
             file_type=FileType(document_data.file_type.value),
             file_size=actual_size,
             mime_type=document_data.mime_type,
@@ -365,6 +465,12 @@ def get_folder_for_url(db: Session, root_folder_id: str, url: str, username: str
             # 空路径，返回根文件夹
             return root_folder_id
         
+        # 限制最大层数为10层，防止嵌套过深
+        MAX_DEPTH = 10
+        if len(path_segments) > MAX_DEPTH:
+            logger.warning(f"URL路径段({len(path_segments)})超过最大限制({MAX_DEPTH})，截断后: {path_segments[:MAX_DEPTH]}")
+            path_segments = path_segments[:MAX_DEPTH]
+        
         logger.info(f"URL路径解析: {url} -> 路径段: {path_segments}")
         
         # 从根文件夹开始，逐级创建或获取子文件夹
@@ -399,7 +505,7 @@ def get_folder_for_url(db: Session, root_folder_id: str, url: str, username: str
             
             # 生成文件夹描述
             full_path = '/' + '/'.join(path_segments[:i+1])
-            description = f"从网站爬取自动创建的文件夹，对应路径: {full_path}"
+            description = f"Auto-created folder for crawled website path: {full_path}"
             
             # 创建文件夹记录
             new_folder = Folder(
@@ -529,7 +635,7 @@ class WebsiteCrawler:
         # 更新任务状态为爬取中
         self._update_task_status(
             status="crawling",
-            current_status=f"开始爬取网站: {url}",
+            current_status=f"Starting crawl: {url}",
             current_url=url
         )
         
@@ -538,6 +644,7 @@ class WebsiteCrawler:
             'total_pages': 0,
             'successful_pages': 0,
             'failed_pages': 0,
+            'skipped_pages': 0,  # 新增：跳过的页面数（未修改）
             'total_images': 0,
             'downloaded_images': 0,
             'failed_images': 0,
@@ -574,7 +681,7 @@ class WebsiteCrawler:
             # 更新任务状态为失败
             self._update_task_status(
                 status="failed",
-                current_status=f"爬取失败: {str(e)[:100]}",
+                current_status=f"Crawl failed: {str(e)[:100]}",
                 stats=stats
             )
             raise
@@ -586,7 +693,7 @@ class WebsiteCrawler:
         # 更新最终状态
         self._update_task_status(
             status="completed",
-            current_status=f"爬取完成: {stats['total_pages']}页, 成功{stats['successful_pages']}页",
+            current_status=f"Crawl complete: {stats['total_pages']} pages, {stats['successful_pages']} successful",
             pages_crawled=stats['total_pages'],
             pages_processed=stats['successful_pages'],
             images_crawled=stats['total_images'],
@@ -625,7 +732,7 @@ class WebsiteCrawler:
         # 更新任务状态（每10个页面更新一次，避免过多数据库操作）
         if stats['total_pages'] % 10 == 0:
             self._update_task_status(
-                current_status=f"正在爬取: {url[:100]}...",
+                current_status=f"Crawling: {url[:100]}...",
                 current_url=url,
                 pages_crawled=stats['total_pages'],
                 pages_processed=stats['successful_pages'],
@@ -633,9 +740,93 @@ class WebsiteCrawler:
             )
         
         try:
+            # 检查是否有相同URL的现有文档
+            existing_doc = None
+            last_modified_from_db = None
+            
+            # 查询具有相同URL的现有文档（URL存储在document_metadata['url']中）
+            # 使用更高效的查询：查找document_metadata中包含指定URL的文档
+            from ..models.document import Document
+            from sqlalchemy import func
+            
+            # 方法1：使用JSON_EXTRACT（SQLite）或直接查询JSON字段
+            try:
+                # 尝试使用JSON查询
+                existing_doc = self.db.query(Document).filter(
+                    Document.document_metadata['url'].astext == url
+                ).first()
+            except Exception as e:
+                logger.warning(f"JSON查询失败，使用全表扫描: {e}")
+                # 回退到全表扫描
+                all_docs = self.db.query(Document).all()
+                for doc in all_docs:
+                    if doc.document_metadata and 'url' in doc.document_metadata:
+                        if doc.document_metadata['url'] == url:
+                            existing_doc = doc
+                            break
+            
+            if existing_doc:
+                # 获取存储的last_modified时间戳
+                if existing_doc.document_metadata and 'last_modified' in existing_doc.document_metadata:
+                    last_modified_from_db = existing_doc.document_metadata['last_modified']
+            
+            # 准备请求头
+            headers = {}
+            if last_modified_from_db:
+                # 将存储的时间戳转换为HTTP日期格式
+                # 假设last_modified_from_db是字符串格式的时间戳
+                try:
+                    # 如果是unix时间戳，转换为datetime
+                    if isinstance(last_modified_from_db, (int, float)):
+                        import datetime
+                        dt = datetime.datetime.fromtimestamp(last_modified_from_db, tz=datetime.timezone.utc)
+                        headers['If-Modified-Since'] = email.utils.format_datetime(dt, usegmt=True)
+                    elif isinstance(last_modified_from_db, str):
+                        # 假设已经是HTTP日期格式
+                        headers['If-Modified-Since'] = last_modified_from_db
+                except Exception as e:
+                    logger.warning(f"无法解析last_modified时间戳: {last_modified_from_db}, 错误: {e}")
+            
             # 获取页面
-            response = self.session.get(url, timeout=10)
+            response = self.session.get(url, timeout=10, headers=headers)
             response.raise_for_status()
+            
+            # 检查是否为304 Not Modified（内容未修改）
+            if response.status_code == 304:
+                logger.info(f"页面未修改，跳过: {url}")
+                stats['skipped_pages'] = stats.get('skipped_pages', 0) + 1
+                stats['urls'].append({
+                    'url': url,
+                    'title': existing_doc.title if existing_doc else 'Unknown',
+                    'status': 'skipped_not_modified',
+                    'document_id': existing_doc.id if existing_doc else None
+                })
+                return
+            
+            # 获取当前页面的Last-Modified头
+            last_modified_header = response.headers.get('Last-Modified')
+            current_last_modified = None
+            
+            # 如果页面提供了Last-Modified头，检查是否与存储的相同
+            if last_modified_header and existing_doc:
+                try:
+                    # 解析HTTP日期格式
+                    parsed_date = email.utils.parsedate_to_datetime(last_modified_header)
+                    current_last_modified = parsed_date.timestamp()
+                    
+                    # 比较与存储的时间戳
+                    if last_modified_from_db and abs(current_last_modified - float(last_modified_from_db)) < 1:
+                        logger.info(f"页面last_modified未变化，跳过: {url}")
+                        stats['skipped_pages'] = stats.get('skipped_pages', 0) + 1
+                        stats['urls'].append({
+                            'url': url,
+                            'title': existing_doc.title if existing_doc else 'Unknown',
+                            'status': 'skipped_not_modified',
+                            'document_id': existing_doc.id if existing_doc else None
+                        })
+                        return
+                except Exception as e:
+                    logger.warning(f"无法解析Last-Modified头: {last_modified_header}, 错误: {e}")
             
             # 解析HTML
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -781,7 +972,7 @@ class WebsiteCrawler:
             # 创建文档
             document_data = DocumentCreate(
                 title=title[:100],  # 确保不超过数据库限制
-                description=f"从 {url} 爬取的网页\n{meta_description}"[:500],
+                description=f"Webpage crawled from {url}\n{meta_description}"[:500],
                 original_filename=original_filename,
                 file_size=len(response.content),
                 file_type=FileType.HTML,
@@ -798,7 +989,8 @@ class WebsiteCrawler:
                     'content_type': response.headers.get('Content-Type', ''),
                     'crawler': 'website_crawler',
                     'extracted_text': content[:5000] if content else None,  # 保存提取的文本用于预览
-                    'original_html': response.text[:10000] if response.text else None  # 保存原始HTML用于下载
+                    'original_html': response.text[:10000] if response.text else None,  # 保存原始HTML用于下载
+                    'last_modified': current_last_modified if current_last_modified else time.time()  # 存储last_modified时间戳
                 }
             )
             
@@ -849,7 +1041,7 @@ class WebsiteCrawler:
                 # 每5个成功页面更新一次任务状态
                 if stats['successful_pages'] % 5 == 0:
                     self._update_task_status(
-                        current_status=f"已处理 {stats['successful_pages']} 个页面，正在爬取...",
+                        current_status=f"Processed {stats['successful_pages']} pages, crawling...",
                         pages_processed=stats['successful_pages']
                     )
                 
@@ -867,7 +1059,7 @@ class WebsiteCrawler:
             
             # 提取图像（如果启用）
             if include_images and current_depth < max_depth:
-                self._extract_images(soup, url, folder_id, stats)
+                self._extract_images(soup, url, folder_id, base_url, stats)
             
             # 提取内部链接（递归爬取）
             if current_depth < max_depth:
@@ -875,7 +1067,7 @@ class WebsiteCrawler:
                 for link_url in internal_links:
                     if link_url not in self.visited_urls:
                         # 避免无限递归
-                        if len(self.visited_urls) < 100:  # 安全限制
+                        if len(self.visited_urls) < 500:  # 安全限制，从100放宽到500
                             self._crawl_recursive(
                                 url=link_url,
                                 base_url=base_url,
@@ -906,7 +1098,7 @@ class WebsiteCrawler:
                 'error': str(e)
             })
     
-    def _extract_images(self, soup: BeautifulSoup, page_url: str, folder_id: str, stats: Dict[str, Any]):
+    def _extract_images(self, soup: BeautifulSoup, page_url: str, folder_id: str, base_url: str, stats: Dict[str, Any]):
         """提取并下载页面中的图像"""
         img_tags = soup.find_all('img')
         
@@ -928,6 +1120,11 @@ class WebsiteCrawler:
             supported_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.ico'}
             if not any(img_path.endswith(ext) for ext in supported_extensions):
                 # 没有扩展名或不受支持的扩展名，跳过
+                continue
+            
+            # 跳过外部域名的图片（只下载当前站点域名下的图片）
+            if parsed.netloc != urlparse(base_url).netloc:
+                logger.debug(f"跳过外部域名图片: {img_url}")
                 continue
             
             # 统计
@@ -978,7 +1175,7 @@ class WebsiteCrawler:
                 img_title = img.get('title', '')
                 
                 # 生成图片文档的描述
-                img_description = f"来自 {page_url} 的图片"
+                img_description = f"Image from {page_url}"
                 if img_alt:
                     img_description += f", 替代文本: {img_alt}"
                 if img_title:
@@ -1062,6 +1259,7 @@ class WebsiteCrawler:
                         document_metadata=img_document_data.document_metadata or {},
                         status=DocumentStatus.ACTIVE,
                         uploaded_by=str(img_document_data.uploaded_by),
+                        parent_folder_path=folder.path if folder and hasattr(folder, 'path') else None,
                         conversion_status=ConversionStatus.PENDING
                     )
                     
@@ -1075,7 +1273,7 @@ class WebsiteCrawler:
                     # 每10个图片更新一次任务状态
                     if stats['downloaded_images'] % 10 == 0:
                         self._update_task_status(
-                            current_status=f"已下载 {stats['downloaded_images']} 张图片...",
+                            current_status=f"Downloaded {stats['downloaded_images']} images...",
                             images_crawled=stats['downloaded_images']
                         )
                     
@@ -1129,12 +1327,13 @@ def crawl_website_task(
     db: Session
 ):
     """
-    后台任务：爬取网站
+    后台任务：爬取网站（使用Scrapling框架）
     """
     logger.info(f"开始后台爬取任务 {task_id}: {url}")
     
     try:
-        crawler = WebsiteCrawler(db, task_id=task_id)
+        # 使用Scrapling爬虫（针对Canada.ca等JavaScript网站启用动态渲染）
+        crawler = ScraplingCrawler(db, task_id=task_id, use_stealth=False, use_dynamic=True)
         stats = crawler.crawl(
             url=url,
             depth=depth,
@@ -1144,7 +1343,7 @@ def crawl_website_task(
             respect_robots_txt=respect_robots_txt
         )
         
-        logger.info(f"爬取任务 {task_id} 完成: {stats}")
+        logger.info(f"Scrapling爬取任务 {task_id} 完成: {stats}")
         
         # TODO: 保存任务结果到数据库或缓存
         
@@ -1156,7 +1355,7 @@ def crawl_website_task(
         }
         
     except Exception as e:
-        logger.error(f"爬取任务 {task_id} 失败: {str(e)}")
+        logger.error(f"Scrapling爬取任务 {task_id} 失败: {str(e)}")
         return {
             'task_id': task_id,
             'status': 'failed',

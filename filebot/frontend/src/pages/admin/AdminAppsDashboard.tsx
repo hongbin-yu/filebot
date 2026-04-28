@@ -9,7 +9,7 @@ const AdminAppsDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载应用数据
+  // Load application data
   useEffect(() => {
     const loadApps = async () => {
       try {
@@ -17,8 +17,8 @@ const AdminAppsDashboard: React.FC = () => {
         const appsData = await appService.getApps();
         setApps(appsData);
       } catch (err) {
-        console.error('加载应用失败:', err);
-        setError('无法加载应用列表，请检查网络连接或重新登录。');
+        console.error('Failed to load applications:', err);
+        setError('Unable to load application list. Please check your network connection or log in again.');
       } finally {
         setLoading(false);
       }
@@ -27,66 +27,67 @@ const AdminAppsDashboard: React.FC = () => {
     loadApps();
   }, []);
 
-  // 创建应用模态框状态
+  // Create application modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  // 编辑应用模态框状态
+  // Edit application modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
 
-  // 处理创建应用
+  // Handle create application
   const handleCreateApp = () => {
     setIsCreateModalOpen(true);
   };
 
-  // 处理创建成功
+  // Handle create success
   const handleCreateSuccess = (newApp: App) => {
-    // 将新应用添加到列表
+    // Add new application to list
     setApps(prevApps => [...prevApps, newApp]);
   };
 
-  // 关闭模态框
+  // Close modal
   const handleCloseCreateModal = () => {
     setIsCreateModalOpen(false);
   };
 
-  // 处理编辑成功
+  // Handle edit success
   const handleEditSuccess = (updatedApp: App) => {
-    // 更新应用列表中的对应应用
+    // Update corresponding application in list
     setApps(prevApps => prevApps.map(app => 
       app.id === updatedApp.id ? updatedApp : app
     ));
   };
 
-  // 关闭编辑模态框
+  // Close edit modal
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setEditingApp(null);
   };
 
-  // 处理删除应用
+  // Handle delete application
   const handleDeleteApp = async (appId: string, appName: string) => {
-    if (!window.confirm(`确定要删除应用 "${appName}" 吗？此操作将删除所有关联的文件夹和文档，且无法恢复。`)) {
+    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete the application "${appName}"? This action will delete all associated folders and documents and cannot be undone.`);
+    if (!confirmed) {
       return;
     }
 
     try {
       await appService.deleteApp(appId);
-      // 从列表中移除已删除的应用
+      // Remove deleted application from list
       setApps(prevApps => prevApps.filter(app => app.id !== appId));
     } catch (err) {
-      console.error('删除应用失败:', err);
-      alert('删除应用失败，请稍后重试。');
+      console.error('Failed to delete application:', err);
+      window.showWetAlert('Failed to delete application. Please try again later.');
     }
   };
 
-  // 处理编辑应用
+  // Handle edit application
   const handleEditApp = (appId: string) => {
     const appToEdit = apps.find(app => app.id === appId);
     if (appToEdit) {
       setEditingApp(appToEdit);
       setIsEditModalOpen(true);
     } else {
-      alert('找不到要编辑的应用');
+      window.showWetAlert('Application to edit not found');
     }
   };
 
@@ -94,15 +95,15 @@ const AdminAppsDashboard: React.FC = () => {
     return (
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">应用管理</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
           <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
-            + 创建应用
+            + Create Application
           </button>
         </div>
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">加载应用中...</p>
+            <p className="mt-4 text-gray-600">Loading applications...</p>
           </div>
         </div>
       </div>
@@ -113,19 +114,19 @@ const AdminAppsDashboard: React.FC = () => {
     return (
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">应用管理</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
           <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
-            + 创建应用
+            + Create Application
           </button>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-red-800 mb-2">加载失败</h3>
+          <h3 className="text-lg font-medium text-red-800 mb-2">Load Failed</h3>
           <p className="text-red-700 mb-4">{error}</p>
           <button 
             onClick={() => window.location.reload()} 
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
-            重试
+            Retry
           </button>
         </div>
       </div>
@@ -135,24 +136,24 @@ const AdminAppsDashboard: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">应用管理</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
         <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
-          + 创建应用
+          + Create Application
         </button>
       </div>
 
       {apps.length === 0 ? (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
-          <h3 className="text-lg font-medium text-yellow-800 mb-2">暂无应用</h3>
-          <p className="text-yellow-700 mb-4">您还没有创建任何应用，点击上方按钮创建第一个应用。</p>
+          <h3 className="text-lg font-medium text-yellow-800 mb-2">No applications yet</h3>
+          <p className="text-yellow-700 mb-4">You haven't created any applications yet. Click the button above to create your first application.</p>
           <button className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700" onClick={handleCreateApp}>
-            创建第一个应用
+            Create First Application
           </button>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow">
           <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold">所有应用 ({apps.length})</h2>
+            <h2 className="text-lg font-semibold">All Applications ({apps.length})</h2>
           </div>
           
           <div className="divide-y">
@@ -166,7 +167,7 @@ const AdminAppsDashboard: React.FC = () => {
                     >
                       {app.name}
                     </Link>
-                    <p className="text-gray-600 mt-1">{app.description || '暂无描述'}</p>
+                    <p className="text-gray-600 mt-1">{app.description || 'No description'}</p>
                     <div className="mt-2 text-sm text-gray-500">
                       <span>ID: {app.id}</span>
                       {app.slug && <span className="ml-4">Slug: {app.slug}</span>}
@@ -177,13 +178,13 @@ const AdminAppsDashboard: React.FC = () => {
                       onClick={() => handleEditApp(app.id)}
                       className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                     >
-                      编辑
+                      Edit
                     </button>
                     <button 
                       onClick={() => handleDeleteApp(app.id, app.name)}
                       className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-300"
                     >
-                      删除
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -194,25 +195,25 @@ const AdminAppsDashboard: React.FC = () => {
       )}
 
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-medium text-blue-800">新架构说明</h3>
+        <h3 className="font-medium text-blue-800">New Architecture Information</h3>
         <p className="text-blue-700 mt-1">
-          FileBot 已简化为两层结构：应用 → 文件夹 → 文档。抽屉层已移除。
+          FileBot has been simplified to a two-layer structure: Application → Folder → Document. The drawer layer has been removed.
         </p>
         <div className="mt-2 text-sm text-blue-600">
-          <p>• Admin URL前缀：<code>/admin/apps</code></p>
-          <p>• Client URL前缀：<code>/apps</code>（公共门户）</p>
-          <p>• 数据已清空，从头开始</p>
+          <p>• Admin URL prefix: <code>/admin/apps</code></p>
+          <p>• Client URL prefix: <code>/apps</code> (public portal)</p>
+          <p>• Data has been cleared, starting from scratch</p>
         </div>
       </div>
 
-      {/* 创建应用模态框 */}
+      {/* Create Application Modal */}
       <CreateAppModal 
         isOpen={isCreateModalOpen}
         onClose={handleCloseCreateModal}
         onSuccess={handleCreateSuccess}
       />
 
-      {/* 编辑应用模态框 */}
+      {/* Edit Application Modal */}
       <EditAppModal 
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}

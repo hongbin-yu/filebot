@@ -8,21 +8,75 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5174,
     proxy: {
-      '/api': {
+      // 认证相关API直接代理到FileBot后端（端口8001）
+      '/api/v1/auth': {
         target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/auth/, '/api/v1/auth')
       },
-      '/content': {
+      // 应用相关API直接代理到FileBot后端（端口8001）
+      '/api/v1/apps': {
         target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => {
-          // 将 /content/* 映射到 /api/v1/documents/by-path/content/*
-          // 例如: /content/dam/... → /api/v1/documents/by-path/content/dam/...
-          // path 是 /dam/...（因为匹配了 /content 前缀）
-          return '/api/v1/documents/by-path/content' + path;
-        }
+        rewrite: (path) => path.replace(/^\/api\/v1\/apps/, '/api/v1/apps')
+      },
+      // 文档相关API直接代理到FileBot后端（端口8001）
+      '/api/v1/documents': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/documents/, '/api/v1/documents')
+      },
+      // 文件夹相关API直接代理到FileBot后端（端口8001）
+      '/api/v1/folders': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/folders/, '/api/v1/folders')
+      },
+      // AI相关API直接代理到FileBot后端（端口8001）
+      '/api/v1/ai': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/ai/, '/api/v1/ai')
+      },
+      // 搜索相关API通过WebBot代理服务（端口8000）
+      '/api/v1/search': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/search/, '/content/search')
+      },
+      // 通用API代理规则（捕获其他 /api/v1/* 路径）
+      '/api/v1': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1/, '/content')
+      },
+      // 内容相关请求也通过WebBot代理服务
+      '/content': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        // 不重写路径，WebBot服务直接处理 /content/* 路由
+      },
+      // 代理GCWeb静态文件到WebBot代理（端口8000）
+      '/gcweb': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        // 保留路径不变
+      },
+      // 代理设计文件到FileBot后端（端口8001），使预览如canada.ca般工作
+      '/etc/designs': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        // 保留路径不变
       }
     }
   }

@@ -1,9 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
+from pathlib import Path
 import logging
+import os
+import httpx
 
 from app.db.database import get_db, init_db
 from app.core.config import settings
@@ -67,7 +72,8 @@ app.add_middleware(
         "http://localhost:5175",
         "http://127.0.0.1:5175",
         "http://localhost:8000",
-        "http://127.0.0.1:8000"
+        "http://127.0.0.1:8000",
+        "http://172.29.152.245:8000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -152,13 +158,14 @@ async def health_check(db: Session = Depends(get_db)):
 
 
 # 导入路由
-from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export
+from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export, pages
 
 # 注册路由
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["认证"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["用户"])
 app.include_router(apps.router, prefix=f"{settings.API_V1_STR}/apps", tags=["应用"])
 app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["文档"])
+app.include_router(pages.router, prefix=f"{settings.API_V1_STR}/pages", tags=["页面"])
 app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["搜索"])
 app.include_router(conversion.router, prefix=f"{settings.API_V1_STR}/conversion", tags=["转换"])
 app.include_router(file_naming_rules.router, prefix=f"{settings.API_V1_STR}", tags=["文件命名规则"])
@@ -167,6 +174,165 @@ app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["AI功�
 app.include_router(features.router, prefix=f"{settings.API_V1_STR}/features", tags=["特性管理"])
 app.include_router(folders.router, prefix=f"{settings.API_V1_STR}/folders", tags=["文件夹"])
 app.include_router(export.router, prefix=f"{settings.API_V1_STR}/export", tags=["导出"])
+
+# 静态文件服务 - 用于已发布的文档
+# 确保静态目录存在
+static_path = Path(settings.STATIC_FILES_PATH)
+static_path.mkdir(parents=True, exist_ok=True)
+
+# 挂载静态文件服务
+app.mount("/static/files", StaticFiles(directory=str(static_path)), name="static_files")
+logger.info(f"静态文件服务已挂载: /static/files -> {static_path}")
+
+# Webbot GCWeb 设计文件服务 - /etc/designs -> ../webbot/etc/designs
+_designs_path = Path(__file__).resolve().parent.parent.parent / "webbot" / "etc" / "designs"
+if _designs_path.exists():
+    app.mount("/etc/designs", StaticFiles(directory=str(_designs_path)), name="gcweb_designs")
+    logger.info(f"Webbot GCWeb 设计文件已挂载: /etc/designs -> {_designs_path}")
+else:
+    logger.warning(f"Webbot GCWeb 设计文件目录不存在: {_designs_path}")
+
+# Canada.ca 页面静态代理 — 让 HTML 页面内的 /en/xxx, /fr/xxx, /content/dam/xxx 能正确访问
+# 这些页面是从 www.canada.ca 爬取的，内部链接引用网站根路径
+_data_base = Path(__file__).resolve().parent / "data" / "boarding" / "canadasite"
+
+_en_path = _data_base / "en"
+if _en_path.exists():
+    app.mount("/en", StaticFiles(directory=str(_en_path)), name="boarding_en")
+    logger.info(f"Boarding 英语页面已挂载: /en -> {_en_path}")
+else:
+    logger.warning(f"Boarding 英语页面目录不存在: {_en_path}")
+
+_fr_path = _data_base / "fr"
+if _fr_path.exists():
+    app.mount("/fr", StaticFiles(directory=str(_fr_path)), name="boarding_fr")
+    logger.info(f"Boarding 法语页面已挂载: /fr -> {_fr_path}")
+else:
+    logger.warning(f"Boarding 法语页面目录不存在: {_fr_path}")
+
+_dam_path = _data_base / "content" / "dam"
+_dam_path.mkdir(parents=True, exist_ok=True)
+
+
+class DamProxyASGI:
+    """
+    自定义 ASGI app：/content/dam/ 代理 + 本地缓存
+    1. 检查本地文件，有则直接返回
+    2. 没有则从 www.canada.ca 抓取，缓存到本地，然后返回
+    """
+    def __init__(self, local_path: Path, designs_path: Path | None = None):
+        self.local_path = local_path
+        self.designs_path = designs_path
+        import mimetypes as mt
+        mt.init()
+        self.mt = mt
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self._send_error(send, 404, "Not Found")
+            return
+
+        # scope["path"] 是完整路径（如 /content/dam/government/xxx.jpg）
+        # root_path 是 mount 前缀（/content/dam），需要去除以获取相对路径
+        path = scope["path"]
+        root_path = scope.get("root_path", "")
+        
+        # 手动去除 root_path 前缀，类似 StaticFiles.get_path 的逻辑
+        if root_path and path.startswith(root_path):
+            stripped = path[len(root_path):]
+        else:
+            stripped = path
+        rel_path = stripped.lstrip("/")
+        local_file = self.local_path / rel_path
+
+        # 特殊处理：/content/dam/etc/designs/... → 从本地 designs 目录提供
+        # 有些爬取的页面引用了 /content/dam/etc/designs/ 路径，但实际文件在 /etc/designs/
+        if rel_path.startswith("etc/designs/") and self.designs_path:
+            designs_file = self.designs_path / rel_path[len("etc/designs/"):]
+            if designs_file.exists() and designs_file.is_file():
+                return await self._send_file(send, designs_file)
+
+        # 1) 本地命中
+        if local_file.exists() and local_file.is_file():
+            return await self._send_file(send, local_file)
+
+        # 2) 代理到 Canada.ca 并缓存
+        # scope["path"] 已去除 /content/dam 前缀，所以恢复完整路径
+        # 恢复完整 /content/dam 路径
+        remote_url = f"https://www.canada.ca/content/dam/{rel_path}"
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
+                resp = await client.get(remote_url)
+                if resp.status_code == 200:
+                    # 缓存到本地
+                    local_file.parent.mkdir(parents=True, exist_ok=True)
+                    local_file.write_bytes(resp.content)
+
+                    content_type = resp.headers.get("content-type") or \
+                        self.mt.guess_type(str(local_file))[0] or "application/octet-stream"
+                    await send({
+                        "type": "http.response.start",
+                        "status": 200,
+                        "headers": [
+                            (b"content-type", content_type.encode()),
+                            (b"cache-control", b"public, max-age=86400"),
+                            (b"x-cache", b"MISS"),
+                        ],
+                    })
+                    await send({
+                        "type": "http.response.body",
+                        "body": resp.content,
+                        "more_body": False,
+                    })
+                    logger.info(f"🔄 代理缓存: {remote_url} -> {local_file}")
+                    return
+        except Exception as e:
+            logger.error(f"代理失败 {remote_url}: {e}")
+
+        await self._send_error(send, 404, "Not Found")
+
+    async def _send_file(self, send, file_path: Path):
+        """发送文件内容（流式大文件、小文件全量一次发）"""
+        content_type = self.mt.guess_type(str(file_path))[0] or "application/octet-stream"
+        file_size = file_path.stat().st_size
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-type", content_type.encode()),
+                (b"content-length", str(file_size).encode()),
+                (b"cache-control", b"public, max-age=86400"),
+                (b"x-cache", b"HIT"),
+            ],
+        })
+        with open(file_path, "rb") as f:
+            more = True
+            while more:
+                chunk = f.read(65536)
+                more = len(chunk) == 65536
+                await send({
+                    "type": "http.response.body",
+                    "body": chunk,
+                    "more_body": more,
+                })
+
+    async def _send_error(self, send, status, message):
+        import json
+        body = json.dumps({"detail": message}).encode()
+        await send({
+            "type": "http.response.start",
+            "status": status,
+            "headers": [(b"content-type", b"application/json")],
+        })
+        await send({
+            "type": "http.response.body",
+            "body": body,
+            "more_body": False,
+        })
+
+
+app.mount("/content/dam", DamProxyASGI(_dam_path, designs_path=_designs_path if _designs_path.exists() else None), name="boarding_dam")
+logger.info(f"Boarding 资源代理+缓存已挂载: /content/dam -> {_dam_path} (未命中时自动从 canada.ca 抓取)")
 
 
 if __name__ == "__main__":

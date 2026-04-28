@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/auth.service';
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import './ClientLogin.css';
 
 const ClientLogin: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +18,7 @@ const ClientLogin: React.FC = () => {
     e.preventDefault();
     
     if (!username.trim() || !password.trim()) {
-      setError('请输入用户名和密码');
+      setError(t('clientLogin.enterUsernamePassword'));
       return;
     }
     
@@ -39,19 +42,19 @@ const ClientLogin: React.FC = () => {
       navigate('/client/apps');
       
     } catch (err: any) {
-      console.error('Client登录失败:', err);
+      console.error(t('clientLogin.clientLoginFailed'), err);
       
       // 提供友好的错误消息
       if (err.response?.status === 401) {
-        setError('用户名或密码错误');
+        setError(t('clientLogin.invalidUsernamePassword'));
       } else if (err.response?.status === 403) {
-        setError('此账户没有Client访问权限');
+        setError(t('clientLogin.noClientAccess'));
       } else if (err.response?.data?.detail) {
         setError(err.response.data.detail);
       } else if (err.message) {
         setError(err.message);
       } else {
-        setError('登录失败，请稍后重试');
+        setError(t('clientLogin.loginFailed'));
       }
     } finally {
       setLoading(false);
@@ -79,14 +82,14 @@ const ClientLogin: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">FileBot Client Portal</h1>
-          <p className="text-gray-600 mt-2">PDF文档浏览门户</p>
+          <h1 className="text-3xl font-bold text-gray-800">{t('clientLogin.portalTitle')}</h1>
+          <p className="text-gray-600 mt-2">{t('clientLogin.portalSubtitle')}</p>
         </div>
         
         {/* 登录卡片 */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Client登录</h2>
-          <p className="text-gray-600 mb-6">请输入您的账户信息以访问PDF文档</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('clientLogin.loginTitle')}</h2>
+          <p className="text-gray-600 mb-6">{t('clientLogin.loginInstruction')}</p>
           
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
@@ -104,14 +107,14 @@ const ClientLogin: React.FC = () => {
               {/* 用户名输入 */}
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                  用户名
+                  {t('clientLogin.usernameLabel')}
                 </label>
                 <input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="输入用户名"
+                  placeholder={t('clientLogin.usernamePlaceholder')}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   disabled={loading}
                   required
@@ -121,14 +124,14 @@ const ClientLogin: React.FC = () => {
               {/* 密码输入 */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  密码
+                  {t('clientLogin.passwordLabel')}
                 </label>
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="输入密码"
+                  placeholder={t('clientLogin.passwordPlaceholder')}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   disabled={loading}
                   required
@@ -147,17 +150,17 @@ const ClientLogin: React.FC = () => {
                     disabled={loading}
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                    记住我
+                    {t('clientLogin.rememberMe')}
                   </label>
                 </div>
                 
                 <button
                   type="button"
                   className="text-sm text-blue-600 hover:text-blue-800"
-                  onClick={() => alert('请联系管理员重置密码')}
+                  onClick={() => window.showWetAlert('请联系管理员重置密码')}
                   disabled={loading}
                 >
-                  忘记密码?
+                  {t('clientLogin.forgotPassword')}
                 </button>
               </div>
               
@@ -173,9 +176,9 @@ const ClientLogin: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    登录中...
+                    {t('clientLogin.signingIn')}
                   </div>
-                ) : '登录'}
+                ) : t('clientLogin.signIn')}
               </button>
               
               {/* 演示账户按钮 */}
@@ -185,7 +188,7 @@ const ClientLogin: React.FC = () => {
                 disabled={loading}
                 className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors text-sm"
               >
-                使用演示账户
+                {t('clientLogin.useDemoAccount')}
               </button>
             </div>
           </form>
@@ -193,31 +196,31 @@ const ClientLogin: React.FC = () => {
           {/* 分隔线 */}
           <div className="my-6 flex items-center">
             <div className="flex-1 border-t border-gray-300"></div>
-            <div className="mx-4 text-sm text-gray-500">或者</div>
+            <div className="mx-4 text-sm text-gray-500">{t('clientLogin.or')}</div>
             <div className="flex-1 border-t border-gray-300"></div>
           </div>
           
           {/* 返回主系统 */}
           <div className="text-center">
-            <p className="text-gray-600 text-sm mb-3">需要管理系统访问权限?</p>
+            <p className="text-gray-600 text-sm mb-3">{t('clientLogin.needManagementAccess')}</p>
             <button
               type="button"
               onClick={handleBackToMain}
               className="text-blue-600 hover:text-blue-800 font-medium"
               disabled={loading}
             >
-              返回主系统登录 →
+              {t('clientLogin.backToMainLogin')} →
             </button>
           </div>
         </div>
         
         {/* 页脚说明 */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>© 2026 FileBot Client Portal. 仅供授权用户使用。</p>
-          <p className="mt-1">这是一个只读界面，仅用于浏览PDF文档。</p>
+          <p>© 2026 FileBot Client Portal. {t('clientLogin.footerForAuthorizedUsers')}</p>
+          <p className="mt-1">{t('clientLogin.footerReadOnlyInterface')}</p>
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-blue-700">
-              <strong>注意：</strong> 此门户仅显示PDF格式文档。其他格式文档请联系管理员。
+              <strong>{t('clientLogin.note')}:</strong> {t('clientLogin.portalPdfOnly')}
             </p>
           </div>
         </div>
