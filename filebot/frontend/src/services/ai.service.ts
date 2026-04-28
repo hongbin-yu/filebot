@@ -9,7 +9,7 @@ import api from './api';
 export interface WebsiteCrawlRequest {
   url: string;
   depth: number;
-  folder_id: string;
+  folder_path: string;
   include_images?: boolean;
   follow_external_links?: boolean;
   respect_robots_txt?: boolean;
@@ -166,7 +166,7 @@ export default aiService;
 // Sitemap import interfaces
 export interface SitemapImportRequest {
   sitemap_url: string;
-  folder_id: string;
+  folder_path: string;
   include_images?: boolean;
   depth?: number;
 }

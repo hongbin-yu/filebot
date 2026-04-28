@@ -305,8 +305,33 @@ const AdminUpload: React.FC = () => {
             // 更新父文件夹标识符用于下一级
             parentFolderIdentifier = folderMap.get(currentPath)!;
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error(`创建文件夹失败 ${folderPath}:`, error);
+          // 如果文件夹已存在（400错误），尝试通过路径查找现有文件夹
+          if (error?.response?.status === 400 && error?.response?.data?.detail?.includes('已存在同名的文件夹')) {
+            // 通过路径计算这个文件夹应该存在的路径，尝试查找
+            const fullPath = folder.path ? `${folder.path}/${folderPath}` : `/${app.slug}/${folderPath}`;
+            try {
+              const existingFolder = await folderService.getFolderByPath(fullPath);
+              if (existingFolder) {
+                const folderIdentifier = existingFolder.path || existingFolder.id;
+                // 为此路径下的所有层级更新 folderMap
+                const pathParts = folderPath.split('/');
+                for (let j = 1; j <= pathParts.length; j++) {
+                  const subPath = pathParts.slice(0, j).join('/');
+                  const subFullPath = folder.path ? `${folder.path}/${subPath}` : `/${app.slug}/${subPath}`;
+                  const subFolder = await folderService.getFolderByPath(subFullPath);
+                  if (subFolder) {
+                    const subId = subFolder.path || subFolder.id;
+                    folderMap.set(subPath, subId);
+                    console.log(`📁 已加载现有文件夹: ${subFullPath} -> ${subId}`);
+                  }
+                }
+              }
+            } catch (lookupError) {
+              console.warn(`无法查找现有文件夹 ${fullPath}:`, lookupError);
+            }
+          }
           // 继续尝试创建其他文件夹
         }
         

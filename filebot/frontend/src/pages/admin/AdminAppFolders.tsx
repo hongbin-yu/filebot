@@ -285,8 +285,9 @@ const AdminAppFolders: React.FC = () => {
   // Handle preview document
   const handlePreviewDocument = (document: Document) => {
     console.log('Preview document:', document);
-    // Navigate to document detail page
-    navigate(`/admin/documents/${document.id}`);
+    // Navigate to document detail page using path (fallback to UUID)
+    const docPath = document.path || document.storage_path || document.id;
+    navigate(`/admin/documents/${docPath.replace(/^\//, '')}`);
   };
   
   // Handle edit document
@@ -465,7 +466,7 @@ const AdminAppFolders: React.FC = () => {
 
   // Handle website crawl submission
   const handleSubmitImportWebsite = async () => {
-    if (!websiteUrl.trim() || !currentFolderPath || !app) {
+    if (!websiteUrl.trim() || !currentFolder?.id || !app) {
       setImportError('Please fill in the URL and ensure a folder is selected');
       return;
     }
@@ -486,7 +487,7 @@ const AdminAppFolders: React.FC = () => {
       const request: WebsiteCrawlRequest = {
         url: websiteUrl.trim(),
         depth: crawlDepth,
-        folder_id: currentFolderPath,
+        folder_path: currentFolderPath,
         include_images: true,
         follow_external_links: false,
         respect_robots_txt: true
@@ -504,11 +505,9 @@ const AdminAppFolders: React.FC = () => {
       setCrawlDepth(1);
     } catch (error: any) {
       console.error('Website import failed:', error);
-      setImportError(
-        error.response?.data?.detail || 
-        error.message || 
-        'Website import failed. Check network or backend service.'
-      );
+      const detail = error.response?.data?.detail;
+      const detailStr = Array.isArray(detail) ? detail.map((e: any) => e.msg || JSON.stringify(e)).join('; ') : detail;
+      setImportError(detailStr || error.message || 'Website import failed. Check network or backend service.');
     } finally {
       setImportingWebsite(false);
     }
@@ -531,7 +530,7 @@ const AdminAppFolders: React.FC = () => {
     try {
       const request: SitemapImportRequest = {
         sitemap_url: sitemapUrl.trim(),
-        folder_id: currentFolderPath,
+        folder_path: currentFolderPath,
         include_images: true,
         depth: sitemapDepth
       };
@@ -541,7 +540,9 @@ const AdminAppFolders: React.FC = () => {
       setSitemapUrl('');
       setSitemapDepth(0);
     } catch (error: any) {
-      setImportError(error.response?.data?.detail || error.message || 'Sitemap import failed');
+      const detail = error.response?.data?.detail;
+      const detailStr = Array.isArray(detail) ? detail.map((e: any) => e.msg || JSON.stringify(e)).join('; ') : detail;
+      setImportError(detailStr || error.message || 'Sitemap import failed');
     } finally {
       setImportingSitemap(false);
     }
@@ -683,6 +684,21 @@ const AdminAppFolders: React.FC = () => {
           <div className="bg-white rounded-lg shadow">
             <div className="px-4 py-3 border-b flex items-center justify-between">
               <h3 className="font-medium">Folders</h3>
+              {currentFolder && (() => {
+                const parentPath = currentFolder.parent_folder_path || (currentFolder.path ? currentFolder.path.substring(0, currentFolder.path.lastIndexOf('/')) : null);
+                if (!parentPath || parentPath === '') return null;
+                return (
+                  <button
+                    className="text-blue-600 hover:text-blue-800 text-xs ml-2"
+                    onClick={() => {
+                      setForwardStack(prev => [...prev, currentFolder.path]);
+                      handleFolderClick(parentPath);
+                    }}
+                  >
+                    ← Go to parent folder
+                  </button>
+                );
+              })()}
               <button
                 className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
                 disabled={forwardStack.length === 0}
@@ -807,26 +823,6 @@ const AdminAppFolders: React.FC = () => {
                       {currentFolder.description && (
                         <div><span className="text-gray-400">Description:</span> {currentFolder.description}</div>
                       )}
-                      {(() => {
-                        const p = currentFolder.path;
-                        if (!p) return null;
-                        const parentPath = currentFolder.parent_folder_path || p.substring(0, p.lastIndexOf('/'));
-                        if (!parentPath || parentPath === '') return null;
-                        return (
-                          <div className="pt-1">
-                            <button
-                              className="text-blue-600 hover:text-blue-800 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setForwardStack(prev => [...prev, currentFolder.path]);
-                                handleFolderClick(parentPath);
-                              }}
-                            >
-                              ← Go to parent folder
-                            </button>
-                          </div>
-                        );
-                      })()}
                     </div>
                   </details>
                   <div className="text-sm text-gray-500 shrink-0 pt-0.5">
@@ -846,10 +842,6 @@ const AdminAppFolders: React.FC = () => {
                 </div>
               ) : (
                 <>
-  
-                  
-
-                  
                   {/* Documents */}
                   {documents.length > 0 && (
                     <div className="mb-6 border-t pt-6">

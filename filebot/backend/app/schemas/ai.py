@@ -100,7 +100,7 @@ class WebsiteCrawlRequest(BaseModel):
     """网站爬取请求"""
     url: str = Field(..., description="要爬取的网站URL")
     depth: int = Field(1, ge=1, le=10, description="爬取深度（1-10）")
-    folder_id: str = Field(..., description="目标文件夹ID")
+    folder_path: str = Field(..., description="目标文件夹路径（如 /boarding/canadasite）")
     include_images: bool = Field(True, description="是否包含图像")
     follow_external_links: bool = Field(False, description="是否跟踪外部链接")
     respect_robots_txt: bool = Field(True, description="是否遵守robots.txt")
@@ -110,7 +110,7 @@ class WebsiteCrawlRequest(BaseModel):
             "example": {
                 "url": "https://example.com",
                 "depth": 2,
-                "folder_id": "123e4567-e89b-12d3-a456-426614174000",
+                "folder_path": "/boarding/canadasite",
                 "include_images": True,
                 "follow_external_links": False,
                 "respect_robots_txt": True
@@ -222,7 +222,7 @@ class WebsiteCrawlTaskList(BaseModel):
 class SitemapImportRequest(BaseModel):
     """Sitemap 导入请求"""
     sitemap_url: str = Field(..., description="Sitemap.xml 的 URL")
-    folder_id: str = Field(..., description="目标文件夹ID")
+    folder_path: str = Field(..., description="目标文件夹路径（如 /boarding/canadasite）")
     include_images: bool = Field(True, description="是否包含图像")
     depth: int = Field(0, ge=0, le=10, description="递归爬取深度（0=只抓sitemap页，1=抓子链接，2=再往下一层）")
     
@@ -230,7 +230,7 @@ class SitemapImportRequest(BaseModel):
         schema_extra = {
             "example": {
                 "sitemap_url": "https://www.canada.ca/sitemap.xml",
-                "folder_id": "123e4567-e89b-12d3-a456-426614174000",
+                "folder_path": "/boarding/canadasite",
                 "include_images": True,
                 "depth": 1
             }

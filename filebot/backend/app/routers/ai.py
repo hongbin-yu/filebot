@@ -11,7 +11,7 @@ import logging
 from ..db.database import get_db
 from ..models.document import Document
 from ..models.user import User
-from ..models.crawl_task import CrawlTask
+from ..models.crawl_task import CrawlTask, CrawlTaskStatus
 from ..schemas.ai import (
     AIClassifyRequest, AIClassifyResponse, AICategoryResult,
     WebsiteCrawlRequest, WebsiteCrawlResponse, WebsiteCrawlStatus,
@@ -161,12 +161,12 @@ async def crawl_website(
     from ..models.folder import Folder
     from ..models.crawl_task import CrawlTask, CrawlTaskStatus
     
-    # 验证文件夹是否存在
-    folder = db.query(Folder).filter(Folder.id == request.folder_id).first()
+    # 通过路径验证文件夹是否存在
+    folder = db.query(Folder).filter(Folder.path == request.folder_path).first()
     if not folder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"文件夹 {request.folder_id} 不存在"
+            detail=f"文件夹 {request.folder_path} 不存在"
         )
     
     # 验证URL格式
@@ -190,7 +190,7 @@ async def crawl_website(
         status=CrawlTaskStatus.PENDING,
         url=request.url,
         depth=request.depth,
-        folder_id=request.folder_id,
+        folder_id=folder.id,  # 使用解析后的文件夹UUID
         include_images=1 if request.include_images else 0,
         follow_external_links=1 if request.follow_external_links else 0,
         respect_robots_txt=1 if request.respect_robots_txt else 0,
@@ -212,7 +212,7 @@ async def crawl_website(
         task_id=task_id,
         url=request.url,
         depth=request.depth,
-        folder_id=request.folder_id,
+        folder_id=folder.id,
         include_images=request.include_images,
         follow_external_links=request.follow_external_links,
         respect_robots_txt=request.respect_robots_txt,
@@ -243,6 +243,7 @@ async def get_crawl_tasks(
     
     支持分页和状态过滤
     """
+    from datetime import datetime
     from sqlalchemy import desc
     
     # 构建查询
@@ -287,7 +288,7 @@ async def get_crawl_tasks(
             images_crawled=task.images_crawled or 0,
             errors=task.errors or [],
             started_at=task.started_at if task.started_at else task.created_at,
-            updated_at=task.updated_at,
+            updated_at=task.updated_at or datetime.now(),
             estimated_completion=None
         ))
     
@@ -346,9 +347,55 @@ async def get_crawl_status(
         images_crawled=crawl_task.images_crawled or 0,
         errors=crawl_task.errors or [],
         started_at=crawl_task.started_at if crawl_task.started_at else crawl_task.created_at,
-        updated_at=crawl_task.updated_at,
+        updated_at=crawl_task.updated_at or crawl_task.created_at,
         estimated_completion=None  # 可以基于进度计算，但暂时留空
     )
+
+
+@router.post("/cancel-task/{task_id}", response_model=WebsiteCrawlStatus)
+async def cancel_crawl_task(
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    取消爬取任务
+    
+    支持取消 pending 状态的任务。
+    已经 running/crawling 的任务标记为 cancelled 后，
+    后台爬虫下次检查状态时会自动停止。
+    """
+    crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
+    if not crawl_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"任务 {task_id} 不存在"
+        )
+    
+    if crawl_task.status in [CrawlTaskStatus.COMPLETED, CrawlTaskStatus.FAILED]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"任务已结束（{crawl_task.status.value}），无法取消"
+        )
+    
+    crawl_task.status = CrawlTaskStatus.CANCELLED
+    db.commit()
+    
+    status_value = crawl_task.status.value if hasattr(crawl_task.status, 'value') else str(crawl_task.status)
+    return WebsiteCrawlStatus(
+        task_id=crawl_task.task_id,
+        status=status_value,
+        url=crawl_task.url,
+        depth=crawl_task.depth,
+        pages_crawled=crawl_task.pages_crawled or 0,
+        pages_processed=crawl_task.pages_processed or 0,
+        images_crawled=crawl_task.images_crawled or 0,
+        errors=crawl_task.errors or [],
+        started_at=crawl_task.started_at or crawl_task.created_at,
+        updated_at=crawl_task.updated_at or crawl_task.created_at,
+        estimated_completion=None
+    )
+
 
 def crawl_website_background(
     task_id: str,
@@ -512,12 +559,12 @@ async def crawl_from_sitemap(
     from ..models.folder import Folder
     from ..models.crawl_task import CrawlTask, CrawlTaskStatus
     
-    # 验证文件夹
-    folder = db.query(Folder).filter(Folder.id == request.folder_id).first()
+    # 通过路径验证文件夹
+    folder = db.query(Folder).filter(Folder.path == request.folder_path).first()
     if not folder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"文件夹 {request.folder_id} 不存在"
+            detail=f"文件夹 {request.folder_path} 不存在"
         )
     
     # 先快速解析 sitemap 获取 URL 总数（用于估算）
@@ -537,7 +584,7 @@ async def crawl_from_sitemap(
         status=CrawlTaskStatus.PENDING,
         url=request.sitemap_url,
         depth=request.depth,
-        folder_id=request.folder_id,
+        folder_id=folder.id,  # 使用解析后的文件夹UUID
         include_images=1 if request.include_images else 0,
         follow_external_links=0,
         respect_robots_txt=1,
@@ -558,7 +605,7 @@ async def crawl_from_sitemap(
         sitemap_import_background,
         task_id=task_id,
         sitemap_url=request.sitemap_url,
-        folder_id=request.folder_id,
+        folder_id=folder.id,
         include_images=request.include_images,
         max_depth=request.depth,
         db=db

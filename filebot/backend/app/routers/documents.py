@@ -218,8 +218,8 @@ def get_folder_by_identifier_or_path(
                 detail=f"应用 '{app_slug}' 不存在"
             )
         
-        # 检查应用权限
-        if app.owner_id != current_user.id:
+        # 检查应用权限（超级用户可以跳过）
+        if not current_user.is_superuser and app.owner_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="没有权限在此应用中创建文件夹"
@@ -539,6 +539,9 @@ def generate_thumbnail_for_image_document(
     返回:
         bool: 是否成功
     """
+    # Import ThumbnailStatus before try block to avoid Python 3.12+ scoping issues
+    from app.models.document import ThumbnailStatus
+
     try:
         # 获取文档文件路径
         file_path = get_document_file_path(document, settings)
@@ -586,7 +589,6 @@ def generate_thumbnail_for_image_document(
             document.conversion_status = ConversionStatus.COMPLETED
             
             # 更新缩略图状态
-            from app.models.document import ThumbnailStatus
             document.thumbnail_status = ThumbnailStatus.GENERATED
             document.thumbnail_generated_at = datetime.utcnow()
             
@@ -1117,6 +1119,16 @@ async def upload_document(
     """
     logger = logging.getLogger(__name__)
     
+    # 🐛 DEBUG: 打印接收到的参数
+    print(f"\n{'='*60}")
+    print(f"[DEBUG] upload_document 接收到请求:")
+    print(f"  folder_path={folder_path!r}")
+    print(f"  folder_id={folder_id!r}")
+    print(f"  title={title!r}")
+    print(f"  file.filename={file.filename!r}")
+    print(f"  current_user={current_user.id} ({current_user.username})")
+    print(f"  is_superuser={current_user.is_superuser}")
+    
     # 检查至少提供了一个文件夹标识符
     if not folder_path and not folder_id:
         raise HTTPException(
@@ -1179,7 +1191,10 @@ async def upload_document(
         # 保存到临时文件
         temp_dir = Path("/tmp/filebot/uploads")
         temp_dir.mkdir(parents=True, exist_ok=True)
-        temp_file_path = temp_dir / f"{uuid.uuid4()}_{file.filename}"
+        # 🐛 修复: file.filename 可能包含路径分隔符（如 wet-boew/assets/.../file.png），
+        # 使用 Path().name 仅取文件名部分，避免创建不存在的子目录
+        temp_basename = Path(file.filename).name
+        temp_file_path = temp_dir / f"{uuid.uuid4()}_{temp_basename}"
         
         with open(temp_file_path, "wb") as buffer:
             while chunk := await file.read(1024 * 1024):  # 1MB chunks

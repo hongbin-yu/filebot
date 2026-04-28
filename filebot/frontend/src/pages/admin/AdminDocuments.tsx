@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import DataTable from 'react-data-table-component';
+// react-data-table-component v7.x exports differently in CJS vs ESM
+// Using namespace import + .default handles both Vite CJS/ESM interop modes
+import RDT from 'react-data-table-component';
+const DataTable = RDT.default || RDT;
 import appService, { App } from '../../services/app.service';
 import folderService, { Folder } from '../../services/folder.service';
 import documentService, { Document } from '../../services/document.service';

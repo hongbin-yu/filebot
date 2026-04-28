@@ -321,23 +321,10 @@ def create_folder(
             detail="没有权限在此应用下创建文件夹"
         )
     
-    # 检查文件夹名称是否已存在（在同一应用和父文件夹下）
-    # 使用应用的UUID ID（从查找到的app对象获取）
-    existing_folder = db.query(Folder).filter(
-        Folder.name == folder_data.name,
-        Folder.app_id == str(app.id),
-        Folder.parent_folder_id == str(folder_data.parent_folder_id) if folder_data.parent_folder_id else None
-    ).first()
-    
-    if existing_folder:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="此位置下已存在同名的文件夹"
-        )
-    
-    # 获取父文件夹路径（如果存在）
+    # 首先获取父文件夹信息（路径解析优先于UUID）
     parent_path = ""
     parent_folder = None
+    parent_folder_uuid = None
     if folder_data.parent_folder_id:
         parent_folder_id_str = str(folder_data.parent_folder_id)
         
@@ -348,7 +335,6 @@ def create_folder(
             parent_folder = db.query(Folder).filter(Folder.id == parent_folder_id_str).first()
         except ValueError:
             # 不是有效的UUID，尝试按路径查找
-            # 确保路径以斜杠开头
             path = parent_folder_id_str
             if not path.startswith('/'):
                 path = '/' + path
@@ -356,12 +342,32 @@ def create_folder(
         
         if parent_folder:
             parent_path = parent_folder.path
+            parent_folder_uuid = str(parent_folder.id)
             # 验证父文件夹属于同一个应用
             if parent_folder.app_id != str(app.id):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="父文件夹不属于同一个应用"
                 )
+    
+    # 检查文件夹名称是否已存在（在同一应用和父文件夹下）
+    # 使用父文件夹的UUID进行精确匹配（避免路径字符串比较问题）
+    existing_folder_filter = [
+        Folder.name == folder_data.name,
+        Folder.app_id == str(app.id),
+    ]
+    if parent_folder_uuid:
+        existing_folder_filter.append(Folder.parent_folder_id == parent_folder_uuid)
+    else:
+        existing_folder_filter.append(Folder.parent_folder_id == None)
+    
+    existing_folder = db.query(Folder).filter(*existing_folder_filter).first()
+    
+    if existing_folder:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="此位置下已存在同名的文件夹"
+        )
     
     # 生成文件夹路径
     app_slug = app.slug if app.slug else to_slug(app.name)
