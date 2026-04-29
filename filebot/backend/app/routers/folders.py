@@ -386,6 +386,14 @@ def create_folder(
         # 根据用户要求，不能有空字符串，空字符串用"-"替代
         parent_folder_path = f"/{app_slug}" if app_slug else "-"
     
+    # 🐛 DEBUG: 打印即将创建的文件夹信息
+    print(f"[DEBUG] 创建文件夹: name={folder_data.name!r} parent_folder_id={folder_data.parent_folder_id!r}")
+    print(f"  → parent_folder={parent_folder.path if parent_folder else None} (id={parent_folder_uuid})")
+    print(f"  → app_slug={app_slug} parent_path={parent_path}")
+    print(f"  → 生成的文件夹路径={folder_path}")
+    print(f"  → parent_folder_path={parent_folder_path}")
+    # ===============================================
+    
     # 创建文件夹记录
     db_folder = Folder(
         id=str(uuid.uuid4()),

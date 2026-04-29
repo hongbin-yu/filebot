@@ -1,0 +1,1118 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import appService, { App } from '../../services/app.service';
+import folderService, { Folder, FolderCreateRequest } from '../../services/folder.service';
+import documentService, { Document } from '../../services/document.service';
+import aiService, { WebsiteCrawlRequest, SitemapImportRequest, SitemapImportResponse } from '../../services/ai.service';
+
+import CreateFolderModal from '../../components/folders/CreateFolderModal';
+import { ChevronRightIcon, ChevronDownIcon, FolderIcon, DocumentIcon } from '@heroicons/react/24/outline';
+
+const AdminAppFolders: React.FC = () => {
+  const { appSlug } = useParams<{ appSlug: string }>();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // State
+  const [app, setApp] = useState<App | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showImportWebsiteModal, setShowImportWebsiteModal] = useState(false);
+  const [parentFolderId, setParentFolderId] = useState<string | null>(null);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  
+  // Website import form
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [crawlDepth, setCrawlDepth] = useState(1);
+  const [importingWebsite, setImportingWebsite] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  
+  // Sitemap import state
+  const [sitemapUrl, setSitemapUrl] = useState('');
+  const [sitemapDepth, setSitemapDepth] = useState(0);
+  const [importingSitemap, setImportingSitemap] = useState(false);
+  const [importTab, setImportTab] = useState<'website' | 'sitemap'>('website');
+  
+  // Current folder details
+  const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
+  const [subfolders, setSubfolders] = useState<Folder[]>([]);
+  
+  // Document state
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  
+  // Load app info
+  useEffect(() => {
+    const loadAppInfo = async () => {
+      if (!appSlug) return;
+      
+      try {
+        setError(null);
+        const appData = await appService.getAppById(appSlug);
+        setApp(appData);
+        
+        // Load all folders
+        if (appData) {
+          await loadFolders(appData.id || appSlug);
+        }
+      } catch (error: any) {
+        console.error('Failed to load app info:', error);
+        
+        // Check error type
+        if (error.response?.status === 403) {
+          setError('No permission to access this app. It may belong to another user.');
+        } else if (error.response?.status === 404) {
+          setError('App not found. It may have been deleted or the URL may be incorrect.');
+        } else {
+          setError('Failed to load app info. Please try again later.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadAppInfo();
+  }, [appSlug]);
+  
+  // Load folders
+  const loadFolders = async (appIdentifier: string) => {
+    try {
+      const foldersData = await folderService.getFolders(appIdentifier);
+      setFolders(foldersData);
+      
+      // Read folder from URL params, or default to first root folder
+      const folderFromUrl = searchParams.get('folder');
+      if (folderFromUrl && foldersData.some(f => f.id === folderFromUrl)) {
+        setCurrentFolderId(folderFromUrl);
+      } else if (!currentFolderId && foldersData.length > 0) {
+        const rootFolder = foldersData.find(f => !f.parent_folder_id);
+        if (rootFolder) {
+          setCurrentFolderId(rootFolder.id);
+        } else if (foldersData[0]) {
+          setCurrentFolderId(foldersData[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load folders:', error);
+    }
+  };
+  
+  // Load folder details and subfolders when current folder changes
+  useEffect(() => {
+    const loadCurrentFolderDetails = async () => {
+      if (!currentFolderId) return;
+      
+      try {
+        // Load folder details
+        const folderDetails = await folderService.getFolderById(currentFolderId);
+        setCurrentFolder(folderDetails);
+        
+        // Load subfolders
+        const subfoldersData = await folderService.getFolders(app?.id || appSlug || '', {
+          parent_folder_id: currentFolderId
+        });
+        setSubfolders(subfoldersData);
+        
+        // Load documents
+        await loadDocuments(currentFolderId);
+      } catch (error) {
+        console.error('Failed to load folder details:', error);
+      }
+    };
+    
+    loadCurrentFolderDetails();
+  }, [currentFolderId, app?.id, appSlug]);
+
+  // Sync URL → currentFolderId (handles breadcrumb clicks, back/forward)
+  useEffect(() => {
+    const urlFolder = searchParams.get('folder');
+    if (urlFolder && urlFolder !== currentFolderId) {
+      setCurrentFolderId(urlFolder);
+    }
+  }, [searchParams]);
+  
+  // Load documents
+  const loadDocuments = async (folderIdentifier: string) => {
+    try {
+      setDocumentsLoading(true);
+      const docs = await documentService.getDocumentsByFolderId(folderIdentifier);
+      setDocuments(docs);
+    } catch (error) {
+      console.error('Failed to load documents:', error);
+      setDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  };
+  
+  // Handle folder click
+  const handleFolderClick = (folderId: string) => {
+    setCurrentFolderId(folderId);
+    setSearchParams({ folder: folderId });
+  };
+  
+  // Handle create folder
+  const handleCreateFolder = async (data: FolderCreateRequest) => {
+    try {
+      // Ensure app ID is correct
+      const folderData: FolderCreateRequest = {
+        ...data,
+        app_id: app?.id || appSlug || ''
+      };
+      
+      await folderService.createFolder(folderData);
+      
+      // Reload folders
+      if (app) {
+        await loadFolders(app.id);
+      }
+      
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+      alert('Failed to create folder. Check network or permissions.');
+    }
+  };
+  
+  // Handle delete folder
+  const handleDeleteFolder = async (folderId: string) => {
+    // Check if folder has subfolders
+    const subfoldersCount = folders.filter(f => f.parent_folder_id === folderId).length;
+    
+    let recursive = false;
+    
+    if (subfoldersCount > 0) {
+      // Ask user about recursive delete
+      const folderName = folders.find(f => f.id === folderId)?.name || 'This folder';
+      const confirmMessage = `Folder "${folderName}" has ${subfoldersCount} subfolder(s).\n\n` +
+                           `Click "OK" to recursively delete all subfolders and documents.\n` +
+                           `Click "Cancel" to delete only the empty folder.`;
+      
+      if (!window.confirm(confirmMessage)) {
+        return; // User cancelled
+      }
+      
+      recursive = true;
+    } else {
+      // No subfolders, simple confirmation
+      if (!confirm('Delete this folder? All documents inside will also be deleted.')) {
+        return;
+      }
+    }
+    
+    try {
+      await folderService.deleteFolder('', '', folderId, recursive);
+      
+      // If deleting current folder, navigate to parent or root
+      if (currentFolderId === folderId) {
+        const folderToDelete = folders.find(f => f.id === folderId);
+        setCurrentFolderId(folderToDelete?.parent_folder_id || null);
+      }
+      
+      // Reload folders
+      if (app) {
+        await loadFolders(app.id);
+      }
+    } catch (error: any) {
+      console.error('Delete FolderFailed:', error);
+      
+      // Provide detailed error message
+      if (error.response?.status === 400) {
+        const errorDetail = error.response?.data?.detail || 'Folder is not empty';
+        alert(`Delete failed: ${errorDetail}\n\nPlease use the recursive delete option.`);
+      } else {
+        alert('Failed to delete folder. It may not be empty or you may not have permission.');
+      }
+    }
+  };
+  
+  // Handle preview document
+  const handlePreviewDocument = (document: Document) => {
+    console.log('Preview document:', document);
+    // Navigate to document detail page
+    navigate(`/admin/documents/${document.id}`);
+  };
+  
+  // Handle edit document
+  const handleEditDocument = (document: Document) => {
+    console.log('Edit document:', document);
+    // Open edit modal (TODO)
+    alert(`Edit document: ${document.title || document.original_filename} (not yet implemented)`);
+  };
+  
+  // Handle delete document
+  const handleDeleteDocument = async (document: Document) => {
+    if (!confirm(`Delete document "${document.title || document.original_filename}"?`)) {
+      return;
+    }
+    
+    try {
+      await documentService.deleteDocument(document.id);
+      // Reload documents
+      if (currentFolderId) {
+        await loadDocuments(currentFolderId);
+      }
+      alert('Document deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      alert('Failed to delete document. Check network or permissions.');
+    }
+  };
+  
+  // Handle edit folder
+  const handleEditFolder = async (folderId: string) => {
+    const folderToEdit = folders.find(f => f.id === folderId);
+    if (!folderToEdit) return;
+    
+    setEditingFolder(folderToEdit);
+    setShowEditModal(true);
+  };
+  
+  // Handle save edited folder
+  const handleSaveEditFolder = async (data: {
+    name: string;
+    description?: string;
+    parent_folder_id?: string;
+  }) => {
+    if (!editingFolder || !app) return;
+    
+    try {
+      // Call update folder API
+      await folderService.updateFolder(app.id, '', editingFolder.id, data);
+      
+      // Reload folders
+      await loadFolders(app.id);
+      
+      // Update current folder state if editing current folder
+      if (currentFolderId === editingFolder.id) {
+        const updatedCurrentFolder = folders.find(f => f.id === editingFolder.id);
+        if (updatedCurrentFolder) {
+          setCurrentFolder(updatedCurrentFolder);
+        }
+      }
+      
+      // Close edit modal
+      setShowEditModal(false);
+      setEditingFolder(null);
+      
+      console.log('Folder updated successfully');
+    } catch (error) {
+      console.error('Failed to update folder:', error);
+      alert('Failed to update folder: ' + (error as any).response?.data?.detail || 'Unknown error');
+      throw error;
+    }
+  };
+  
+  // Handle move folder
+  const handleMoveFolder = async (folderId: string, targetParentFolderId?: string) => {
+    try {
+      // Call move folder API
+      await folderService.moveFolder(folderId, targetParentFolderId);
+      
+      // Reload folders to update tree
+      if (app) {
+        await loadFolders(app.id);
+      }
+      
+      // Update current folder ID if moving it
+      if (currentFolderId === folderId && targetParentFolderId) {
+        // May need to re-select after move
+        setCurrentFolderId(folderId);
+      }
+      
+      // Show success message
+      console.log('Folder moved successfully');
+    } catch (error) {
+      console.error('Failed to move folder:', error);
+      alert('Failed to move folder: ' + (error as any).response?.data?.detail || 'Unknown error');
+      throw error; // Re-throw for FolderTree to handle
+    }
+  };
+  
+  // Build breadcrumb path
+  const buildBreadcrumbs = () => {
+    if (!currentFolderId || !folders.length) return [];
+    
+    const breadcrumbs = [];
+    let current = folders.find(f => f.id === currentFolderId);
+    
+    while (current) {
+      const currentFolder = current;
+      breadcrumbs.unshift({
+        id: currentFolder.id,
+        name: currentFolder.name,
+        path: currentFolder.id === currentFolderId ? undefined : `/admin/apps/${appSlug}?folder=${currentFolder.id}`
+      });
+      
+      if (currentFolder.parent_folder_id) {
+        current = folders.find(f => f.id === currentFolder.parent_folder_id);
+      } else {
+        current = undefined;
+      }
+    }
+    
+    // Add app as root
+    if (app) {
+      breadcrumbs.unshift({
+        id: 'app',
+        name: app.name,
+        path: `/admin/apps/${appSlug}`
+      });
+    }
+    
+    return breadcrumbs;
+  };
+  
+  // Handle navigate to documents
+  const handleNavigateToDocuments = (folderIdentifier: string) => {
+    // Use path (starts with /) or UUID
+    const encodedIdentifier = folderIdentifier.startsWith('/') 
+      ? encodeURIComponent(folderIdentifier) 
+      : folderIdentifier;
+    navigate(`/admin/apps/${appSlug}/folders/${encodedIdentifier}/documents`);
+  };
+  
+  // Handle navigate to upload
+  const handleNavigateToUpload = (folderIdentifier: string) => {
+    // Use path (starts with /) or UUID
+    const encodedIdentifier = folderIdentifier.startsWith('/') 
+      ? encodeURIComponent(folderIdentifier) 
+      : folderIdentifier;
+    navigate(`/admin/apps/${appSlug}/folders/${encodedIdentifier}/upload`);
+  };
+
+  // Handle navigate to import folder
+  const handleImportFolder = (folderIdentifier: string) => {
+    // Use path (starts with /) or UUID
+    const encodedIdentifier = folderIdentifier.startsWith('/') 
+      ? encodeURIComponent(folderIdentifier) 
+      : folderIdentifier;
+    navigate(`/admin/apps/${appSlug}/folders/${encodedIdentifier}/upload?mode=import`);
+  };
+
+  // Handle website import
+  const handleImportWebsite = (folderId: string) => {
+    setShowImportWebsiteModal(true);
+  };
+
+  // Handle website crawl submission
+  const handleSubmitImportWebsite = async () => {
+    if (!websiteUrl.trim() || !currentFolderId || !app) {
+      setImportError('Please fill in the URL and ensure a folder is selected');
+      return;
+    }
+    
+    // Validate URL
+    try {
+      new URL(websiteUrl);
+    } catch {
+      setImportError('Please enter a valid URL (e.g., https://example.com)');
+      return;
+    }
+    
+    setImportingWebsite(true);
+    setImportError(null);
+    
+    try {
+      // Build request
+      const request: WebsiteCrawlRequest = {
+        url: websiteUrl.trim(),
+        depth: crawlDepth,
+        folder_id: currentFolderId,
+        include_images: true,
+        follow_external_links: false,
+        respect_robots_txt: true
+      };
+      
+      // Call backend API
+      const response = await aiService.crawlWebsite(request);
+      
+      // Show success message
+      alert(`Website crawl started!\nTask ID: ${response.task_id}\nURL: ${response.url}\nDepth: ${response.depth}\nStatus: ${response.status}\n\nThe task will run in the background.`);
+      
+      // Close modal
+      setShowImportWebsiteModal(false);
+      setWebsiteUrl('');
+      setCrawlDepth(1);
+    } catch (error: any) {
+      console.error('Website import failed:', error);
+      setImportError(
+        error.response?.data?.detail || 
+        error.message || 
+        'Website import failed. Check network or backend service.'
+      );
+    } finally {
+      setImportingWebsite(false);
+    }
+  };
+
+  // Handle sitemap import
+  const handleSubmitImportSitemap = async () => {
+    if (!sitemapUrl.trim() || !currentFolderId || !app) {
+      setImportError('Please fill in the sitemap URL and ensure a folder is selected');
+      return;
+    }
+    try {
+      new URL(sitemapUrl);
+    } catch {
+      setImportError('Please enter a valid sitemap URL (e.g., https://example.com/sitemap.xml)');
+      return;
+    }
+    setImportingSitemap(true);
+    setImportError(null);
+    try {
+      const request: SitemapImportRequest = {
+        sitemap_url: sitemapUrl.trim(),
+        folder_id: currentFolderId,
+        include_images: true,
+        depth: sitemapDepth
+      };
+      const response: SitemapImportResponse = await aiService.importFromSitemap(request);
+      window.showWetAlert(`Sitemap import started!\nTask ID: ${response.task_id}\nURLs: ${response.total_urls || 'Unknown'}\nDepth: ${response.depth}`);
+      setShowImportWebsiteModal(false);
+      setSitemapUrl('');
+      setSitemapDepth(0);
+    } catch (error: any) {
+      setImportError(error.response?.data?.detail || error.message || 'Sitemap import failed');
+    } finally {
+      setImportingSitemap(false);
+    }
+  };
+  
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="p-6 text-center py-12">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="mt-4 text-gray-600">Loading folders...</p>
+      </div>
+    );
+  }
+  
+  // Render error state
+  if (!app) {
+    const isPermissionError = error?.includes('permission');
+    const errorTitle = isPermissionError ? 'No Access Permission' : 'App Not Found';
+    
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+            <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
+            <span>›</span>
+            <span className="text-gray-700">Unknown App</span>
+          </div>
+        </div>
+        
+        {isPermissionError ? (
+          // Permission error
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 text-center">
+            <h3 className="text-lg font-medium text-orange-800 mb-2">{errorTitle}</h3>
+            <p className="text-orange-700 mb-4">{error || 'You do not have permission to access this app.'}</p>
+            <div className="space-y-3">
+              <Link to="/admin/apps" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-block">
+                Back to App List
+              </Link>
+              <div className="mt-4 pt-4 border-t border-orange-100">
+                <p className="text-sm text-orange-600 mb-2">To access this app:</p>
+                <div className="space-y-2 text-sm text-orange-700">
+                  <p>1. Log in with the app owner account</p>
+                  <p>2. Contact an admin to grant access</p>
+                  <p>3. Create your own app</p>
+                </div>
+                <button
+                  onClick={() => navigate('/admin/apps?create=true')}
+                  className="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Create New App
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // App not found error
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <h3 className="text-lg font-medium text-red-800 mb-2">{errorTitle}</h3>
+            <p className="text-red-700 mb-4">{error || 'Could not find the specified app. Check the URL or go back.'}</p>
+            <Link to="/admin/apps" className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+              Back to App List
+            </Link>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  const breadcrumbs = buildBreadcrumbs();
+  
+  return (
+    <div className="p-6">
+      {/* Breadcrumb Navigation */}
+      <div className="mb-6">
+        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+          <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
+          {breadcrumbs.map((crumb, index) => (
+            <React.Fragment key={crumb.id}>
+              <span>›</span>
+              {crumb.path ? (
+                <Link to={crumb.path} className="hover:text-blue-600">
+                  {crumb.name}
+                </Link>
+              ) : (
+                <span className="text-gray-700 font-medium">{crumb.name}</span>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+        <h1 className="text-2xl font-bold text-gray-800">{app.name}</h1>
+        <p className="text-gray-600 mt-1">{app.description}</p>
+      </div>
+      
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Folder Management</h2>
+        <div className="flex space-x-2">
+          <button 
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
+            onClick={() => {
+              setParentFolderId(null);
+              setShowCreateModal(true);
+            }}
+          >
+            <span>+ Create Root Folder</span>
+          </button>
+          {currentFolderId && (
+            <button 
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center"
+              onClick={() => {
+                setParentFolderId(currentFolderId);
+                setShowCreateModal(true);
+              }}
+            >
+              <span>+ Create Subfolder</span>
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Two-Column Layout */}
+      <div className="flex space-x-6">
+        {/* Left: Folder Tree */}
+        <div className="w-1/3 space-y-4">
+          {/* Subfolders Card */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-4 py-3 border-b">
+              <h3 className="font-medium">Subfolders</h3>
+            </div>
+            <div className="p-4">
+              {currentFolder && subfolders.length > 0 ? (
+                <div className="space-y-2">
+                  {subfolders.map(folder => (
+                    <div
+                      key={folder.id}
+                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleFolderClick(folder.id)}
+                    >
+                      <div className="flex items-center">
+                        <FolderIcon className="w-5 h-5 text-yellow-500 mr-2" />
+                        <div className="flex-1">
+                          <div className="font-medium">{folder.name}</div>
+                          {folder.description && (
+                            <div className="text-sm text-gray-500">{folder.description}</div>
+                          )}
+                        </div>
+                        <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-sm text-gray-500 mt-2">
+                    {subfolders.length} subfolder{subfolders.length !== 1 ? 's' : ''} total
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-4">
+                  {currentFolder ? 'No subfolders' : 'Select a folder to view subfolders'}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* AI Operations Card */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 border-b">
+              <h3 className="font-medium">AI Operations</h3>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button
+                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                  onClick={() => {
+                    setParentFolderId(currentFolder.id);
+                    setShowCreateModal(true);
+                  }}
+                >
+                  <div className="font-medium">Create Subfolder</div>
+                  <div className="text-sm text-gray-500">Create a new subfolder in the current folder</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                  onClick={() => handleNavigateToUpload(currentFolder.path || currentFolder.id)}
+                >
+                  <div className="font-medium">Upload</div>
+                  <div className="text-sm text-gray-500">Upload files to this folder</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                  onClick={() => handleNavigateToDocuments(currentFolder.path || currentFolder.id)}
+                >
+                  <div className="font-medium">Documents</div>
+                  <div className="text-sm text-gray-500">Browse documents in this folder</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-blue-50 text-left border-blue-200"
+                  onClick={() => handleEditFolder(currentFolder.id)}
+                >
+                  <div className="font-medium text-blue-600">Edit Folder</div>
+                  <div className="text-sm text-blue-500">Edit folder name and description</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
+                  onClick={() => handleDeleteFolder(currentFolder.id)}
+                >
+                  <div className="font-medium text-red-600">Delete Folder</div>
+                  <div className="text-sm text-red-500">Delete this folder and all its contents</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-green-50 text-left border-green-200"
+                  onClick={() => handleImportFolder(currentFolder.id)}
+                >
+                  <div className="font-medium text-green-600">Import Folder</div>
+                  <div className="text-sm text-green-500">Import an entire folder from local drive</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-purple-50 text-left border-purple-200"
+                  onClick={() => handleImportWebsite(currentFolder.id)}
+                >
+                  <div className="font-medium text-purple-600">Import Website</div>
+                  <div className="text-sm text-purple-500">Crawl web pages and images from a URL</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Folder Content */}
+        <div className="w-2/3">
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-medium">
+                {currentFolder ? `${currentFolder.name} - Content` : 'Select a Folder'}
+              </h3>
+              {currentFolder && (
+                <div className="flex space-x-2">
+                  <button 
+                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                    onClick={() => handleNavigateToUpload(currentFolder.path || currentFolder.id)}
+                  >
+                    Upload
+                  </button>
+                  <button 
+                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                    onClick={() => handleNavigateToDocuments(currentFolder.path || currentFolder.id)}
+                  >
+                    Documents
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4">
+              {!currentFolder ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FolderIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <p>Select a folder from the left panel</p>
+                </div>
+              ) : (
+                <>
+                  {/* Folder Info */}
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium mb-2">Folder Info</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Name:</span> 
+                        <span className="ml-2 font-medium">{currentFolder.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Created by:</span> 
+                        <span className="ml-2">{currentFolder.created_by}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Path:</span> 
+                        <span className="ml-2 font-mono text-sm">{currentFolder.path || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Created:</span> 
+                        <span className="ml-2">{new Date(currentFolder.created_at).toLocaleString()}</span>
+                      </div>
+                      {currentFolder.description && (
+                        <div className="col-span-2">
+                          <span className="text-gray-500">Description:</span> 
+                          <span className="ml-2">{currentFolder.description}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+
+                  
+                  {/* Documents */}
+                  {documents.length > 0 && (
+                    <div className="mb-6 border-t pt-6">
+                      <h4 className="font-medium mb-3">Documents ({documents.length})</h4>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {documents.map(doc => (
+                              <tr key={doc.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4">
+                                  <div>
+                                    <div className="font-medium text-gray-900">{doc.title || doc.original_filename || 'Untitled'}</div>
+                                    <div className="text-sm text-gray-500">{doc.original_filename}</div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {doc.file_type || 'Unknown'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    doc.conversion_status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    doc.conversion_status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                    doc.conversion_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {doc.conversion_status === 'completed' ? 'Completed' :
+                                     doc.conversion_status === 'processing' ? 'Processing' :
+                                     doc.conversion_status === 'failed' ? 'Failed' :
+                                     'Pending'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : 'Unknown'}
+                                </td>
+                                <td className="px-6 py-4">
+                                  {doc.created_at ? new Date(doc.created_at).toLocaleString() : 'Unknown'}
+                                </td>
+                                <td className="px-6 py-4 text-right text-sm font-medium">
+                                  <button 
+                                    className="text-blue-600 hover:text-blue-900 mr-3"
+                                    onClick={() => handlePreviewDocument(doc)}
+                                  >
+                                    Preview
+                                  </button>
+                                  <button 
+                                    className="text-green-600 hover:text-green-900 mr-3"
+                                    onClick={() => handleEditDocument(doc)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button 
+                                    className="text-red-600 hover:text-red-900"
+                                    onClick={() => handleDeleteDocument(doc)}
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {documents.length === 0 && currentFolder && (
+                    <div className="mb-6 border-t pt-6">
+                      <h4 className="font-medium mb-3">Documents</h4>
+                      <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+                        <DocumentIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                        <p>No documents in this folder</p>
+                        <button 
+                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          onClick={() => handleNavigateToUpload(currentFolder.path || currentFolder.id)}
+                        >
+                          Upload First Document
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Create Folder Modal */}
+      {showCreateModal && (
+        <CreateFolderModal
+          appId={app.id}
+          appSlug={appSlug}
+          parentFolderId={parentFolderId}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateFolder}
+          folders={folders}
+          mode="create"
+        />
+      )}
+      
+      {/* Edit Folder Modal */}
+      {showEditModal && editingFolder && (
+        <CreateFolderModal
+          appId={app.id}
+          appSlug={appSlug}
+          parentFolderId={editingFolder.parent_folder_id}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingFolder(null);
+          }}
+          onSubmit={handleSaveEditFolder}
+          folders={folders}
+          mode="edit"
+          folderToEdit={editingFolder}
+        />
+      )}
+      
+      {/* Import Website Modal */}
+      {showImportWebsiteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-purple-800">Import Content</h3>
+                <button
+                  onClick={() => setShowImportWebsiteModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Tab switcher */}
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  onClick={() => { setImportTab('website'); setImportError(null); }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                    importTab === 'website'
+                      ? 'border-purple-600 text-purple-700'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Website Crawl
+                </button>
+                <button
+                  onClick={() => { setImportTab('sitemap'); setImportError(null); }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                    importTab === 'sitemap'
+                      ? 'border-green-600 text-green-700'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Sitemap Import
+                </button>
+              </div>
+              
+              {importTab === 'website' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Website URL
+                    </label>
+                    <input
+                      type="url"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      placeholder="https://example.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      disabled={importingWebsite}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Crawl Depth
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="range"
+                        min="1"
+                        max="5"
+                        value={crawlDepth}
+                        onChange={(e) => setCrawlDepth(parseInt(e.target.value))}
+                        className="flex-1"
+                        disabled={importingWebsite}
+                      />
+                      <span className="text-sm font-medium text-purple-600 w-8">{crawlDepth}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>1 (Homepage only)</span>
+                      <span>3</span>
+                      <span>5 (Deep crawl)</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Depth {crawlDepth}: {getDepthDescription(crawlDepth)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      <strong>Target Folder:</strong> {currentFolder?.name || 'Not selected'} <br />
+                      <strong>App:</strong> {app?.name || 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  {importError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                      <p className="text-sm text-red-700">{importError}</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      onClick={() => setShowImportWebsiteModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      disabled={importingWebsite}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitImportWebsite}
+                      disabled={importingWebsite || !websiteUrl.trim()}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    >
+                      {importingWebsite ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Importing...
+                        </>
+                      ) : (
+                        'Start Import'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {importTab === 'sitemap' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Sitemap URL
+                    </label>
+                    <input
+                      type="url"
+                      value={sitemapUrl}
+                      onChange={(e) => setSitemapUrl(e.target.value)}
+                      placeholder="https://www.canada.ca/sitemap.xml"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      disabled={importingSitemap}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter a sitemap.xml URL to bulk-import all listed pages
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Recursion Depth
+                    </label>
+                    <select
+                      value={sitemapDepth}
+                      onChange={(e) => setSitemapDepth(parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      disabled={importingSitemap}
+                    >
+                      <option value={0}>0 - Sitemap URLs only (no link tracking)</option>
+                      <option value={1}>1 - Sitemap URLs + direct child links</option>
+                      <option value={2}>2 - Sitemap URLs + 2 levels deep</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Recommended: depth = 0 (sitemaps already contain all desired URLs)
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      <strong>Target Folder:</strong> {currentFolder?.name || 'Not selected'} <br />
+                      <strong>App:</strong> {app?.name || 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  {importError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                      <p className="text-sm text-red-700">{importError}</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      onClick={() => setShowImportWebsiteModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      disabled={importingSitemap}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitImportSitemap}
+                      disabled={importingSitemap || !sitemapUrl.trim()}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    >
+                      {importingSitemap ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Importing...
+                        </>
+                      ) : (
+                        'Start Sitemap Import'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper: get depth description
+const getDepthDescription = (depth: number): string => {
+  const descriptions = [
+    'Homepage only',
+    'Homepage + direct links',
+    'Homepage + 2 levels',
+    'Homepage + 3 levels',
+    'Deep crawl (may be slow)',
+    'Very deep crawl (may be very slow)'
+  ];
+  return descriptions[Math.min(depth - 1, descriptions.length - 1)] || 'Custom depth';
+};
+
+export default AdminAppFolders;

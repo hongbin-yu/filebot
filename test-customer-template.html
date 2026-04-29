@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Customer Template</title>
+    <script src="https://unpkg.com/mustache@4.2.0/mustache.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-result { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        code { background: #f8f9fa; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Customer Template Test</h1>
+    <p>Testing if Customer Template is properly defined in templateRegistry...</p>
+    
+    <div id="result-container"></div>
+    
+    <script>
+        // Simulate templateRegistry from editor.html
+        const templateRegistry = {
+            // Customer information template (from our modification)
+            'customer-template': {
+                name: 'Customer Information Template',
+                template: `<div class="customer-info" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 20px 0; background-color: #f9f9f9;">
+    <h2 style="color: #2c3e50; margin-top: 0;">Customer Information</h2>
+    
+    <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+        <div style="flex: 1; min-width: 250px;">
+            <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px;">Personal Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold; width: 120px;">Name:</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{customer_name}}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Email:</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><a href="mailto:{{customer_email}}">{{customer_email}}</a></td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Phone:</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><a href="tel:{{customer_phone}}">{{customer_phone}}</a></td>
+                </tr>
+            </table>
+        </div>
+        
+        <div style="flex: 1; min-width: 250px;">
+            <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px;">Company Information</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold; width: 120px;">Company:</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{customer_company}}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Position:</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{customer_position}}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Address:</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{customer_address}}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+        <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px;">Service Request</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold; width: 120px;">Service Type:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{service_type}}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Request Date:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{request_date}}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Priority:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; background-color: {{priority_color}}; color: white;">
+                        {{priority}}
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Status:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; background-color: {{status_color}}; color: white;">
+                        {{status}}
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">Notes:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{notes}}</td>
+            </tr>
+        </table>
+    </div>
+    
+    {{#additional_info}}
+    <div style="margin-top: 20px; padding: 15px; background-color: #e8f4fd; border-radius: 6px; border-left: 4px solid #3498db;">
+        <h4 style="margin-top: 0; color: #2c3e50;">Additional Information</h4>
+        <p style="margin-bottom: 0;">{{additional_info}}</p>
+    </div>
+    {{/additional_info}}
+</div>`,
+                variables: {
+                    customer_name: 'John Doe',
+                    customer_email: 'john.doe@example.com',
+                    customer_phone: '+1 (555) 123-4567',
+                    customer_company: 'Acme Corporation',
+                    customer_position: 'Project Manager',
+                    customer_address: '123 Business Street, Toronto, ON M5H 2N2',
+                    service_type: 'Web Development',
+                    request_date: '2026-04-18',
+                    priority: 'Medium',
+                    priority_color: '#f39c12',
+                    status: 'In Progress',
+                    status_color: '#3498db',
+                    notes: 'Initial requirements gathering completed. Awaiting design approval.',
+                    additional_info: ''
+                }
+            }
+        };
+
+        function testCustomerTemplate() {
+            const resultContainer = document.getElementById('result-container');
+            
+            try {
+                // Test 1: Check if template exists
+                if (!templateRegistry['customer-template']) {
+                    resultContainer.innerHTML = `
+                        <div class="test-result error">
+                            <h3>❌ Test Failed</h3>
+                            <p>Customer template not found in registry.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const templateInfo = templateRegistry['customer-template'];
+                
+                // Test 2: Check template structure
+                if (!templateInfo.name || !templateInfo.template || !templateInfo.variables) {
+                    resultContainer.innerHTML = `
+                        <div class="test-result error">
+                            <h3>❌ Test Failed</h3>
+                            <p>Customer template missing required fields.</p>
+                            <pre>${JSON.stringify(templateInfo, null, 2)}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Test 3: Try to render template
+                const data = { ...templateInfo.variables };
+                const rendered = Mustache.render(templateInfo.template, data);
+                
+                // Test 4: Check if rendered output contains expected content
+                if (!rendered.includes('Customer Information') || !rendered.includes('John Doe')) {
+                    resultContainer.innerHTML = `
+                        <div class="test-result error">
+                            <h3>❌ Test Failed</h3>
+                            <p>Template rendering produced unexpected output.</p>
+                            <pre>${rendered.substring(0, 500)}...</pre>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // All tests passed
+                resultContainer.innerHTML = `
+                    <div class="test-result success">
+                        <h3>✅ Test Passed!</h3>
+                        <p>Customer template is properly defined and can be rendered.</p>
+                        <p><strong>Template Name:</strong> ${templateInfo.name}</p>
+                        <p><strong>Variables:</strong> ${Object.keys(templateInfo.variables).length} variables available</p>
+                        <p><strong>Template ID:</strong> <code>customer-template</code></p>
+                        <hr>
+                        <h4>Sample Rendered Output:</h4>
+                        <div style="max-height: 400px; overflow: auto; border: 1px solid #ccc; padding: 10px; margin-top: 10px;">
+                            ${rendered}
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultContainer.innerHTML = `
+                    <div class="test-result error">
+                        <h3>❌ Test Error</h3>
+                        <p>Error testing customer template: ${error.message}</p>
+                        <pre>${error.stack}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        // Run test when page loads
+        document.addEventListener('DOMContentLoaded', testCustomerTemplate);
+    </script>
+</body>
+</html>

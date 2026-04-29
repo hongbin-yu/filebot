@@ -226,7 +226,7 @@ const AdminAppFolders: React.FC = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Failed to create folder:', error);
-      alert('Failed to create folder. Check network or permissions.');
+      window.showWetAlert('Failed to create folder. Check network or permissions.');
     }
   };
   
@@ -275,9 +275,9 @@ const AdminAppFolders: React.FC = () => {
       // Provide detailed error message
       if (error.response?.status === 400) {
         const errorDetail = error.response?.data?.detail || 'Folder is not empty';
-        alert(`Delete failed: ${errorDetail}\n\nPlease use the recursive delete option.`);
+        window.showWetAlert(`Delete failed: ${errorDetail}\n\nPlease use the recursive delete option.`);
       } else {
-        alert('Failed to delete folder. It may not be empty or you may not have permission.');
+        window.showWetAlert('Failed to delete folder. It may not be empty or you may not have permission.');
       }
     }
   };
@@ -293,7 +293,7 @@ const AdminAppFolders: React.FC = () => {
   // Handle edit document
   const handleEditDocument = (document: Document) => {
     console.log('Edit document:', document);
-    alert(`Edit document: ${document.title || document.original_filename} (not yet implemented)`);
+    window.showWetAlert(`Edit document: ${document.title || document.original_filename} (not yet implemented)`);
   };
   
   // Handle delete document
@@ -308,10 +308,10 @@ const AdminAppFolders: React.FC = () => {
       if (currentFolderPath) {
         await loadDocuments(currentFolderPath);
       }
-      alert('Document deleted successfully');
+      window.showWetAlert('Document deleted successfully');
     } catch (error) {
       console.error('Failed to delete document:', error);
-      alert('Failed to delete document. Check network or permissions.');
+      window.showWetAlert('Failed to delete document. Check network or permissions.');
     }
   };
   
@@ -354,7 +354,7 @@ const AdminAppFolders: React.FC = () => {
       console.log('Folder updated successfully');
     } catch (error) {
       console.error('Failed to update folder:', error);
-      alert('Failed to update folder: ' + (error as any).response?.data?.detail || 'Unknown error');
+      window.showWetAlert('Failed to update folder: ' + (error as any).response?.data?.detail || 'Unknown error');
       throw error;
     }
   };
@@ -378,7 +378,7 @@ const AdminAppFolders: React.FC = () => {
       console.log('Folder moved successfully');
     } catch (error) {
       console.error('Failed to move folder:', error);
-      alert('Failed to move folder: ' + (error as any).response?.data?.detail || 'Unknown error');
+      window.showWetAlert('Failed to move folder: ' + (error as any).response?.data?.detail || 'Unknown error');
       throw error;
     }
   };
@@ -497,7 +497,7 @@ const AdminAppFolders: React.FC = () => {
       const response = await aiService.crawlWebsite(request);
       
       // Show success message
-      alert(`Website crawl started!\nTask ID: ${response.task_id}\nURL: ${response.url}\nDepth: ${response.depth}\nStatus: ${response.status}\n\nThe task will run in the background.`);
+      window.showWetAlert(`Website crawl started!\nTask ID: ${response.task_id}\nURL: ${response.url}\nDepth: ${response.depth}\nStatus: ${response.status}\n\nThe task will run in the background.`);
       
       // Close modal
       setShowImportWebsiteModal(false);

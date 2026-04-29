@@ -1144,12 +1144,18 @@ async def upload_document(
     if folder_path:
         # 使用路径查找文件夹，如果不存在则自动创建
         folder = get_folder_by_identifier_or_path(folder_path, current_user, db, create_if_not_exists=True)
+        # 🐛 DEBUG: Show resolved folder info
+        print(f"[DEBUG] 文件夹解析结果: folder_path={folder_path!r} → folder.path={folder.path!r} folder.id={folder.id}")
+        # ======================================
         logger.info(f"✅ upload_document: 通过路径找到文件夹: {folder_path}")
         # 确保folder_id指向实际文件夹的ID（修复用folder_path时folder_id=None的bug）
         folder_id = folder.id
     else:
         # 使用ID查找文件夹（向后兼容）
         folder = check_folder_access(folder_id, current_user, db)
+        # 🐛 DEBUG: Show resolved folder info
+        print(f"[DEBUG] 文件夹解析结果: folder_id={folder_id!r} → folder.path={folder.path!r} folder.name={folder.name!r}")
+        # ======================================
         logger.warning(f"⚠️  upload_document: 通过UUID找到文件夹: {folder_id} (路径: {folder.path})")
     
     # 如果提供了命名规则ID，验证规则并获取下一个文档编号

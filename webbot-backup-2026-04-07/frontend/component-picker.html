@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Picker - Canada.ca AEM Style</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .component-picker {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Left Panel - Component Library */
+        .component-library {
+            width: 280px;
+            background: #fff;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .library-header {
+            padding: 16px;
+            background: #335075;
+            color: white;
+            border-bottom: 1px solid #2a4260;
+        }
+        
+        .library-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .library-header h2::before {
+            content: '🧩';
+            font-size: 18px;
+        }
+        
+        .search-box {
+            margin-top: 12px;
+            position: relative;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            background: white;
+        }
+        
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 10px;
+            top: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .component-categories {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        
+        .category {
+            margin-bottom: 16px;
+        }
+        
+        .category-header {
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .category-header:hover {
+            background: #e8e8e8;
+        }
+        
+        .component-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .component-item {
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: move;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        
+        .component-item:hover {
+            background: #f8f8f8;
+            border-color: #c0c0c0;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .component-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e8f4ff;
+            border-radius: 4px;
+            color: #2572b4;
+            font-size: 12px;
+        }
+        
+        .component-name {
+            flex: 1;
+        }
+        
+        /* Right Panel - Preview/Instructions */
+        .preview-area {
+            flex: 1;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .preview-header {
+            padding: 16px;
+            background: #f8f8f8;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .preview-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .preview-header h3::before {
+            content: '📋';
+            font-size: 18px;
+        }
+        
+        .preview-content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .drop-zone {
+            width: 100%;
+            max-width: 500px;
+            min-height: 300px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            background: #fafafa;
+            transition: all 0.3s;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #2572b4;
+            background: #e8f4ff;
+        }
+        
+        .drop-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: #999;
+        }
+        
+        .drop-text {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .drop-hint {
+            font-size: 13px;
+            color: #999;
+            max-width: 400px;
+        }
+        
+        .component-preview {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .preview-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .preview-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        
+        .preview-code {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 12px;
+        }
+        
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #2572b4;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1c5a8a;
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 1000;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .component-picker {
+                flex-direction: column;
+            }
+            
+            .component-library {
+                width: 100%;
+                height: 40vh;
+            }
+            
+            .preview-area {
+                height: 60vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="component-picker">
+        <!-- Left Panel: Component Library -->
+        <div class="component-library">
+            <div class="library-header">
+                <h2>Canada.ca Components</h2>
+                <div class="search-box">
+                    <input type="text" id="component-search" placeholder="Search components...">
+                </div>
+            </div>
+            
+            <div class="component-categories" id="component-categories">
+                <!-- Categories will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Right Panel: Preview/Instructions -->
+        <div class="preview-area">
+            <div class="preview-header">
+                <h3>Drag & Drop Preview</h3>
+            </div>
+            
+            <div class="preview-content">
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-icon">📥</div>
+                    <div class="drop-text">Drag components here to preview</div>
+                    <div class="drop-hint">Drop any component from the left panel to see its preview and get HTML code</div>
+                </div>
+                
+                <div class="component-preview" id="component-preview">
+                    <div class="preview-title" id="preview-title">Component Preview</div>
+                    <div class="preview-description" id="preview-description">Description will appear here</div>
+                    <div id="preview-visual"></div>
+                    <div class="preview-code" id="preview-code">HTML code will appear here</div>
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" id="copy-code-btn">Copy HTML Code</button>
+                        <button class="btn btn-secondary" id="reset-preview-btn">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification -->
+    <div class="notification" id="notification">Component code copied to clipboard!</div>
+    
+    <script>
+        // Canada.ca WET-BOEW Components Data
+        const components = [
+            {
+                id: 'embed-html',
+                name: 'Embed HTML',
+                category: 'Basic',
+                icon: '&lt;/&gt;',
+                description: 'Embed custom HTML code into your page',
+                html: '&lt;div class="wb-html5"&gt;\n  &lt;!-- Your HTML content here --&gt;\n  &lt;h3&gt;Custom Content&lt;/h3&gt;\n  &lt;p&gt;This is embedded HTML.&lt;/p&gt;\n&lt;/div&gt;',
+                visual: '&lt;div style="border: 1px solid #ccc; padding: 15px; border-radius: 4px;"&gt;\n  &lt;h3 style="margin-top: 0;"&gt;Embed HTML Component&lt;/h3&gt;\n  &lt;p&gt;This area can contain custom HTML content.&lt;/p&gt;\n&lt;/div&gt;'
+            },
+            {
+                id: 'image',
+                name: 'Image',
+                category: 'Media',
+                icon: '🖼️',
+                description: 'Insert responsive images with alt text',
+                html: '&lt;figure class="wb-mltmd"&gt;\n  &lt;img src="/path/to/image.jpg" alt="Description of image" /&gt;\n  &lt;figcaption&gt;Image caption&lt;/figcaption&gt;\n&lt;/figure&gt;',
+                visual: '&lt;div style="border: 1px solid #ccc; padding: 15px; border-radius: 4px; text-align: center;"&gt;\n  &lt;div style="background: #f0f0f0; height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;"&gt;\n    🖼️ Image Placeholder\n  &lt;/div&gt;\n  &lt;p style="font-size: 12px; color: #666;"&gt;Image with caption&lt;/p&gt;\n&lt;/div&gt;'
+            },
+            {
+                id: 'button',
+                name: 'Button',
+                category: 'Interactive',
+                icon: '🔘',
+                description: 'Call-to-action buttons with various styles',
+                html: '&lt;a href="#" class="btn btn-primary"&gt;Primary Button&lt;/a&gt;\n&lt;a href="#" class="btn btn-default"&gt;Default Button&lt;/a&gt;',
+                visual: '&lt;div style="display: flex; gap: 10px;"&gt;\n  &lt;button style="background: #2572b4; color: white; border: none; padding: 8px 16px; border-radius: 4px;"&gt;Primary Button&lt;/button&gt;\n  &lt;button style="background: #f0f0f0; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 4px;"&gt;Default Button&lt;/button&gt;\n&lt;/div&gt;'
+            },
+            {
+                id: 'list',
+                name: 'List',
+                category: 'Content',
+                icon: '📋',
+                description: 'Ordered and unordered lists',
+                html: '&lt;ul class="lst-spcd"&gt;\n  &lt;li&gt;First item&lt;/li&gt;\n  &lt;li&gt;Second item&lt;/li&gt;\n  &lt;li&gt;Third item&lt;/li&gt;\n&lt;/ul&gt;',
+                visual: '&lt;ul style="margin-left: 20px;"&gt;\n  &lt;li&gt;First list item&lt;/li&gt;\n  &lt;li&gt;Second list item&lt;/li&gt;\n  &lt;li&gt;Third list item&lt;/li&gt;\n&lt;/ul&gt;'
+            },
+            {
+                id: 'table',
+                name: 'Table',
+                category: 'Content',
+                icon: '📊',
+                description: 'Accessible data tables',
+                html: '&lt;table class="table table-striped"&gt;\n  &lt;thead&gt;\n    &lt;tr&gt;\n      &lt;th&gt;Header 1&lt;/th&gt;\n      &lt;th&gt;Header 2&lt;/th&gt;\n    &lt;/tr&gt;\n  &lt;/thead&gt;\n  &lt;tbody&gt;\n    &lt;tr&gt;\n      &lt;td&gt;Data 1&lt;/td&gt;\n      &lt;td&gt;Data 2&lt;/td&gt;\n    &lt;/tr&gt;\n  &lt;/tbody&gt;\n&lt;/table&gt;',
+                visual: '&lt;table style="width: 100%; border-collapse: collapse;"&gt;\n  &lt;thead&gt;\n    &lt;tr style="background: #f0f0f0;"&gt;\n      &lt;th style="padding: 8px; border: 1px solid #ccc;"&gt;Header 1&lt;/th&gt;\n      &lt;th style="padding: 8px; border: 1px solid #ccc;"&gt;Header 2&lt;/th&gt;\n    &lt;/tr&gt;\n  &lt;/thead&gt;\n  &lt;tbody&gt;\n    &lt;tr&gt;\n      &lt;td style="padding: 8px; border: 1px solid #ccc;"&gt;Data 1&lt;/td&gt;\n      &lt;td style="padding: 8px; border: 1px solid #ccc;"&gt;Data 2&lt;/td&gt;\n    &lt;/tr&gt;\n  &lt;/tbody&gt;\n&lt;/table&gt;'
+            },
+            {
+                id: 'accordion',
+                name: 'Accordion',
+                category: 'Interactive',
+                icon: '📑',
+                description: 'Collapsible content sections',
+                html: '&lt;details class="wb-details"&gt;\n  &lt;summary&gt;Section 1&lt;/summary&gt;\n  &lt;p&gt;Content for section 1.&lt;/p&gt;\n&lt;/details&gt;',
+                visual: '&lt;div style="border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;"&gt;\n  &lt;div style="background: #f8f8f8; padding: 10px 15px; font-weight: bold; cursor: pointer;"&gt;\n    Accordion Section\n  &lt;/div&gt;\n  &lt;div style="padding: 15px;"&gt;\n    Accordion content goes here.\n  &lt;/div&gt;\n&lt;/div&gt;'
+            },
+            {
+                id: 'social-media',
+                name: 'Social Media',
+                category: 'Interactive',
+                icon: '📱',
+                description: 'Social media sharing buttons',
+                html: '&lt;div class="wb-share"&gt;\n  &lt;h3&gt;Share this page&lt;/h3&gt;\n  &lt;ul&gt;\n    &lt;li&gt;&lt;a href="#"&gt;Facebook&lt;/a&gt;&lt;/li&gt;\n    &lt;li&gt;&lt;a href="#"&gt;Twitter&lt;/a&gt;&lt;/li&gt;\n  &lt;/ul&gt;\n&lt;/div&gt;',
+                visual: '&lt;div style="border: 1px solid #ccc; padding: 15px; border-radius: 4px;"&gt;\n  &lt;h4 style="margin-top: 0;"&gt;Share this page&lt;/h4&gt;\n  &lt;div style="display: flex; gap: 10px;"&gt;\n    &lt;button style="background: #3b5998; color: white; border: none; padding: 8px 16px; border-radius: 4px;"&gt;Facebook&lt;/button&gt;\n    &lt;button style="background: #1da1f2; color: white; border: none; padding: 8px 16px; border-radius: 4px;"&gt;Twitter&lt;/button&gt;\n  &lt;/div&gt;\n&lt;/div&gt;'
+            },
+            {
+                id: 'callout',
+                name: 'Callout',
+                category: 'Content',
+                icon: '💡',
+                description: 'Highlight important information',
+                html: '&lt;div class="alert alert-info"&gt;\n  &lt;h4&gt;Information&lt;/h4&gt;\n  &lt;p&gt;This is an important message.&lt;/p&gt;\n&lt;/div&gt;',
+                visual: '&lt;div style="background: #e8f4ff; border-left: 4px solid #2572b4; padding: 15px; margin: 15px 0;"&gt;\n  &lt;h4 style="margin-top: 0; color: #2572b4;"&gt;Information Callout&lt;/h4&gt;\n  &lt;p style="margin-bottom: 0;"&gt;This is an important message that needs attention.&lt;/p&gt;\n&lt;/div&gt;'
+            },
+            {
+                id: 'breadcrumb',
+                name: 'Breadcrumb',
+                category: 'Navigation',
+                icon: '🗺️',
+                description: 'Navigation trail showing current location',
+                html: '&lt;nav aria-label="Breadcrumb"&gt;\n  &lt;ol class="breadcrumb"&gt;\n    &lt;li&gt;&lt;a href="#"&gt;Home&lt;/a&gt;&lt;/li&gt;\n    &lt;li&gt;&lt;a href="#"&gt;Section&lt;/a&gt;&lt;/li&gt;\n    &lt;li&gt;Current Page&lt;/li&gt;\n  &lt;/ol&gt;\n&lt;/nav&gt;',
+                visual: '&lt;div style="font-size: 14px; color: #666;"&gt;\n  &lt;span style="color: #2572b4;"&gt;Home&lt;/span&gt;\n  &lt;span style="margin: 0 5px;"&gt;&gt;&lt;/span&gt;\n  &lt;span style="color: #2572b4;"&gt;Section&lt;/span&gt;\n  &lt;span style="margin: 0 5px;"&gt;&gt;&lt;/span&gt;\n  &lt;span&gt;Current Page&lt;/span&gt;\n&lt;/div&gt;'
+            },
+            {
+                id: 'form',
+                name: 'Form',
+                category: 'Interactive',
+                icon: '📝',
+                description: 'Interactive form elements',
+                html: '&lt;form action="#" method="post"&gt;\n  &lt;div class="form-group"&gt;\n    &lt;label for="email"&gt;Email&lt;/label&gt;\n    &lt;input type="email" id="email" class="form-control"&gt;\n  &lt;/div&gt;\n  &lt;button type="submit" class="btn btn-primary"&gt;Submit&lt;/button&gt;\n&lt;/form&gt;',
+                visual: '&lt;div style="border: 1px solid #ccc; padding: 20px; border-radius: 4px; max-width: 400px;"&gt;\n  &lt;label style="display: block; margin-bottom: 5px;"&gt;Email&lt;/label&gt;\n  &lt;input type="text" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 15px;" placeholder="Enter email"&gt;\n  &lt;button style="background: #2572b4; color: white; border: none; padding: 8px 16px; border-radius: 4px;"&gt;Submit&lt;/button&gt;\n&lt;/div&gt;'
+            }
+        ];
+
+        // Group components by category
+        const categories = [...new Set(components.map(c => c.category))];
+        
+        // DOM Elements
+        const componentCategoriesEl = document.getElementById('component-categories');
+        const componentSearchEl = document.getElementById('component-search');
+        const dropZoneEl = document.getElementById('drop-zone');
+        const previewEl = document.getElementById('component-preview');
+        const previewTitleEl = document.getElementById('preview-title');
+        const previewDescEl = document.getElementById('preview-description');
+        const previewVisualEl = document.getElementById('preview-visual');
+        const previewCodeEl = document.getElementById('preview-code');
+        const copyCodeBtn = document.getElementById('copy-code-btn');
+        const resetBtn = document.getElementById('reset-preview-btn');
+        const notificationEl = document.getElementById('notification');
+        
+        let draggedComponent = null;
+        
+        // Initialize component categories
+        function initializeCategories() {
+            componentCategoriesEl.innerHTML = '';
+            
+            categories.forEach(category => {
+                const categoryComponents = components.filter(c => c.category === category);
+                
+                const categoryEl = document.createElement('div');
+                categoryEl.className = 'category';
+                
+                const headerEl = document.createElement('div');
+                headerEl.className = 'category-header';
+                headerEl.innerHTML = `
+                    ${category}
+                    <span style="color: #666; font-size: 12px;">(${categoryComponents.length})</span>
+                `;
+                
+                const listEl = document.createElement('div');
+                listEl.className = 'component-list';
+                
+                categoryComponents.forEach(component => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'component-item';
+                    itemEl.draggable = true;
+                    itemEl.dataset.id = component.id;
+                    
+                    itemEl.innerHTML = `
+                        <div class="component-icon">${component.icon}</div>
+                        <div class="component-name">${component.name}</div>
+                    `;
+                    
+                    // Drag events
+                    itemEl.addEventListener('dragstart', (e) => {
+                        draggedComponent = component;
+                        e.dataTransfer.setData('text/plain', component.id);
+                        e.dataTransfer.effectAllowed = 'copy';
+                        itemEl.style.opacity = '0.5';
+                    });
+                    
+                    itemEl.addEventListener('dragend', () => {
+                        itemEl.style.opacity = '1';
+                        draggedComponent = null;
+                    });
+                    
+                    // Click to preview
+                    itemEl.addEventListener('click', () => {
+                        showPreview(component);
+                    });
+                    
+                    listEl.appendChild(itemEl);
+                });
+                
+                // Toggle category
+                headerEl.addEventListener('click', () => {
+                    const isHidden = listEl.style.display === 'none';
+                    listEl.style.display = isHidden ? 'block' : 'none';
+                    headerEl.innerHTML = `
+                        ${category}
+                        <span style="color: #666; font-size: 12px;">
+                            ${isHidden ? '▼' : '▶'} (${categoryComponents.length})
+                        </span>
+                    `;
+                });
+                
+                // Initially show all
+                listEl.style.display = 'block';
+                
+                categoryEl.appendChild(headerEl);
+                categoryEl.appendChild(listEl);
+                componentCategoriesEl.appendChild(categoryEl);
+            });
+        }
+        
+        // Search functionality
+        componentSearchEl.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            document.querySelectorAll('.component-item').forEach(item => {
+                const componentName = item.querySelector('.component-name').textContent.toLowerCase();
+                const componentId = item.dataset.id;
+                
+                const component = components.find(c => c.id === componentId);
+                const matches = componentName.includes(searchTerm) || 
+                               component.description.toLowerCase().includes(searchTerm) ||
+                               component.category.toLowerCase().includes(searchTerm);
+                
+                item.style.display = matches ? 'flex' : 'none';
+            });
+            
+            // Hide empty categories
+            document.querySelectorAll('.category').forEach(category => {
+                const visibleItems = category.querySelectorAll('.component-item[style*="display: flex"]').length;
+                category.style.display = visibleItems > 0 ? 'block' : 'none';
+            });
+        });
+        
+        // Drop zone events
+        dropZoneEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZoneEl.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'copy';
+        });
+        
+        dropZoneEl.addEventListener('dragleave', () => {
+            dropZoneEl.classList.remove('drag-over');
+        });
+        
+        dropZoneEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZoneEl.classList.remove('drag-over');
+            
+            if (draggedComponent) {
+                showPreview(draggedComponent);
+            }
+        });
+        
+        // Show component preview
+        function showPreview(component) {
+            dropZoneEl.style.display = 'none';
+            previewEl.style.display = 'block';
+            
+            previewTitleEl.textContent = component.name;
+            previewDescEl.textContent = component.description;
+            previewVisualEl.innerHTML = component.visual;
+            previewCodeEl.textContent = component.html;
+            
+            // Scroll to preview
+            previewEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        // Copy code to clipboard
+        copyCodeBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(previewCodeEl.textContent);
+                showNotification('Component code copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                showNotification('Failed to copy code. Please try again.');
+            }
+        });
+        
+        // Reset preview
+        resetBtn.addEventListener('click', () => {
+            dropZoneEl.style.display = 'flex';
+            previewEl.style.display = 'none';
+            dropZoneEl.classList.remove('drag-over');
+        });
+        
+        // Show notification
+        function showNotification(message) {
+            notificationEl.textContent = message;
+            notificationEl.style.display = 'block';
+            
+            setTimeout(() => {
+                notificationEl.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeCategories();
+            
+            // Example: Show first component preview on load
+            // showPreview(components[0]);
+        });
+        
+        // Message handler for iframe communication
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'insertComponent') {
+                const component = components.find(c => c.id === event.data.componentId);
+                if (component) {
+                    showPreview(component);
+                }
+            }
+        });
+        
+        // Expose functions for parent window
+        window.componentPicker = {
+            getComponents: () => components,
+            insertComponent: (componentId) => {
+                const component = components.find(c => c.id === componentId);
+                if (component) {
+                    showPreview(component);
+                    return component.html;
+                }
+                return null;
+            }
+        };
+    </script>
+</body>
+</html>

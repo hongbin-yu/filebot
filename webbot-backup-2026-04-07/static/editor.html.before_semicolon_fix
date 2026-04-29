@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>WebBot Page Editor</title>
+    
+    <!-- jQuery (required by WET-BOEW) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Canada.ca WET theme CSS -->
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/theme.min.css">
+    <link rel="stylesheet" href="https://www.canada.ca/etc/designs/canada/wet-boew/css/wet-boew.min.css">
+    
+    <!-- Simple custom styles -->
+    <style>
+        /* Hide Canada.ca default header/footer elements */
+        #wb-bnr, #wb-sm, #wb-info, #wb-srch, #wb-lng, .wb-srch, .gcweb-menu, #gcwu-sig {
+            display: none !important;
+        }
+        
+        /* Simple container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .page-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        /* Navigation links */
+        .nav-links {
+            margin-bottom: 20px;
+        }
+        
+        .nav-links a {
+            color: #007bff;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Breadcrumb navigation */
+        .breadcrumb-container {
+            margin-bottom: 20px;
+        }
+        
+        .breadcrumb-navigation {
+            margin-bottom: 10px;
+        }
+        
+        .aem-breadcrumb {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .breadcrumb-item {
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: #6c757d;
+            padding: 0 8px;
+        }
+        
+        .breadcrumb-item a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+        
+        .breadcrumb-item.active {
+            color: #495057;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        /* Editor panel */
+        .editor-panel {
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .editor-header {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .editor-header h2 {
+            margin: 0;
+            color: #333;
+            font-size: 20px;
+        }
+        
+        /* Form elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        textarea.form-control {
+            min-height: 400px;
+            font-family: monospace;
+            line-height: 1.5;
+            resize: vertical;
+        }
+        
+        /* Button group */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* Status messages */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+        }
+        
+        .error {
+            background: #f2dede;
+            color: #a94442;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border: 1px solid #ebccd1;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+        }
+        
+        /* Spinner animation for saving indicator */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .spinning {
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body vocab="http://schema.org/" resource="#wb-webpage" typeof="WebPage">
+    <div class="container">
+        <div class="header">
+            <h1>WebBot Page Editor</h1>
+            <div class="nav-links">
+                <a href="navigation.html">← Back to Page Navigation</a>
+            </div>
+        </div>
+        
+        <!-- Breadcrumb navigation -->
+        <div class="breadcrumb-container" id="breadcrumb-container" style="display: none;">
+            <nav aria-label="breadcrumb" class="breadcrumb-navigation">
+                <div class="aem-breadcrumb">
+                    <span class="breadcrumb-item"><a href="navigation.html" id="breadcrumb-home">WebBot</a></span>
+                    <!-- Dynamic breadcrumb items will be added here -->
+                </div>
+            </nav>
+        </div>
+        
+        <div class="editor-panel">
+            <div id="loading" class="loading">Loading page data...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="success" class="success" style="display: none;"></div>
+            
+            <div id="editor-content" style="display: none;">
+                <div class="editor-header">
+                    <h2>Edit Page: <span id="page-title-display"></span></h2>
+                    <div class="page-info">
+                        Page ID: <span id="page-id-display"></span> | 
+                        <span id="language-info-container">Language: <span id="page-language-display"></span> | </span>
+                        Status: <span id="page-status-display"></span>
+                    </div>
+                </div>
+                
+                <form id="page-form">
+                    <div class="form-group">
+                        <label for="page-title">Page Title</label>
+                        <input type="text" id="page-title" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="page-content">Page Content (HTML)</label>
+                        <div id="mode-toggle-container" style="margin-bottom: 10px; display: none;">
+                            <button type="button" id="toggle-mode-btn" class="btn btn-sm" style="background-color: #9C27B0; color: white;">
+                                Switch to Raw HTML View
+                            </button>
+                            <span id="mode-indicator" style="margin-left: 10px; color: #9C27B0; font-weight: bold;"></span>
+                        </div>
+                        <div id="composing-preview-container" style="display: none; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: white;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <strong>Composing Preview Mode (网页显示)</strong>
+                                <button type="button" id="edit-html-btn" class="btn btn-sm btn-secondary">Edit HTML Source</button>
+                            </div>
+                            <iframe id="composing-preview" style="width: 100%; height: 600px; border: 1px solid #eee; border-radius: 4px;"></iframe>
+                        </div>
+                        <textarea id="page-content" class="form-control" required></textarea>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button type="submit" id="save-btn" class="btn btn-primary">
+                            <span id="save-spinner" class="spinning" style="display: none;"></span>
+                            Save Changes
+                        </button>
+                        <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canada.ca WET theme JS -->
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js"></script>
+    <script src="https://www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js"></script>
+    
+    <!-- Simple editor logic -->
+    <script>
+        const API_BASE = '/api/v1/pages';
+        let currentPageId = null;
+        let currentMode = null; // 'composing' or null
+        let originalData = null;
+        let allPages = [];
+        let hasMultipleLanguages = false;
+        let isViewingRawContent = false; // For composing mode toggle
+        let originalFullContent = ''; // Store original full content
+        
+        // Global error handler to catch unhandled errors
+        window.addEventListener('error', function(event) {
+            console.error('Global error caught:', event.error);
+            // Hide loading indicator if still showing
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl && loadingEl.style.display !== 'none') {
+                loadingEl.style.display = 'none';
+            }
+            // Show error message
+            const errorEl = document.getElementById('error');
+            if (errorEl) {
+                errorEl.textContent = 'An unexpected error occurred. Please refresh the page.';
+                errorEl.style.display = 'block';
+            }
+            // Ensure content area is visible
+            const contentEl = document.getElementById('page-content');
+            if (contentEl && contentEl.style.display === 'none') {
+                contentEl.style.display = 'block';
+            }
+            const previewContainer = document.getElementById('composing-preview-container');
+            if (previewContainer && previewContainer.style.display === 'block') {
+                previewContainer.style.display = 'none';
+            }
+        });
+        
+        // Get page ID from URL parameters
+        function getPageIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('pageId');
+        }
+        
+        // Get mode from URL parameters
+        function getModeFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('mode'); // 'composing' or null
+        }
+        
+        // Load page data on startup
+        document.addEventListener('DOMContentLoaded', async () => {
+            currentPageId = getPageIdFromUrl();
+            currentMode = getModeFromUrl(); // 'composing' or null
+            
+            if (!currentPageId) {
+                showError('No page ID specified. Please select a page from the navigation.');
+                return;
+            }
+            
+            try {
+                // Fetch both current page and all pages in parallel
+                const [pageResponse, allPagesResponse] = await Promise.all([
+                    fetch(`${API_BASE}/${encodeURIComponent(currentPageId)}`),
+                    fetch(API_BASE)
+                ]);
+                
+                if (!pageResponse.ok) {
+                    throw new Error(`HTTP ${pageResponse.status}: ${pageResponse.statusText} for page ${currentPageId}`);
+                }
+                
+                if (!allPagesResponse.ok) {
+                    throw new Error(`HTTP ${allPagesResponse.status}: ${allPagesResponse.statusText} for all pages`);
+                }
+                
+                const pageData = await pageResponse.json();
+                allPages = await allPagesResponse.json();
+                
+                // Check if system has multiple languages
+                const languages = [...new Set(allPages.map(p => p.language))];
+                hasMultipleLanguages = languages.length > 1;
+                
+                // Store original data
+                originalData = pageData;
+                
+                // Hide loading, show editor and breadcrumb
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('breadcrumb-container').style.display = 'block';
+                document.getElementById('editor-content').style.display = 'block';
+                
+                // Update page title based on mode
+                if (currentMode === 'composing') {
+                    document.title = 'WebBot Page Composing Mode';
+                    // Also update the main header
+                    const mainHeader = document.querySelector('.header h1');
+                    if (mainHeader) {
+                        mainHeader.textContent = 'WebBot Page Composing Mode';
+                    }
+                }
+                
+                // Populate form and breadcrumb
+                populateForm(pageData);
+                updateBreadcrumb(currentPageId);
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Failed to load page data: ${error.message}`);
+                console.error('Error loading page:', error);
+            }
+            
+            // Setup event listeners
+            setupEventListeners();
+        });
+        
+        // Populate form with page data
+        function populateForm(pageData) {
+            // Display info
+            document.getElementById('page-title-display').textContent = pageData.title || pageData.id;
+            document.getElementById('page-id-display').textContent = pageData.id;
+            document.getElementById('page-language-display').textContent = pageData.language || 'en';
+            document.getElementById('page-status-display').textContent = pageData.status || 'draft';
+            
+            // Show/hide language info based on multiple languages
+            const languageContainer = document.getElementById('language-info-container');
+            if (languageContainer) {
+                if (hasMultipleLanguages) {
+                    languageContainer.style.display = '';
+                } else {
+                    languageContainer.style.display = 'none';
+                }
+            }
+            
+            // Form fields
+            document.getElementById('page-title').value = pageData.title || '';
+            
+            // Handle content based on mode
+            let contentToShow = pageData.content || '';
+            originalFullContent = pageData.content || ''; // Store original
+            
+            if (currentMode === 'composing') {
+                contentToShow = extractMainContent(contentToShow);
+                // Update page title display to indicate composing mode
+                const titleDisplay = document.getElementById('page-title-display');
+                titleDisplay.textContent = (pageData.title || pageData.id) + ' (Composing Mode)';
+                
+                // Add mode indicator
+                const pageInfo = document.querySelector('.page-info');
+                if (pageInfo) {
+                    const modeIndicator = document.createElement('span');
+                    modeIndicator.textContent = ' | Mode: Composing';
+                    modeIndicator.style.color = '#9C27B0';
+                    modeIndicator.style.fontWeight = 'bold';
+                    pageInfo.appendChild(modeIndicator);
+                }
+                
+                // Show mode toggle
+                const toggleContainer = document.getElementById('mode-toggle-container');
+                const modeIndicatorText = document.getElementById('mode-indicator');
+                if (toggleContainer) {
+                    toggleContainer.style.display = 'block';
+                    modeIndicatorText.textContent = 'Viewing cleaned content (main part only)';
+                }
+            }
+            
+            document.getElementById('page-content').value = contentToShow;
+            
+            // If in composing mode, switch to preview
+            if (currentMode === 'composing') {
+                console.log('Composing mode detected, switching to preview...');
+                // Use setTimeout to ensure DOM is updated
+                setTimeout(() => {
+                    try {
+                        switchToPreviewMode();
+                    } catch (error) {
+                        console.error('Failed to switch to preview mode:', error);
+                        // Fallback: show textarea
+                        document.getElementById('page-content').style.display = 'block';
+                        const previewContainer = document.getElementById('composing-preview-container');
+                        if (previewContainer) previewContainer.style.display = 'none';
+                        showError('Could not load preview. Please edit HTML directly.');
+                    }
+                }, 200);
+            }
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Form submission
+            document.getElementById('page-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await savePage();
+            });
+            
+            // Cancel button
+            document.getElementById('cancel-btn').addEventListener('click', () => {
+                if (confirm('Discard changes and return to navigation?')) {
+                    window.location.href = 'navigation.html';
+                }
+            });
+            
+            // Mode toggle button (for composing mode)
+            const toggleBtn = document.getElementById('toggle-mode-btn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', toggleContentView);
+            }
+            
+            // Edit HTML source button (for composing mode)
+            const editHtmlBtn = document.getElementById('edit-html-btn');
+            if (editHtmlBtn) {
+                editHtmlBtn.addEventListener('click', () => {
+                    switchToHtmlEditMode();
+                });
+            }
+        }
+        
+        // Toggle between cleaned and raw content view
+        function toggleContentView() {
+            if (currentMode !== 'composing') return;
+            
+            const contentInput = document.getElementById('page-content');
+            const toggleBtn = document.getElementById('toggle-mode-btn');
+            const modeIndicator = document.getElementById('mode-indicator');
+            
+            isViewingRawContent = !isViewingRawContent;
+            
+            if (isViewingRawContent) {
+                // Switch to raw content
+                contentInput.value = originalFullContent;
+                toggleBtn.textContent = 'Switch to Cleaned View';
+                toggleBtn.style.backgroundColor = '#333';
+                modeIndicator.textContent = 'Viewing raw HTML (full content)';
+                modeIndicator.style.color = '#333';
+            } else {
+                // Switch to cleaned content
+                contentInput.value = extractMainContent(originalFullContent);
+                toggleBtn.textContent = 'Switch to Raw HTML View';
+                toggleBtn.style.backgroundColor = '#9C27B0';
+                modeIndicator.textContent = 'Viewing cleaned content (main part only)';
+                modeIndicator.style.color = '#9C27B0';
+            }
+        }
+        
+        // Save page changes
+        async function savePage() {
+            const saveBtn = document.getElementById('save-btn');
+            const saveSpinner = document.getElementById('save-spinner');
+            const titleInput = document.getElementById('page-title');
+            const contentInput = document.getElementById('page-content');
+            
+            // Validate
+            if (!titleInput.value.trim()) {
+                showError('Page title is required.');
+                return;
+            }
+            
+            if (!contentInput.value.trim()) {
+                showError('Page content is required.');
+                return;
+            }
+            
+            // Warn about composing mode
+            if (currentMode === 'composing') {
+                const confirmSave = confirm('You are in Composing mode. Saving will update the main content only. Continue?');
+                if (!confirmSave) {
+                    return;
+                }
+            }
+            
+            // Prepare data
+            const updateData = {
+                title: titleInput.value.trim(),
+                content: contentInput.value.trim(),
+                // Keep other fields unchanged
+                language: originalData.language,
+                status: originalData.status,
+                parent_id: originalData.parent_id
+            };
+            
+            // Show saving state
+            saveBtn.disabled = true;
+            saveSpinner.style.display = 'inline-block';
+            saveBtn.innerHTML = '<span class="spinning"></span> Saving...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/${encodeURIComponent(currentPageId)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Update original data
+                originalData = { ...originalData, ...updateData };
+                
+                // Show success message
+                showSuccess('Page saved successfully.');
+                
+                // Update display
+                document.getElementById('page-title-display').textContent = updateData.title;
+                
+            } catch (error) {
+                showError(`Failed to save page: ${error.message}`);
+                console.error('Error saving page:', error);
+            } finally {
+                // Restore button state
+                saveBtn.disabled = false;
+                saveSpinner.style.display = 'none';
+                saveBtn.innerHTML = 'Save Changes';
+            }
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            
+            // Hide loading indicator if still showing
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl && loadingEl.style.display !== 'none') {
+                loadingEl.style.display = 'none';
+            }
+            
+            // Hide success message if showing
+            document.getElementById('success').style.display = 'none';
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 10000);
+        }
+        
+        // Show success message
+        function showSuccess(message) {
+            const successEl = document.getElementById('success');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            
+            // Hide error message if showing
+            document.getElementById('error').style.display = 'none';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                successEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Update breadcrumb navigation
+        function updateBreadcrumb(pageId) {
+            const breadcrumbEl = document.querySelector('.aem-breadcrumb');
+            const homeItem = breadcrumbEl.querySelector('#breadcrumb-home').parentElement;
+            
+            // Clear existing items except home
+            breadcrumbEl.innerHTML = '';
+            breadcrumbEl.appendChild(homeItem);
+            
+            // Get path to page
+            const path = getPathToPage(pageId);
+            
+            // Add path items
+            path.forEach((pathPageId, index) => {
+                const page = allPages.find(p => p.id === pathPageId);
+                if (!page) return;
+                
+                const isLast = index === path.length - 1;
+                const breadcrumbItem = document.createElement('span');
+                breadcrumbItem.className = `breadcrumb-item ${isLast ? 'active' : ''}`;
+                
+                if (isLast) {
+                    // Current page - just show title
+                    breadcrumbItem.textContent = page.title || page.id;
+                } else {
+                    // Parent page - make clickable link back to navigation
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = page.title || page.id;
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        // Navigate back to navigation page with this page selected
+                        window.location.href = `navigation.html#${encodeURIComponent(pathPageId)}`;
+                    });
+                    breadcrumbItem.appendChild(link);
+                }
+                
+                breadcrumbEl.appendChild(breadcrumbItem);
+            });
+        }
+        
+        // Get path from root to a page
+        function getPathToPage(pageId) {
+            const path = [];
+            let currentId = pageId;
+            
+            // Build page map with parent relationships
+            const pageMap = {};
+            allPages.forEach(page => {
+                pageMap[page.id] = page;
+            });
+            
+            // Traverse up the tree
+            while (currentId) {
+                path.unshift(currentId);
+                const page = pageMap[currentId];
+                currentId = page ? page.parent_id : null;
+                // Stop if parent_id is empty or null
+                if (!currentId || currentId === '') {
+                    break;
+                }
+            }
+            
+            return path;
+        }
+        
+        // Extract main content only (without adding WebBot header/footer)
+        function extractMainContent(content) {
+            if (!content || typeof content !== 'string') return content;
+            
+            let cleaned = content;
+            
+            // Try to extract main content if it's HTML
+            if (content.includes('<') && content.includes('>')) {
+                // It's HTML content
+                // Try to find and extract main content area
+                // Common Canada.ca selectors for main content
+                const mainSelectors = [
+                    'main[property="mainContentOfPage"]',
+                    '#wb-cont',
+                    '.container',
+                    'article',
+                    '.col-md-9',
+                    '.col-md-8',
+                    '#main-content'
+                ];
+                
+                // Create a temporary DOM parser
+                const parser = new DOMParser();
+                try {
+                    const doc = parser.parseFromString(content, 'text/html');
+                    
+                    // Try to find main content using selectors
+                    let mainElement = null;
+                    for (const selector of mainSelectors) {
+                        mainElement = doc.querySelector(selector);
+                        if (mainElement) break;
+                    }
+                    
+                    // If found main element, extract its content
+                    if (mainElement) {
+                        cleaned = mainElement.innerHTML;
+                        
+                        // Clean up any remaining header/footer elements
+                        const headerFooterSelectors = [
+                            '#wb-bnr', '#wb-sm', '#wb-info', '#wb-srch', '#wb-lng',
+                            '#wb-sec', '#wb-sm', '#wb-dtmd', '#wb-glb-mn',
+                            '.pagedetails', '.brand', '.subsite', '.gc-footer'
+                        ];
+                        
+                        headerFooterSelectors.forEach(selector => {
+                            const elements = doc.querySelectorAll(selector);
+                            elements.forEach(el => {
+                                const removeText = el.textContent || '';
+                                cleaned = cleaned.replace(new RegExp(removeText, 'gi'), '');
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.warn('HTML parsing failed, falling back to text cleaning:', e);
+                }
+            }
+            
+            // For plain text content, use pattern matching
+            if (!cleaned.includes('<') || cleaned === content) {
+                // Remove "Page details YYYY-MM-DD" footer
+                cleaned = cleaned.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
+                
+                // Remove common Canada.ca footer patterns
+                const footerPatterns = [
+                    /Date modified:.*$/im,
+                    /Government of Canada.*$/im,
+                    /©.*$/im,
+                    /All rights reserved.*$/im,
+                    /Report a problem.*$/im,
+                    /Contact us.*$/im,
+                    /Terms and conditions.*$/im,
+                    /Privacy.*$/im,
+                    /Canada\.ca.*$/im
+                ];
+                
+                footerPatterns.forEach(pattern => {
+                    cleaned = cleaned.replace(pattern, '').trim();
+                });
+                
+                // Remove duplicate title at beginning (if content starts with the title)
+                const lines = cleaned.split('\n');
+                if (lines.length > 1) {
+                    const firstLine = lines[0].trim();
+                    // If first line is short and appears again, remove it
+                    if (firstLine.length < 100 && cleaned.indexOf(firstLine, firstLine.length) !== -1) {
+                        lines.shift(); // Remove first line
+                        cleaned = lines.join('\n').trim();
+                    }
+                }
+            }
+            
+            return cleaned;
+        }
+        
+        // Add GCWeb header and footer to content
+        function addGCWebHeaderFooter(content) {
+            if (!content || typeof content !== 'string') return content;
+            
+            // Extract main content if needed
+            let mainContent = extractMainContent(content);
+            
+            // GCWeb header (simplified version)
+            const gcwebHeader = \
+    "\n\
+    <header id=\"gcweb-header\">\n\
+        <div id=\"wb-bnr\" class=\"container\">\n\
+            <div class=\"row\">\n\
+                <section id=\"wb-lng\" class=\"col-xs-3 col-sm-12 pull-right text-right\">\n\
+                    <h2 class=\"wb-inv\">Language selection</h2>\n\
+                    <div class=\"row\">\n\
+                        <div class=\"col-md-12\">\n\
+                            <ul class=\"list-inline mrgn-bttm-0\">\n\
+                                <li><a lang=\"fr\" href=\"#\">Français</a></li>\n\
+                            </ul>\n\
+                        </div>\n\
+                    </div>\n\
+                </section>\n\
+                <div class=\"brand col-xs-9 col-sm-5 col-md-4\" property=\"publisher\" typeof=\"GovernmentOrganization\">\n\
+                    <a href=\"https://www.canada.ca/en.html\">\n\
+                        <img src=\"https://www.canada.ca/etc/designs/canada/wet-boew/assets/sig-blk-en.svg\" alt=\"Government of Canada\" property=\"logo\">\n\
+                        <span class=\"wb-inv\">Government of Canada / <span lang=\"fr\">Gouvernement du Canada</span></span>\n\
+                    </a>\n\
+                </div>\n\
+                <section id=\"wb-srch\" class=\"col-lg-8 text-right visible-md visible-lg\">\n\
+                    <h2>Search</h2>\n\
+                    <form action=\"/en/sr/srb.html\" method=\"get\" name=\"cse-search-box\" role=\"search\">\n\
+                        <div class=\"form-group wb-srch-qry\">\n\
+                            <label for=\"wb-srch-q\" class=\"wb-inv\">Search Canada.ca</label>\n\
+                            <input id=\"wb-srch-q\" list=\"wb-srch-q-ac\" class=\"wb-srch-q form-control\" name=\"q\" type=\"search\" value=\"\" size=\"27\" maxlength=\"150\" placeholder=\"Search Canada.ca\">\n\
+                            <datalist id=\"wb-srch-q-ac\"></datalist>\n\
+                        </div>\n\
+                        <div class=\"form-group submit\">\n\
+                            <button type=\"submit\" id=\"wb-srch-sub\" class=\"btn btn-primary btn-small\">\n\
+                                <span class=\"glyphicon-search glyphicon\"></span>\n\
+                                <span class=\"wb-inv\">Search</span>\n\
+                            </button>\n\
+                        </div>\n\
+                    </form>\n\
+                </section>\n\
+            </div>\n\
+        </div>\n\
+        <nav class=\"gcweb-menu\" typeof=\"SiteNavigationElement\">\n\
+            <div class=\"container\">\n\
+                <h2 class=\"wb-inv\">Menu</h2>\n\
+                <button type=\"button\" aria-haspopup=\"true\" aria-expanded=\"false\">Menu <span class=\"expicon glyphicon glyphicon-chevron-down\"></span></button>\n\
+                <ul role=\"menu\" aria-orientation=\"vertical\" data-ajax-replace=\"/etc/designs/canada/wet-boew/ajax/sitemenu-en.html\">\n\
+                    <li role=\"presentation\"><a role=\"menuitem\" href=\"/en/services/jobs.html\">Jobs and the workplace</a></li>\n\
+                    <li role=\"presentation\"><a role=\"menuitem\" href=\"/en/services/immigration-citizenship.html\">Immigration and citizenship</a></li>\n\
+                    <li role=\"presentation\"><a role=\"menuitem\" href=\"https://travel.gc.ca/\">Travel and tourism</a></li>\n\
+                </ul>\n\
+            </div>\n\
+        </nav>\n\
+    </header>\n\
+    <main property=\"mainContentOfPage\" resource=\"#wb-main\" typeof=\"WebPageElement\" class=\"container\">\n\
+        <div class=\"row mrgn-tp-lg\">\n\
+            <div class=\"col-md-12\">\n\
+    ";;
+
+            // GCWeb footer (simplified version)
+            const gcwebFooter = \
+    "\n\
+            </div>\n\
+        </div>\n\
+    </main>\n\
+    <footer id=\"gcweb-footer\">\n\
+        <div id=\"wb-info\">\n\
+            <div class=\"gc-main-footer\">\n\
+                <div class=\"container\">\n\
+                    <nav>\n\
+                        <h3>Government of Canada</h3>\n\
+                        <ul class=\"list-col-xs-1 list-col-sm-2 list-col-md-3\">\n\
+                            <li><a href=\"/en/contact.html\">All contacts</a></li>\n\
+                            <li><a href=\"/en/government/dept.html\">Departments and agencies</a></li>\n\
+                            <li><a href=\"/en/government/system.html\">About government</a></li>\n\
+                        </ul>\n\
+                        <h4><span class=\"wb-inv\">Themes and topics</span></h4>\n\
+                        <ul class=\"list-unstyled colcount-sm-2 colcount-md-3\">\n\
+                            <li><a href=\"/en/services/jobs.html\">Jobs</a></li>\n\
+                            <li><a href=\"/en/services/immigration-citizenship.html\">Immigration and citizenship</a></li>\n\
+                            <li><a href=\"https://travel.gc.ca/\">Travel and tourism</a></li>\n\
+                            <li><a href=\"/en/services/business.html\">Business</a></li>\n\
+                            <li><a href=\"/en/services/benefits.html\">Benefits</a></li>\n\
+                            <li><a href=\"/en/services/health.html\">Health</a></li>\n\
+                        </ul>\n\
+                    </nav>\n\
+                </div>\n\
+            </div>\n\
+            <div class=\"brand\">\n\
+                <div class=\"container\">\n\
+                    <div class=\"row\">\n\
+                        <nav class=\"col-md-9 col-lg-10 ftr-urlt-lnk\">\n\
+                            <h2 class=\"wb-inv\">About this site</h2>\n\
+                            <ul>\n\
+                                <li><a href=\"/en/contact.html\">Contact us</a></li>\n\
+                                <li><a href=\"/en/government/dept.html\">Departments and agencies</a></li>\n\
+                                <li><a href=\"/en/government/system.html\">About government</a></li>\n\
+                            </ul>\n\
+                        </nav>\n\
+                        <div class=\"col-xs-6 visible-sm visible-xs tofpg\">\n\
+                            <a href=\"#wb-cont\">Top of Page <span class=\"glyphicon glyphicon-chevron-up\"></span></a>\n\
+                        </div>\n\
+                        <div class=\"col-xs-6 col-md-3 col-lg-2 text-right\">\n\
+                            <img src=\"https://www.canada.ca/etc/designs/canada/wet-boew/assets/wmms-blk.svg\" alt=\"Symbol of the Government of Canada\">\n\
+                        </div>\n\
+                    </div>\n\
+                </div>\n\
+            </div>\n\
+        </div>\n\
+    </footer>";;
+
+            return gcwebHeader + mainContent + gcwebFooter;
+        }
+        
+        // Clean content function (from canada-viewer.html) - includes WebBot header/footer
+        function cleanContent(content) {
+            if (!content || typeof content !== 'string') return content;
+            
+            let cleaned = content;
+            
+            // Try to extract main content if it's HTML
+            if (content.includes('<') && content.includes('>')) {
+                // It's HTML content
+                // Try to find and extract main content area
+                // Common Canada.ca selectors for main content
+                const mainSelectors = [
+                    'main[property="mainContentOfPage"]',
+                    '#wb-cont',
+                    '.container',
+                    'article',
+                    '.col-md-9',
+                    '.col-md-8',
+                    '#main-content'
+                ];
+                
+                // Create a temporary DOM parser
+                const parser = new DOMParser();
+                try {
+                    const doc = parser.parseFromString(content, 'text/html');
+                    
+                    // Try to find main content using selectors
+                    let mainElement = null;
+                    for (const selector of mainSelectors) {
+                        mainElement = doc.querySelector(selector);
+                        if (mainElement) break;
+                    }
+                    
+                    // If found main element, extract its content
+                    if (mainElement) {
+                        cleaned = mainElement.innerHTML;
+                        
+                        // Clean up any remaining header/footer elements
+                        const headerFooterSelectors = [
+                            '#wb-bnr', '#wb-sm', '#wb-info', '#wb-srch', '#wb-lng',
+                            '#wb-sec', '#wb-sm', '#wb-dtmd', '#wb-glb-mn',
+                            '.pagedetails', '.brand', '.subsite', '.gc-footer'
+                        ];
+                        
+                        headerFooterSelectors.forEach(selector => {
+                            const elements = doc.querySelectorAll(selector);
+                            elements.forEach(el => {
+                                const removeText = el.textContent || '';
+                                cleaned = cleaned.replace(new RegExp(removeText, 'gi'), '');
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.warn('HTML parsing failed, falling back to text cleaning:', e);
+                }
+            }
+            
+            // For plain text content, use pattern matching
+            if (!cleaned.includes('<') || cleaned === content) {
+                // Remove "Page details YYYY-MM-DD" footer
+                cleaned = cleaned.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
+                
+                // Remove common Canada.ca footer patterns
+                const footerPatterns = [
+                    /Date modified:.*$/im,
+                    /Government of Canada.*$/im,
+                    /©.*$/im,
+                    /All rights reserved.*$/im,
+                    /Report a problem.*$/im,
+                    /Contact us.*$/im,
+                    /Terms and conditions.*$/im,
+                    /Privacy.*$/im,
+                    /Canada\.ca.*$/im
+                ];
+                
+                footerPatterns.forEach(pattern => {
+                    cleaned = cleaned.replace(pattern, '').trim();
+                });
+                
+                // Remove duplicate title at beginning (if content starts with the title)
+                const lines = cleaned.split('\n');
+                if (lines.length > 1) {
+                    const firstLine = lines[0].trim();
+                    // If first line is short and appears again, remove it
+                    if (firstLine.length < 100 && cleaned.indexOf(firstLine, firstLine.length) !== -1) {
+                        lines.shift(); // Remove first line
+                        cleaned = lines.join('\n').trim();
+                    }
+                }
+            }
+            
+            // Add WebBot custom header and footer
+            const webBotHeader = \
+                "\n\
+                                <div class=\\\"web-bot-header\\\" style=\\\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\\\">\n\
+                                    <div class=\\\"container-fluid\\\">\n\
+                                        <div class=\\\"row\\\">\n\
+                                            <div class=\\\"col-md-12\\\">\n\
+                                                <h1 style=\\\"margin: 0; font-size: 24px; font-weight: 600;\\\">\n\
+                                                    <span style=\\\"background: white; color: #764ba2; padding: 4px 12px; border-radius: 4px; margin-right: 10px;\\\">🤖</span>\n\
+                                                    WebBot Canada.ca Viewer\n\
+                                                </h1>\n\
+                                                <p style=\\\"margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;\\\">\n\
+                                                    Processed and cleaned Canada.ca content | Imported from FileBot\n\
+                                                </p>\n\
+                                            </div>\n\
+                                        </div>\n\
+                                    </div>\n\
+                                </div>\n\
+                            ";
+            
+            const webBotFooter = \
+                "\n\
+                                <div class=\\\"web-bot-footer\\\" style=\\\"background: #f8f9fa; border-top: 3px solid #764ba2; padding: 20px; margin-top: 30px; border-radius: 8px; color: #333;\\\">\n\
+                                    <div class=\\\"container-fluid\\\">\n\
+                                        <div class=\\\"row\\\">\n\
+                                            <div class=\\\"col-md-12 text-center\\\">\n\
+                                                <div style=\\\"display: inline-block; background: white; padding: 10px 20px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);\\\">\n\
+                                                    <span style=\\\"color: #764ba2; font-weight: 600;\\\">WebBot</span> Content Management System\n\
+                                                    <span style=\\\"margin: 0 10px; color: #ccc;\\\">•</span>\n\
+                                                    Version 1.0\n\
+                                                    <span style=\\\"margin: 0 10px; color: #ccc;\\\">•</span>\n\
+                                                    <a href=\\\"/gcweb/canada-viewer.html\\\" style=\\\"color: #667eea; text-decoration: none;\\\">Return to Viewer</a>\n\
+                                                </div>\n\
+                                                <p style=\\\"margin-top: 15px; font-size: 12px; color: #666;\\\">\n\
+                                                    © 2026 WebBot System. This content was imported from Canada.ca and processed for WebBot CMS.\n\
+                                                    <br>\n\
+                                                    Original Canada.ca content is © Government of Canada.\n\
+                                                </p>\n\
+                                            </div>\n\
+                                        </div>\n\
+                                    </div>\n\
+                                </div>\n\
+                            ";
+            
+            return webBotHeader + cleaned + webBotFooter;
+        }
+        
+        // Update composing preview iframe - returns true if successful, false otherwise
+        function updatePreview(content) {
+            try {
+                const previewIframe = document.getElementById('composing-preview');
+                if (!previewIframe) {
+                    console.error('Preview iframe not found');
+                    return false;
+                }
+                
+                // Create a complete HTML document with Canada.ca theme and GCWeb header/footer
+                const gcwebContent = addGCWebHeaderFooter(content);
+                
+                // Validate content
+                if (!gcwebContent || gcwebContent.trim().length === 0) {
+                    console.warn('GCWeb content is empty, using raw content');
+                    const cleaned = extractMainContent(content);
+                    // Safe HTML escaping for template string
+                    const safeCleaned = String(cleaned || 'No content available')
+                        .replace(/`/g, "'")
+                        .replace(/\$/g, "$$").replace(/"/g, '"');
+                    previewIframe.srcdoc = " \n\
+        <!DOCTYPE html>\n\
+        <html>\n\
+        <head>\n\
+            <meta charset=\"UTF-8\">\n\
+            <title>Preview - Content Only</title>\n\
+            <style>body { padding: 20px; }</style>\n\
+        </head>\n\
+        <body>\n\
+            <div>" + safeCleaned + " </div>\n\
+        </body>\n\
+        </html>";;
+                    return true; // Still considered success (shows content)
+                }
+                
+                // Safe HTML escaping for gcwebContent
+                const safeGcwebContent = String(gcwebContent)
+                    .replace(/`/g, "'")
+                    .replace(/\$/g, "$$").replace(/"/g, '"');
+                
+                const htmlDoc = " \n\
+    <!DOCTYPE html>\n\
+    <html class=\"no-js\" lang=\"en\" dir=\"ltr\">\n\
+    <head>\n\
+        <meta charset=\"UTF-8\">\n\
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\
+        <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n\
+        <title>Composing Preview - WebBot</title>\n\
+        <!-- jQuery (required by WET-BOEW) -->\n\
+        <script src=\"https://code.jquery.com/jquery-3.6.0.min.js\"></script>\n\
+        <!-- Canada.ca WET theme CSS -->\n\
+        <link rel=\"stylesheet\" href=\"https://www.canada.ca/etc/designs/canada/wet-boew/css/theme.min.css\">\n\
+        <link rel=\"stylesheet\" href=\"https://www.canada.ca/etc/designs/canada/wet-boew/css/wet-boew.min.css\">\n\
+        <style>\n\
+            /* Ensure proper styling */\n\
+            body {\n\
+                background: white;\n\
+            }\n\
+            .container {\n\
+                max-width: 100% !important;\n\
+            }\n\
+            /* Make sure header/footer are visible */\n\
+            #gcweb-header, #gcweb-footer, #wb-bnr, #wb-info {\n\
+                display: block !important;\n\
+            }\n\
+        </style>\n\
+    </head>\n\
+    <body vocab=\"http://schema.org/\" resource=\"#wb-webpage\" typeof=\"WebPage\">\n\
+        " + safeGcwebContent + " \n\
+        <!-- Canada.ca WET theme JS -->\n\
+        <script src=\"https://www.canada.ca/etc/designs/canada/wet-boew/js/wet-boew.min.js\"></script>\n\
+        <script src=\"https://www.canada.ca/etc/designs/canada/wet-boew/js/theme.min.js\"></script>\n\
+    </body>\n\
+    </html>";;
+                
+                console.log('Setting iframe srcdoc, content length:', gcwebContent.length);
+                previewIframe.srcdoc = htmlDoc;
+                return true;
+            } catch (error) {
+                console.error('Error in updatePreview:', error);
+                // Fallback: simple HTML display
+                const previewIframe = document.getElementById('composing-preview');
+                if (previewIframe) {
+                    const errorMessage = error && error.message ? error.message : String(error);
+                    // Safe HTML escaping for error message
+                    const safeErrorMessage = String(errorMessage)
+                        .replace(/`/g, "'")
+                        .replace(/\$/g, "$$")
+                        .replace(/</g, "&lt;").replace(/"/g, '"')
+                        .replace(/>/g, "&gt;");
+                    previewIframe.srcdoc = " \n\
+        <!DOCTYPE html>\n\
+        <html>\n\
+        <head>\n\
+            <meta charset=\"UTF-8\">\n\
+            <title>Preview Error</title>\n\
+            <style>\n\
+                body { padding: 20px; font-family: Arial, sans-serif; }\n\
+                .error { color: #d32f2f; background: #ffebee; padding: 15px; border-radius: 4px; }\n\
+            </style>\n\
+        </head>\n\
+        <body>\n\
+            <h2>Preview Error</h2>\n\
+            <div class=\"error\">Failed to generate preview. Please edit HTML source instead.</div>\n\
+            <p>Error: " + safeErrorMessage + " </p>\n\
+        </body>\n\
+        </html>";;
+                    return false; // Preview failed, but error is shown in iframe
+                }
+                return false; // No iframe found
+            }
+        }
+        
+        // Switch between preview and HTML source edit
+        function switchToPreviewMode() {
+            try {
+                const previewContainer = document.getElementById('composing-preview-container');
+                const textarea = document.getElementById('page-content');
+                const toggleContainer = document.getElementById('mode-toggle-container');
+                
+                if (!previewContainer || !textarea) {
+                    console.error('Preview container or textarea not found');
+                    return;
+                }
+                
+                previewContainer.style.display = 'block';
+                textarea.style.display = 'none';
+                if (toggleContainer) toggleContainer.style.display = 'none';
+                
+                // Update preview with current content
+                console.log('Switching to preview mode, updating preview...');
+                const success = updatePreview(textarea.value);
+                console.log('Preview update completed, success:', success);
+                
+                // If preview failed, fall back to HTML edit mode
+                if (!success) {
+                    console.warn('Preview generation failed, falling back to HTML edit mode');
+                    previewContainer.style.display = 'none';
+                    textarea.style.display = 'block';
+                    if (toggleContainer) toggleContainer.style.display = 'block';
+                    showError('Failed to generate preview. Please edit HTML source instead.');
+                }
+            } catch (error) {
+                console.error('Error in switchToPreviewMode:', error);
+                // Fallback: show textarea and hide preview
+                const textarea = document.getElementById('page-content');
+                const previewContainer = document.getElementById('composing-preview-container');
+                if (textarea) textarea.style.display = 'block';
+                if (previewContainer) previewContainer.style.display = 'none';
+                
+                showError('Failed to load preview. Please edit HTML source instead.');
+            }
+        }
+        
+        function switchToHtmlEditMode() {
+            const previewContainer = document.getElementById('composing-preview-container');
+            const textarea = document.getElementById('page-content');
+            const toggleContainer = document.getElementById('mode-toggle-container');
+            
+            if (previewContainer && textarea) {
+                previewContainer.style.display = 'none';
+                textarea.style.display = 'block';
+                if (toggleContainer) toggleContainer.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

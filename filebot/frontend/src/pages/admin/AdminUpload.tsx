@@ -339,6 +339,19 @@ const AdminUpload: React.FC = () => {
         setImportProgress(Math.round((foldersCreated / sortedFolderPaths.length) * 40));
       }
 
+      // === 🐛 DEBUG: Print folderMap contents ===
+      console.log('🔍 [DEBUG] === folderMap dump ===');
+      folderMap.forEach((value, key) => {
+        const resolved = value.startsWith('/') ? 'path' : 'UUID';
+        console.log(`  folderMap[${JSON.stringify(key)}] = ${value} (${resolved})`);
+      });
+      console.log('🔍 [DEBUG] === Root folder info ===');
+      console.log(`  folder.path = ${folder.path}`);
+      console.log(`  folder.id   = ${folder.id}`);
+      console.log(`  app.id      = ${app.id}`);
+      console.log(`  app.slug    = ${app.slug}`);
+      // ======================================
+
       // 步骤3：上传所有文件到对应的文件夹
       setImportStatus(`Uploading ${fileList.length} files...`);
       let filesUploaded = 0;
@@ -350,6 +363,15 @@ const AdminUpload: React.FC = () => {
           
           // 获取文件对应的文件夹标识符（路径优先）
           const targetFolderIdentifier = fileInfo.dirPath ? folderMap.get(fileInfo.dirPath) || (folder.path || folder.id) : (folder.path || folder.id);
+          
+          // 🐛 DEBUG: Show what target was resolved to
+          const lookupKey = fileInfo.dirPath || '(root)';
+          const mapValue = fileInfo.dirPath ? folderMap.get(fileInfo.dirPath) : undefined;
+          console.log(`🔍 [DEBUG] File: ${fileInfo.fullPath}`);
+          console.log(`  dirPath = ${JSON.stringify(fileInfo.dirPath)}`);
+          console.log(`  folderMap.get(${JSON.stringify(lookupKey)}) = ${mapValue === undefined ? 'UNDEFINED ❌' : mapValue}`);
+          console.log(`  → targetFolderIdentifier = ${targetFolderIdentifier}`);
+          // ======================================
           
           // 上传文件
           const uploadRequest: any = {
