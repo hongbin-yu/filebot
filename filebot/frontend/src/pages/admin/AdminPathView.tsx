@@ -44,7 +44,7 @@ const AdminPathView: React.FC = () => {
   // 加载路径内容
   const loadPathContents = async () => {
     if (!appSlug) {
-      setError('应用标识符不能为空');
+      setError('App identifier cannot be empty');
       setLoading(false);
       return;
     }
@@ -57,7 +57,7 @@ const AdminPathView: React.FC = () => {
       const apps = await appService.getApps();
       const foundApp = apps.find(a => a.slug === appSlug || a.id === appSlug);
       if (!foundApp) {
-        setError(`应用 "${appSlug}" 不存在`);
+        setError(`App "${appSlug}" not found`);
         setLoading(false);
         return;
       }
@@ -81,11 +81,11 @@ const AdminPathView: React.FC = () => {
             setDocumentDetail(doc);
             setError(null);
           } else {
-            setError(`未找到路径为 "${fullPath}" 的文档`);
+            setError(`Document not found at path "${fullPath}"`);
           }
         } catch (docError: any) {
           console.error('加载文档详情失败:', docError);
-          setError(`无法加载文档详情: ${docError.response?.data?.detail || docError.message || '未知错误'}`);
+          setError(`Failed to load document details: ${docError.response?.data?.detail || docError.message || 'Unknown error'}`);
         }
       } else {
         // 文件夹模式：显示文件夹内容
@@ -117,7 +117,7 @@ const AdminPathView: React.FC = () => {
               order_index: 0
             });
           } else {
-            setError(`路径 "${fullPath}" 不存在或无法访问`);
+            setError(`Path "${fullPath}" does not exist or is not accessible`);
           }
         }
         
@@ -153,7 +153,7 @@ const AdminPathView: React.FC = () => {
       
     } catch (err: any) {
       console.error('加载路径内容失败:', err);
-      setError(`无法加载路径内容: ${err.response?.data?.detail || err.message || '未知错误'}`);
+      setError(`Failed to load path: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -172,10 +172,10 @@ const AdminPathView: React.FC = () => {
     navigate(`/admin/documents/${docPath.replace(/^\//, '')}`);
   };
   
-  // 处理返回上级
+  // 处理Go Up
   const handleNavigateUp = () => {
     if (!pathParam) {
-      // 已经是根目录，返回应用列表
+      // 已经是根目录，Back to Apps
       navigate('/admin/apps');
       return;
     }
@@ -215,14 +215,14 @@ const AdminPathView: React.FC = () => {
       // 关闭模态框
       setShowCreateFolderModal(false);
       
-      // 重新加载当前路径内容
+      // Reload当前路径内容
       await loadPathContents();
       
       // 显示成功消息（可以添加toast通知）
-      window.showWetAlert(`文件夹 "${data.name}" 创建成功！`);
+      window.showWetAlert(`Folder "${data.name}" created successfully!`);
     } catch (err: any) {
       console.error('创建文件夹失败:', err);
-      window.showWetAlert(`创建文件夹失败: ${err.response?.data?.detail || err.message || '未知错误'}`);
+      window.showWetAlert(`Create folder failed: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
       throw err; // 重新抛出错误，让模态框处理
     }
   };
@@ -237,20 +237,20 @@ const AdminPathView: React.FC = () => {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-red-800 mb-2">加载失败</h3>
+          <h3 className="text-lg font-medium text-red-800 mb-2">Load Failed</h3>
           <p className="text-red-700 mb-4">{error}</p>
           <div className="flex justify-center space-x-3">
             <button 
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
-              重新加载
+              Reload
             </button>
             <Link 
               to="/admin/apps"
               className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
             >
-              返回应用列表
+              Back to Apps
             </Link>
           </div>
         </div>
@@ -265,7 +265,7 @@ const AdminPathView: React.FC = () => {
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">加载路径内容中...</p>
+            <p className="mt-4 text-gray-600">Loading path contents...</p>
           </div>
         </div>
       </div>
@@ -277,13 +277,13 @@ const AdminPathView: React.FC = () => {
     return (
       <div className="p-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-yellow-800 mb-2">应用信息缺失</h3>
-          <p className="text-yellow-700 mb-4">无法加载应用信息，请返回应用列表重试。</p>
+          <h3 className="text-lg font-medium text-yellow-800 mb-2">Missing App Info</h3>
+          <p className="text-yellow-700 mb-4">Failed to load app info. Please go back to the app list.</p>
           <Link 
             to="/admin/apps"
             className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
           >
-            返回应用列表
+            Back to Apps
           </Link>
         </div>
       </div>
@@ -297,20 +297,20 @@ const AdminPathView: React.FC = () => {
       return (
         <div className="p-6">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <h3 className="text-lg font-medium text-red-800 mb-2">加载文档失败</h3>
+            <h3 className="text-lg font-medium text-red-800 mb-2">Document Load Failed</h3>
             <p className="text-red-700 mb-4">{error}</p>
             <div className="flex justify-center space-x-3">
               <button 
                 onClick={() => window.location.reload()}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
-                重新加载
+                Reload
               </button>
               <button 
                 onClick={handleNavigateUp}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
-                返回上级
+                Go Up
               </button>
             </div>
           </div>
@@ -325,7 +325,7 @@ const AdminPathView: React.FC = () => {
           <div className="flex justify-center items-center h-64">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">加载文档详情中...</p>
+              <p className="mt-4 text-gray-600">Loading document details...</p>
             </div>
           </div>
         </div>
@@ -337,31 +337,31 @@ const AdminPathView: React.FC = () => {
       <div className="p-6">
         <div className="mb-6">
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-            <Link to="/admin/apps" className="hover:text-blue-600">应用管理</Link>
+            <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
             <span>›</span>
             <Link to={`/admin/${appSlug}`} className="hover:text-blue-600">{app.name}</Link>
             <span>›</span>
-            <span className="text-gray-700">文档详情</span>
+            <span className="text-gray-700">Document Details</span>
           </div>
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">
-                {documentDetail?.title || documentDetail?.original_filename || '文档详情'}
+                {documentDetail?.title || documentDetail?.original_filename || 'Document Details'}
               </h1>
-              <p className="text-gray-600 mt-1">路径: {getFullPath()}</p>
+              <p className="text-gray-600 mt-1">Path: {getFullPath()}</p>
             </div>
             <div className="flex space-x-3">
               <button 
                 onClick={handleNavigateUp}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
-                返回上级
+                Go Up
               </button>
               <Link 
                 to={`/admin/documents/${(documentDetail?.path || documentDetail?.storage_path || documentDetail?.id).replace(/^\//, '')}`}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                完整详情
+                Full Details
               </Link>
             </div>
           </div>
@@ -373,26 +373,26 @@ const AdminPathView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 基本信息 */}
               <div>
-                <h3 className="font-medium text-gray-700 mb-3">基本信息</h3>
+                <h3 className="font-medium text-gray-700 mb-3">Basic Info</h3>
                 <div className="space-y-3">
                   <div>
-                    <div className="text-sm text-gray-500">文件名</div>
+                    <div className="text-sm text-gray-500">File Name</div>
                     <div className="font-medium">{documentDetail?.original_filename}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">文件类型</div>
+                    <div className="text-sm text-gray-500">File Type</div>
                     <div className="font-medium">{documentDetail?.file_type?.toUpperCase()}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">文件大小</div>
+                    <div className="text-sm text-gray-500">File Size</div>
                     <div className="font-medium">
                       {(documentDetail?.file_size ? documentDetail.file_size / 1024 / 1024 : 0).toFixed(2)} MB
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">创建时间</div>
+                    <div className="text-sm text-gray-500">Created</div>
                     <div className="font-medium">
-                      {documentDetail?.created_at ? new Date(documentDetail.created_at).toLocaleString() : '未知'}
+                      {documentDetail?.created_at ? new Date(documentDetail.created_at).toLocaleString() : 'Unknown'}
                     </div>
                   </div>
                 </div>
@@ -400,10 +400,10 @@ const AdminPathView: React.FC = () => {
               
               {/* 状态信息 */}
               <div>
-                <h3 className="font-medium text-gray-700 mb-3">状态信息</h3>
+                <h3 className="font-medium text-gray-700 mb-3">Status</h3>
                 <div className="space-y-3">
                   <div>
-                    <div className="text-sm text-gray-500">转换状态</div>
+                    <div className="text-sm text-gray-500">Conversion</div>
                     <div className="font-medium">
                       <span className={`px-2 py-1 rounded text-xs ${
                         documentDetail?.conversion_status === 'completed' ? 'bg-green-100 text-green-800' :
@@ -416,7 +416,7 @@ const AdminPathView: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">发布状态</div>
+                    <div className="text-sm text-gray-500">Published</div>
                     <div className="font-medium">
                       <span className={`px-2 py-1 rounded text-xs ${
                         documentDetail?.publish_status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
@@ -427,12 +427,12 @@ const AdminPathView: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">文档ID</div>
+                    <div className="text-sm text-gray-500">Document ID</div>
                     <div className="font-mono text-sm">{documentDetail?.id}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">存储路径</div>
-                    <div className="font-mono text-sm truncate">{documentDetail?.storage_path || '未设置'}</div>
+                    <div className="text-sm text-gray-500">Storage Path</div>
+                    <div className="font-mono text-sm truncate">{documentDetail?.storage_path || 'Not set'}</div>
                   </div>
                 </div>
               </div>
@@ -441,7 +441,7 @@ const AdminPathView: React.FC = () => {
             {/* 描述 */}
             {documentDetail?.description && (
               <div className="mt-6 pt-6 border-t">
-                <h3 className="font-medium text-gray-700 mb-2">描述</h3>
+                <h3 className="font-medium text-gray-700 mb-2">Description</h3>
                 <p className="text-gray-600">{documentDetail.description}</p>
               </div>
             )}
@@ -465,12 +465,12 @@ const AdminPathView: React.FC = () => {
                       })
                       .catch(err => {
                         console.error('下载失败:', err);
-                        window.showWetAlert('下载失败: ' + (err.response?.data?.detail || err.message || '未知错误'));
+                        window.showWetAlert('Download failed: ' + (err.response?.data?.detail || err.message || 'Unknown error'));
                       });
                   }
                 }}
               >
-                下载原始文件
+                Download Original
               </button>
               <button 
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -481,7 +481,7 @@ const AdminPathView: React.FC = () => {
                   }
                 }}
               >
-                查看完整详情
+                View Full Details
               </button>
             </div>
           </div>
@@ -493,10 +493,10 @@ const AdminPathView: React.FC = () => {
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span>文档路径: <code className="bg-gray-100 px-1 rounded">{getFullPath()}</code></span>
+            <span>Path: <code className="bg-gray-100 px-1 rounded">{getFullPath()}</code></span>
           </div>
           <div className="mt-2">
-            此页面使用新的路径URL模式访问文档。点击"完整详情"按钮可查看文档的完整信息页面。
+            This page uses the new path URL pattern to access documents. Click "Full Details" to view the complete document info page.
           </div>
         </div>
       </div>
@@ -509,7 +509,7 @@ const AdminPathView: React.FC = () => {
       {/* 面包屑导航 */}
       <div className="mb-6">
         <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-          <Link to="/admin/apps" className="hover:text-blue-600">应用管理</Link>
+          <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
           <span>›</span>
           <Link to={`/admin/${appSlug}`} className="hover:text-blue-600">{app.name}</Link>
           
@@ -538,7 +538,7 @@ const AdminPathView: React.FC = () => {
             {currentFolder?.description && (
               <p className="text-gray-600 mt-1">{currentFolder.description}</p>
             )}
-            <p className="text-sm text-gray-500 mt-1">路径: {getFullPath()}</p>
+            <p className="text-sm text-gray-500 mt-1">Path: {getFullPath()}</p>
           </div>
           
           <div className="flex space-x-3">
@@ -547,20 +547,20 @@ const AdminPathView: React.FC = () => {
                 onClick={handleNavigateUp}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
-                返回上级
+                Go Up
               </button>
             )}
             <button 
               className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               onClick={() => window.location.reload()}
             >
-              刷新
+              Refresh
             </button>
             <Link 
               to={`/admin/apps/${appSlug}?folder=${encodeURIComponent(getFullPath())}`}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
-              传统视图
+              Classic View
             </Link>
           </div>
         </div>
@@ -572,7 +572,7 @@ const AdminPathView: React.FC = () => {
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b">
-              <h3 className="font-medium">子文件夹 ({subfolders.length})</h3>
+              <h3 className="font-medium">Subfolders ({subfolders.length})</h3>
             </div>
             
             {subfolders.length === 0 ? (
@@ -580,7 +580,7 @@ const AdminPathView: React.FC = () => {
                 <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                 </svg>
-                <p>暂无子文件夹</p>
+                <p>No subfolders</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
@@ -600,7 +600,7 @@ const AdminPathView: React.FC = () => {
                           <div className="text-sm text-gray-500">{folder.description}</div>
                         )}
                         <div className="text-xs text-gray-400 mt-1">
-                          路径: {folder.path || '未设置'}
+                          Path: {folder.path || 'Not set'}
                         </div>
                       </div>
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -618,7 +618,7 @@ const AdminPathView: React.FC = () => {
         <div>
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b">
-              <h3 className="font-medium">文档 ({documents.length})</h3>
+              <h3 className="font-medium">Documents ({documents.length})</h3>
             </div>
             
             {documents.length === 0 ? (
@@ -626,7 +626,7 @@ const AdminPathView: React.FC = () => {
                 <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
-                <p>暂无文档</p>
+                <p>No documents</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
@@ -656,7 +656,7 @@ const AdminPathView: React.FC = () => {
                       to={`/admin/apps/${appSlug}/folders/${encodeURIComponent(getFullPath())}/documents`}
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
-                      查看全部 {documents.length} 个文档 →
+                      View all {documents.length} documents →
                     </Link>
                   </div>
                 )}
@@ -666,19 +666,19 @@ const AdminPathView: React.FC = () => {
           
           {/* 快速操作 */}
           <div className="mt-6 bg-white rounded-lg shadow p-4">
-            <h4 className="font-medium mb-3">快速操作</h4>
+            <h4 className="font-medium mb-3">Quick Actions</h4>
             <div className="space-y-2">
               <button 
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                 onClick={() => navigate(`/admin/apps/${appSlug}/upload?folder=${encodeURIComponent(getFullPath())}`)}
               >
-                上传文档
+                Upload Documents
               </button>
               <button 
                 className="w-full px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm"
                 onClick={() => setShowCreateFolderModal(true)}
               >
-                创建子文件夹
+                Create Subfolder
               </button>
             </div>
           </div>
@@ -691,10 +691,10 @@ const AdminPathView: React.FC = () => {
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          <span>新URL模式: <code className="bg-gray-100 px-1 rounded">/admin/{appSlug}/{pathParam || ''}</code></span>
+          <span>New URL Pattern: <code className="bg-gray-100 px-1 rounded">/admin/{appSlug}/{pathParam || ''}</code></span>
         </div>
         <div className="mt-2">
-          此页面使用新的路径URL模式。点击"传统视图"按钮可切换到旧的查询参数模式。
+          This page uses the new path URL pattern. Click "Classic View" to switch back.
         </div>
       </div>
       

@@ -24,7 +24,7 @@ const AdminDocuments: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       if (!appSlug || !folderId) {
-        setError('缺少应用或文件夹参数');
+        setError('Missing app or folder parameter');
         setLoading(false);
         return;
       }
@@ -33,33 +33,33 @@ const AdminDocuments: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // 1. 获取应用信息
+        // 1. Get app info
         const apps = await appService.getApps();
         const foundApp = apps.find(a => a.slug === appSlug || a.id === appSlug);
         if (!foundApp) {
-          setError(`应用 "${appSlug}" 不存在`);
+          setError(`App "${appSlug}" not found`);
           setLoading(false);
           return;
         }
         setApp(foundApp);
 
-        // 2. 获取文件夹信息 - 直接通过标识符（UUID或路径）获取
+        // 2. Get folder info - by identifier (UUID or path)
         const folderIdentifier = decodeURIComponent(folderId);
         const foundFolder = await folderService.getFolder(folderIdentifier);
         if (!foundFolder) {
-          setError(`文件夹 "${folderIdentifier}" 不存在`);
+          setError(`Folder "${folderIdentifier}" not found`);
           setLoading(false);
           return;
         }
         setFolder(foundFolder);
 
-        // 3. 获取文档列表
+        // 3. Get document list
         const docs = await documentService.getDocuments(folderIdentifier);
         setDocuments(docs);
 
       } catch (err: any) {
         console.error('加载数据失败:', err);
-        setError(`无法加载数据: ${err.response?.data?.detail || err.message || '未知错误'}`);
+        setError(`Failed to load data: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
@@ -68,20 +68,20 @@ const AdminDocuments: React.FC = () => {
     loadData();
   }, [appSlug, folderId]);
 
-  // 预览文档
+  // Preview document
   const handlePreview = (doc: any) => {
     const docPath = doc.path || doc.storage_path || doc.id;
     navigate(`/admin/documents/${docPath.replace(/^\//, '')}`);
   };
 
-  // 开始编辑文档
+  // Start editing document
   const handleEdit = (doc: Document) => {
     setEditingDoc(doc);
     setEditTitle(doc.title || '');
     setEditDescription(doc.description || '');
   };
 
-  // 保存编辑
+  // Save edit
   const handleSaveEdit = async () => {
     if (!editingDoc) return;
     
@@ -101,47 +101,47 @@ const AdminDocuments: React.FC = () => {
       setEditDescription('');
     } catch (err: any) {
       console.error('更新文档失败:', err);
-      window.showWetAlert(`更新文档失败: ${err.message || '未知错误'}`);
+      window.showWetAlert(`Update failed: ${err.message || 'Unknown error'}`);
     }
   };
 
-  // 取消编辑
+  // Cancel edit
   const handleCancelEdit = () => {
     setEditingDoc(null);
     setEditTitle('');
     setEditDescription('');
   };
 
-  // 删除文档
+  // Delete document
   const handleDelete = async (documentId: string) => {
     const targetDoc = documents.find(d => d.id === documentId);
-    const docName = targetDoc?.original_filename || targetDoc?.title || '此文档';
+    const docName = targetDoc?.original_filename || targetDoc?.title || 'this document';
     const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
-    const docPathInfo = docPathStr ? `\n存储路径: ${docPathStr}` : '';
-    const confirmedDel = await window.wetYesOrNo(`确定要删除 "${docName}" 吗？此操作不可撤销。${docPathInfo}`);
+    const docPathInfo = docPathStr ? `\nPath: ${docPathStr}` : '';
+    const confirmedDel = await window.wetYesOrNo(`Are you sure you want to delete "${docName}"? This cannot be undone.${docPathInfo}`);
     if (!confirmedDel) return;
     
     try {
       const deleteIdentifier = targetDoc?.path || targetDoc?.storage_path || documentId;
       await documentService.deleteDocument(deleteIdentifier);
       setDocuments(docs => docs.filter(doc => doc.id !== documentId));
-      window.showWetAlert('文档删除成功');
+      window.showWetAlert('Document deleted successfully');
     } catch (err: any) {
       console.error('删除文档失败:', err);
-      window.showWetAlert(`删除文档失败: ${err.message || '未知错误'}`);
+      window.showWetAlert(`Delete failed: ${err.message || 'Unknown error'}`);
     }
   };
 
-  // 删除所有文档
+  // Delete all documents
   const handleDeleteAllDocuments = async () => {
     if (documents.length === 0) {
-      window.showWetAlert('当前文件夹没有文档可删除');
+      window.showWetAlert('No documents to delete in current folder');
       return;
     }
     
-    const folderName = folder?.name || '当前文件夹';
-    const folderPathStr = folder?.path ? `\n目标路径: ${folder.path}` : '';
-    const confirmedAll = await window.wetYesOrNo(`确定要删除 ${folderName} 中的所有 ${documents.length} 个文档吗？此操作不可撤销，且会删除所有文件。${folderPathStr}`);
+    const folderName = folder?.name || 'current folder';
+    const folderPathStr = folder?.path ? `\nTarget path: ${folder.path}` : '';
+    const confirmedAll = await window.wetYesOrNo(`Are you sure you want to delete all ${documents.length} documents in ${folderName}? This cannot be undone and will delete all files.${folderPathStr}`);
     if (!confirmedAll) return;
     
     try {
@@ -163,22 +163,22 @@ const AdminDocuments: React.FC = () => {
       setDocuments([]);
       
       if (failedCount === 0) {
-        window.showWetAlert(`成功删除所有 ${deletedCount} 个文档`);
+        window.showWetAlert(`Successfully deleted all ${deletedCount} documents`);
       } else {
-        window.showWetAlert(`删除完成：成功删除 ${deletedCount} 个文档，${failedCount} 个文档删除失败`);
+        window.showWetAlert(`Done: ${deletedCount} deleted, ${failedCount} failed`);
       }
     } catch (err: any) {
       console.error('批量删除文档失败:', err);
-      window.showWetAlert(`批量删除失败: ${err.message || '未知错误'}`);
+      window.showWetAlert(`Batch delete failed: ${err.message || 'Unknown error'}`);
     } finally {
       setDeletingAll(false);
     }
   };
 
-  // DataTable列定义
+  // DataTable column definitions
   const columns = useMemo(() => [
     {
-      name: '文档',
+      name: 'Document',
       selector: (row: Document) => row.title,
       sortable: true,
       grow: 2,
@@ -190,7 +190,7 @@ const AdminDocuments: React.FC = () => {
       ),
     },
     {
-      name: '类型',
+      name: 'Type',
       selector: (row: Document) => row.file_type,
       sortable: true,
       width: '80px',
@@ -201,7 +201,7 @@ const AdminDocuments: React.FC = () => {
       ),
     },
     {
-      name: '状态',
+      name: 'Status',
       selector: (row: Document) => row.conversion_status,
       sortable: true,
       width: '100px',
@@ -211,26 +211,26 @@ const AdminDocuments: React.FC = () => {
             ? 'bg-green-100 text-green-800' 
             : 'bg-yellow-100 text-yellow-800'
         }`}>
-          {row.conversion_status === 'completed' ? '已转换' : '待转换'}
+          {row.conversion_status === 'completed' ? 'Converted' : 'Pending'}
         </span>
       ),
     },
     {
-      name: '大小',
+      name: 'Size',
       selector: (row: Document) => row.file_size,
       sortable: true,
       width: '100px',
       format: (row: Document) => `${(row.file_size / 1024 / 1024).toFixed(2)} MB`,
     },
     {
-      name: '上传时间',
+      name: 'Upload Date',
       selector: (row: Document) => row.created_at,
       sortable: true,
       width: '120px',
       format: (row: Document) => new Date(row.created_at).toLocaleDateString(),
     },
     {
-      name: '操作',
+      name: 'Actions',
       width: '180px',
       cell: (row: Document) => (
         <div className="flex space-x-2">
@@ -238,19 +238,19 @@ const AdminDocuments: React.FC = () => {
             onClick={() => handlePreview(row)}
             className="text-blue-600 hover:text-blue-800 text-sm"
           >
-            预览
+            Preview
           </button>
           <button 
             onClick={() => handleEdit(row)}
             className="text-blue-600 hover:text-blue-800 text-sm"
           >
-            编辑
+            Edit
           </button>
           <button 
             onClick={() => handleDelete(row.id)}
             className="text-red-600 hover:text-red-800 text-sm"
           >
-            删除
+            Delete
           </button>
         </div>
       ),
@@ -260,39 +260,39 @@ const AdminDocuments: React.FC = () => {
     },
   ], []);
 
-  // 加载状态
+  // Loading state
   if (loading) {
     return (
       <div className="p-6">
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">加载文档列表中...</p>
+            <p className="mt-4 text-gray-600">Loading documents...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // 错误状态
+  // Error state
   if (error) {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-red-800 mb-2">加载失败</h3>
+          <h3 className="text-lg font-medium text-red-800 mb-2">Load Failed</h3>
           <p className="text-red-700 mb-4">{error}</p>
           <div className="flex justify-center space-x-3">
             <button 
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
-              重新加载
+              Reload
             </button>
             <Link 
               to="/admin/apps"
               className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
             >
-              返回应用列表
+              Back to Apps
             </Link>
           </div>
         </div>
@@ -300,18 +300,18 @@ const AdminDocuments: React.FC = () => {
     );
   }
 
-  // 确保应用和文件夹数据已加载
+  // Ensure app and folder data is loaded
   if (!app || !folder) {
     return (
       <div className="p-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-yellow-800 mb-2">数据不完整</h3>
-          <p className="text-yellow-700 mb-4">无法加载应用或文件夹信息，请返回应用列表重试。</p>
+          <h3 className="text-lg font-medium text-yellow-800 mb-2">Incomplete Data</h3>
+          <p className="text-yellow-700 mb-4">Could not load app or folder info. Please go back to the app list and try again.</p>
           <Link 
             to="/admin/apps"
             className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
           >
-            返回应用列表
+            Back to Apps
           </Link>
         </div>
       </div>
@@ -320,19 +320,19 @@ const AdminDocuments: React.FC = () => {
 
   return (
     <div className="p-6">
-      {/* 面包屑导航 */}
+      {/* Breadcrumb navigation */}
       <div className="mb-6">
         <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-          <Link to="/admin/apps" className="hover:text-blue-600">应用管理</Link>
+          <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
           <span>›</span>
           <Link to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}`} className="hover:text-blue-600">{app.name}</Link>
           <span>›</span>
-          <span className="text-gray-700">{folder.name} 文档</span>
+          <span className="text-gray-700">{folder.name} Documents</span>
         </div>
         
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">{folder.name} 文档</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{folder.name} Documents</h1>
             <p className="text-gray-600 mt-1">{folder.description || ''}</p>
           </div>
           <div className="flex space-x-3">
@@ -340,13 +340,13 @@ const AdminDocuments: React.FC = () => {
               to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}/upload?folder=${encodeURIComponent(folder?.path || folderId)}`}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
-              + 上传文档
+              + Upload
             </Link>
             <button 
               className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               onClick={() => window.location.reload()}
             >
-              刷新
+              Refresh
             </button>
             <button 
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -356,32 +356,32 @@ const AdminDocuments: React.FC = () => {
               {deletingAll ? (
                 <>
                   <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                  删除中...
+                  Deleting...
                 </>
               ) : (
-                '删除所有文件'
+                'Delete All'
               )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* 统计卡片 */}
+      {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">总文档数</div>
+          <div className="text-sm text-gray-500">Total Documents</div>
           <div className="text-2xl font-bold mt-1">{documents.length}</div>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">PDF文档</div>
+          <div className="text-sm text-gray-500">PDF Documents</div>
           <div className="text-2xl font-bold mt-1">{documents.filter(d => d.file_type === 'pdf').length}</div>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">转换完成</div>
+          <div className="text-sm text-gray-500">Converted</div>
           <div className="text-2xl font-bold mt-1">{documents.filter(d => d.conversion_status === 'completed').length}</div>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500">总页数</div>
+          <div className="text-sm text-gray-500">Total Pages</div>
           <div className="text-2xl font-bold mt-1">{documents.reduce((sum, d) => sum + (d.pages || d.page_count || 0), 0)}</div>
         </div>
       </div>
@@ -393,13 +393,13 @@ const AdminDocuments: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">暂无文档</h3>
-          <p className="text-gray-500 mb-4">此文件夹还没有任何文档。上传第一个文档开始使用。</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Documents</h3>
+          <p className="text-gray-500 mb-4">This folder has no documents yet. Upload the first document to get started.</p>
           <Link 
             to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}/upload?folder=${encodeURIComponent(folder?.path || folderId)}`}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            上传文档
+            Upload Documents
           </Link>
         </div>
       ) : (
@@ -420,16 +420,16 @@ const AdminDocuments: React.FC = () => {
         </div>
       )}
 
-      {/* 编辑文档模态框 */}
+      {/* Edit document modal */}
       {editingDoc && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">编辑文档</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Document</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    文档标题
+                    Document Title
                   </label>
                   <input
                     type="text"
@@ -440,7 +440,7 @@ const AdminDocuments: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    描述（可选）
+                    Description (optional)
                   </label>
                   <textarea
                     value={editDescription}
@@ -454,13 +454,13 @@ const AdminDocuments: React.FC = () => {
                     onClick={handleCancelEdit}
                     className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                   >
-                    取消
+                    Cancel
                   </button>
                   <button
                     onClick={handleSaveEdit}
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
-                    保存
+                    Save
                   </button>
                 </div>
               </div>
@@ -470,14 +470,12 @@ const AdminDocuments: React.FC = () => {
       )}
 
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-medium text-blue-800">新架构说明</h3>
-        <p className="text-blue-700 mt-1">
-          此页面现在直接显示应用下的文件夹文档列表。抽屉层已完全移除。
-        </p>
+        <h3 className="font-medium text-blue-800">New Architecture</h3>
+        <p className="text-blue-700 mt-1">This page now directly shows documents under the selected folder. The drawer system has been removed.</p>
         <div className="mt-2 text-sm text-blue-600">
-          <p>• URL结构：<code>/admin/apps/:appSlug/folders/:folderId/documents</code></p>
-          <p>• 文档直接属于文件夹，文件夹直接属于应用</p>
-          <p>• 所有历史数据已清空，这是全新开始</p>
+          <p>• URL: <code>/admin/apps/:appSlug/folders/:folderId/documents</code></p>
+          <p>• Documents belong to folders, folders belong to apps</p>
+          <p>• All historical data has been reset. This is a fresh start.</p>
         </div>
       </div>
     </div>
