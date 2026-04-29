@@ -177,8 +177,19 @@ class FolderService {
   }
 
   /**
+   * Get folder by full path
+   * @param folderPath 文件夹路径，如 "/boarding/canada-site/en"
+   * @returns 文件夹对象
+   */
+  async getFolderByPath(folderPath: string): Promise<Folder> {
+    console.log('🔍 [DEBUG] folderService.getFolderByPath called with:', folderPath);
+    const normalizedPath = folderPath.startsWith('/') ? folderPath : '/' + folderPath;
+    return this.getFolder(normalizedPath);
+  }
+
+  /**
    * 获取文件夹详情 - 基于ID（已弃用，仅用于兼容）
-   * @deprecated 请使用 getFolder 方法，基于路径
+   * @deprecated 请使用 getFolder 方法（基于路径）
    */
   async getFolderById(folderId: string): Promise<Folder> {
     console.warn('⚠️ folderService.getFolderById 已弃用，请使用 getFolder 方法（基于路径）');
