@@ -1,0 +1,1477 @@
+[
+  {
+    "id": "mustache-renderer",
+    "name": "mustache-renderer",
+    "display_name": "Mustache模板渲染器",
+    "category": "custom",
+    "description": "渲染Mustache模板，支持变量替换、条件语句和循环",
+    "icon": "fas fa-code",
+    "html_template": "<div class=\"mustache-renderer-container\" data-template=\"{{template_text}}\" data-json=\"{{json_data}}\" data-escape-html=\"{{escape_html}}\">\n    <!-- Mustache渲染内容将在这里显示 -->\n    <div class=\"mustache-placeholder\">\n        <p><em>Mustache模板渲染器 - 内容将在页面加载时渲染</em></p>\n    </div>\n    <noscript>\n        <div class=\"alert alert-warning\">\n            <strong>提示：</strong>此组件需要JavaScript支持才能正确渲染。\n        </div>\n    </noscript>\n</div>",
+    "css_template": ".mustache-renderer-container {\n    border: 1px solid #ddd;\n    border-radius: 4px;\n    padding: 15px;\n    margin: 10px 0;\n    background-color: #f9f9f9;\n}\n.mustache-placeholder {\n    color: #666;\n    font-style: italic;\n    padding: 10px;\n    background-color: #f0f0f0;\n    border-radius: 3px;\n}",
+    "js_template": "// Mustache渲染器客户端逻辑\n(function() {\n    const containers = document.querySelectorAll('.mustache-renderer-container');\n    containers.forEach(container => {\n        const template = container.getAttribute('data-template');\n        const jsonData = container.getAttribute('data-json');\n        const escapeHtml = container.getAttribute('data-escape-html') === 'true';\n        \n        try {\n            const data = JSON.parse(jsonData);\n            // 这里可以添加客户端渲染逻辑，如果需要的话\n            // 当前版本主要依赖服务器端渲染\n        } catch (e) {\n            console.error('Mustache渲染器JSON解析错误:', e);\n        }\n    });\n})();",
+    "properties": {
+      "template_text": {
+        "name": "template_text",
+        "type": "text",
+        "label": "Mustache模板",
+        "default": "<h1>{{title}}</h1>\n<p>{{content}}</p>\n{{#if show_more}}\n<div class=\"more-content\">{{more_text}}</div>\n{{/if}}",
+        "required": true,
+        "description": "使用{{变量}}语法的Mustache模板",
+        "multiline": true,
+        "rows": 8
+      },
+      "json_data": {
+        "name": "json_data",
+        "type": "json",
+        "label": "JSON数据",
+        "default": "{\"title\": \"示例标题\", \"content\": \"示例内容\", \"show_more\": true, \"more_text\": \"更多内容...\"}",
+        "required": true,
+        "description": "提供模板变量的JSON对象",
+        "multiline": true,
+        "rows": 8
+      },
+      "escape_html": {
+        "name": "escape_html",
+        "type": "boolean",
+        "label": "HTML转义",
+        "default": true,
+        "description": "渲染时自动转义HTML特殊字符，防止XSS攻击"
+      }
+    },
+    "dependencies": [],
+    "wet_boew_compliant": false,
+    "accessibility_checked": false,
+    "tags": [
+      "template",
+      "mustache",
+      "dynamic",
+      "json"
+    ],
+    "author": "WebBot System",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-04-10T10:50:16.323615",
+    "updated_at": "2026-04-10T10:50:16.323624",
+    "usage_count": 0
+  },
+  {
+    "id": "api-data-card",
+    "name": "api-data-card",
+    "display_name": "API数据卡片",
+    "category": "content",
+    "description": "从API获取JSON数据并显示为卡片，支持WET-BOEW动态加载",
+    "icon": "fas fa-database",
+    "html_template": "<div class=\"api-data-card\" data-wb-json='{{api_url}}'>\n    <div class=\"card\">\n        <div class=\"card-header\">\n            <h3 class=\"card-title\" data-json-key=\"{{title_field}}\">加载中...</h3>\n        </div>\n        <div class=\"card-body\">\n            <img src=\"\" alt=\"\" class=\"card-img-top mb-3\" data-json-key=\"{{image_field}}\" style=\"max-height: 200px; display: none;\">\n            <p class=\"card-text\" data-json-key=\"{{description_field}}\">正在加载数据...</p>\n        </div>\n        <div class=\"card-footer\">\n            <small class=\"text-muted\">数据来源: {{api_url}}</small>\n        </div>\n    </div>\n</div>\n\n<!-- 如果API不支持CORS，使用服务器端代理 -->\n<script>\n// 备选方案：如果WET-BOEW插件不可用，使用fetch API\ndocument.addEventListener('DOMContentLoaded', function() {\n    var cards = document.querySelectorAll('.api-data-card:not([data-processed])');\n    cards.forEach(function(card) {\n        card.setAttribute('data-processed', 'true');\n        var apiUrl = card.getAttribute('data-wb-json');\n        var titleField = card.querySelector('[data-json-key]').getAttribute('data-json-key');\n        var descField = card.querySelectorAll('[data-json-key]')[1].getAttribute('data-json-key');\n        var imgField = card.querySelectorAll('[data-json-key]')[2].getAttribute('data-json-key');\n        \n        fetch(apiUrl)\n            .then(response => response.json())\n            .then(data => {\n                // 简单路径解析（只支持一级）\n                var title = data[titleField] || '无标题';\n                var description = data[descField] || '无描述';\n                var image = data[imgField] || '';\n                \n                card.querySelector('.card-title').textContent = title;\n                card.querySelector('.card-text').textContent = description;\n                if (image) {\n                    var img = card.querySelector('img');\n                    img.src = image;\n                    img.style.display = 'block';\n                    img.alt = title;\n                }\n            })\n            .catch(error => {\n                console.error('API数据获取失败:', error);\n                card.querySelector('.card-title').textContent = '数据加载失败';\n                card.querySelector('.card-text').textContent = '无法从API获取数据: ' + error.message;\n            });\n    });\n});\n</script>",
+    "css_template": "",
+    "js_template": "",
+    "properties": {
+      "api_url": {
+        "name": "api_url",
+        "type": "url",
+        "label": "API端点URL",
+        "description": "提供JSON数据的API端点URL",
+        "default": "https://api.example.com/data",
+        "required": true,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      },
+      "title_field": {
+        "name": "title_field",
+        "type": "string",
+        "label": "标题字段路径",
+        "description": "JSON中标题字段的路径（如：title, data.title）",
+        "default": "title",
+        "required": false,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      },
+      "description_field": {
+        "name": "description_field",
+        "type": "string",
+        "label": "描述字段路径",
+        "description": "JSON中描述字段的路径（如：description, data.description）",
+        "default": "description",
+        "required": false,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      },
+      "image_field": {
+        "name": "image_field",
+        "type": "string",
+        "label": "图片字段路径",
+        "description": "JSON中图片URL字段的路径（如：image, data.image_url）",
+        "default": "image",
+        "required": false,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      }
+    },
+    "dependencies": [],
+    "wet_boew_compliant": true,
+    "accessibility_checked": false,
+    "tags": [
+      "api",
+      "json",
+      "dynamic",
+      "wet-boew"
+    ],
+    "author": "system",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-04-10T09:22:38.753243",
+    "updated_at": "2026-04-10T09:22:38.753243",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-tabs",
+    "name": "wet-tabs",
+    "display_name": "Tabs Component (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW tabs component supporting horizontal/vertical layouts with user selection memory",
+    "icon": "📑",
+    "html_template": "<div class=\"wb-tabs\">\n    <div class=\"tabpanels\">\n        <details id=\"tabpanel1\" open=\"open\">\n            <summary id=\"tab1\">标签1: {{tab1_title}}</summary>\n            <div class=\"panel-body\">\n                <p>{{tab1_content}}</p>\n            </div>\n        </details>\n        <details id=\"tabpanel2\">\n            <summary id=\"tab2\">标签2: {{tab2_title}}</summary>\n            <div class=\"panel-body\">\n                <p>{{tab2_content}}</p>\n            </div>\n        </details>\n        <details id=\"tabpanel3\">\n            <summary id=\"tab3\">标签3: {{tab3_title}}</summary>\n            <div class=\"panel-body\">\n                <p>{{tab3_content}}</p>\n            </div>\n        </details>\n    </div>\n</div>",
+    "css_template": "",
+    "js_template": "",
+    "properties": {
+      "orientation": {
+        "name": "orientation",
+        "type": "select",
+        "label": "Tab Orientation",
+        "options": [
+          "horizontal",
+          "vertical"
+        ],
+        "default": "horizontal",
+        "description": "Tab arrangement: horizontal or vertical"
+      },
+      "style": {
+        "name": "style",
+        "type": "select",
+        "label": "Tab Style",
+        "options": [
+          "default",
+          "simple",
+          "filter"
+        ],
+        "default": "default",
+        "description": "Tab display style"
+      },
+      "remember": {
+        "name": "remember",
+        "type": "boolean",
+        "label": "Remember Selection",
+        "default": true,
+        "description": "Remember user's last selected tab"
+      },
+      "tab1_title": {
+        "name": "tab1_title",
+        "type": "string",
+        "label": "Tab 1 Title",
+        "default": "概述",
+        "required": true,
+        "description": "Title for the first tab"
+      },
+      "tab1_content": {
+        "name": "tab1_content",
+        "type": "string",
+        "label": "Tab 1 Content",
+        "default": "这是第一个标签页的内容。您可以在这里放置任何文本、图片或其他元素。",
+        "required": true,
+        "description": "Content text for the first tab"
+      },
+      "tab2_title": {
+        "name": "tab2_title",
+        "type": "string",
+        "label": "Tab 2 Title",
+        "default": "功能",
+        "required": true,
+        "description": "Title for the second tab"
+      },
+      "tab2_content": {
+        "name": "tab2_content",
+        "type": "string",
+        "label": "Tab 2 Content",
+        "default": "这是第二个标签页的内容。展示了系统的各种功能和特性。",
+        "required": true,
+        "description": "Content text for the second tab"
+      },
+      "tab3_title": {
+        "name": "tab3_title",
+        "type": "string",
+        "label": "Tab 3 Title",
+        "default": "帮助",
+        "required": true,
+        "description": "Title for the third tab"
+      },
+      "tab3_content": {
+        "name": "tab3_content",
+        "type": "string",
+        "label": "Tab 3 Content",
+        "default": "这是第三个标签页的内容。提供使用帮助和支持信息。",
+        "required": true,
+        "description": "Content text for the third tab"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "tabs",
+      "wet-boew",
+      "interactive"
+    ],
+    "author": "System",
+    "version": "1.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-04-09T17:23:07.473707",
+    "updated_at": "2026-04-09T17:23:07.473707",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-carousel",
+    "name": "wet-carousel",
+    "display_name": "Carousel Component (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW carousel component with auto-play, controls and indicators",
+    "icon": "🖼️",
+    "html_template": "<div class=\"wb-carousel carousel slide\" data-wb-carousel='{\n    \"autoPlay\": {{auto_play}},\n    \"delay\": {{delay}},\n    \"continuous\": {{continuous}},\n    \"showControls\": {{show_controls}},\n    \"showIndicators\": {{show_indicators}}\n}'>\n    <div class=\"carousel-inner\">\n        <div class=\"carousel-item active\">\n            <img src=\"{{slide1_src}}\" class=\"d-block w-100\" alt=\"{{slide1_alt}}\">\n            <div class=\"carousel-caption\">\n                <h5>{{slide1_title}}</h5>\n                <p>{{slide1_description}}</p>\n            </div>\n        </div>\n        <div class=\"carousel-item\">\n            <img src=\"{{slide2_src}}\" class=\"d-block w-100\" alt=\"{{slide2_alt}}\">\n            <div class=\"carousel-caption\">\n                <h5>{{slide2_title}}</h5>\n                <p>{{slide2_description}}</p>\n            </div>\n        </div>\n        <div class=\"carousel-item\">\n            <img src=\"{{slide3_src}}\" class=\"d-block w-100\" alt=\"{{slide3_alt}}\">\n            <div class=\"carousel-caption\">\n                <h5>{{slide3_title}}</h5>\n                <p>{{slide3_description}}</p>\n            </div>\n        </div>\n    </div>\n    <button class=\"carousel-control-prev\" type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide=\"prev\">\n        <span class=\"carousel-control-prev-icon\" aria-hidden=\"true\"></span>\n        <span class=\"visually-hidden\">Previous</span>\n    </button>\n    <button class=\"carousel-control-next\" type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide=\"next\">\n        <span class=\"carousel-control-next-icon\" aria-hidden=\"true\"></span>\n        <span class=\"visually-hidden\">Next</span>\n    </button>\n    <div class=\"carousel-indicators\">\n        <button type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide-to=\"0\" class=\"active\" aria-label=\"Slide 1\"></button>\n        <button type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide-to=\"1\" aria-label=\"Slide 2\"></button>\n        <button type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide-to=\"2\" aria-label=\"Slide 3\"></button>\n    </div>\n</div>",
+    "css_template": "",
+    "js_template": "",
+    "properties": {
+      "auto_play": {
+        "name": "auto_play",
+        "type": "boolean",
+        "label": "Auto Play",
+        "default": true,
+        "description": "Automatically cycle through slides"
+      },
+      "delay": {
+        "name": "delay",
+        "type": "number",
+        "label": "Slide Delay (ms)",
+        "default": 5000,
+        "description": "Time each slide is displayed (milliseconds)"
+      },
+      "continuous": {
+        "name": "continuous",
+        "type": "boolean",
+        "label": "Continuous Loop",
+        "default": true,
+        "description": "Restart from first slide after reaching the end"
+      },
+      "show_controls": {
+        "name": "show_controls",
+        "type": "boolean",
+        "label": "Show Control Buttons",
+        "default": true,
+        "description": "Show previous/next control buttons"
+      },
+      "show_indicators": {
+        "name": "show_indicators",
+        "type": "boolean",
+        "label": "Show Indicators",
+        "default": true,
+        "description": "Show slide indicator dots at bottom"
+      },
+      "slide1_src": {
+        "name": "slide1_src",
+        "type": "string",
+        "label": "Slide 1 Image URL",
+        "default": "https://via.placeholder.com/800x400/007bff/ffffff?text=Slide+1",
+        "required": true,
+        "description": "Image URL for the first slide"
+      },
+      "slide1_alt": {
+        "name": "slide1_alt",
+        "type": "string",
+        "label": "Slide 1 Alt Text",
+        "default": "第一张幻灯片",
+        "required": true,
+        "description": "Alternative text for slide 1 image"
+      },
+      "slide1_title": {
+        "name": "slide1_title",
+        "type": "string",
+        "label": "Slide 1 Title",
+        "default": "欢迎来到我们的网站",
+        "description": "Title text for slide 1"
+      },
+      "slide1_description": {
+        "name": "slide1_description",
+        "type": "string",
+        "label": "Slide 1 Description",
+        "default": "这是一个示例轮播图组件，展示了WET-BOEW的强大功能",
+        "description": "Description text for slide 1"
+      },
+      "slide2_src": {
+        "name": "slide2_src",
+        "type": "string",
+        "label": "Slide 2 Image URL",
+        "default": "https://via.placeholder.com/800x400/28a745/ffffff?text=Slide+2",
+        "required": true,
+        "description": "Image URL for the second slide"
+      },
+      "slide2_alt": {
+        "name": "slide2_alt",
+        "type": "string",
+        "label": "Slide 2 Alt Text",
+        "default": "第二张幻灯片",
+        "required": true,
+        "description": "Alternative text for slide 2 image"
+      },
+      "slide2_title": {
+        "name": "slide2_title",
+        "type": "string",
+        "label": "Slide 2 Title",
+        "default": "功能强大",
+        "description": "Title text for slide 2"
+      },
+      "slide2_description": {
+        "name": "slide2_description",
+        "type": "string",
+        "label": "Slide 2 Description",
+        "default": "我们的系统提供多种功能，满足您的各种需求",
+        "description": "Description text for slide 2"
+      },
+      "slide3_src": {
+        "name": "slide3_src",
+        "type": "string",
+        "label": "Slide 3 Image URL",
+        "default": "https://via.placeholder.com/800x400/ffc107/000000?text=Slide+3",
+        "required": true,
+        "description": "Image URL for the third slide"
+      },
+      "slide3_alt": {
+        "name": "slide3_alt",
+        "type": "string",
+        "label": "Slide 3 Alt Text",
+        "default": "第三张幻灯片",
+        "required": true,
+        "description": "Alternative text for slide 3 image"
+      },
+      "slide3_title": {
+        "name": "slide3_title",
+        "type": "string",
+        "label": "Slide 3 Title",
+        "default": "易于使用",
+        "description": "Title text for slide 3"
+      },
+      "slide3_description": {
+        "name": "slide3_description",
+        "type": "string",
+        "label": "Slide 3 Description",
+        "default": "直观的用户界面，让您轻松上手",
+        "description": "Description text for slide 3"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "carousel",
+      "wet-boew",
+      "interactive"
+    ],
+    "author": "System",
+    "version": "1.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-04-09T17:22:29.473291",
+    "updated_at": "2026-04-09T17:22:29.473291",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-ajax-table-final",
+    "name": "wet-ajax-table-final",
+    "display_name": "AJAX Table Component (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW AJAX table component with server-side pagination, sorting and filtering",
+    "icon": "📊",
+    "html_template": "<table class=\"wb-tables table table-striped table-hover\" data-wb-tables=\"{ \\\"ordering\\\": false, \\\"ajaxSource\\\": \\\"{{ajax_source}}\\\" }\">\n{tableContent}\n</table>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "ajax_source": {
+        "name": "ajax_source",
+        "type": "string",
+        "label": "Data Source URL",
+        "description": "URL endpoint returning JSON data for the table",
+        "default": "/api/v1/data/table",
+        "required": true,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      },
+      "tableContent": {
+        "name": "tableContent",
+        "type": "text",
+        "label": "Table Content",
+        "description": "HTML content inside the table (thead, tbody, tfoot)",
+        "default": "<thead>\n <tr>\n <th>Title</th>\n <th>Path</th>\n <th>Description</th>\n <th>Last Modified</th>\n </tr>\n </thead>",
+        "required": false,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wb-tables.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "table",
+      "ajax",
+      "wet-boew",
+      "data-table"
+    ],
+    "author": "system",
+    "version": "1.0.0",
+    "status": "draft",
+    "created_by": "system",
+    "created_at": "2026-04-09T10:25:44.347186",
+    "updated_at": "2026-04-11T07:59:53.129552",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-table-ajax-simple",
+    "name": "wet-table-ajax-simple",
+    "display_name": "WET-BOEW AJAX表格",
+    "category": "content",
+    "description": "WET-BOEW AJAX数据表格，只需配置数据源URL",
+    "icon": "📊",
+    "html_template": "<table class=\"wb-tables table table-striped table-hover\" data-wb-tables=\"{\"ordering\": false, \"ajaxSource\": \"{{ajax_source}}\"}\">\n</table>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "ajax_source": {
+        "name": "ajax_source",
+        "type": "string",
+        "label": "AJAX数据源URL",
+        "description": "提供JSON数据的API端点URL",
+        "default": "/api/v1/data/table",
+        "required": true,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wb-tables.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "table",
+      "ajax",
+      "wet-boew",
+      "data-table"
+    ],
+    "author": "system",
+    "version": "1.0.0",
+    "status": "draft",
+    "created_by": "system",
+    "created_at": "2026-04-09T10:24:16.676707",
+    "updated_at": "2026-04-09T10:24:16.676707",
+    "usage_count": 0
+  },
+  {
+    "id": "test-with-deps",
+    "name": "test-with-deps",
+    "display_name": "测试带依赖",
+    "category": "content",
+    "description": "测试带依赖的组件",
+    "icon": "📊",
+    "html_template": "<div>测试</div>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {},
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://example.com/style.css",
+        "version": "1.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": false,
+    "accessibility_checked": false,
+    "tags": [
+      "test"
+    ],
+    "author": "system",
+    "version": "1.0.0",
+    "status": "draft",
+    "created_by": "system",
+    "created_at": "2026-04-09T10:23:48.289222",
+    "updated_at": "2026-04-09T10:23:48.289222",
+    "usage_count": 0
+  },
+  {
+    "id": "test-ajax-table",
+    "name": "test-ajax-table",
+    "display_name": "测试AJAX表格",
+    "category": "content",
+    "description": "测试AJAX表格组件",
+    "icon": "📊",
+    "html_template": "<table data-source=\"{{ajax_source}}\"><tr><td>测试</td></tr></table>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "ajax_source": {
+        "name": "ajax_source",
+        "type": "string",
+        "label": "数据源",
+        "description": "数据源URL",
+        "default": "/api/test",
+        "required": true,
+        "options": null,
+        "i18n": false,
+        "min_length": null,
+        "max_length": null,
+        "min_value": null,
+        "max_value": null
+      }
+    },
+    "dependencies": [],
+    "wet_boew_compliant": false,
+    "accessibility_checked": false,
+    "tags": [
+      "test",
+      "ajax"
+    ],
+    "author": "system",
+    "version": "1.0.0",
+    "status": "draft",
+    "created_by": "system",
+    "created_at": "2026-04-09T10:21:59.188896",
+    "updated_at": "2026-04-09T10:21:59.188896",
+    "usage_count": 0
+  },
+  {
+    "id": "simple-table-2",
+    "name": "simple-table-2",
+    "display_name": "简单表格2",
+    "category": "content",
+    "description": "简单表格组件2",
+    "icon": "📊",
+    "html_template": "<table><tr><td>示例表格2</td></tr></table>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {},
+    "dependencies": [],
+    "wet_boew_compliant": false,
+    "accessibility_checked": false,
+    "tags": [
+      "table"
+    ],
+    "author": "system",
+    "version": "1.0.0",
+    "status": "draft",
+    "created_by": "system",
+    "created_at": "2026-04-09T10:21:49.356437",
+    "updated_at": "2026-04-09T10:21:49.356437",
+    "usage_count": 0
+  },
+  {
+    "id": "simple-table",
+    "name": "simple-table",
+    "display_name": "简单表格",
+    "category": "content",
+    "description": "简单表格组件",
+    "icon": "📊",
+    "html_template": "<table><tr><td>示例表格</td></tr></table>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {},
+    "dependencies": [],
+    "wet_boew_compliant": false,
+    "accessibility_checked": false,
+    "tags": [
+      "table"
+    ],
+    "author": "system",
+    "version": "1.0.0",
+    "status": "draft",
+    "created_by": "system",
+    "created_at": "2026-04-09T09:34:54.947052",
+    "updated_at": "2026-04-09T09:34:54.947052",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-group",
+    "name": "wet-group",
+    "display_name": "分组容器组件 (WET-BOEW)",
+    "category": "layout",
+    "description": "用于分组其他组件的容器",
+    "icon": "📦",
+    "html_template": "\n<div class=\"group-container {{className}}\">\n  <div class=\"group-content\">\n    {{{children}}}\n  </div>\n</div>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "children": {
+        "name": "children",
+        "type": "string",
+        "label": "子内容",
+        "default": "<p>分组内容</p>",
+        "description": "分组内的HTML内容"
+      },
+      "className": {
+        "name": "className",
+        "type": "string",
+        "label": "CSS类名",
+        "default": "",
+        "description": "容器CSS类名"
+      },
+      "background": {
+        "name": "background",
+        "type": "color",
+        "label": "背景颜色",
+        "default": "#f5f5f5",
+        "description": "分组背景颜色"
+      },
+      "padding": {
+        "name": "padding",
+        "type": "string",
+        "label": "内边距",
+        "default": "20px",
+        "description": "分组内边距"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "group",
+      "container",
+      "layout",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:27:54.534391",
+    "updated_at": "2026-03-29T09:27:54.534391",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-footnotes",
+    "name": "wet-footnotes",
+    "display_name": "脚注组件 (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW标准脚注组件",
+    "icon": "📝",
+    "html_template": "\n<section class=\"footnotes {{className}}\">\n  <h2>{{title}}</h2>\n  <ol>\n    {{#each footnotes}}\n    <li id=\"fn{{@index}}\">\n      <p>{{this}} <a href=\"#fnref{{@index}}\" class=\"footnote-backref\">↩</a></p>\n    </li>\n    {{/each}}\n  </ol>\n</section>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "title": {
+        "name": "title",
+        "type": "string",
+        "label": "脚注标题",
+        "default": "脚注",
+        "i18n": true
+      },
+      "footnotes": {
+        "name": "footnotes",
+        "type": "string",
+        "label": "脚注列表",
+        "default": [
+          "这是第一个脚注",
+          "这是第二个脚注"
+        ],
+        "description": "脚注内容列表"
+      },
+      "className": {
+        "name": "className",
+        "type": "string",
+        "label": "CSS类名",
+        "default": "",
+        "description": "容器CSS类名"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "footnotes",
+      "references",
+      "content",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:27:54.534374",
+    "updated_at": "2026-03-29T09:27:54.534374",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-featured-link",
+    "name": "wet-featured-link",
+    "display_name": "特色链接组件 (WET-BOEW)",
+    "category": "navigation",
+    "description": "带有图标的特色链接",
+    "icon": "🔗",
+    "html_template": "\n<a href=\"{{url}}\" class=\"featured-link {{className}}\" {{#if target}}target=\"{{target}}\"{{/if}}>\n  {{#if icon}}\n  <span class=\"featured-link-icon\">{{icon}}</span>\n  {{/if}}\n  <span class=\"featured-link-text\">{{text}}</span>\n</a>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "text": {
+        "name": "text",
+        "type": "string",
+        "label": "链接文本",
+        "default": "了解更多",
+        "required": true,
+        "i18n": true
+      },
+      "url": {
+        "name": "url",
+        "type": "string",
+        "label": "链接URL",
+        "default": "#",
+        "required": true
+      },
+      "icon": {
+        "name": "icon",
+        "type": "string",
+        "label": "图标",
+        "default": "➔",
+        "description": "图标字符或emoji"
+      },
+      "target": {
+        "name": "target",
+        "type": "select",
+        "label": "打开方式",
+        "options": [
+          "_self",
+          "_blank",
+          "_parent",
+          "_top"
+        ],
+        "default": "_self",
+        "description": "链接打开的目标窗口"
+      },
+      "alignment": {
+        "name": "alignment",
+        "type": "select",
+        "label": "对齐方式",
+        "options": [
+          "left",
+          "center",
+          "right"
+        ],
+        "default": "left",
+        "description": "链接对齐方式"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "link",
+      "navigation",
+      "featured",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:27:54.534347",
+    "updated_at": "2026-03-29T09:27:54.534347",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-embed-html",
+    "name": "wet-embed-html",
+    "display_name": "HTML嵌入组件 (WET-BOEW)",
+    "category": "content",
+    "description": "嵌入自定义HTML代码",
+    "icon": "📄",
+    "html_template": "\n<div class=\"embed-html {{className}}\">\n  {{{html}}}\n</div>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "html": {
+        "name": "html",
+        "type": "string",
+        "label": "HTML代码",
+        "default": "<p>自定义HTML内容</p>",
+        "required": true,
+        "description": "要嵌入的HTML代码"
+      },
+      "className": {
+        "name": "className",
+        "type": "string",
+        "label": "CSS类名",
+        "default": "",
+        "description": "容器CSS类名"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "embed",
+      "html",
+      "custom",
+      "content",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:27:54.534323",
+    "updated_at": "2026-03-29T09:27:54.534323",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-horizontal-line",
+    "name": "wet-horizontal-line",
+    "display_name": "水平线组件 (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW标准水平分隔线",
+    "icon": "➖",
+    "html_template": "\n<hr class=\"{{className}}\">",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "className": {
+        "name": "className",
+        "type": "string",
+        "label": "CSS类名",
+        "default": "",
+        "description": "额外的CSS类名"
+      },
+      "thickness": {
+        "name": "thickness",
+        "type": "select",
+        "label": "线粗",
+        "options": [
+          "thin",
+          "medium",
+          "thick"
+        ],
+        "default": "medium",
+        "description": "水平线的粗细"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "horizontal-line",
+      "separator",
+      "content",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:27:54.534276",
+    "updated_at": "2026-03-29T09:27:54.534276",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-image",
+    "name": "wet-image",
+    "display_name": "图片组件 (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW标准图片组件，支持响应式和可访问性",
+    "icon": "🖼️",
+    "html_template": "\n<figure class=\"{{figureClass}}\">\n  <img src=\"{{src}}\" alt=\"{{altText}}\" class=\"{{imageClass}}\" width=\"{{width}}\" height=\"{{height}}\">\n  {{#if caption}}\n  <figcaption>{{caption}}</figcaption>\n  {{/if}}\n</figure>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "src": {
+        "name": "src",
+        "type": "string",
+        "label": "图片URL",
+        "default": "https://via.placeholder.com/300x200",
+        "required": true,
+        "description": "图片的URL地址"
+      },
+      "altText": {
+        "name": "altText",
+        "type": "string",
+        "label": "替代文本",
+        "default": "描述图片内容",
+        "required": true,
+        "description": "图片的替代文本，用于可访问性"
+      },
+      "caption": {
+        "name": "caption",
+        "type": "string",
+        "label": "图片说明",
+        "default": "",
+        "description": "图片下方的说明文字"
+      },
+      "width": {
+        "name": "width",
+        "type": "string",
+        "label": "宽度",
+        "default": "300",
+        "description": "图片宽度（像素或百分比）"
+      },
+      "height": {
+        "name": "height",
+        "type": "string",
+        "label": "高度",
+        "default": "200",
+        "description": "图片高度（像素或百分比）"
+      },
+      "alignment": {
+        "name": "alignment",
+        "type": "select",
+        "label": "对齐方式",
+        "options": [
+          "left",
+          "center",
+          "right"
+        ],
+        "default": "center",
+        "description": "图片对齐方式"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "image",
+      "media",
+      "content",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:27:54.533757",
+    "updated_at": "2026-03-29T09:27:54.533757",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-feature-columns",
+    "name": "wet-feature-columns",
+    "display_name": "特征图片列 (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW标准特征图片列，用于展示特色内容",
+    "icon": "🖼️",
+    "html_template": "\n<div class=\"row\">\n  {{#each columns}}\n  <div class=\"col-md-{{../columnSize}}\">\n    <div class=\"feature-item\">\n      {{#if imageUrl}}\n      <div class=\"feature-image\">\n        <img src=\"{{imageUrl}}\" alt=\"{{imageAlt}}\" class=\"img-responsive\">\n      </div>\n      {{/if}}\n      <div class=\"feature-content\">\n        {{#if title}}<h3>{{title}}</h3>{{/if}}\n        {{#if description}}<p>{{description}}</p>{{/if}}\n      </div>\n    </div>\n  </div>\n  {{/each}}\n</div>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "columns": {
+        "name": "columns",
+        "type": "string",
+        "label": "列数据 (JSON数组)",
+        "description": "JSON数组格式，每列包含imageUrl, imageAlt, title, description",
+        "default": "[{\"imageUrl\":\"https://via.placeholder.com/300x200\",\"imageAlt\":\"特征图片1\",\"title\":\"特征1\",\"description\":\"特征1描述\"},{\"imageUrl\":\"https://via.placeholder.com/300x200\",\"imageAlt\":\"特征图片2\",\"title\":\"特征2\",\"description\":\"特征2描述\"},{\"imageUrl\":\"https://via.placeholder.com/300x200\",\"imageAlt\":\"特征图片3\",\"title\":\"特征3\",\"description\":\"特征3描述\"}]",
+        "required": true,
+        "i18n": true
+      },
+      "columnSize": {
+        "name": "columnSize",
+        "type": "select",
+        "label": "每列宽度",
+        "options": [
+          "12",
+          "6",
+          "4",
+          "3"
+        ],
+        "default": "4",
+        "description": "12为全宽(1列)，6为半宽(2列)，4为三分之一(3列)，3为四分之一(4列)"
+      },
+      "className": {
+        "name": "className",
+        "type": "string",
+        "label": "CSS类名",
+        "default": "",
+        "description": "额外的CSS类名"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "columns",
+      "feature",
+      "image",
+      "grid",
+      "content",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:25:49.168546",
+    "updated_at": "2026-03-29T09:25:49.168546",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-list",
+    "name": "wet-list",
+    "display_name": "列表组件 (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW标准列表，支持有序和无序列表",
+    "icon": "📋",
+    "html_template": "\n<{{listType}} class=\"{{className}}\">\n  {{#each items}}\n  <li>{{this}}</li>\n  {{/each}}\n</{{listType}}>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "listType": {
+        "name": "listType",
+        "type": "select",
+        "label": "列表类型",
+        "options": [
+          "ul",
+          "ol"
+        ],
+        "default": "ul",
+        "description": "ul为无序列表，ol为有序列表"
+      },
+      "items": {
+        "name": "items",
+        "type": "string",
+        "label": "列表项目 (JSON数组)",
+        "description": "JSON数组格式，例如: [\"项目1\", \"项目2\", \"项目3\"]",
+        "default": "[\"列表项目1\", \"列表项目2\", \"列表项目3\"]",
+        "required": true,
+        "i18n": true
+      },
+      "className": {
+        "name": "className",
+        "type": "string",
+        "label": "CSS类名",
+        "default": "",
+        "description": "额外的CSS类名，如list-unstyled等"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "list",
+      "ul",
+      "ol",
+      "content",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:25:49.168413",
+    "updated_at": "2026-03-29T09:25:49.168413",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-title",
+    "name": "wet-title",
+    "display_name": "标题组件 (WET-BOEW)",
+    "category": "content",
+    "description": "WET-BOEW标准标题，支持h1-h6级别",
+    "icon": "🏷️",
+    "html_template": "\n<{{level}} class=\"{{className}}\" id=\"{{id}}\">\n  {{text}}\n</{{level}}>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "text": {
+        "name": "text",
+        "type": "string",
+        "label": "标题文本",
+        "default": "页面标题",
+        "required": true,
+        "i18n": true
+      },
+      "level": {
+        "name": "level",
+        "type": "select",
+        "label": "标题级别",
+        "options": [
+          "h1",
+          "h2",
+          "h3",
+          "h4",
+          "h5",
+          "h6"
+        ],
+        "default": "h2",
+        "description": "h1为最高级别，h6为最低级别"
+      },
+      "className": {
+        "name": "className",
+        "type": "string",
+        "label": "CSS类名",
+        "default": "",
+        "description": "额外的CSS类名，多个用空格分隔"
+      },
+      "alignment": {
+        "name": "alignment",
+        "type": "select",
+        "label": "对齐方式",
+        "options": [
+          "left",
+          "center",
+          "right"
+        ],
+        "default": "left",
+        "description": "标题文本对齐方式"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "title",
+      "heading",
+      "content",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29T09:25:49.165539",
+    "updated_at": "2026-03-29T09:25:49.165539",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-input-text",
+    "name": "wet-input-text",
+    "display_name": "文本输入框 (WET-BOEW)",
+    "category": "form",
+    "description": "可访问性友好的文本输入框，符合WCAG标准",
+    "icon": "📝",
+    "html_template": "\n            <div class=\"form-group\">\n                <label for=\"{{id}}\">{{label}}</label>\n                <input type=\"text\" id=\"{{id}}\" class=\"form-control\" \n                       placeholder=\"{{placeholder}}\" \n                       {{#if required}}required{{/if}}>\n            </div>\n            ",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "label": {
+        "name": "label",
+        "type": "string",
+        "label": "标签文字",
+        "required": true,
+        "i18n": true
+      },
+      "placeholder": {
+        "name": "placeholder",
+        "type": "string",
+        "label": "占位符",
+        "i18n": true
+      },
+      "required": {
+        "name": "required",
+        "type": "boolean",
+        "label": "必填字段",
+        "default": false
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "input",
+      "form",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29 13:06:38",
+    "updated_at": "2026-03-29 13:06:38",
+    "usage_count": 0
+  },
+  {
+    "id": "wet-button-primary",
+    "name": "wet-button-primary",
+    "display_name": "主要按钮 (WET-BOEW)",
+    "category": "wet_boew",
+    "description": "加拿大政府标准主要按钮，符合WET-BOEW可访问性要求",
+    "icon": "🔘",
+    "html_template": "<button class=\"btn btn-primary\" data-wet-boew=\"button\" {{#if disabled}}disabled{{/if}}>{{text}}</button>",
+    "css_template": null,
+    "js_template": null,
+    "properties": {
+      "text": {
+        "name": "text",
+        "type": "string",
+        "label": "按钮文字",
+        "default": "提交",
+        "required": true,
+        "i18n": true
+      },
+      "size": {
+        "name": "size",
+        "type": "select",
+        "label": "尺寸",
+        "options": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "default": "medium"
+      },
+      "disabled": {
+        "name": "disabled",
+        "type": "boolean",
+        "label": "禁用状态",
+        "default": false
+      }
+    },
+    "dependencies": [
+      {
+        "type": "css",
+        "url": "https://wet-boew.github.io/wet-boew/css/wet-boew.min.css",
+        "version": "4.0.0",
+        "required": true
+      },
+      {
+        "type": "js",
+        "url": "https://wet-boew.github.io/wet-boew/js/wet-boew.min.js",
+        "version": "4.0.0",
+        "required": true
+      }
+    ],
+    "wet_boew_compliant": true,
+    "accessibility_checked": true,
+    "tags": [
+      "button",
+      "form",
+      "wet-boew"
+    ],
+    "author": "系统",
+    "version": "1.0.0",
+    "status": "published",
+    "created_by": "system",
+    "created_at": "2026-03-29 13:06:38",
+    "updated_at": "2026-03-29 13:06:38",
+    "usage_count": 0
+  }
+]

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>WebBot Page Editor - Simple</title>
+
+
+
+
+
+    <!-- Canada.ca WET theme CSS -->
+    <link rel="stylesheet" href="/gcweb/GCWeb/css/theme.min.css">
+
+    <!-- TinyMCE WYSIWYG Editor -->
+    <!-- Using TinyMCE Cloud with valid API key -->
+    <script src="https://cdn.tiny.cloud/1/68matgqcnaoa96gx7x6cn8u8ur4thooph25rnufw2sa9oq8e/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+    <!-- Simple custom styles for editor -->
+    <link rel="stylesheet" href="css/editor.css">
+</head>
+<body vocab="http://schema.org/" typeof="WebPage" class="">
+    <div class="editor-container">
+
+
+
+        <!-- Simple Component Selector Modal -->
+        <div id="components-modal" class="components-modal">
+            <div class="components-modal-content">
+                <div class="components-modal-header">
+                    <h3>🧩 Insert Component</h3>
+                    <button class="components-modal-close" id="components-modal-close">×</button>
+                </div>
+                <div class="components-search">
+                    <input type="text" id="components-search-input" placeholder="Search components...">
+                </div>
+                <div class="components-modal-body">
+                    <div class="components-sidebar">
+                        <ul id="components-categories">
+                            <li class="active" data-category="all">All Components</li>
+                            <!-- Categories will be populated by JavaScript -->
+                        </ul>
+                    </div>
+                    <div class="components-list" id="components-list">
+                        <!-- Components will be populated by JavaScript -->
+                        <div class="no-components">Loading components...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FileBot Sidebar (left sidebar) -->
+        <div id="filebot-sidebar" class="filebot-sidebar hidden">
+            <div class="filebot-sidebar-header">
+                <h3>📁 FileBot</h3>
+                <button class="filebot-sidebar-close" id="filebot-sidebar-close">×</button>
+            </div>
+            <div class="filebot-sidebar-body">
+				<details>
+					<summary>Files uploaded to FileBot</summary>
+					<div class="filebot-sidebar-actions">
+						<!-- File Upload Area -->
+						<div id="sidebar-file-upload-area" class="well" style="border: 2px dashed #4CAF50; padding: 15px; text-align: center; cursor: pointer; background-color: #f8fff8; margin-bottom: 15px;">
+							<p style="font-size: 16px; margin-bottom: 8px;">
+								<span class="glyphicon glyphicon-cloud-upload" style="font-size: 36px; color: #4CAF50;"></span>
+							</p>
+							<p style="font-size: 16px; font-weight: bold; color: #2E7D32;">↗️ Drag & Drop files here (Recommended)</p>
+							<p style="color: #666; margin-bottom: 10px; font-size: 13px;">or click "Browse Files" to select files (Max: 100MB)</p>
+							<input type="file" id="sidebar-file-input" multiple style="display: none;">
+							<button type="button" class="btn btn-success btn-sm" id="sidebar-browse-files-btn" style="margin-bottom: 10px;">
+								<span class="glyphicon glyphicon-folder-open"></span> Browse Files
+							</button>
+							<!--div style="margin-top: 10px; font-size: 11px; color: #777;">
+								<span class="glyphicon glyphicon-info-sign"></span> Files uploaded to FileBot
+							</div-->
+
+							<!-- Sidebar Upload Progress -->
+							<div id="sidebar-upload-progress" style="display: none; margin-top: 15px;">
+								<div class="progress" style="height: 6px; margin-bottom: 8px; background-color: #eee;">
+									<div id="sidebar-upload-progress-bar" class="progress-bar progress-bar-striped active"
+										 role="progressbar" style="width: 0%; background-color: #4CAF50;">
+									</div>
+								</div>
+								<p id="sidebar-upload-status" style="font-size: 12px; text-align: center; margin: 0; color: #555;">
+									Preparing upload...
+								</p>
+							</div>
+						</div>
+
+
+					</div>
+				</details>
+                <div class="filebot-target-folder">
+                    <div class="target-folder-label">
+                        <small>📂 Target folder:</small>
+                    </div>
+                    <div id="filebot-target-folder-path" class="target-folder-path">
+                        <em>No page selected</em>
+                    </div>
+                    <div id="filebot-folder-source" class="target-folder-source" style="font-size: 11px; color: #666; margin-top: 3px;">
+                        <span class="folder-source-icon">↳</span>
+                        <span id="folder-source-text">Inheritance: Current page</span>
+                    </div>
+                </div>
+
+                <!-- AI Operations Section -->
+                <div class="ai-operations-section">
+                    <div class="ai-ops-header">
+                        <small>🤖 AI Operations</small>
+                    </div>
+                    <div class="ai-ops-folder-path" id="ai-ops-folder-path">
+                        <em>No page selected</em>
+                    </div>
+                </div>
+
+                <div class="filebot-sidebar-documents">
+                    <details>
+					<summary><h4>Images</h4></summary>
+                    <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/images.html">
+                            Loading images...
+                    </div>
+					</details>				
+                    <details>
+					<summary><h4>Documents</h4></summary>
+                    <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/document-list.html">
+                            Loading documents...
+                    </div>
+					</details>
+                    <details>
+                        <summary><h4>Components</h4></summary>
+                        <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/components.html">
+						     Loading components...
+						</ul>
+                    </details>
+                    <details>
+                        <summary><h4>Template</h4></summary>
+                        <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/templates.html">
+						     Loading templates...
+						</div>
+                    </details>					
+                    <details>
+                        <summary><h4>Pages</h4></summary>
+                        <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/templates.html">
+						     Loading pages...
+						</div>
+                    </details>
+                </div>
+                <!--div class="filebot-sidebar-components">
+                    <details>
+                        <summary>Components</summary>
+                        <ul id="filebot-components-sidebar" class="filebot-documents-sidebar wb-filter">
+						     Loading components...
+						</ul>
+                    </details>
+                </div-->
+                <div class="filebot-sidebar-info">
+                    <p><strong>FileBot</strong> integrated for file management.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Assistant Panel (right sidebar) -->
+        <div id="ai-assistant-panel" class="ai-assistant-panel hidden">
+            <div class="ai-panel-header">
+                <h3>🤖 WebBot AI Assistant</h3>
+                <button class="ai-panel-close" id="ai-panel-close">×</button>
+            </div>
+            <div class="ai-panel-body" id="ai-chat-messages">
+                <div class="ai-message system">
+                    Hello! I'm your WebBot AI assistant. I can help you insert components into your Canada.ca page. Try saying "insert button", "social media", "calendar of events", "theme page", or "topic template".
+                </div>
+            </div>
+            <div class="ai-panel-input">
+                <input type="text" class="ai-input" id="ai-chat-input" placeholder="Type your message...">
+                <button class="ai-send-btn" id="ai-chat-send">➤</button>
+            </div>
+        </div>
+
+        <!-- Main editor area -->
+        <div class="main-editor">
+            <div class="editor-header">
+                <h2>
+                    <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
+                        <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
+                    </button>
+                    <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
+                    WebBot Page Editor
+                </h2>
+                <div class="header-actions">
+                    <button id="ai-toggle-btn" class="filebot-toggle-btn" title="AI Assistant">🤖 AI</button>
+                    <!-- Language switcher -->
+                    <div id="language-switcher" class="language-switcher" style="display: none;">
+                        <span class="language-switcher-label">Language:</span>
+                        <select id="language-select" class="form-control" style="width: auto; display: inline-block; height: 36px; padding: 5px 10px;">
+                            <option value="">Switch...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="page-info">
+                    <span id="page-title-display">No page selected</span>
+                    <span id="page-id-display"></span>
+                    <span id="page-language-display"></span>
+                    <span id="page-status-display"></span>
+                    <span id="file-path-display"></span>
+                </div>
+                <div id="breadcrumb" class="breadcrumb">
+                    <div class="breadcrumb-item">
+                        <a href="navigation.html" id="home-link">nav</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="editor-content">
+                <!-- Loading state -->
+                <div id="loading-content" class="loading" style="display: none;">
+                    Loading page data...
+                </div>
+
+                <!-- Error state -->
+                <div id="error-area" class="error" style="display: none;">
+                    Error loading page. Please try again.
+                </div>
+
+                <!-- Success message -->
+                <div id="success-message" class="success" style="display: none;">
+                    Page saved successfully!
+                </div>
+
+                <!-- Editor form (initially hidden) -->
+                <div id="editor-form" style="display: none;">
+
+
+                    <div class="form-group">
+                        <label for="editor-content">Page Content:</label>
+
+                        <!-- Editor mode switcher -->
+                        <div class="editor-mode-switcher">
+                            <button type="button" class="editor-mode-btn active" data-mode="wysiwyg">
+                                <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+                                WYSIWYG Editor
+                            </button>
+                            <button type="button" class="editor-mode-btn" data-mode="html">
+                                <span class="glyphicon glyphicon-console" aria-hidden="true"></span>
+                                HTML Source
+                            </button>
+                        </div>
+
+                        <!-- WYSIWYG Editor Container -->
+                        <div id="wysiwyg-editor-container" class="wysiwyg-container active">
+                            <!-- Quill editor will be initialized here -->
+                        </div>
+
+                        <!-- HTML Source Container -->
+                        <div id="html-source-container" class="html-source-container">
+                            <textarea id="editor-content" class="form-control" rows="50" placeholder="Enter HTML content"></textarea>
+                        </div>
+
+                        <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                            <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
+                            Switch between WYSIWYG (What You See Is What You Get) editor and HTML source code view.
+                        </div>
+                    </div>
+
+
+
+
+                </div>
+
+                <!-- No page selected message -->
+                <div id="no-page-selected">
+                    <div class="loading">
+                        <p>Select a page from the tree to start editing.</p>
+                        <p>Or navigate directly to a page by adding ?pageId=PAGE_ID to the URL.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="editor-actions" style="display: none;" id="editor-actions">
+                <button id="preview-page" class="btn btn-info">
+                    <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+                    Preview
+                </button>
+                <button id="save-page" class="btn btn-success">
+                    <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
+                    Save Page
+                </button>
+
+                <button id="cancel-edit" class="btn btn-default">
+                    Cancel
+                </button>
+
+                <button id="metadata-btn" class="btn btn-warning" title="Edit page metadata (SEO, languages, etc.)">
+                    <span class="glyphicon glyphicon-tags" aria-hidden="true"></span>
+                    Metadata
+                </button>
+            </div>
+        </div>
+
+
+    </div>
+
+    <!-- TinyMCE WYSIWYG Editor JS already loaded in head -->
+
+
+    <!-- jQuery (required by WET-BOEW, moved to footer for performance) -->
+    <script src="/gcweb/external/jquery/2.2.4/jquery.min.js"></script>
+
+    <!-- Mustache.js template engine (using jsdelivr CDN for reliability) -->
+    <script src="https://cdn.jsdelivr.net/npm/mustache@3.2.1/mustache.min.js" crossorigin="anonymous"></script>
+    <script>
+        // Debug: Check Mustache.js loading
+        console.log('Mustache.js script tag added');
+        window.addEventListener('load', function() {
+            console.log('Page loaded, Mustache.js available:', !!window.Mustache);
+            if (window.Mustache) {
+                console.log('Mustache.js version:', Mustache?.version || 'unknown');
+            }
+        });
+    </script>
+
+    <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
+
+    <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
+    <script src="/static/js/editor.js"></script>
+
+    <!-- Initialize after all scripts are loaded -->
+    <!-- Simple Metadata Editor (Backend Use Only) -->
+    <div id="metadata-modal" class="metadata-modal" style="display: none;">
+        <div class="metadata-modal-content">
+            <div class="metadata-modal-header">
+                <h3>📄 Page Metadata (Backend)</h3>
+                <button class="metadata-modal-close" id="metadata-modal-close">×</button>
+            </div>
+            <div class="metadata-modal-body">
+                <div id="metadata-tabs">
+                    <ul class="metadata-tabs-nav">
+                        <li class="metadata-tab active" data-tab="basic">Basic</li>
+                        <li class="metadata-tab" data-tab="advanced">Advanced</li>
+                        <li class="metadata-tab" data-tab="raw">Raw JSON</li>
+                    </ul>
+                    <div id="metadata-tab-basic" class="metadata-tab-panel active">
+                        <div class="form-group">
+                            <label for="metadata-description">Description:</label>
+                            <textarea id="metadata-description" class="form-control" rows="3"
+                                      placeholder="Page description for search engines"></textarea>
+                            <small class="char-count">Characters: <span id="desc-char-count">0</span>/160</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-keywords">Keywords:</label>
+                            <input type="text" id="metadata-keywords" class="form-control"
+                                   placeholder="Comma-separated keywords">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-subjects">Subjects:</label>
+                            <input type="text" id="metadata-subjects" class="form-control"
+                                   placeholder="Page subjects or categories">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Alternate Languages:</label>
+                            <div id="alternate-languages-list" class="languages-list">
+                                <div class="empty-message">No alternate language links defined.</div>
+                            </div>
+                            <div class="form-row">
+                                <div class="col">
+                                    <input type="text" id="new-lang-code" class="form-control"
+                                           placeholder="Code (en, fr)">
+                                </div>
+                                <div class="col">
+                                    <input type="text" id="new-lang-url" class="form-control"
+                                           placeholder="Path (/fr/page)">
+                                </div>
+                                <div class="col-auto">
+                                    <button id="add-language-btn" class="btn btn-primary btn-sm">Add</button>
+                                </div>
+                            </div>
+                            <small>Used for language switching and SEO</small>
+                        </div>
+                    </div>
+
+                    <div id="metadata-tab-advanced" class="metadata-tab-panel">
+                        <div class="form-group">
+                            <label for="metadata-audience">Audience:</label>
+                            <input type="text" id="metadata-audience" class="form-control"
+                                   placeholder="e.g. citizens, businesses, government">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-issued">Issued Date:</label>
+                            <input type="date" id="metadata-issued" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-review-date">Review Date:</label>
+                            <input type="date" id="metadata-review-date" class="form-control">
+                        </div>
+                    </div>
+
+                    <div id="metadata-tab-raw" class="metadata-tab-panel">
+                        <div class="form-group">
+                            <label for="metadata-raw">Raw Metadata JSON:</label>
+                            <textarea id="metadata-raw" class="form-control" rows="15"
+                                      placeholder="{ }" style="font-family: monospace; font-size: 12px;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="metadata-modal-footer">
+                <button id="metadata-cancel" class="btn btn-default">Cancel</button>
+                <button id="metadata-save" class="btn btn-success">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="css/metadata-modal.css">
+
+    <script src="/static/js/component-params.js?v=202604121740"></script>
+</body>
+</html>
