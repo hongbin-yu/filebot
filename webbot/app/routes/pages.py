@@ -354,7 +354,7 @@ async def create_page(page: PageCreate):
             # 生成基于标题的页面ID
             page_id = generate_page_id(page.title)
             parent_path = page.parent_path
-            language_from_path = page.language.value
+            language_from_path = page.language if page.language else 'en'
         
         # 检查 (id, parent_path) 组合是否已存在（唯一性约束）
         # 注意：parent_path 可能为 None（根页面）
@@ -435,7 +435,7 @@ async def create_page(page: PageCreate):
             parent_path,
             page_path,
             page.other_language_path if page.other_language_path else other_language_path,
-            page.status.value,
+            page.status.value if isinstance(page.status, PageStatus) else (page.status or PageStatus.DRAFT.value),
             json.dumps(metadata_dict) if metadata_dict else "{}",
             1 if page.hide_in_navigation else 0,
             now,

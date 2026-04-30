@@ -32,6 +32,8 @@
 
         // WYSIWYG Editor elements
         let tinyMceEditor = null;
+        let isNewPage = false;
+        let newPageParentPath = null;
         const wysiwygContainer = document.getElementById('wysiwyg-editor-container');
         const htmlSourceContainer = document.getElementById('html-source-container');
         const editorModeBtns = document.querySelectorAll('.editor-mode-btn');
@@ -153,12 +155,21 @@
                 console.log('Using pageId parameter:', pageIdFromUrl);
             }
 
+            // Check for parent_path parameter (create new page mode)
+            const parentPathFromUrl = urlParams.get('parent_path');
+
             // If we have something to load, do it
             if (pageToLoad) {
                 console.log('Will load page:', pageToLoad);
                 window.hasPageBeenLoaded = true;
                 setTimeout(() => {
                     loadPage(pageToLoad);
+                }, 500);
+            } else if (parentPathFromUrl) {
+                console.log('Creating new page with parent_path:', parentPathFromUrl);
+                window.hasPageBeenLoaded = true;
+                setTimeout(() => {
+                    initializeNewPage(decodeURIComponent(parentPathFromUrl));
                 }, 500);
             } else {
                 console.log('No page to load from URL');
@@ -714,6 +725,69 @@
                     editorContentEl.focus();
                 }, 100);
             }
+        }
+
+        // Initialize editor for creating a new (unsaved) page
+        function initializeNewPage(parentPath) {
+            console.log('initializeNewPage called with parentPath:', parentPath);
+            isNewPage = true;
+            newPageParentPath = parentPath;
+
+            // Extract the language from the parent path (first segment after /)
+            const pathParts = parentPath.split('/').filter(Boolean);
+            const language = (pathParts.length > 0 && ['en', 'fr'].includes(pathParts[0])) ? pathParts[0] : 'en';
+
+            // Create a placeholder new page data object
+            const newPage = {
+                id: 'new-page-' + Date.now(),
+                title: 'New Page',
+                path: parentPath + '/new-page',
+                parent_path: parentPath,
+                language: language,
+                status: 'draft',
+                content: '',
+                metadata: {}
+            };
+
+            currentPageId = newPage.id;
+            currentPageData = newPage;
+
+            // Update breadcrumb (wrap in try-catch since new page doesn't exist yet)
+            try {
+                updateBreadcrumb(newPage);
+            } catch (e) {
+                console.log('Breadcrumb update skipped for new page:', e.message);
+            }
+
+            // Update display
+            pageTitleDisplayEl.textContent = 'New Page';
+            pageIdDisplayEl.textContent = ' | New Page (unsaved)';
+            pageLanguageDisplayEl.textContent = ' | Language: ' + language.toUpperCase();
+            pageStatusDisplayEl.textContent = ' | Status: DRAFT';
+            filePathDisplayEl.textContent = '';
+
+            // Populate editor with empty content
+            editorContentEl.value = '';
+
+            // Also populate TinyMCE if initialized
+            if (tinyMceEditor) {
+                tinyMceEditor.setContent('');
+            }
+
+            // Show editor and actions, hide other states
+            hideLoading();
+            editorFormEl.style.display = 'block';
+            editorActionsEl.style.display = 'block';
+            noPageSelectedEl.style.display = 'none';
+            errorAreaEl.style.display = 'none';
+            successMessageEl.style.display = 'none';
+
+            // Update URL without reloading
+            const url = new URL(window.location);
+            url.searchParams.set('pageId', currentPageId);
+            window.history.replaceState({}, '', url);
+
+            console.log('New page initialized with parent_path:', parentPath);
         }
 
         // Load all pages for the tree
@@ -3357,10 +3431,144 @@
             previewWindow.focus();
         }
 
+        // Create a new page via POST
+        async function createNewPage() {
+            console.log('createNewPage called, parentPath:', newPageParentPath);
+
+            // Show saving indicator
+            const originalText = savePageBtn.textContent;
+            savePageBtn.disabled = true;
+            savePageBtn.innerHTML = '<span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span> Creating...';
+
+            try {
+                // Get editor content
+                let content;
+                if (tinyMceEditor) {
+                    content = tinyMceEditor.getContent();
+                } else {
+                    content = editorContentEl.value;
+                }
+
+                // Process images in content
+                console.log('Processing images in content before creating page...');
+                let processedContent;
+                try {
+                    processedContent = await processImagesInHtmlContent(content);
+                } catch (imageError) {
+                    console.error('Error processing images:', imageError);
+                    showError('Warning: Failed to process some images. Saving with original URLs.');
+                    processedContent = content;
+                }
+
+                // Extract language from parent path
+                const pathParts = newPageParentPath.split('/').filter(Boolean);
+                const language = (pathParts.length > 0 && ['en', 'fr'].includes(pathParts[0])) ? pathParts[0] : 'en';
+
+                // Build the title (use first heading text or default)
+                const titleMatch = processedContent.match(/<h1[^>]*>([^<]+)<\/h1>/i) ||
+                                   processedContent.match(/<h2[^>]*>([^<]+)<\/h2>/i);
+                const title = titleMatch ? titleMatch[1].trim() : 'Untitled Page';
+
+                // Build the request body
+                const pageData = {
+                    title: title,
+                    content: processedContent,
+                    language: language,
+                    status: 'draft',
+                    parent_path: newPageParentPath
+                };
+
+                console.log('Sending POST request to create page with data:', {
+                    ...pageData,
+                    content: '(content length: ' + processedContent.length + ' chars)'
+                });
+
+                const response = await fetch(API_BASE + '/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(pageData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => null);
+                    throw new Error(
+                        (errorData && errorData.detail) 
+                            ? errorData.detail 
+                            : 'HTTP ' + response.status + ': ' + response.statusText
+                    );
+                }
+
+                const createdPage = await response.json();
+                console.log('Page created successfully:', createdPage.id, createdPage.path);
+
+                // Update state to reflect saved page
+                isNewPage = false;
+                currentPageId = createdPage.path || createdPage.id;
+                currentPageData = createdPage;
+
+                // Update display
+                pageTitleDisplayEl.textContent = createdPage.title || title;
+                pageIdDisplayEl.textContent = ' | ID: ' + (createdPage.id || '');
+                pageLanguageDisplayEl.textContent = ' | Language: ' + (createdPage.language || language).toUpperCase();
+                pageStatusDisplayEl.textContent = ' | Status: ' + (createdPage.status || 'draft');
+                if (createdPage.metadata && createdPage.metadata.file_path) {
+                    filePathDisplayEl.textContent = ' | File Path: ' + createdPage.metadata.file_path;
+                    filePathDisplayEl.style.color = '#007bff';
+                    filePathDisplayEl.style.fontWeight = 'normal';
+                } else {
+                    filePathDisplayEl.textContent = '';
+                }
+
+                // Update URL
+                const url = new URL(window.location);
+                url.searchParams.set('pageId', (createdPage.path || createdPage.id));
+                window.history.replaceState({}, '', url);
+
+                // Update breadcrumb
+                try {
+                    await updateBreadcrumb(createdPage);
+                } catch (e) {
+                    console.log('Breadcrumb update error:', e.message);
+                }
+
+                // Reload pages sidebar (use timeout to let state settle)
+                setTimeout(() => {
+                    loadPagesForSidebar(createdPage.path || createdPage.id);
+                }, 100);
+
+                // Show success message
+                successMessageEl.textContent = 'Page created successfully!';
+                successMessageEl.style.display = 'block';
+                errorAreaEl.style.display = 'none';
+
+                console.log('New page created successfully');
+            } catch (error) {
+                console.error('Error creating page:', error);
+                showError('Failed to create page: ' + error.message);
+            } finally {
+                // Restore button
+                savePageBtn.disabled = false;
+                savePageBtn.innerHTML = originalText;
+
+                // Hide success message after 5 seconds
+                setTimeout(() => {
+                    successMessageEl.style.display = 'none';
+                }, 5000);
+            }
+        }
+
         // Save page changes
         async function savePage() {
             if (!currentPageId || !currentPageData) {
                 showError('No page selected to save.');
+                return;
+            }
+
+            // If this is a new page, create it via POST instead of PUT
+            if (isNewPage) {
+                await createNewPage();
                 return;
             }
 
