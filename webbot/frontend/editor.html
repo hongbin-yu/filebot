@@ -104,16 +104,6 @@
                     </div>
                 </div>
 
-                <!-- AI Operations Section -->
-                <div class="ai-operations-section">
-                    <div class="ai-ops-header">
-                        <small>🤖 AI Operations</small>
-                    </div>
-                    <div class="ai-ops-folder-path" id="ai-ops-folder-path">
-                        <em>No page selected</em>
-                    </div>
-                </div>
-
                 <div class="filebot-sidebar-documents">
                     <details>
 					<summary><h4>Images</h4></summary>
@@ -416,6 +406,33 @@
     </div>
 
     <link rel="stylesheet" href="css/metadata-modal.css">
+
+    <!-- HTML Quick Edit Modal -->
+    <!-- HTML / Component Edit Modal (dual-mode) -->
+    <div id="html-edit-modal" class="html-edit-modal" style="display: none;">
+        <div class="html-edit-modal-content">
+            <div class="html-edit-modal-header">
+                <h3><span id="html-edit-mode-title">✏️ HTML Editor</span></h3>
+                <span id="html-edit-mode-badge" class="html-edit-mode-badge">CODE</span>
+                <span id="html-edit-location" class="html-edit-location"></span>
+                <button class="html-edit-modal-close" id="html-edit-modal-close">×</button>
+            </div>
+            <div class="html-edit-modal-body">
+                <div class="html-edit-controls">
+                    <label id="html-edit-mode-label">Edit raw HTML. Ctrl+Enter to save, Esc to close.</label>
+                </div>
+                <!-- Code mode: raw textarea -->
+                <textarea id="html-edit-textarea" class="html-edit-textarea" spellcheck="false" style="display: none;"></textarea>
+                <!-- WYSIWYG mode: TinyMCE container -->
+                <div id="html-edit-wysiwyg" class="html-edit-wysiwyg" style="display: none;"></div>
+            </div>
+            <div class="html-edit-modal-footer">
+                <span id="html-edit-status" class="html-edit-status"></span>
+                <button class="btn btn-default" id="html-edit-cancel">Cancel</button>
+                <button class="btn btn-success" id="html-edit-save"><span>💾</span> Save &amp; Replace</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/static/js/component-params.js?v=202604121740"></script>
 </body>

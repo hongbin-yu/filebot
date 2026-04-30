@@ -75,7 +75,7 @@ function customAlert(msg) {
         const body = modal.querySelector('.modal-body');
         if (body) body.textContent = msg;
         $('#alertModalOk').focus();
-        $(modal).modal ? $(modal).modal('show') : alert(msg);
+        jQuery("#alertModal").modal ? $(modal).modal('show') : alert(msg);
     } else {
         alert(msg);
     }
@@ -357,10 +357,33 @@ function updateButtons() {
     btnDelete.className = hasSelection ? 'btn btn-delete' : 'btn btn-delete disabled';
 }
 
+// ============================================================================
+// MODAL HELPERS (vanilla JS — Bootstrap modal plugin not available)
+// ============================================================================
+function showModal(el) {
+    el.style.display = 'block';
+    el.classList.add('in');
+    document.body.classList.add('modal-open');
+    // Add backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade in';
+    backdrop.setAttribute('data-modal-backdrop', el.id);
+    backdrop.addEventListener('click', () => hideModal(el));
+    document.body.appendChild(backdrop);
+}
+
+function hideModal(el) {
+    el.style.display = 'none';
+    el.classList.remove('in');
+    document.body.classList.remove('modal-open');
+    const backdrop = document.querySelector(`[data-modal-backdrop="${el.id}"]`);
+    if (backdrop) backdrop.remove();
+}
+
 function setupButtons() {
     btnCreate.addEventListener('click', () => {
         const parentPath = selectedPageData ? selectedPageData.path : ROOT_PATH;
-        window.location.href = `/static/editor.html?parent_path=${encodePath(parentPath)}`;
+        showCreatePageModal(parentPath);
     });
     
     btnEdit.addEventListener('click', () => {
@@ -400,6 +423,103 @@ function setupButtons() {
         selectedPageId = null;
         selectedPageData = null;
         initNavigation();
+    });
+
+    // ============================================================================
+    // 5b. CREATE PAGE MODAL
+    // ============================================================================
+    const createPageModal = document.getElementById('createPageModal');
+    const createPageForm = document.getElementById('createPageForm');
+    const newPageTitle = document.getElementById('newPageTitle');
+    const newPageParent = document.getElementById('newPageParent');
+    const createPageError = document.getElementById('createPageError');
+    const createPageSuccess = document.getElementById('createPageSuccess');
+    const createPageSaveBtn = document.getElementById('createPageSaveBtn');
+
+    // Close button bindings (Bootstrap JS not available)
+    createPageModal.querySelectorAll('[data-dismiss="modal"]').forEach(btn => {
+        btn.addEventListener('click', () => hideModal(createPageModal));
+    });
+
+    function showCreatePageModal(parentPath) {
+        newPageParent.value = parentPath;
+        newPageTitle.value = '';
+        createPageError.style.display = 'none';
+        createPageSuccess.style.display = 'none';
+        createPageSaveBtn.disabled = false;
+        createPageSaveBtn.textContent = 'Create & Edit';
+        showModal(createPageModal);
+        setTimeout(() => newPageTitle.focus(), 300);
+    }
+
+    createPageForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const title = newPageTitle.value.trim();
+        if (!title) {
+            createPageError.textContent = 'Please enter a page title.';
+            createPageError.style.display = 'block';
+            return;
+        }
+        
+        const parentPath = newPageParent.value;
+        
+        // Generate path from title
+        const slug = title.toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+        const pagePath = parentPath.endsWith('/') ? `${parentPath}${slug}` : `${parentPath}/${slug}`;
+        
+        createPageError.style.display = 'none';
+        createPageSuccess.style.display = 'none';
+        createPageSaveBtn.disabled = true;
+        createPageSaveBtn.textContent = 'Creating...';
+        
+        try {
+            const response = await fetch('/api/v1/pages/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title,
+                    path: pagePath,
+                    parent_path: parentPath,
+                    language: parentPath.includes('/fr') ? 'fr' : 'en',
+                    status: 'draft',
+                    content: '',
+                    metadata: {}
+                })
+            });
+            
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || `HTTP ${response.status}`);
+            }
+            
+            const newPage = await response.json();
+            
+            // Show success
+            const actualPagePath = newPage.path || pagePath;
+            createPageSuccess.innerHTML = `Page &quot;${title}&quot; created successfully!<br><small>Path: ${actualPagePath}</small>`;
+            createPageSuccess.style.display = 'block';
+            createPageSaveBtn.textContent = 'Opening editor...';
+            
+            // Refresh the tree
+            loadedPaths = {};
+            columnsCache = [];
+            initNavigation();
+            
+            // Navigate to editor after brief delay
+            setTimeout(() => {
+                const editorUrl = `/static/editor.html?pageId=${encodeURIComponent(actualPagePath)}`;
+                window.location.href = editorUrl;
+            }, 800);
+            
+        } catch (err) {
+            createPageError.textContent = `Failed to create page: ${err.message}`;
+            createPageError.style.display = 'block';
+            createPageSaveBtn.disabled = false;
+            createPageSaveBtn.textContent = 'Create & Edit';
+        }
     });
 }
 

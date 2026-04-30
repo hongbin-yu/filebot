@@ -1,0 +1,524 @@
+    
+        /* Hide Canada.ca default header/footer elements */
+        #wb-bnr, #wb-sm, #wb-info, #wb-srch, #wb-lng, .wb-srch, .gcweb-menu, #gcwu-sig {
+            display: none !important;
+        }
+
+        /* Main container */
+        .aem-navigation-container {
+            padding: 20px;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        /* Page header */
+        .navigation-header {
+            background: white;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .navigation-header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .navigation-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        /* Functional block for top action buttons */
+        .top-functional-block {
+            background: #f5f7fa;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #dce1e6;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .top-functional-block .btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .top-functional-block .btn:hover {
+            background: #f0f0f0;
+        }
+
+        .top-functional-block .btn-primary {
+            background: #0070d2;
+            color: white;
+            border-color: #00509e;
+        }
+
+        .top-functional-block .btn-primary:hover {
+            background: #00509e;
+        }
+
+        .top-functional-block .btn-edit {
+            background: #4CAF50;
+            color: white;
+            border-color: #3d8b40;
+        }
+
+        .top-functional-block .btn-edit:hover {
+            background: #3d8b40;
+        }
+
+        .top-functional-block .btn-publish {
+            background: #2196F3;
+            color: white;
+            border-color: #0b7dda;
+        }
+
+        .top-functional-block .btn-publish:hover {
+            background: #0b7dda;
+        }
+
+        .top-functional-block .btn-move {
+            background: #FF9800;
+            color: white;
+            border-color: #e68900;
+        }
+
+        .top-functional-block .btn-move:hover {
+            background: #e68900;
+        }
+
+        .top-functional-block .btn-delete {
+            background: #f44336;
+            color: white;
+            border-color: #d32f2f;
+        }
+
+        .top-functional-block .btn-delete:hover {
+            background: #d32f2f;
+        }
+
+        .top-functional-block .btn-info {
+            background: #17a2b8;
+            color: white;
+            border-color: #138496;
+        }
+
+        .top-functional-block .btn-info:hover {
+            background: #138496;
+        }
+
+        .top-functional-block .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Breadcrumb */
+        .aem-breadcrumb {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .breadcrumb-item {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: #6c757d;
+            padding: 0 8px;
+        }
+
+        .breadcrumb-item a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb-item.active {
+            color: #495057;
+            font-weight: 500;
+        }
+
+        /* Multi-column navigation grid */
+                .aem-columns-grid {
+            display: flex;
+            gap: 20px;
+            min-height: 600px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        } /* Space for scrollbar */
+        }
+
+        /* Column styling */
+        .aem-column {
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .column-header {
+            background: linear-gradient(to bottom, #f8f8f8, #f0f0f0);
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .column-body {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        /* Page list items */
+        .aem-page-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .aem-page-item {
+            padding: 12px 45px 12px 15px; /* More right padding for action buttons */
+            cursor: pointer;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background-color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        .aem-page-item:last-child {
+            border-bottom: none;
+        }
+
+        .aem-page-item:hover {
+            background-color: #f0f7ff;
+        }
+
+        .aem-page-item.active {
+            background-color: #e1f0ff;
+            border-left: 3px solid #0078d4;
+        }
+
+        .aem-page-item.folder {
+            background-color: #f9f9f9;
+        }
+
+        .aem-page-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .aem-page-icon.folder::before {
+            content: '📁';
+        }
+
+        .aem-page-icon.page::before {
+            content: '📄';
+        }
+
+        .aem-page-icon.root::before {
+            content: '🌐';
+        }
+
+        .aem-page-content {
+            flex: 1;
+            min-width: 0; /* Allow text truncation */
+        }
+
+        .aem-page-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .aem-page-meta {
+            font-size: 11px;
+            color: #666;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .aem-page-id {
+            font-family: 'Monaco', 'Menlo', monospace;
+            background-color: #f0f0f0;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .aem-page-title-id {
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #666;
+            font-size: 11px;
+            margin-left: 6px;
+            opacity: 0.7;
+        }
+
+        .aem-page-count {
+            background-color: #0078d4;
+            color: white;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .btn-edit {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+            padding: 8px 20px;
+            font-weight: 500;
+        }
+
+        .btn-edit:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+
+        .btn-edit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading states */
+        .loading {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+
+        .error {
+            background: #f2dede;
+            color: #a94442;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px;
+            border: 1px solid #ebccd1;
+        }
+
+        /* Empty state */
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .aem-columns-grid {
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .aem-columns-grid {
+                grid-auto-flow: row;
+                grid-auto-columns: unset;
+                grid-template-columns: 1fr;
+                overflow-x: visible;
+            }
+
+            .aem-navigation-container {
+                padding: 10px;
+            }
+        }
+
+        /* Deep navigation mode (10+ levels) */
+        .aem-columns-grid.deep-navigation {
+            grid-auto-flow: row;
+            grid-auto-columns: unset;
+            grid-template-columns: 1fr;
+            overflow-x: visible;
+            max-height: 700px;
+            overflow-y: auto;
+        }
+
+        .aem-columns-grid.deep-navigation .aem-column {
+            margin-bottom: 20px;
+        }
+
+        .aem-columns-grid.deep-navigation .column-body {
+            max-height: 400px;
+        }
+
+        /* Page action buttons */
+        .aem-page-actions {
+            display: none;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 2px;
+            z-index: 10;
+        }
+
+        .aem-page-item:hover .aem-page-actions {
+            display: flex;
+            gap: 3px;
+        }
+
+        .aem-page-actions button {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            border: none;
+            border-radius: 2px;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .aem-page-actions button:hover {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        .aem-page-actions .btn-create {
+            color: #0070d2;
+        }
+
+        .aem-page-actions .btn-create:hover {
+            background-color: #e1f0ff;
+            color: #00509e;
+        }
+
+        .aem-page-actions .btn-edit {
+            color: #4CAF50;
+        }
+
+        .aem-page-actions .btn-edit:hover {
+            background-color: #e8f5e9;
+            color: #3d8b40;
+        }
+
+        .aem-page-actions .btn-move {
+            color: #FF9800;
+        }
+
+        .aem-page-actions .btn-move:hover {
+            background-color: #fff3e0;
+            color: #e68900;
+        }
+
+        .aem-page-actions .btn-publish {
+            color: #2196F3;
+        }
+
+        .aem-page-actions .btn-publish:hover {
+            background-color: #e3f2fd;
+            color: #0b7dda;
+        }
+
+        .aem-page-actions .btn-info {
+            color: #17a2b8;
+        }
+
+        .aem-page-actions .btn-info:hover {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .aem-page-actions button[disabled] {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    
+
+/* Navigation columns - JS-generated classes */
+.navigation-column .column-header {
+    display: none !important;
+}
+
+.pages-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.page-path {
+    display: block;
+    font-size: 12px;
+    color: #999;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.page-item.selected {
+    background-color: #e8f4fd;
+    border-left: 3px solid #0078d4;
+}
+
+.page-item.empty {
+    color: #999;
+    font-style: italic;
+}
+
+/* Column container - JS-generated class */
+.navigation-column {
+    flex: 1;
+    min-width: 0;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}

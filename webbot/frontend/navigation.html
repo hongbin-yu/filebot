@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>WebBot Page Navigation</title>
+
+    <!-- Canada.ca WET theme CSS -->
+    <link rel="stylesheet" href="/gcweb/GCWeb/css/theme.min.css">
+    <link rel="stylesheet" href="/gcweb/GCWeb/css/wet-boew.min.css">
+
+    <!-- AEM Style Navigation CSS -->
+    <link rel="stylesheet" href="css/navigation.css">
+</head>
+<body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
+    <!-- Skip links for accessibility -->
+    <ul id="wb-tphp">
+        <li class="wb-slc"><a class="wb-sl" href="#wb-cont">Skip to main content</a></li>
+        <li class="wb-slc"><a class="wb-sl" href="#wb-info">Skip to "About this site"</a></li>
+    </ul>
+
+    <!-- Main content -->
+    <main property="mainContentOfPage" class="container" typeof="WebPageElement">
+        <div class="aem-navigation-container">
+            <!-- Header -->
+            <div class="navigation-header">
+                <h1>WebBot Page Navigation</h1>
+                <div id="page-stats" class="text-muted" style="font-size: 13px;">
+                    Loading pages...
+                </div>
+            </div>
+
+            <!-- Top functional block -->
+            <div class="top-functional-block" id="top-functional-block">
+                <button id="btn-top-create" class="btn btn-primary" title="Create new page">
+                    Create New Page
+                </button>
+                <button id="btn-top-edit" class="btn btn-edit" disabled title="Edit selected page">
+                    Edit
+                </button>
+                <button id="btn-top-preview" class="btn btn-info" disabled title="Preview page content">
+                    Preview
+                </button>
+                <button id="btn-top-move" class="btn btn-move" disabled title="Move selected page">
+                    Move
+                </button>
+                <button id="btn-top-publish" class="btn btn-publish" disabled title="Publish selected page">
+                    Publish
+                </button>
+                <button id="btn-top-delete" class="btn btn-delete" disabled title="Delete selected page">
+                    Delete
+                </button>
+                <div style="flex-grow: 1;"></div>
+                <button id="btn-top-refresh" class="btn btn-default" title="Refresh page list">
+                    Refresh
+                </button>
+            </div>
+
+            <!-- Breadcrumb navigation -->
+            <nav aria-label="breadcrumb" id="breadcrumb-container">
+                <div class="aem-breadcrumb">
+                    <span class="breadcrumb-item"><a href="#" id="breadcrumb-home">Canada site</a></span>
+                    <!-- Dynamic breadcrumb items will be added here -->
+                </div>
+            </nav>
+
+            <!-- Multi-column navigation area -->
+            <div id="columns-container" class="aem-columns-grid">
+                <!-- Columns will be dynamically generated here -->
+                <div class="loading" id="loading-columns">
+                    Loading page structure...
+                </div>
+            </div>
+
+            <!-- Error display -->
+            <div id="error-container" class="error" style="display: none;"></div>
+        </div>
+    </main>
+
+    <!-- WET-BOEW Modal Dialogs -->
+    <section id="wet-alert-modal" class="modal-dialog modal-content overlay-def mfp-hide" aria-hidden="true" role="dialog">
+        <div class="modal-header">
+            <h2 class="modal-title">Alert</h2>
+        </div>
+        <div class="modal-body">
+            <p id="wet-alert-message"></p>
+        </div>
+
+    </section>
+
+    <section id="wet-confirm-modal" class="modal-dialog modal-content overlay-def mfp-hide" aria-hidden="true" role="dialog">
+        <div class="modal-header">
+            <h2 class="modal-title">Confirm</h2>
+        </div>
+        <div class="modal-body">
+            <p id="wet-confirm-message"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="wet-confirm-yes">Yes</button>
+            <button type="button" class="btn btn-default" id="wet-confirm-no">No</button>
+        </div>
+    </section>
+
+    <!-- Create New Page Modal -->
+    <div class="modal fade" id="createPageModal" tabindex="-1" role="dialog" aria-labelledby="createPageModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createPageModalLabel">Create New Page</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="createPageForm">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="newPageTitle">Page Title *</label>
+                            <input type="text" class="form-control" id="newPageTitle" placeholder="Enter page title" required autofocus>
+                            <small class="form-text text-muted">The URL path will be auto-generated from the title.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPageParent">Parent Path</label>
+                            <input type="text" class="form-control" id="newPageParent" readonly>
+                        </div>
+                        <div id="createPageError" class="alert alert-danger" style="display: none;"></div>
+                        <div id="createPageSuccess" class="alert alert-success" style="display: none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="createPageSaveBtn">Create & Edit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simple Bootstrap Modal for customAlert -->
+    <div class="modal fade" id="alertModal" tabindex="-1" role="dialog" aria-labelledby="alertModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alertModalLabel">Alert</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Message will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="alertModalOk" data-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canada.ca WET JavaScript -->
+    <!-- jQuery (required by WET-BOEW) -->
+    <script src="/gcweb/external/jquery/2.2.4/jquery.min.js"></script>
+    <script src="/gcweb/wet-boew/js/wet-boew.min.js"></script>
+    <script src="/gcweb/GCWeb/js/theme.min.js"></script>
+
+    <!-- Navigation JavaScript -->
+    <script src="js/navigation.js"></script>
+    <script>
+        // Hide WET-BOEW/GCWeb dynamically-injected header/footer
+        (function() {
+            function hideWetBoewElements() {
+                var ids = ['wb-bnr', 'wb-sm', 'wb-info', 'wb-srch', 'wb-lng', 'gcwu-sig', 'wb-bar', 'wb-tphp', 'wb-glb', 'wb-sec', 'wb-bc'];
+                ids.forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (el) el.style.setProperty('display', 'none', 'important');
+                });
+                // Also hide any outer headers and gcweb-menu elements
+                var headers = document.querySelectorAll('body > header');
+                headers.forEach(function(h) {
+                    h.style.setProperty('display', 'none', 'important');
+                });
+                document.querySelectorAll('.gcweb-menu, .wb-srch').forEach(function(el) {
+                    el.style.setProperty('display', 'none', 'important');
+                });
+            }
+            hideWetBoewElements();
+            document.addEventListener('wb-ready.wb', hideWetBoewElements);
+            setTimeout(hideWetBoewElements, 500);
+            setTimeout(hideWetBoewElements, 2000);
+        })();
+    </script>
+</body>
+</html>

@@ -168,9 +168,8 @@
             } else if (parentPathFromUrl) {
                 console.log('Creating new page with parent_path:', parentPathFromUrl);
                 window.hasPageBeenLoaded = true;
-                setTimeout(() => {
-                    initializeNewPage(decodeURIComponent(parentPathFromUrl));
-                }, 500);
+                // Initialize immediately - no need to wait for TinyMCE
+                initializeNewPage(decodeURIComponent(parentPathFromUrl));
             } else {
                 console.log('No page to load from URL');
                 // Show initial message in pages sidebar
@@ -3857,14 +3856,14 @@
                                 if (type.startsWith('template-')) {
                                     const parts = type.split('-');
                                     if (parts.length > 1) {
-                                        category = parts[1]; // 例如"button", "alert"
+                                        category = parts[1]; // e.g. "button", "alert"
                                     }
                                 }
                             } else if (page.id && page.id.startsWith('template-')) {
                                 // 从ID中提取分类,例如"template-button-primary" -> "button"
                                 const parts = page.id.split('-');
                                 if (parts.length > 1) {
-                                    category = parts[1]; // 例如"button", "alert"
+                                    category = parts[1]; // e.g. "button", "alert"
                                 }
                             } else if (page.tags && page.tags.length > 0) {
                                 // 使用第一个非component/template标签作为分类
@@ -3886,7 +3885,7 @@
                                 category: category,
                                 source: 'page',
                                 path: page.path || '',
-                                url: '', // 页面不需要URL
+                                url: '', // page does not need URL
                                 pageData: page // 保存完整的页面数据
                             };
                         });
@@ -4007,7 +4006,7 @@
             helpLi.style.color = '#666';
             helpLi.style.borderBottom = '1px solid #eee';
             helpLi.style.fontStyle = 'italic';
-            helpLi.innerHTML = '⚙️ = 需要配置参数 | 其他组件直接插入';
+            helpLi.innerHTML = '⚙️ = needs config params | Other components: direct insert';
             sidebarEl.appendChild(helpLi);
 
             // Group components by category for better organization
@@ -4043,9 +4042,9 @@
                     // Build title with explanation
                     let titleText = component.description || component.name;
                     if (needsDialog) {
-                        titleText += ' (需要配置参数)';
+                        titleText += ' (needs config params)';
                     } else {
-                        titleText += ' (直接插入)';
+                        titleText += ' (direct insert)';
                     }
                     li.title = titleText;
 
@@ -4062,7 +4061,7 @@
                     const iconSpan = document.createElement('span');
                     if (needsDialog) {
                         iconSpan.textContent = '⚙️';
-                        iconSpan.title = '点击配置参数';
+                        iconSpan.title = 'Click to configure parameters';
                         iconSpan.style.marginLeft = '8px';
                         iconSpan.style.fontSize = '12px';
                         iconSpan.style.opacity = '0.7';
@@ -6161,7 +6160,7 @@
                         }
                     } else {
                         hideAITypingIndicator();
-                        addAIMessage(`I'm not sure what you mean by "${message}". Type "help" to see available commands, or try one of these:\n\n• /template - Insert a Mustache template\n• insert button - Insert a button component\n• alert danger - Insert a danger alert`, 'assistant');
+                        addAIMessage(`I'm not sure what you mean by "${message}". Type "help" to see available commands, or try one of these:\n\n• /template - Insert a Mustache template\n• /html - Quick edit HTML at cursor position\n• /edit-html - Same as /html\n• insert button - Insert a button component\n• alert danger - Insert a danger alert`, 'assistant');
                     }
                 }, 500);
                 return; // Exit early for slash commands
@@ -6176,19 +6175,19 @@
 
                 // Simple keyword matching
                 // Check for help requests first - if message contains "help" or "帮助", only show help
-                if (lowerMsg.includes('help') || lowerMsg.includes('帮助')) {
+                if (lowerMsg.includes('help')) {
                     // Handle help requests - only show help, don't execute any commands
 
                     // Simple help system
-                    if (lowerMsg === 'help' || lowerMsg === '帮助') {
+                    if (lowerMsg === 'help') {
                         // General help
-                        response = "I can help you insert or delete components in your page. Just tell me what you want to do:\n• **Buttons**: 'button' (primary), 'button success', 'button info', 'button warning', 'button danger'\n• **Alerts**: 'alert', 'alert danger', 'alert warning', 'alert success', 'alert info' (with or without 'link')\n• **Introduction**: 'introduction', 'introduction full image', 'introduction half image'\n• **Services & Info**: 'services and information' (3 columns, 2 columns, or list)\n• **Feature Links**: 'feature link' (basic, dark, light, or gray background)\n• **Government**: 'government initiatives' (2 columns, stretched links)\n• **Features**: 'features' (3 columns, standard links)\n• **Most Requested**: 'most requested links'\n• **Navigation**: 'breadcrumb', 'sidebar', 'footer', 'search'\n• **Tables**: 'table'\n• **Calendar**: 'calendar' or 'events'\n• **Theme Pages**: 'theme page' or 'jobs theme'\n• **Topic Template**: 'topic template' or 'topic page'\n• **Delete**: 'delete' or 'remove'\n\nType 'help [category]' for more details, e.g. 'help alert', 'help button'.";
-                    } else if (lowerMsg.startsWith('help ') || lowerMsg.startsWith('帮助 ')) {
+                        response = "I can help you insert or delete components in your page. Just tell me what you want to do:\n• **HTML Edit** (raw code): 'edit html' or '/html'\n• **Component Edit** (WYSIWYG): 'edit component' or '/edit-component'\n• **Buttons**: 'button' (primary), 'button success', 'button info', 'button warning', 'button danger'\n• **Alerts**: 'alert', 'alert danger', 'alert warning', 'alert success', 'alert info' (with or without 'link')\n• **Introduction**: 'introduction', 'introduction full image', 'introduction half image'\n• **Services & Info**: 'services and information' (3 columns, 2 columns, or list)\n• **Feature Links**: 'feature link' (basic, dark, light, or gray background)\n• **Government**: 'government initiatives' (2 columns, stretched links)\n• **Features**: 'features' (3 columns, standard links)\n• **Most Requested**: 'most requested links'\n• **Navigation**: 'breadcrumb', 'sidebar', 'footer', 'search'\n• **Tables**: 'table'\n• **Calendar**: 'calendar' or 'events'\n• **Theme Pages**: 'theme page' or 'jobs theme'\n• **Topic Template**: 'topic template' or 'topic page'\n• **Delete**: 'delete' or 'remove'\n\nType 'help [category]' for more details, e.g. 'help alert', 'help button'.";
+                    } else if (lowerMsg.startsWith('help ')) {
                         // Categorized help
                         let topic = lowerMsg;
                         if (topic.startsWith('help ')) {
                             topic = topic.substring(5);
-                        } else if (topic.startsWith('帮助 ')) {
+                        } else if (topic.startsWith('help ')) {
                             topic = topic.substring(3);
                         }
                         topic = topic.trim();
@@ -6221,7 +6220,7 @@
 
                             'theme': "**Theme Pages**\n• 'theme page' or 'theme template' - Insert a complete Jobs theme page with navigation, most requested links, and services sections\n• 'jobs theme' or 'jobs page' - Insert a structured Jobs page template\n\nExamples: 'theme page', 'theme template', 'jobs theme', 'insert jobs page'",
 
-                            'topic': "**Topic Template**\n• 'topic template' or 'topic page' - Insert a comprehensive topic page template with title, description, most requested links, services grid, featured content, and social media sections\n• '主题模板' or '话题模板' - Insert complete topic page template\n\nExamples: 'topic template', 'topic page', 'insert topic template'",
+                            'topic': "**Topic Template**\n• 'topic template' or 'topic page' - Insert a comprehensive topic page template with title, description, most requested links, services grid, featured content, and social media sections\n• 'topic template' or 'topic page' - Insert a complete topic page template\n\nExamples: 'topic template', 'topic page', 'insert topic template'",
 
                             'delete': "**Delete Component**\n• 'delete' - Delete component at cursor position\n• 'remove' - Remove component at cursor position\n\nExamples: 'delete', 'remove this button', 'delete component'"
                         };
@@ -6242,27 +6241,7 @@
 
                             // Also check Chinese mappings
                             const chineseMap = {
-                                '按钮': 'button',
-                                '警告': 'alert',
-                                '介绍': 'introduction',
-                                '简介': 'introduction',
-                                '服务': 'services',
-                                '特色链接': 'feature',
-                                '专题链接': 'feature',
-                                '政府': 'government',
-                                '最常请求': 'most',
-                                '导航': 'navigation',
-                                '表格': 'table',
-                                '社交媒体': 'follow',
-                                '关注我们': 'follow',
-                                '日历': 'calendar',
-                                '活动': 'calendar',
-                                '主题页面': 'theme',
-                                '工作主题': 'theme',
-                                '工作页面': 'theme',
-                                '主题模板': 'topic',
-                                '话题模板': 'topic',
-                                '删除': 'delete'
+
                             };
 
                             // French mappings
@@ -6321,7 +6300,7 @@
                     componentType = null;
                 // Help requests are already handled above
                 // This else if block is now redundant
-                } else if ((lowerMsg.includes('button') || lowerMsg.includes('btn') || lowerMsg.includes('bouton')) && !lowerMsg.includes('help') && !lowerMsg.includes('帮助')) {
+                } else if ((lowerMsg.includes('button') || lowerMsg.includes('btn') || lowerMsg.includes('bouton')) && !lowerMsg.includes('help') && false) {
                     // Handle different button variants
                     if (lowerMsg.includes('success')) {
                         response = "Inserting a success button...";
@@ -6342,7 +6321,7 @@
                 } else if (lowerMsg.includes('table') || lowerMsg.includes('tableau')) {
                     response = "Inserting a table component...";
                     componentType = 'table';
-                } else if ((lowerMsg.includes('alert') || lowerMsg.includes('alerte')) && !lowerMsg.includes('help') && !lowerMsg.includes('帮助')) {
+                } else if ((lowerMsg.includes('alert') || lowerMsg.includes('alerte')) && !lowerMsg.includes('help') && false) {
                     // Handle different alert variants
                     if (lowerMsg.includes('danger')) {
                         if (lowerMsg.includes('link')) {
@@ -6397,73 +6376,73 @@
                 } else if (lowerMsg.includes('search') || lowerMsg.includes('find') || lowerMsg.includes('rechercher') || lowerMsg.includes('recherche')) {
                     response = "Inserting search box...";
                     componentType = 'search';
-                } else if (lowerMsg.includes('introduction') || lowerMsg.includes('intro') || lowerMsg.includes('介绍') || lowerMsg.includes('简介')) {
-                    if (lowerMsg.includes('full') || lowerMsg.includes('full-width') || lowerMsg.includes('full image') || lowerMsg.includes('全幅')) {
+                } else if (lowerMsg.includes('introduction') || lowerMsg.includes('intro') ) {
+                    if (lowerMsg.includes('full') || lowerMsg.includes('full-width') || lowerMsg.includes('full image') ) {
                         response = "Inserting introduction block with full-width image...";
                         componentType = 'introduction-full-image';
-                    } else if (lowerMsg.includes('half') || lowerMsg.includes('half-width') || lowerMsg.includes('half image') || lowerMsg.includes('半宽')) {
+                    } else if (lowerMsg.includes('half') || lowerMsg.includes('half-width') || lowerMsg.includes('half image') ) {
                         response = "Inserting introduction block with half-width image...";
                         componentType = 'introduction-half-image';
                     } else {
                         response = "Inserting introduction block...";
                         componentType = 'introduction';
                     }
-                } else if (lowerMsg.includes('most requested') || lowerMsg.includes('most-requested') || lowerMsg.includes('top tasks') || lowerMsg.includes('热门链接') || lowerMsg.includes('常用链接') || lowerMsg.includes('les plus demandés') || lowerMsg.includes('plus demandés')) {
+                } else if (lowerMsg.includes('most requested') || lowerMsg.includes('most-requested') || lowerMsg.includes('top tasks')  || false /* removed */ || lowerMsg.includes('les plus demandés') || lowerMsg.includes('plus demandés')) {
                     response = "Inserting most requested links section...";
                     componentType = 'most-requested';
-                } else if (lowerMsg.includes('feature link') || lowerMsg.includes('featured link') || lowerMsg.includes('spotlight') || lowerMsg.includes('特色链接') || lowerMsg.includes('专题链接') || lowerMsg.includes('lien vedette') || lowerMsg.includes('liens vedettes')) {
+                } else if (lowerMsg.includes('feature link') || lowerMsg.includes('featured link') || lowerMsg.includes('spotlight')  || false /* removed */ || lowerMsg.includes('lien vedette') || lowerMsg.includes('liens vedettes')) {
                     response = "Inserting feature link with description...";
                     componentType = 'feature-link';
-                } else if (lowerMsg.includes('government initiatives') || lowerMsg.includes('government features') || lowerMsg.includes('政府倡议') || lowerMsg.includes('政府项目') || lowerMsg.includes('initiatives gouvernementales') || lowerMsg.includes('gouvernement') || lowerMsg.includes('initiatives')) {
+                } else if (lowerMsg.includes('government initiatives') || lowerMsg.includes('government features')  || false /* removed */ || lowerMsg.includes('initiatives gouvernementales') || lowerMsg.includes('gouvernement') || lowerMsg.includes('initiatives')) {
                     // 政府倡议组件
                     response = "Inserting government initiatives section...";
                     componentType = 'government-initiatives';
-                } else if (lowerMsg.includes('features') || lowerMsg.includes('特性') || lowerMsg.includes('特色') || lowerMsg.includes('fonctionnalités') || lowerMsg.includes('gc-features')) {
+                } else if (lowerMsg.includes('features')  || lowerMsg.includes('fonctionnalités') || lowerMsg.includes('gc-features')) {
                     // 标准Features组件 (A方案 - 独立组件)
                     response = "Inserting features section...";
                     componentType = 'features';
-                } else if (lowerMsg.includes('services and information') || lowerMsg.includes('services info') || lowerMsg.includes('gc-srvinfo') || lowerMsg.includes('服务与信息') || lowerMsg.includes('服务信息') || lowerMsg.includes('services et information') || lowerMsg.includes('services info')) {
-                    if (lowerMsg.includes('3 columns') || lowerMsg.includes('3列') || lowerMsg.includes('3 column')) {
+                } else if (lowerMsg.includes('services and information') || lowerMsg.includes('services info') || lowerMsg.includes('gc-srvinfo')   || lowerMsg.includes('services et information') || lowerMsg.includes('services info')) {
+                    if (lowerMsg.includes('3 columns')  || lowerMsg.includes('3 column')) {
                         response = "Inserting Services and Information section (3 columns)...";
                         componentType = 'services-info-3col';
-                    } else if (lowerMsg.includes('2 columns') || lowerMsg.includes('2列') || lowerMsg.includes('2 column')) {
+                    } else if (lowerMsg.includes('2 columns')  || lowerMsg.includes('2 column')) {
                         response = "Inserting Services and Information section (2 columns)...";
                         componentType = 'services-info-2col';
-                    } else if (lowerMsg.includes('list') || lowerMsg.includes('列表') || lowerMsg.includes('simple')) {
+                    } else if (lowerMsg.includes('list')  || lowerMsg.includes('simple')) {
                         response = "Inserting Services and Information section (list)...";
                         componentType = 'services-info-list';
                     } else {
                         response = "Inserting Services and Information section (3 columns)...";
                         componentType = 'services-info-3col';
                     }
-                } else if (lowerMsg.includes('feature link dark') || lowerMsg.includes('dark feature link') || lowerMsg.includes('feature link dark background') || lowerMsg.includes('深色特色链接')) {
+                } else if (lowerMsg.includes('feature link dark') || lowerMsg.includes('dark feature link') || lowerMsg.includes('feature link dark background') ) {
                     response = "Inserting feature link with dark background...";
                     componentType = 'feature-link-dark';
-                } else if (lowerMsg.includes('feature link light') || lowerMsg.includes('light feature link') || lowerMsg.includes('feature link light background') || lowerMsg.includes('浅色特色链接')) {
+                } else if (lowerMsg.includes('feature link light') || lowerMsg.includes('light feature link') || lowerMsg.includes('feature link light background') ) {
                     response = "Inserting feature link with light background...";
                     componentType = 'feature-link-light';
-                } else if (lowerMsg.includes('feature link gray') || lowerMsg.includes('gray feature link') || lowerMsg.includes('feature link gray background') || lowerMsg.includes('灰色特色链接') || lowerMsg.includes('feature link grey')) {
+                } else if (lowerMsg.includes('feature link gray') || lowerMsg.includes('gray feature link') || lowerMsg.includes('feature link gray background')  || lowerMsg.includes('feature link grey')) {
                     response = "Inserting feature link with gray background...";
                     componentType = 'feature-link-gray';
-                } else if (lowerMsg.includes('social media') || lowerMsg.includes('follow us') || lowerMsg.includes('社交媒体') || lowerMsg.includes('关注我们') || lowerMsg.includes('followus') || lowerMsg.includes('social') || lowerMsg.includes('médias sociaux') || lowerMsg.includes('suivez-nous')) {
+                } else if (lowerMsg.includes('social media') || lowerMsg.includes('follow us')  || lowerMsg.includes('followus') || lowerMsg.includes('social') || lowerMsg.includes('médias sociaux') || lowerMsg.includes('suivez-nous')) {
                     // Check for horizontal version
-                    if (lowerMsg.includes('horizontal') || lowerMsg.includes('水平')) {
+                    if (lowerMsg.includes('horizontal') ) {
                         response = "Inserting horizontal social media follow us section...";
                         componentType = 'follow-us-horizontal';
                     } else {
                         response = "Inserting social media follow us section...";
                         componentType = 'follow-us';
                     }
-                } else if (lowerMsg.includes('calendar') || lowerMsg.includes('events') || lowerMsg.includes('日历') || lowerMsg.includes('活动') || lowerMsg.includes('event calendar') || lowerMsg.includes('calendrier') || lowerMsg.includes('événements')) {
+                } else if (lowerMsg.includes('calendar') || lowerMsg.includes('events')  || lowerMsg.includes('event calendar') || lowerMsg.includes('calendrier') || lowerMsg.includes('événements')) {
                     response = "Inserting calendar of events component...";
                     componentType = 'calendar-events';
-                } else if (lowerMsg.includes('theme page') || lowerMsg.includes('theme template') || lowerMsg.includes('jobs theme') || lowerMsg.includes('jobs page') || lowerMsg.includes('主题页面') || lowerMsg.includes('工作主题') || lowerMsg.includes('工作页面') || lowerMsg.includes('page thématique') || lowerMsg.includes('thème emplois')) {
+                } else if (lowerMsg.includes('theme page') || lowerMsg.includes('theme template') || lowerMsg.includes('jobs theme') || lowerMsg.includes('jobs page')    || lowerMsg.includes('page thématique') || lowerMsg.includes('thème emplois')) {
                     response = "Inserting Jobs theme page component...";
                     componentType = 'theme-page-jobs';
-                } else if (lowerMsg.includes('topic template') || lowerMsg.includes('topic page') || lowerMsg.includes('主题模板') || lowerMsg.includes('话题模板') || lowerMsg.includes('topic') || lowerMsg.includes('modèle de sujet') || lowerMsg.includes('modèle thématique')) {
+                } else if (lowerMsg.includes('topic template') || lowerMsg.includes('topic page')  || lowerMsg.includes('topic') || lowerMsg.includes('modèle de sujet') || lowerMsg.includes('modèle thématique')) {
                     response = "Inserting Topic template component...";
                     componentType = 'topic-template';
-                } else if (lowerMsg.includes('delete') || lowerMsg.includes('remove') || lowerMsg.includes('删除') || lowerMsg.includes('移除') || lowerMsg.includes('supprimer') || lowerMsg.includes('effacer')) {
+                } else if (lowerMsg.includes('delete') || lowerMsg.includes('remove')  || lowerMsg.includes('supprimer') || lowerMsg.includes('effacer')) {
                     response = "Deleting component at cursor position...";
                     // Set a flag to indicate delete action
                     componentType = 'delete';
@@ -6502,7 +6481,7 @@
                         response = "Pasting copied component next to original...";
                         componentType = 'paste';
                     }
-                } else if (false && (lowerMsg.startsWith('help ') || lowerMsg.startsWith('帮助 ') || (lowerMsg.includes('help') && lowerMsg !== 'help') || (lowerMsg.includes('帮助') && lowerMsg !== '帮助'))) {
+                } else if (false && (lowerMsg.startsWith('help ') || false || (lowerMsg.includes('help') && lowerMsg !== 'help') || (false && false))) {
                     // Handle categorized help requests (English or Chinese)
                     let helpTopic = lowerMsg;
                     // Remove English "help " prefix
@@ -6510,7 +6489,7 @@
                         helpTopic = helpTopic.substring(5);
                     }
                     // Remove Chinese "帮助 " prefix
-                    if (helpTopic.startsWith('帮助 ')) {
+                    if (false) {
                         helpTopic = helpTopic.substring(3);
                     }
                     helpTopic = helpTopic.trim();
@@ -6581,37 +6560,7 @@
                         'general': 'all',
                         '': 'all',
                         // Chinese aliases
-                        '按钮': 'button',
-                        '按钮组': 'button',
-                        '警告': 'alert',
-                        '危险': 'alert',
-                        '成功': 'alert',
-                        '信息': 'alert',
-                        '介绍': 'introduction',
-                        '简介': 'introduction',
-                        '服务': 'services',
-                        '服务信息': 'services',
-                        '服务与信息': 'services',
-                        '特色链接': 'feature',
-                        '专题链接': 'feature',
-                        '政府': 'government',
-                        '政府倡议': 'government',
-                        '政府项目': 'government',
-                        '特性': 'features',
-                        '特色': 'features',
-                        '最常请求': 'most',
-                        '热门链接': 'most',
-                        '常用链接': 'most',
-                        '导航': 'navigation',
-                        '面包屑': 'navigation',
-                        '侧边栏': 'navigation',
-                        '页脚': 'navigation',
-                        '搜索': 'navigation',
-                        '表格': 'table',
-                        '删除': 'delete',
-                        '移除': 'delete',
-                        '帮助': 'all',
-                        '帮助全部': 'all'
+
                     };
 
                     // Determine which category to show
@@ -6642,13 +6591,29 @@
 
                     response = helpMessages[category] || helpMessages['all'];
 
-                } else if (false && (lowerMsg === 'help' || lowerMsg === '帮助' || lowerMsg.includes('what can you do'))) {
+                } else if (false && (lowerMsg === 'help' || lowerMsg.includes('what can you do'))) {
                     // General help without category
                     response = "I can help you insert or delete components in your page. Just tell me what you want to do:\n• **Buttons**: 'button' (primary), 'button success', 'button info', 'button warning', 'button danger'\n• **Alerts**: 'alert', 'alert danger', 'alert warning', 'alert success', 'alert info' (with or without 'link')\n• **Introduction**: 'introduction', 'introduction full image', 'introduction half image'\n• **Services & Info**: 'services and information' (3 columns, 2 columns, or list)\n• **Feature Links**: 'feature link' (basic, dark, light, or gray background)\n• **Government**: 'government initiatives'\n• **Most Requested**: 'most requested links'\n• **Navigation**: 'breadcrumb', 'sidebar', 'footer', 'search'\n• **Tables**: 'table'\n• **Delete**: 'delete' or 'remove'\n\nType 'help [category]' for more details, e.g. 'help alert', 'help button'.";
                 } else if (lowerMsg.includes('hello') || lowerMsg.includes('hi') || lowerMsg.includes('hey')) {
                     response = "Hello! I'm your WebBot AI assistant. I can help you insert components into your Canada.ca page. What would you like to add? Try 'insert introduction block', 'most requested links', 'feature link', 'government initiatives', 'social media', 'calendar of events', 'theme page', 'topic template' or 'help' to see all options.";
+                } else if (lowerMsg.includes('edit html') || lowerMsg.includes('html edit') || lowerMsg.includes('edit raw') || lowerMsg.includes('编辑 html') || lowerMsg.includes('代码编辑')) {
+                    response = "✏️ Opening HTML source editor for the element at cursor position...";
+                    setTimeout(() => {
+                        if (typeof showCurrentElementHTMLEdit === 'function') {
+                            showCurrentElementHTMLEdit('code');
+                        }
+                    }, 600);
+                } else if (lowerMsg.includes('edit component') || lowerMsg.includes('component edit') || lowerMsg.includes('wysiwyg') || lowerMsg.includes('编辑组件') || lowerMsg.includes('可视化') || lowerMsg.includes('组件编辑')) {
+                    response = "🎨 Opening WYSIWYG component editor for the element at cursor position...";
+                    setTimeout(() => {
+                        if (typeof showCurrentElementWYSIWYGEdit === 'function') {
+                            showCurrentElementWYSIWYGEdit();
+                        } else if (typeof showCurrentElementHTMLEdit === 'function') {
+                            showCurrentElementHTMLEdit('wysiwyg');
+                        }
+                    }, 600);
                 } else {
-                    response = "I'm not sure what you mean. I can help you insert components like buttons (primary, success, info, warning, danger), tables, alerts (danger, warning, success, info, with link), breadcrumbs, sidebars, footers, search boxes, introduction blocks, most requested links, feature links, government initiatives, social media follow us, calendar of events, theme pages, topic templates, or Services and Information sections (3 columns, 2 columns, list). Try saying 'insert a button', 'button success', 'alert danger', 'social media', 'calendar', 'theme page', 'topic template', or type 'help' to see what I can do.";
+                    response = "I'm not sure what you mean. I can help you insert components like buttons, tables, alerts, breadcrumbs, sidebars, footers, search boxes, introduction blocks, most requested links, feature links, government initiatives, social media, calendar, theme pages, topic templates, or Services and Information sections.\n\n• To **edit raw HTML** of an element: say 'edit html' or '/html'\n• To **edit a component visually** (WYSIWYG): say 'edit component' or '/edit-component'\n• To insert something, just describe it.\n\nType 'help' to see the full list.";
                 }
 
                 // Add AI response
@@ -8029,7 +7994,7 @@
                 const needsUpload = src && (
                     src.startsWith('blob:') ||
                     src.includes('localhost:') ||
-                    src.startsWith('data:image/') // 也处理base64图片
+                    src.startsWith('data:image/') // also handle base64 images
                 );
 
                 if (!needsUpload) {
@@ -8486,8 +8451,8 @@
             alert('FileBot document insertion functionality is being implemented.\n\n' +
                   'Current options:\n' +
                   '1. Use the FileBot panel (left side) to browse documents\n' +
-                  '2. Use the "FileBot 文件管理" button for file uploads\n' +
-                  '3. Component insertion功能已推迟 (per your request)\n\n' +
+                  '2. Use the "FileBot File Manager" button for file uploads\n' +
+                  '3. Component insertion has been deferred (per your request)\n\n' +
                   'For immediate document insertion, you can:\n' +
                   '- Use the file manager (top button) to upload and insert files\n' +
                   '- Or manually add file links in the editor');
@@ -8743,9 +8708,9 @@
             // 修正URL格式:去掉前面的".."和在后面加".html"
             // 1. 如果以".."开头,去掉它
             if (pageUrl.startsWith('../')) {
-                pageUrl = pageUrl.substring(3); // 去掉"../"
+                pageUrl = pageUrl.substring(3); // remove "../"
             } else if (pageUrl.startsWith('..')) {
-                pageUrl = pageUrl.substring(2); // 去掉".."
+                pageUrl = pageUrl.substring(2); // remove ".."
             }
 
             // 2. 确保以"/"开头(如果还没有)
@@ -11129,6 +11094,378 @@
             }
         }
 
+        // ===========================================================================
+        // Quick Edit HTML - AI & Command-driven inline HTML editing
+        // ===========================================================================
+
+        /**
+         * Find the closest meaningful container element at cursor position.
+         * Walks up from the current selection to find:
+         *   1. webbot-component-wrapper / data-template-instance (component)
+         *   2. webbot-component / data-html-content (inline component)
+         *   3. section, article, nav, footer, main, aside with classes
+         *   4. div with gc- class (Canada.ca pattern)
+         *   5. div with any class (generic block)
+         *   6. editor body as fallback
+         */
+        function findTargetElement() {
+            const editor = tinyMceEditor || window.tinyMceEditor;
+            if (!editor) return null;
+
+            const node = editor.selection.getNode();
+            const body = editor.getBody();
+
+            let target = node;
+            while (target && target !== body) {
+                const tag = (target.tagName || '').toLowerCase();
+                const cls = (target.className || '').trim();
+
+                // 1. Component wrapper (has menu, edit, delete)
+                if (target.classList && (target.classList.contains('webbot-component-wrapper') ||
+                    target.hasAttribute('data-template-instance') ||
+                    target.hasAttribute('data-component-id'))) {
+                    return target;
+                }
+
+                // 2. Inline component marker
+                if (target.classList && target.classList.contains('webbot-component') ||
+                    target.hasAttribute && target.hasAttribute('data-html-content')) {
+                    return target;
+                }
+
+                // 3. Semantic HTML5 containers with classes
+                if (/^(section|article|nav|footer|header|main|aside|figure)$/.test(tag) && cls) {
+                    return target;
+                }
+
+                // 4. Canada.ca gc- prefixed containers
+                if (tag === 'div' && cls && /\bgc-/.test(cls)) {
+                    return target;
+                }
+
+                // 5. Any block-level element with a class or id
+                if (/^(div|p|table|ul|ol|blockquote|form)$/.test(tag) && (cls || target.id)) {
+                    return target;
+                }
+
+                target = target.parentNode;
+            }
+
+            // Fallback: return the element right after body's first text wrapper
+            return body;
+        }
+
+        /**
+         * Get a short human-readable locator string for the target element
+         */
+        function getElementLocator(el) {
+            if (!el) return '';
+            const tag = (el.tagName || '').toLowerCase();
+            const id = el.id ? '#' + el.id : '';
+            const cls = (el.className || '').trim();
+            const classStr = cls ? '.' + cls.replace(/\s+/g, '.') : '';
+            // Truncate if too long
+            const loc = tag + id + classStr;
+            return loc.length > 60 ? loc.substring(0, 57) + '...' : loc;
+        }
+
+        /**
+         * Store the element being edited and the TinyMCE WYSIWYG editor instance
+         */
+        let _editingHTMLTarget = null;
+        let _wysiwygEditor = null;
+        let _editMode = 'code'; // 'code' or 'wysiwyg'
+
+        /**
+         * Open Quick Edit modal — "edit HTML" triggers code mode, "edit component" triggers WYSIWYG
+         */
+        function showCurrentElementHTMLEdit(mode) {
+            if (mode === undefined || mode === null) mode = 'code';
+            const editor = tinyMceEditor || window.tinyMceEditor;
+            if (!editor) {
+                alert('Editor not initialized');
+                return;
+            }
+
+            const target = findTargetElement();
+            if (!target) {
+                alert('Could not find a target element at cursor position.');
+                return;
+            }
+
+            if (target === editor.getBody()) {
+                const selContent = editor.selection.getContent();
+                if (selContent) {
+                    editor.selection.setContent('<div class="quick-edit-block">' + selContent + '</div>');
+                    const node = editor.selection.getNode();
+                    const wrapper = node.classList && node.classList.contains('quick-edit-block') ? node :
+                        node.closest ? node.closest('.quick-edit-block') : node;
+                    if (wrapper) {
+                        showHTMLEditModal(wrapper, mode);
+                        return;
+                    }
+                }
+                alert('Place your cursor inside or select the HTML content you want to edit.');
+                return;
+            }
+
+            showHTMLEditModal(target, mode);
+        }
+
+        /** Shorthand for WYSIWYG mode (component editing) */
+        function showCurrentElementWYSIWYGEdit() {
+            showCurrentElementHTMLEdit('wysiwyg');
+        }
+
+        /**
+         * Show the HTML edit modal — code mode = dark textarea, wysiwyg mode = TinyMCE (no Canada theme)
+         */
+        function showHTMLEditModal(targetElement, mode) {
+            const modal = document.getElementById('html-edit-modal');
+            const textarea = document.getElementById('html-edit-textarea');
+            const wysiwygContainer = document.getElementById('html-edit-wysiwyg');
+            const location = document.getElementById('html-edit-location');
+            const status = document.getElementById('html-edit-status');
+            const title = document.getElementById('html-edit-mode-title');
+            const badge = document.getElementById('html-edit-mode-badge');
+            const label = document.getElementById('html-edit-mode-label');
+
+            if (!modal || !textarea || !wysiwygContainer) {
+                console.error('HTML edit modal not found in DOM');
+                return;
+            }
+
+            mode = mode || 'code';
+            _editMode = mode;
+            _editingHTMLTarget = targetElement;
+
+            // Destroy any previous WYSIWYG instance
+            if (_wysiwygEditor) {
+                try { _wysiwygEditor.remove(); } catch(e) {}
+                _wysiwygEditor = null;
+            }
+            wysiwygContainer.innerHTML = '';
+
+            const html = (targetElement.outerHTML || targetElement.innerHTML || '').trim();
+            const loc = getElementLocator(targetElement);
+            location.textContent = loc;
+            location.title = loc;
+            if (status) { status.textContent = ''; status.className = 'html-edit-status'; }
+
+            // Configure UI for mode
+            if (mode === 'wysiwyg') {
+                title.innerHTML = '<span>🎨</span> Component Editor';
+                badge.textContent = 'WYSIWYG';
+                badge.className = 'html-edit-mode-badge mode-wysiwyg';
+                if (label) label.innerHTML = 'Edit visually (flat layout, no Canada.ca theme). Use <strong>Code</strong> button in toolbar for raw HTML.';
+                textarea.style.display = 'none';
+                wysiwygContainer.style.display = 'block';
+            } else {
+                title.innerHTML = '<span>✏️</span> HTML Editor';
+                badge.textContent = 'CODE';
+                badge.className = 'html-edit-mode-badge mode-code';
+                if (label) label.textContent = 'Edit raw HTML. Ctrl+Enter to save, Esc to close.';
+                wysiwygContainer.style.display = 'none';
+                textarea.style.display = 'block';
+                textarea.value = html
+                    .replace(/>\s*</g, '>\n<')
+                    .replace(/<\/(div|section|article|nav|footer|header|main|aside|table|tr|td|th|ul|ol|li|p|figure|form|blockquote)>/g, (m) => m + '\n')
+                    .replace(/<\/(h[1-6]|span|a|strong|em|br \/?)>/g, (m) => m + '\n')
+                    .replace(/(\n\s*)+/g, '\n')
+                    .trim();
+            }
+
+            // Show modal
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+
+            if (mode === 'code') {
+                setTimeout(() => { textarea.focus(); textarea.select(); }, 100);
+            } else {
+                // Initialize TinyMCE with NO Canada.ca CSS
+                void wysiwygContainer.offsetHeight; // force layout
+                const editorDiv = document.createElement('div');
+                editorDiv.id = 'wysiwyg-editor-inline';
+                editorDiv.innerHTML = html;
+                wysiwygContainer.appendChild(editorDiv);
+                void wysiwygContainer.offsetHeight;
+
+                tinymce.init({
+                    selector: '#wysiwyg-editor-inline',
+                    height: 450,
+                    menubar: 'edit view insert format table help',
+                    base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
+                    plugins: [
+                        'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview',
+                        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                        'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                    ],
+                    toolbar: 'undo redo | styleselect | bold italic underline | ' +
+                             'alignleft aligncenter alignright alignjustify | ' +
+                             'bullist numlist outdent indent | link table | ' +
+                             'blockquote | code fullscreen | help',
+                    content_style: 'body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333; padding: 16px; margin: 0; background: #fff; } ' +
+                        'p { margin: 0 0 1em; } ' +
+                        'h1, h2, h3, h4, h5, h6 { margin: 1em 0 0.5em; font-weight: 600; } ' +
+                        'ul, ol { margin: 0 0 1em 2em; } ' +
+                        'table { border-collapse: collapse; width: 100%; margin: 1em 0; } ' +
+                        'td, th { border: 1px solid #ccc; padding: 8px; } ' +
+                        'th { background: #f5f5f5; font-weight: 600; } ' +
+                        'img { max-width: 100%; height: auto; } ' +
+                        'blockquote { border-left: 3px solid #ddd; padding-left: 16px; margin-left: 0; color: #666; } ' +
+                        'a { color: #1a73e8; } ' +
+                        '* { box-sizing: border-box; }',
+                    content_css: [],
+                    extended_valid_elements: '*[*]',
+                    cleanup: false,
+                    valid_elements: '*[*]',
+                    allow_html_in_named_anchor: true,
+                    image_advtab: true,
+                    image_dimensions: true,
+                    object_resizing: 'img',
+                    setup: function(editor) {
+                        _wysiwygEditor = editor;
+                        editor.addShortcut('ctrl+enter', 'Save', function() { saveHTMLEdit(); });
+                        editor.addShortcut('meta+enter', 'Save', function() { saveHTMLEdit(); });
+                        editor.on('init', function() {
+                            setTimeout(function() { editor.focus(); }, 200);
+                        });
+                    }
+                });
+            }
+
+            console.log(`✏️ ${mode === 'wysiwyg' ? 'WYSIWYG' : 'Code'} editor opened for element:`, loc);
+        }
+
+        /**
+         * Save the edited HTML back to the main editor (works for both code and wysiwyg modes)
+         */
+        function saveHTMLEdit() {
+            const editor = tinyMceEditor || window.tinyMceEditor;
+            const status = document.getElementById('html-edit-status');
+
+            if (!editor || !_editingHTMLTarget) {
+                console.error('Cannot save: missing editor or target');
+                return;
+            }
+
+            let newHTML;
+            if (_editMode === 'wysiwyg') {
+                if (!_wysiwygEditor) {
+                    console.error('WYSIWYG editor instance not found');
+                    return;
+                }
+                newHTML = _wysiwygEditor.getContent().trim();
+            } else {
+                const textarea = document.getElementById('html-edit-textarea');
+                if (!textarea) {
+                    console.error('Textarea not found');
+                    return;
+                }
+                newHTML = textarea.value.trim();
+            }
+
+            if (!newHTML) {
+                if (status) {
+                    status.textContent = '⚠️ HTML content cannot be empty';
+                    status.className = 'html-edit-status error';
+                }
+                return;
+            }
+
+            try {
+                const target = _editingHTMLTarget;
+                const tempDiv = editor.getDoc().createElement('div');
+                tempDiv.innerHTML = newHTML;
+
+                if (tempDiv.children.length === 1) {
+                    const newEl = tempDiv.children[0];
+                    target.parentNode.replaceChild(newEl, target);
+                } else if (tempDiv.children.length > 1) {
+                    const fragment = editor.getDoc().createDocumentFragment();
+                    while (tempDiv.firstChild) {
+                        fragment.appendChild(tempDiv.firstChild);
+                    }
+                    target.parentNode.replaceChild(fragment, target);
+                } else {
+                    target.innerHTML = newHTML;
+                }
+
+                editor.undoManager.add();
+                editor.fire('Change');
+
+                if (status) {
+                    status.textContent = '✅ Updated successfully!';
+                    status.className = 'html-edit-status success';
+                }
+
+                console.log(`✅ ${_editMode === 'wysiwyg' ? 'WYSIWYG' : 'Code'} edit saved successfully`);
+                setTimeout(() => { closeHTMLEditModal(); }, 600);
+
+            } catch (error) {
+                console.error('Failed to save HTML edit:', error);
+                if (status) {
+                    status.textContent = '❌ Error: ' + error.message;
+                    status.className = 'html-edit-status error';
+                }
+            }
+        }
+
+        /**
+         * Close the modal and destroy any editor instance
+         */
+        function closeHTMLEditModal() {
+            if (_wysiwygEditor) {
+                try { _wysiwygEditor.remove(); } catch(e) {}
+                _wysiwygEditor = null;
+            }
+            const container = document.getElementById('html-edit-wysiwyg');
+            if (container) { container.innerHTML = ''; }
+
+            const modal = document.getElementById('html-edit-modal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+            _editingHTMLTarget = null;
+            _editMode = 'code';
+        }
+
+        // Bind modal event handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('html-edit-modal');
+            if (!modal) return;
+
+            document.getElementById('html-edit-modal-close')?.addEventListener('click', closeHTMLEditModal);
+            document.getElementById('html-edit-cancel')?.addEventListener('click', closeHTMLEditModal);
+            document.getElementById('html-edit-save')?.addEventListener('click', saveHTMLEdit);
+
+            document.addEventListener('keydown', function(e) {
+                const modalEl = document.getElementById('html-edit-modal');
+                if (e.key === 'Escape' && modalEl && modalEl.classList.contains('show')) {
+                    // Don't close if WYSIWYG code panel is open (TinyMCE handles its own Escape)
+                    if (_editMode === 'code') {
+                        e.preventDefault();
+                        closeHTMLEditModal();
+                    }
+                }
+            });
+
+            // Close on backdrop click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) closeHTMLEditModal();
+            });
+        });
+
+        // Globals
+        window.showCurrentElementHTMLEdit = showCurrentElementHTMLEdit;
+        window.showCurrentElementWYSIWYGEdit = showCurrentElementWYSIWYGEdit;
+        window.closeHTMLEditModal = closeHTMLEditModal;
+
+        // ===========================================================================
+        // End Quick Edit HTML
+        // ===========================================================================
+
         // Initialize template system when document is ready
         $(document).ready(function() {
             // Wait a bit for everything to load, then start retry logic
@@ -11157,5 +11494,52 @@
                 }
             };
             console.log('Template command added to AI assistant');
+
+            // Add HTML quick edit command (code mode)
+            window.aiAssistantCommands.html = {
+                name: 'html',
+                description: 'Edit HTML source code at cursor position',
+                usage: '/html',
+                execute: function(args) {
+                    if (typeof showCurrentElementHTMLEdit === 'function') {
+                        showCurrentElementHTMLEdit('code');
+                        return 'Opened raw HTML editor for the element at cursor position.';
+                    } else {
+                        return 'Error: HTML edit function not available.';
+                    }
+                }
+            };
+            window.aiAssistantCommands["edit-html"] = {
+                name: 'edit-html',
+                description: 'Edit HTML source code at cursor position',
+                usage: '/edit-html',
+                execute: function(args) {
+                    return window.aiAssistantCommands.html.execute(args);
+                }
+            };
+
+            // Add component edit command (WYSIWYG mode)
+            window.aiAssistantCommands["edit-component"] = {
+                name: 'edit-component',
+                description: 'Edit component visually with WYSIWYG editor (flat layout, no Canada theme)',
+                usage: '/edit-component',
+                execute: function(args) {
+                    if (typeof showCurrentElementWYSIWYGEdit === 'function') {
+                        showCurrentElementWYSIWYGEdit();
+                        return 'Opened WYSIWYG component editor for the element at cursor position.';
+                    } else {
+                        return 'Error: Component edit function not available.';
+                    }
+                }
+            };
+            window.aiAssistantCommands["component"] = {
+                name: 'component',
+                description: 'Edit component visually with WYSIWYG editor',
+                usage: '/component',
+                execute: function(args) {
+                    return window.aiAssistantCommands["edit-component"].execute(args);
+                }
+            };
+            console.log('HTML and Component edit commands added to AI assistant');
         }
     
