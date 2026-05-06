@@ -695,39 +695,7 @@
             margin-top: 0;
         }
 
-        /* AI Operations Section Styles */
-        .ai-operations-section {
-            background: #f3e5f5;
-            border: 1px solid #ce93d8;
-            border-radius: 6px;
-            padding: 10px 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
 
-        .ai-ops-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .ai-ops-header small {
-            color: #7b1fa2;
-            font-weight: 700;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .ai-ops-folder-path {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 13px;
-            color: #2e7d32;
-            background: #e8f5e9;
-            padding: 6px 8px;
-            border-radius: 4px;
-            border-left: 3px solid #9c27b0;
-            word-break: break-all;
-        }
 
         .filebot-sidebar-info {
             background: #f0f7ff;
@@ -1330,3 +1298,222 @@
         }
 
     
+        /* =================================================================== */
+        /* HTML Quick Edit Modal                                               */
+        /* =================================================================== */
+        .html-edit-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.15s ease-out;
+        }
+
+        .html-edit-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .html-edit-modal-content {
+            background-color: #fff;
+            margin: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.2s ease-out;
+        }
+
+        .html-edit-modal-header {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e9ecef;
+            flex-shrink: 0;
+        }
+
+        .html-edit-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            flex-shrink: 0;
+        }
+
+        .html-edit-location {
+            margin-left: 16px;
+            font-size: 12px;
+            color: #6c757d;
+            background: #f0f0f0;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+
+        .html-edit-modal-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+        }
+
+        .html-edit-modal-close:hover {
+            color: #333;
+        }
+
+        .html-edit-mode-badge {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            line-height: 1.6;
+        }
+        .html-edit-mode-badge.mode-code {
+            background: #2d2d2d;
+            color: #ffd700;
+        }
+        .html-edit-mode-badge.mode-wysiwyg {
+            background: #1a73e8;
+            color: #fff;
+        }
+
+        .html-edit-modal-body {
+            padding: 0;
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .html-edit-controls {
+            flex-shrink: 0;
+            padding: 10px 24px 4px;
+        }
+
+        .html-edit-controls label {
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* Code mode: dark monospace textarea */
+        .html-edit-textarea {
+            width: 100%;
+            min-height: 400px;
+            flex: 1;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            resize: vertical;
+            outline: none;
+            tab-size: 2;
+        }
+
+        .html-edit-textarea:focus {
+            border-color: #4e54c8;
+            box-shadow: 0 0 0 3px rgba(78, 84, 200, 0.15);
+        }
+
+        /* WYSIWYG mode: TinyMCE container */
+        .html-edit-wysiwyg {
+            flex: 1;
+            min-height: 400px;
+            padding: 0;
+            border: none;
+        }
+
+        .html-edit-wysiwyg .tox-tinymce {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .html-edit-wysiwyg .tox .tox-editor-header {
+            padding: 2px 0;
+        }
+
+        .html-edit-modal-footer {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            border-top: 1px solid #e9ecef;
+            flex-shrink: 0;
+        }
+
+        .html-edit-status {
+            flex: 1;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .html-edit-status.error {
+            color: #dc3545;
+        }
+
+        .html-edit-status.success {
+            color: #28a745;
+        }
+
+        .html-edit-modal-footer .btn {
+            margin-left: 8px;
+            padding: 8px 20px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .html-edit-modal-footer .btn-default {
+            background: #f0f0f0;
+            border-color: #ccc;
+            color: #333;
+        }
+
+        .html-edit-modal-footer .btn-default:hover {
+            background: #e0e0e0;
+        }
+
+        .html-edit-modal-footer .btn-success {
+            background: #28a745;
+            border-color: #28a745;
+            color: #fff;
+        }
+
+        .html-edit-modal-footer .btn-success:hover {
+            background: #218838;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }

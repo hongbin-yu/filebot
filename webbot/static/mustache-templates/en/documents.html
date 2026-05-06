@@ -1,0 +1,35 @@
+<!-- Documents Mustache Template -->
+{{#documents}}
+<div class="filebot-document-item-sidebar">
+    <div class="filebot-document-thumb">
+        <div class="filebot-document-icon">
+            {{#mime_type}}
+                {{#is_pdf}}📄{{/is_pdf}}
+                {{#is_word}}📝{{/is_word}}
+                {{#is_excel}}📊{{/is_excel}}
+                {{#is_powerpoint}}📑{{/is_powerpoint}}
+                {{^is_pdf}}{{^is_word}}{{^is_excel}}{{^is_powerpoint}}📄{{/is_powerpoint}}{{/is_excel}}{{/is_word}}{{/is_pdf}}
+            {{/mime_type}}
+            {{^mime_type}}📄{{/mime_type}}
+        </div>
+    </div>
+    <div class="filebot-document-info">
+        <div class="filebot-document-title">{{title}}</div>
+        <div class="filebot-document-meta">
+            {{#original_filename}}<span class="file-name">{{original_filename}}</span>{{/original_filename}}
+            {{#file_size}}<span class="file-size">{{file_size}} bytes</span>{{/file_size}}
+            {{#document_number}}<span class="doc-number">#{{document_number}}</span>{{/document_number}}
+        </div>
+        <div class="filebot-document-actions">
+            <button class="btn btn-sm btn-primary insert-btn" data-document-id="{{id}}">Insert</button>
+            <button class="btn btn-sm btn-default preview-btn" data-document-id="{{id}}">Preview</button>
+        </div>
+    </div>
+</div>
+{{/documents}}
+{{^documents}}
+<div class="filebot-document-item-sidebar">
+    <p>No documents found.</p>
+    <p><small>Documents will appear here when available.</small></p>
+</div>
+{{/documents}}

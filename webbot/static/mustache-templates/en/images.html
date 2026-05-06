@@ -1,0 +1,27 @@
+<!-- Images Mustache Template -->
+{{#images}}
+<div class="filebot-document-item-sidebar">
+    <div class="filebot-document-thumb">
+        {{#thumbnail_url}}
+        <img src="{{thumbnail_url}}" alt="{{title}}" style="max-width: 60px; max-height: 60px;">
+        {{/thumbnail_url}}
+        {{^thumbnail_url}}
+        <div class="filebot-document-icon">🖼️</div>
+        {{/thumbnail_url}}
+    </div>
+    <div class="filebot-document-info">
+        <div class="filebot-document-title">{{title}}</div>
+        <div class="filebot-document-meta">
+            {{#file_size}}<span class="file-size">{{file_size}} bytes</span>{{/file_size}}
+            {{#mime_type}}<span class="file-type">{{mime_type}}</span>{{/mime_type}}
+        </div>
+        <button class="btn btn-sm btn-primary insert-btn" data-document-id="{{id}}" data-document-type="image">Insert</button>
+    </div>
+</div>
+{{/images}}
+{{^images}}
+<div class="filebot-document-item-sidebar">
+    <p>No images found.</p>
+    <p><small>Try uploading images through FileBot or check FileBot search API.</small></p>
+</div>
+{{/images}}

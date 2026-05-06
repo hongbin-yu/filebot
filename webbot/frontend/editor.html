@@ -11,7 +11,7 @@
 
 
     <!-- Canada.ca WET theme CSS -->
-    <link rel="stylesheet" href="/gcweb/GCWeb/css/theme.min.css">
+    <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
     <!-- TinyMCE WYSIWYG Editor -->
     <!-- Using TinyMCE Cloud with valid API key -->
@@ -327,13 +327,13 @@
                     <ul class="metadata-tabs-nav">
                         <li class="metadata-tab active" data-tab="basic">Basic</li>
                         <li class="metadata-tab" data-tab="advanced">Advanced</li>
-                        <li class="metadata-tab" data-tab="raw">Raw JSON</li>
+                        <li class="metadata-tab" data-tab="raw">Raw HTML</li>
                     </ul>
                     <div id="metadata-tab-basic" class="metadata-tab-panel active">
                         <div class="form-group">
                             <label for="metadata-description">Description:</label>
-                            <textarea id="metadata-description" class="form-control" rows="3"
-                                      placeholder="Page description for search engines"></textarea>
+                            <input type="text" id="metadata-description" class="form-control"
+                                      placeholder="Page description for search engines">
                             <small class="char-count">Characters: <span id="desc-char-count">0</span>/160</small>
                         </div>
 
@@ -350,24 +350,10 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Alternate Languages:</label>
-                            <div id="alternate-languages-list" class="languages-list">
-                                <div class="empty-message">No alternate language links defined.</div>
-                            </div>
-                            <div class="form-row">
-                                <div class="col">
-                                    <input type="text" id="new-lang-code" class="form-control"
-                                           placeholder="Code (en, fr)">
-                                </div>
-                                <div class="col">
-                                    <input type="text" id="new-lang-url" class="form-control"
-                                           placeholder="Path (/fr/page)">
-                                </div>
-                                <div class="col-auto">
-                                    <button id="add-language-btn" class="btn btn-primary btn-sm">Add</button>
-                                </div>
-                            </div>
-                            <small>Used for language switching and SEO</small>
+                            <label for="other-language-path">Alternate Language Path:</label>
+                            <input type="text" id="other-language-path" class="form-control"
+                                   placeholder="/canadasite/fr/page">
+                            <small>Path to the alternate language version (e.g. FR page for an EN page)</small>
                         </div>
                     </div>
 
@@ -387,13 +373,54 @@
                             <label for="metadata-review-date">Review Date:</label>
                             <input type="date" id="metadata-review-date" class="form-control">
                         </div>
+
+                        <div class="form-group">
+                            <label for="metadata-custom-html">Custom HTML (footer/head):</label>
+                            <textarea id="metadata-custom-html" class="form-control" rows="5"
+                                      placeholder="<footer>...</footer>" style="font-family: monospace; font-size: 12px;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" id="metadata-hide-nav"> Hide in navigation
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5>Search Engine Settings</h5>
+
+                        <div class="form-group">
+                            <label for="metadata-search-url">Search URL:</label>
+                            <input type="url" id="metadata-search-url" class="form-control"
+                                   placeholder="https://...">
+                            <small class="form-text text-muted">Custom search engine result URL (overrides auto-generated)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-search-label">Search Label:</label>
+                            <input type="text" id="metadata-search-label" class="form-control"
+                                   placeholder="Search this site">
+                            <small class="form-text text-muted">Label for the search box / site search link</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-search-index">Search Index:</label>
+                            <select id="metadata-search-index" class="form-control">
+                                <option value="default">default</option>
+                                <option value="noIndex">noIndex</option>
+                                <option value="Follow">Follow</option>
+                            </select>
+                            <small class="form-text text-muted">Search engine indexing preference</small>
+                        </div>
                     </div>
 
                     <div id="metadata-tab-raw" class="metadata-tab-panel">
                         <div class="form-group">
-                            <label for="metadata-raw">Raw Metadata JSON:</label>
+                            <label for="metadata-raw">Raw HTML Content:</label>
                             <textarea id="metadata-raw" class="form-control" rows="15"
-                                      placeholder="{ }" style="font-family: monospace; font-size: 12px;"></textarea>
+                                      placeholder="<html>...</html>" style="font-family: monospace; font-size: 12px;"></textarea>
                         </div>
                     </div>
                 </div>

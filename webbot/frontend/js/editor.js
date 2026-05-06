@@ -5,6 +5,9 @@
         let currentPageData = null;
         window.allPages = [];
 
+        // Breadcrumb titles to skip (root-level home pages)
+        var SKIP_BREADCRUMB_TITLES = ['canadasite', 'home', 'accueil'];
+
         // DOM elements
         const pageTreeEl = document.getElementById('page-tree');
         const editorFormEl = document.getElementById('editor-form');
@@ -182,13 +185,7 @@
             cancelEditBtn.addEventListener('click', cancelEdit);
             // File manager buttons removed per user request - event listeners removed
 
-
-
-            // Home link
-            document.getElementById('home-link').addEventListener('click', function(e) {
-                e.preventDefault();
-                clearEditor();
-            });
+            // Home link - removed click override to allow natural navigation to navigation.html
 
             // FileBot toggle button - controls left sidebar
             const filebotToggleBtn = document.getElementById('filebot-toggle-btn');
@@ -438,7 +435,7 @@
                 content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
                 // Load Canada.ca CSS for editor content (makes editing look like preview)
                 content_css: [
-                    '/gcweb/GCWeb/css/theme.min.css'
+                    '/etc/designs/canada/wet-boew/css/theme.min.css'
                 ],
                 // Allow all HTML elements for Canada.ca pages
                 extended_valid_elements: '*[*]',
@@ -996,8 +993,6 @@
         function updateFileBotTargetFolder(filePathInfo) {
             const folderPathEl = document.getElementById('filebot-target-folder-path');
             const folderSourceEl = document.getElementById('folder-source-text');
-            const aiOpsPathEl = document.getElementById('ai-ops-folder-path');
-
             console.log('updateFileBotTargetFolder called with:', filePathInfo);
             console.log('Elements found:', !!folderPathEl, !!folderSourceEl);
 
@@ -1011,14 +1006,6 @@
                 folderPathEl.textContent = filePathInfo.file_path;
                 folderPathEl.style.color = '#2e7d32';
                 folderPathEl.style.fontWeight = 'normal';
-
-                // Update AI Operations folder path
-                if (aiOpsPathEl) {
-                    aiOpsPathEl.textContent = filePathInfo.file_path;
-                    aiOpsPathEl.style.color = '#2e7d32';
-                    aiOpsPathEl.style.fontWeight = 'normal';
-                    aiOpsPathEl.style.fontStyle = 'normal';
-                }
 
                 // Show the source (inheritance info)
                 folderSourceEl.textContent = `Source: ${filePathInfo.source}`;
@@ -1052,16 +1039,13 @@
                 folderPathEl.innerHTML = `<em style="color: #757575;">${displayText}</em>`;
                 folderSourceEl.textContent = `Inheritance: ${filePathInfo.source}`;
 
-                // Update AI Operations folder path
-                if (aiOpsPathEl) {
-                    aiOpsPathEl.innerHTML = `<em style="color: #757575;">${displayText}</em>`;
-                }
-
                 // Clear current folder and load documents from root
                 window.currentFileBotFolder = null;
                 loadRecentDocumentsFromTargetFolder(null);
             }
         }
+
+
 
         // Helper function to get folder ID from folder path
         async function getFolderIdFromPath(folderPath) {
@@ -1803,7 +1787,11 @@
 
                 // Also populate TinyMCE editor if initialized
                 if (tinyMceEditor) {
-                    tinyMceEditor.setContent(cleanedContent);
+                    try {
+                        tinyMceEditor.setContent(cleanedContent);
+                    } catch (e) {
+                        console.warn('TinyMCE setContent failed (non-fatal):', e);
+                    }
                 }
 
                 // Update page content in currentPageData to cleaned version
@@ -1858,7 +1846,7 @@
             // Show loading state in breadcrumb
             breadcrumbEl.innerHTML = `
                 <div class="breadcrumb-item">
-                    <a href="${getEditorUrl('/en')}" id="home-link">canada.ca</a>
+                    <a href="navigation.html?path=${encodeURIComponent(page.path)}" id="home-link">Canadasite</a>
                 </div>
                 <div class="breadcrumb-item">Loading breadcrumb...</div>
             `;
@@ -1876,12 +1864,16 @@
                 // Render breadcrumb
                 let breadcrumbHtml = `
                     <div class="breadcrumb-item">
-                        <a href="${getEditorUrl('/en')}" id="home-link">canada.ca</a>
+                        <a href="navigation.html?path=${encodeURIComponent(page.path)}" id="home-link">Canadasite</a>
                     </div>
                 `;
 
                 // Add intermediate pages (except the current page which will be added as active)
+                // Skip the first breadcrumbPath item if it's a root-level page (avoids "Canadasite > canadasite" or "Canadasite > Home" duplicates)
                 for (let i = 0; i < breadcrumbPath.length - 1; i++) {
+                    if (i === 0 && breadcrumbPath[0].title && SKIP_BREADCRUMB_TITLES.includes(breadcrumbPath[0].title.toLowerCase())) {
+                        continue;
+                    }
                     const ancestor = breadcrumbPath[i];
                     // Pass only the path up to this ancestor (slice 0 to i+1)
                     const ancestorPath = buildFullPath(ancestor, breadcrumbPath.slice(0, i + 1));
@@ -1910,12 +1902,7 @@
 
                 breadcrumbEl.innerHTML = breadcrumbHtml;
 
-                // Add event listeners
-                document.getElementById('home-link').addEventListener('click', function(e) {
-                    e.preventDefault();
-                    // Load the home page (language root)
-                    loadPage('/en');
-                });
+                // No event listener - home-link now naturally navigates to navigation.html
 
                 // Add click events for breadcrumb links
                 document.querySelectorAll('.breadcrumb-link').forEach(link => {
@@ -1935,17 +1922,12 @@
                 // Fallback to simple breadcrumb
                 breadcrumbEl.innerHTML = `
                     <div class="breadcrumb-item">
-                        <a href="${getEditorUrl('/en')}" id="home-link">canada.ca</a>
+                        <a href="navigation.html?path=${encodeURIComponent(page.path)}" id="home-link">Canadasite</a>
                     </div>
                     <div class="breadcrumb-item active">${cleanTitle(page.title) || page.id}</div>
                 `;
 
-                // Re-add home link event listener
-                document.getElementById('home-link').addEventListener('click', function(e) {
-                    e.preventDefault();
-                    // Load the home page (language root)
-                    loadPage('/en');
-                });
+                // No event listener needed - home-link navigates naturally to navigation.html
             }
         }
 
@@ -2216,12 +2198,15 @@
                 // Generate breadcrumb HTML
                 let breadcrumbHtml = '';
 
-                // Add Home link - use language-specific root if available
-                const homeHref = page.language ? `/${page.language}.html` : '/en.html';
-                breadcrumbHtml += `<li><a href="${homeHref}">canada.ca</a></li>`;
+                // Add Canadasite root link
+                breadcrumbHtml += `<li><a href="navigation.html?path=${encodeURIComponent(page.path)}">Canadasite</a></li>`;
 
                 // Add intermediate pages (except the current page)
+                // Skip the first breadcrumbPath item if it's a root-level page
                 for (let i = 0; i < breadcrumbPath.length - 1; i++) {
+                    if (i === 0 && breadcrumbPath[0].title && SKIP_BREADCRUMB_TITLES.includes(breadcrumbPath[0].title.toLowerCase())) {
+                        continue;
+                    }
                     const ancestor = breadcrumbPath[i];
                     // Pass only the path up to this ancestor (slice 0 to i+1)
                     const ancestorPath = buildFullPath(ancestor, breadcrumbPath.slice(0, i + 1));
@@ -2235,8 +2220,8 @@
                 const cleanedTitle = cleanTitle(currentPage.title) || currentPage.id;
                 const currentPageTitle = escapeHtml(cleanedTitle);
 
-                // Skip adding current page if it's "Canada.ca" (root page)
-                if (cleanedTitle.toLowerCase() !== 'canada.ca') {
+                // Skip adding current page if it's a root-level page
+                if (!SKIP_BREADCRUMB_TITLES.includes(cleanedTitle.toLowerCase())) {
                     breadcrumbHtml += `<li class="active">${currentPageTitle}</li>`;
                 }
 
@@ -2684,83 +2669,17 @@
                 return true;
             },
 
-            // Update alternate languages
+            /* === FUTURE: Multi-language support ===
             updateAlternateLanguages: function(languages) {
-                if (!currentPageData) {
-                    console.error('currentPageData not available');
-                    return false;
-                }
-
-                if (!currentPageData.metadata) {
-                    currentPageData.metadata = {};
-                }
-
-                if (!Array.isArray(languages)) {
-                    console.error('Alternate languages must be an array');
-                    return false;
-                }
-
-                currentPageData.metadata.alternateLanguages = languages;
-                console.log('Updated alternate languages:', languages);
-                return true;
+                ...
             },
-
-            // Add an alternate language link
             addAlternateLanguage: function(hreflang, href, title = '') {
-                if (!currentPageData) {
-                    console.error('currentPageData not available');
-                    return false;
-                }
-
-                if (!currentPageData.metadata) {
-                    currentPageData.metadata = {};
-                }
-
-                if (!currentPageData.metadata.alternateLanguages) {
-                    currentPageData.metadata.alternateLanguages = [];
-                }
-
-                // Check if this language already exists
-                const existingIndex = currentPageData.metadata.alternateLanguages.findIndex(
-                    lang => lang.hreflang.toLowerCase() === hreflang.toLowerCase()
-                );
-
-                const newLang = {
-                    hreflang: hreflang.toLowerCase(),
-                    href: href,
-                    title: title
-                };
-
-                if (existingIndex >= 0) {
-                    // Update existing
-                    currentPageData.metadata.alternateLanguages[existingIndex] = newLang;
-                } else {
-                    // Add new
-                    currentPageData.metadata.alternateLanguages.push(newLang);
-                }
-
-                console.log('Added/updated alternate language:', newLang);
-                return true;
+                ...
             },
-
-            // Remove an alternate language link
             removeAlternateLanguage: function(hreflang) {
-                if (!currentPageData || !currentPageData.metadata || !currentPageData.metadata.alternateLanguages) {
-                    return false;
-                }
-
-                const initialLength = currentPageData.metadata.alternateLanguages.length;
-                currentPageData.metadata.alternateLanguages = currentPageData.metadata.alternateLanguages.filter(
-                    lang => lang.hreflang.toLowerCase() !== hreflang.toLowerCase()
-                );
-
-                const removed = initialLength > currentPageData.metadata.alternateLanguages.length;
-                if (removed) {
-                    console.log(`Removed alternate language: ${hreflang}`);
-                }
-
-                return removed;
+                ...
             },
+            */
 
             // Generate default metadata for a new page
             generateDefaultMetadata: function(pageTitle = '', pageLanguage = 'en') {
@@ -3361,7 +3280,7 @@
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>Preview: ${title}</title>
-                    <link rel="stylesheet" href="/gcweb/GCWeb/css/theme.min.css">
+                    <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
                     <style>
                         body {
                             padding: 20px;
@@ -3409,8 +3328,8 @@
                     <!-- jQuery (required by WET-BOEW) -->
                     <script src="/gcweb/external/jquery/2.2.4/jquery.min.js"><\/script>
                     <!-- Canada.ca WET-BOEW JavaScript (deferred) -->
-                    <script src="/gcweb/wet-boew/js/wet-boew.min.js" defer><\/script>
-                    <script src="/gcweb/GCWeb/js/theme.min.js" defer><\/script>
+                    <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js" defer><\/script>
+                    <script src="/etc/designs/canada/wet-boew/js/theme.min.js" defer><\/script>
                 </body>
                 </html>
             `;
@@ -3619,8 +3538,13 @@
                 const updatedData = {
                     title: currentPageData?.title || 'Untitled Page',
                     content: finalContent,
+                    description: currentPageData?.description || '',
+                    keywords: currentPageData?.keywords || '',
+                    other_language_path: currentPageData?.other_language_path || null,
                     language: currentPageData?.language || 'en',
-                    status: currentPageData?.status || 'draft'
+                    status: currentPageData?.status || 'draft',
+                    hide_in_navigation: currentPageData?.hide_in_navigation ?? false,
+                    metadata: currentPageData?.metadata || undefined
                 };
 
                 // Validate required fields
@@ -8836,80 +8760,11 @@
                 });
             }
 
-            // Add language link functionality
+            /* === FUTURE: Multi-language support ===
+            // Alternate language UI will be re-enabled when multi-language support is implemented
             const addLangBtn = document.getElementById('add-language-btn');
-            const newLangCode = document.getElementById('new-lang-code');
-            const newLangUrl = document.getElementById('new-lang-url');
-            const languagesList = document.getElementById('alternate-languages-list');
-
-            if (addLangBtn && newLangCode && newLangUrl && languagesList) {
-                addLangBtn.addEventListener('click', function() {
-                    const langCode = newLangCode.value.trim();
-                    const langUrl = newLangUrl.value.trim();
-
-                    if (!langCode || !langUrl) {
-                        alert('Please enter both language code and URL');
-                        return;
-                    }
-
-                    // Validate language code format
-                    if (!/^[a-z]{2}(-[A-Z]{2})?$/i.test(langCode)) {
-                        alert('Language code should be like "en", "fr", or "es-CA"');
-                        return;
-                    }
-
-                    // Add to metadata manager
-                    const added = metadataManager.addAlternateLanguage(langCode, langUrl);
-                    if (added) {
-                        // Update UI
-                        updateLanguagesList();
-                        newLangCode.value = '';
-                        newLangUrl.value = '';
-                    }
-                });
-
-                // Function to update languages list UI
-                window.updateLanguagesList = function() {
-                    const metadata = metadataManager.getMetadata();
-                    const languages = metadata.alternateLanguages || [];
-
-                    if (languages.length === 0) {
-                        languagesList.innerHTML = '<div class="empty-message">No alternate language links defined.</div>';
-                        return;
-                    }
-
-                    let html = '';
-                    languages.forEach(lang => {
-                        html += `
-                            <div class="language-item">
-                                <div class="language-item-info">
-                                    <div class="language-item-code">${lang.hreflang}</div>
-                                    <div class="language-item-url">${lang.href}</div>
-                                    ${lang.title ? `<div class="language-item-title">${lang.title}</div>` : ''}
-                                </div>
-                                <div class="language-item-actions">
-                                    <button class="btn btn-sm btn-outline-danger remove-language" data-lang="${lang.hreflang}">Remove</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    languagesList.innerHTML = html;
-
-                    // Add event listeners to remove buttons
-                    languagesList.querySelectorAll('.remove-language').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const langCode = this.getAttribute('data-lang');
-                            if (confirm(`Remove ${langCode} language link?`)) {
-                                const removed = metadataManager.removeAlternateLanguage(langCode);
-                                if (removed) {
-                                    updateLanguagesList();
-                                }
-                            }
-                        });
-                    });
-                };
-            }
+            ...
+            */
 
             // Export metadata as HTML
             const exportBtn = document.getElementById('export-metadata-btn');
@@ -8920,9 +8775,7 @@
                     const rawTextarea = document.getElementById('metadata-raw');
                     if (rawTextarea) {
                         rawTextarea.value = `<!-- Generated metadata HTML -->\n${html}`;
-                        // Switch to raw tab
-                        document.querySelector('.metadata-tab[data-tab="raw"]').click();
-                        alert('Metadata exported to Raw JSON tab');
+                        alert('Metadata HTML exported. Copy from Raw HTML tab if needed.');
                     }
                 });
             }
@@ -8977,6 +8830,22 @@
             if (viewportInput) viewportInput.value = metadata.viewport || 'width=device-width, initial-scale=1.0';
             if (htmlLangInput) htmlLangInput.value = metadata.htmlLang || currentPageData?.language || 'en';
 
+            // Hide in navigation
+            const hideNavCheckbox = document.getElementById('metadata-hide-nav');
+            if (hideNavCheckbox) hideNavCheckbox.checked = currentPageData?.hide_in_navigation === true;
+
+            // Custom HTML (free text field for author)
+            const customHtmlInput = document.getElementById('metadata-custom-html');
+            if (customHtmlInput) customHtmlInput.value = metadata.custom_html || '';
+
+            // Search engine settings
+            const searchUrlInput = document.getElementById('metadata-search-url');
+            if (searchUrlInput) searchUrlInput.value = metadata.search_url || '';
+            const searchLabelInput = document.getElementById('metadata-search-label');
+            if (searchLabelInput) searchLabelInput.value = metadata.search_label || '';
+            const searchIndexSelect = document.getElementById('metadata-search-index');
+            if (searchIndexSelect) searchIndexSelect.value = metadata.search_index || 'default';
+
             // Social metadata
             const ogTitleInput = document.getElementById('og-title');
             const ogDescInput = document.getElementById('og-description');
@@ -8994,9 +8863,15 @@
             if (twitterTitleInput) twitterTitleInput.value = metadata.twitterCard?.title || metadata.title || currentPageData?.title || '';
             if (twitterDescInput) twitterDescInput.value = metadata.twitterCard?.description || metadata.description || '';
 
-            // Update languages list
-            if (typeof updateLanguagesList === 'function') {
-                updateLanguagesList();
+            // Other language path
+            const otherLangInput = document.getElementById('other-language-path');
+            if (otherLangInput) otherLangInput.value = currentPageData?.other_language_path || '';
+
+            // Populate Raw HTML tab with current editor content
+            const rawTextarea = document.getElementById('metadata-raw');
+            const editorEl = document.getElementById('editor-content');
+            if (rawTextarea && editorEl) {
+                rawTextarea.value = editorEl.value;
             }
 
             console.log('Metadata loaded into form');
@@ -9056,6 +8931,38 @@
             }
             if (htmlLangInput) {
                 metadataManager.updateField('htmlLang', htmlLangInput.value.trim());
+            }
+
+            // Other language path
+            const otherLangInput = document.getElementById('other-language-path');
+            if (otherLangInput) {
+                currentPageData.other_language_path = otherLangInput.value.trim() || null;
+            }
+
+            // Hide in navigation
+            const hideNavCheckbox = document.getElementById('metadata-hide-nav');
+            if (hideNavCheckbox) {
+                currentPageData.hide_in_navigation = hideNavCheckbox.checked ? true : false;
+            }
+
+            // Custom HTML (free text field for author)
+            const customHtmlInput = document.getElementById('metadata-custom-html');
+            if (customHtmlInput) {
+                metadataManager.updateField('custom_html', customHtmlInput.value);
+            }
+
+            // Search engine settings
+            const searchUrlInput = document.getElementById('metadata-search-url');
+            if (searchUrlInput) {
+                metadataManager.updateField('search_url', searchUrlInput.value.trim() || '');
+            }
+            const searchLabelInput = document.getElementById('metadata-search-label');
+            if (searchLabelInput) {
+                metadataManager.updateField('search_label', searchLabelInput.value.trim() || '');
+            }
+            const searchIndexSelect = document.getElementById('metadata-search-index');
+            if (searchIndexSelect) {
+                metadataManager.updateField('search_index', searchIndexSelect.value || 'default');
             }
 
             // Update social metadata

@@ -1,0 +1,29 @@
+<!-- Components Mustache Template -->
+{{#components}}
+<div class="component-item-sidebar">
+    <div class="component-icon">
+        {{#icon}}<span class="component-icon-symbol">{{icon}}</span>{{/icon}}
+        {{^icon}}<span class="component-icon-symbol">🧩</span>{{/icon}}
+    </div>
+    <div class="component-info">
+        <div class="component-name">{{name}}</div>
+        <div class="component-description">{{description}}</div>
+        <div class="component-category">
+            <span class="category-badge">{{category}}</span>
+            {{#is_custom}}<span class="custom-badge">Custom</span>{{/is_custom}}
+        </div>
+        <div class="component-actions">
+            <button class="btn btn-sm btn-success insert-component-btn" data-component-name="{{name}}">Insert</button>
+            {{#has_preview}}
+            <button class="btn btn-sm btn-info preview-component-btn" data-component-name="{{name}}">Preview</button>
+            {{/has_preview}}
+        </div>
+    </div>
+</div>
+{{/components}}
+{{^components}}
+<div class="component-item-sidebar">
+    <p>No components available.</p>
+    <p><small>Components are predefined UI elements that can be inserted into your page.</small></p>
+</div>
+{{/components}}

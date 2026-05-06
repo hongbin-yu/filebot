@@ -695,39 +695,7 @@
             margin-top: 0;
         }
 
-        /* AI Operations Section Styles */
-        .ai-operations-section {
-            background: #f3e5f5;
-            border: 1px solid #ce93d8;
-            border-radius: 6px;
-            padding: 10px 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
 
-        .ai-ops-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .ai-ops-header small {
-            color: #7b1fa2;
-            font-weight: 700;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .ai-ops-folder-path {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 13px;
-            color: #2e7d32;
-            background: #e8f5e9;
-            padding: 6px 8px;
-            border-radius: 4px;
-            border-left: 3px solid #9c27b0;
-            word-break: break-all;
-        }
 
         .filebot-sidebar-info {
             background: #f0f7ff;

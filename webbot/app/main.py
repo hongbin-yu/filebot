@@ -3,7 +3,7 @@ WebBot - AI增强的网站内容管理系统
 基于FileBot基础设施，提供AI辅助创页、修正、删页、审查功能
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -12,10 +12,10 @@ import os
 
 # 导入路由
 try:
-    from .routes import pages_router, ai_router, files_router, components_router, COMPONENTS_ENABLED, FILES_ENABLED
+    from .routes import pages_router, ai_router, files_router, components_router, mustache_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED
 except ImportError:
     # 备用导入方式
-    from routes import pages_router, ai_router, files_router, components_router, COMPONENTS_ENABLED, FILES_ENABLED
+    from routes import pages_router, ai_router, files_router, components_router, mustache_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED
 
 # 数据库路径
 FILEBOT_DB_PATH = "/home/hongb/.openclaw/workspace/filebot/backend/filebot.db"
@@ -160,6 +160,12 @@ if COMPONENTS_ENABLED and components_router:
 else:
     print("⚠️  组件路由未加载")
 
+if MUSTACHE_ENABLED and mustache_router:
+    app.include_router(mustache_router)
+    print("✅ Mustache渲染路由已加载 (顶级 /mustache/{path})")
+else:
+    print("⚠️  Mustache渲染路由未加载")
+
 # ==================== FileBot文档代理路由 ====================
 # 提供/content/dam/路径访问已发布的FileBot文档
 # 增强安全性：隐藏FileBot API后端，统一访问控制
@@ -285,6 +291,14 @@ if os.path.exists(gcweb_dir):
 else:
     print(f"⚠️  GCWeb目录不存在: {gcweb_dir}")
 
+# 添加/etc/designs静态文件服务 (Canada.ca WET主题路径)
+etc_designs_dir = os.path.join(os.path.dirname(__file__), "..", "etc", "designs")
+if os.path.exists(etc_designs_dir):
+    app.mount("/etc/designs", StaticFiles(directory=etc_designs_dir, html=True), name="etc-designs")
+    print(f"📁 /etc/designs 静态文件目录: {etc_designs_dir}")
+else:
+    print(f"⚠️ /etc/designs 目录不存在: {etc_designs_dir}")
+
 @app.get("/")
 async def root():
     """根端点，重定向到前端界面或返回API信息"""
@@ -304,6 +318,53 @@ async def filebot_picker_redirect():
     """重定向 /filebot-picker.html 到 /static/filebot-picker.html 以保持向后兼容性"""
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/static/filebot-picker.html")
+
+
+@app.get("/api/v1/export-folder")
+async def export_folder(path: str = "/canadasite", depth: int = Query(1, ge=1, le=20)):
+    """
+    导出指定文件夹下的页面，支持深度控制。
+    depth=1 仅当前路径，depth=2 包含直接子页，以此类推。
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    export_path = path.rstrip('/')
+    if not export_path:
+        export_path = '/'
+    if not export_path.startswith('/'):
+        export_path = '/' + export_path
+
+    cursor.execute("""
+        SELECT id, parent_path, path, title, language, description, keywords,
+               content, status, metadata, hide_in_navigation, other_language_path
+        FROM webbot_page
+        ORDER BY path
+    """)
+    all_pages = cursor.fetchall()
+    conn.close()
+
+    base_parts = export_path.strip('/').split('/') if export_path != '/' else []
+    base_depth = len(base_parts)
+
+    result = []
+    for page in all_pages:
+        page_path = page['path']
+        page_parts = page_path.strip('/').split('/')
+
+        if page_path == export_path:
+            result.append(dict(page))
+        elif page_path.startswith(export_path + '/'):
+            additional_levels = len(page_parts) - base_depth
+            if additional_levels <= depth - 1:
+                result.append(dict(page))
+
+    return {
+        "path": export_path,
+        "depth": depth,
+        "total": len(result),
+        "pages": result
+    }
 
 
 @app.get("/api")
@@ -353,3 +414,18 @@ if __name__ == "__main__":
     print("📚 API文档: http://localhost:8000/docs")
     print("🤖 AI功能: 创页、修正、审查、删除建议")
     uvicorn.run(app, host="0.0.0.0", port=8000)
+# GCWeb组件资产静态文件服务
+import os as _os
+from fastapi.responses import FileResponse as _FileResponse, Response as _Response
+
+gcweb_components_dir = _os.path.normpath(_os.path.join(_os.path.dirname(__file__), "..", "GCWeb"))
+if _os.path.exists(gcweb_components_dir):
+    @app.get("/gcweb-assets/{path:path}")
+    async def serve_gcweb_assets(path: str):
+        full_path = _os.path.normpath(_os.path.join(gcweb_components_dir, path))
+        if full_path.startswith(gcweb_components_dir) and _os.path.exists(full_path) and _os.path.isfile(full_path):
+            return _FileResponse(full_path)
+        return _Response(status_code=404)
+    print(f"📁 GCWeb组件资产目录: {gcweb_components_dir}")
+else:
+    print(f"⚠️  GCWeb组件目录不存在: {gcweb_components_dir}")

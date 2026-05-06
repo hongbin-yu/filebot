@@ -1,0 +1,35 @@
+<!-- Pages Mustache Template -->
+{{#pages}}
+<div class="page-item-sidebar">
+    <div class="page-icon">
+        {{#is_home}}🏠{{/is_home}}
+        {{^is_home}}
+            {{#language}}🇬🇧{{/language}}
+            {{^language}}📄{{/language}}
+        {{/is_home}}
+    </div>
+    <div class="page-info">
+        <div class="page-title">{{title}}</div>
+        <div class="page-meta">
+            {{#id}}<span class="page-id">ID: {{id}}</span>{{/id}}
+            {{#language}}<span class="page-language">{{language}}</span>{{/language}}
+            {{#status}}<span class="page-status">{{status}}</span>{{/status}}
+            {{#last_modified}}<span class="page-modified">Modified: {{last_modified}}</span>{{/last_modified}}
+        </div>
+        <div class="page-path">
+            <small><code>{{path}}</code></small>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-sm btn-primary edit-page-btn" data-page-id="{{id}}">Edit</button>
+            <button class="btn btn-sm btn-default preview-page-btn" data-page-id="{{id}}">Preview</button>
+            <button class="btn btn-sm btn-info duplicate-page-btn" data-page-id="{{id}}">Duplicate</button>
+        </div>
+    </div>
+</div>
+{{/pages}}
+{{^pages}}
+<div class="page-item-sidebar">
+    <p>No pages found.</p>
+    <p><small>Create your first page using the "New Page" button or import existing pages.</small></p>
+</div>
+{{/pages}}

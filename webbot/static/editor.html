@@ -11,7 +11,7 @@
 
 
     <!-- Canada.ca WET theme CSS -->
-    <link rel="stylesheet" href="/gcweb/GCWeb/css/theme.min.css">
+    <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
     <!-- TinyMCE WYSIWYG Editor -->
     <!-- Using TinyMCE Cloud with valid API key -->
@@ -101,16 +101,6 @@
                     <div id="filebot-folder-source" class="target-folder-source" style="font-size: 11px; color: #666; margin-top: 3px;">
                         <span class="folder-source-icon">↳</span>
                         <span id="folder-source-text">Inheritance: Current page</span>
-                    </div>
-                </div>
-
-                <!-- AI Operations Section -->
-                <div class="ai-operations-section">
-                    <div class="ai-ops-header">
-                        <small>🤖 AI Operations</small>
-                    </div>
-                    <div class="ai-ops-folder-path" id="ai-ops-folder-path">
-                        <em>No page selected</em>
                     </div>
                 </div>
 
@@ -320,8 +310,7 @@
     </script>
 
     <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
-    <script src="/gcweb/wet-boew/js/wet-boew.min.js" defer></script>
-    <script src="/gcweb/GCWeb/js/theme.min.js" defer></script>
+
     <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
     <script src="/static/js/editor.js"></script>
 
@@ -338,13 +327,13 @@
                     <ul class="metadata-tabs-nav">
                         <li class="metadata-tab active" data-tab="basic">Basic</li>
                         <li class="metadata-tab" data-tab="advanced">Advanced</li>
-                        <li class="metadata-tab" data-tab="raw">Raw JSON</li>
+                        <li class="metadata-tab" data-tab="raw">Raw HTML</li>
                     </ul>
                     <div id="metadata-tab-basic" class="metadata-tab-panel active">
                         <div class="form-group">
                             <label for="metadata-description">Description:</label>
-                            <textarea id="metadata-description" class="form-control" rows="3"
-                                      placeholder="Page description for search engines"></textarea>
+                            <input type="text" id="metadata-description" class="form-control"
+                                      placeholder="Page description for search engines">
                             <small class="char-count">Characters: <span id="desc-char-count">0</span>/160</small>
                         </div>
 
@@ -361,24 +350,10 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Alternate Languages:</label>
-                            <div id="alternate-languages-list" class="languages-list">
-                                <div class="empty-message">No alternate language links defined.</div>
-                            </div>
-                            <div class="form-row">
-                                <div class="col">
-                                    <input type="text" id="new-lang-code" class="form-control"
-                                           placeholder="Code (en, fr)">
-                                </div>
-                                <div class="col">
-                                    <input type="text" id="new-lang-url" class="form-control"
-                                           placeholder="Path (/fr/page)">
-                                </div>
-                                <div class="col-auto">
-                                    <button id="add-language-btn" class="btn btn-primary btn-sm">Add</button>
-                                </div>
-                            </div>
-                            <small>Used for language switching and SEO</small>
+                            <label for="other-language-path">Alternate Language Path:</label>
+                            <input type="text" id="other-language-path" class="form-control"
+                                   placeholder="/canadasite/fr/page">
+                            <small>Path to the alternate language version (e.g. FR page for an EN page)</small>
                         </div>
                     </div>
 
@@ -398,13 +373,54 @@
                             <label for="metadata-review-date">Review Date:</label>
                             <input type="date" id="metadata-review-date" class="form-control">
                         </div>
+
+                        <div class="form-group">
+                            <label for="metadata-custom-html">Custom HTML (footer/head):</label>
+                            <textarea id="metadata-custom-html" class="form-control" rows="5"
+                                      placeholder="<footer>...</footer>" style="font-family: monospace; font-size: 12px;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" id="metadata-hide-nav"> Hide in navigation
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5>Search Engine Settings</h5>
+
+                        <div class="form-group">
+                            <label for="metadata-search-url">Search URL:</label>
+                            <input type="url" id="metadata-search-url" class="form-control"
+                                   placeholder="https://...">
+                            <small class="form-text text-muted">Custom search engine result URL (overrides auto-generated)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-search-label">Search Label:</label>
+                            <input type="text" id="metadata-search-label" class="form-control"
+                                   placeholder="Search this site">
+                            <small class="form-text text-muted">Label for the search box / site search link</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-search-index">Search Index:</label>
+                            <select id="metadata-search-index" class="form-control">
+                                <option value="default">default</option>
+                                <option value="noIndex">noIndex</option>
+                                <option value="Follow">Follow</option>
+                            </select>
+                            <small class="form-text text-muted">Search engine indexing preference</small>
+                        </div>
                     </div>
 
                     <div id="metadata-tab-raw" class="metadata-tab-panel">
                         <div class="form-group">
-                            <label for="metadata-raw">Raw Metadata JSON:</label>
+                            <label for="metadata-raw">Raw HTML Content:</label>
                             <textarea id="metadata-raw" class="form-control" rows="15"
-                                      placeholder="{ }" style="font-family: monospace; font-size: 12px;"></textarea>
+                                      placeholder="<html>...</html>" style="font-family: monospace; font-size: 12px;"></textarea>
                         </div>
                     </div>
                 </div>
@@ -417,6 +433,33 @@
     </div>
 
     <link rel="stylesheet" href="css/metadata-modal.css">
+
+    <!-- HTML Quick Edit Modal -->
+    <!-- HTML / Component Edit Modal (dual-mode) -->
+    <div id="html-edit-modal" class="html-edit-modal" style="display: none;">
+        <div class="html-edit-modal-content">
+            <div class="html-edit-modal-header">
+                <h3><span id="html-edit-mode-title">✏️ HTML Editor</span></h3>
+                <span id="html-edit-mode-badge" class="html-edit-mode-badge">CODE</span>
+                <span id="html-edit-location" class="html-edit-location"></span>
+                <button class="html-edit-modal-close" id="html-edit-modal-close">×</button>
+            </div>
+            <div class="html-edit-modal-body">
+                <div class="html-edit-controls">
+                    <label id="html-edit-mode-label">Edit raw HTML. Ctrl+Enter to save, Esc to close.</label>
+                </div>
+                <!-- Code mode: raw textarea -->
+                <textarea id="html-edit-textarea" class="html-edit-textarea" spellcheck="false" style="display: none;"></textarea>
+                <!-- WYSIWYG mode: TinyMCE container -->
+                <div id="html-edit-wysiwyg" class="html-edit-wysiwyg" style="display: none;"></div>
+            </div>
+            <div class="html-edit-modal-footer">
+                <span id="html-edit-status" class="html-edit-status"></span>
+                <button class="btn btn-default" id="html-edit-cancel">Cancel</button>
+                <button class="btn btn-success" id="html-edit-save"><span>💾</span> Save &amp; Replace</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/static/js/component-params.js?v=202604121740"></script>
 </body>

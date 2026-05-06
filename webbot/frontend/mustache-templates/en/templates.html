@@ -1,0 +1,41 @@
+<!-- Templates Mustache Template -->
+{{#templates}}
+<div class="template-item-sidebar">
+    <div class="template-header">
+        <h5 class="template-title">{{title}}</h5>
+        <span class="template-type-badge">{{type}}</span>
+    </div>
+    <div class="template-description">
+        {{description}}
+    </div>
+    <div class="template-meta">
+        {{#author}}<span class="template-author">By: {{author}}</span>{{/author}}
+        {{#created_date}}<span class="template-date">Created: {{created_date}}</span>{{/created_date}}
+        {{#is_official}}<span class="official-badge">Official</span>{{/is_official}}
+        {{#is_custom}}<span class="custom-badge">Custom</span>{{/is_custom}}
+    </div>
+    <div class="template-actions">
+        <button class="btn btn-sm btn-primary use-template-btn" data-template-id="{{id}}">Use Template</button>
+        <button class="btn btn-sm btn-default preview-template-btn" data-template-id="{{id}}">Preview</button>
+        {{#can_edit}}
+        <button class="btn btn-sm btn-warning edit-template-btn" data-template-id="{{id}}">Edit</button>
+        {{/can_edit}}
+    </div>
+</div>
+{{/templates}}
+{{^templates}}
+<div class="template-item-sidebar">
+    <p>No templates available.</p>
+    <p><small>Templates are predefined page layouts that can be used as a starting point.</small></p>
+    <div class="template-examples">
+        <h6>Example Template Types:</h6>
+        <ul>
+            <li>Content Page</li>
+            <li>Service Page</li>
+            <li>Theme Page</li>
+            <li>Topic Template</li>
+            <li>Custom Layout</li>
+        </ul>
+    </div>
+</div>
+{{/templates}}
