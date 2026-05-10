@@ -517,7 +517,11 @@ const ClientAppFolders: React.FC = () => {
                   </thead>
                   <tbody>
                     {documents.map(doc => {
-                      const docViewUrl = `/api/v1/documents/${encodeURIComponent(doc.path || doc.storage_path)}/download?preview=1&token=${localStorage.getItem('access_token')}`;
+                      const token = localStorage.getItem('access_token');
+                      const encodedPath = encodeURIComponent(doc.path || doc.storage_path);
+                      const docViewUrl = doc.file_type === 'html'
+                        ? `/api/v1/documents/${encodedPath}/preview/html?token=${token}`
+                        : `/api/v1/documents/${encodedPath}/download?preview=1&token=${token}`;
                       return (
                       <tr key={doc.path || doc.storage_path}>
                         <td className="text-center">
