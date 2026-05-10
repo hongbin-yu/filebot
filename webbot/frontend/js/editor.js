@@ -3530,7 +3530,7 @@
                     </div>
 
                     <!-- jQuery (required by WET-BOEW) -->
-                    <script src="/gcweb/external/jquery/2.2.4/jquery.min.js"><\/script>
+                    <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"><\/script>
                     <!-- Canada.ca WET-BOEW JavaScript (deferred) -->
                     <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js" defer><\/script>
                     <script src="/etc/designs/canada/wet-boew/js/theme.min.js" defer><\/script>

@@ -43,12 +43,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/ai/, '/api/v1/ai')
       },
-      // 搜索相关API通过WebBot代理服务（端口8000）
+      // 搜索相关API直接代理到FileBot后端（端口8001）
       '/api/v1/search': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api\/v1\/search/, '/content/search')
+        rewrite: (path) => path.replace(/^\/api\/v1\/search/, '/api/v1/search')
       },
       // Export-folder 专用代理（不做路径重写，webbot 后端直接用 /api/v1/export-folder）
       '/api/v1/export-folder': {
@@ -62,6 +62,14 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1/, '/content')
+      },
+      // FileBot文档静态文件（/content/dam）直连FileBot后端（端口8001）
+      // 放在 /content 前面，优先级更高
+      '/content/dam': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        // 不重写路径，FileBot后端直接处理 /content/dam/* 静态文件
       },
       // 内容相关请求也通过WebBot代理服务
       '/content': {

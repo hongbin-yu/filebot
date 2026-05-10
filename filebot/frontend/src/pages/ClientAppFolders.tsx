@@ -178,8 +178,16 @@ const ClientAppFolders: React.FC = () => {
       try {
         const fullPath = '/' + appSlug + currentFolderPath;
 
-        // Use path_prefix query: GET /documents/?path_prefix=... (backend already supports this)
-        const docs = await documentService.getDocumentsByPathPrefix(fullPath, { limit: 200 });
+        // 前三层只显示直属文档，更深层显示全部递归文档
+        const pathDepth = currentFolderPath.split('/').filter(Boolean).length;
+        let docs;
+        if (pathDepth >= 3) {
+          // Level 4+ (如 /boarding/canadasite/en/sub) → 递归显示所有子孙文档
+          docs = await documentService.getDocumentsByPathPrefix(fullPath, { limit: 1000 });
+        } else {
+          // Level 1-3 → 只显示当前文件夹直属文档
+          docs = await documentService.getDocumentsByFolderPath(fullPath, { limit: 1000 });
+        }
 
         // Sort by folder path then title
         docs.sort((a, b) => {
@@ -213,7 +221,13 @@ const ClientAppFolders: React.FC = () => {
       setIsSearching(false);
       try {
         setDocumentsLoading(true);
-        const docs = await documentService.getDocumentsByPathPrefix(fullPath, { limit: 200 });
+        const pathDepth = currentFolderPath.split('/').filter(Boolean).length;
+        let docs;
+        if (pathDepth >= 3) {
+          docs = await documentService.getDocumentsByPathPrefix(fullPath, { limit: 1000 });
+        } else {
+          docs = await documentService.getDocumentsByFolderPath(fullPath, { limit: 1000 });
+        }
         docs.sort((a, b) => {
           const pA = a.parent_folder_path || a.folder_id || '';
           const pB = b.parent_folder_path || b.folder_id || '';
@@ -351,7 +365,7 @@ const ClientAppFolders: React.FC = () => {
 
       {/* Search Bar */}
       <div className="mb-6">
-        <div className="relative">
+        <form onSubmit={(e) => { e.preventDefault(); handleSearch(searchQuery); }} className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -362,25 +376,30 @@ const ClientAppFolders: React.FC = () => {
             placeholder="Search documents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch(searchQuery);
-              }
-            }}
-            className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-24 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          {searchQuery && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 space-x-1">
+            {searchQuery && (
+              <button
+                type="button"
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                onClick={() => {
+                  setSearchQuery('');
+                  handleSearch('');
+                }}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
             <button
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              onClick={() => {
-                setSearchQuery('');
-                handleSearch('');
-              }}
+              type="submit"
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
             >
-              ✕
+              Search
             </button>
-          )}
-        </div>
+          </div>
+        </form>
       </div>
 
       {/* Two-Column Layout */}

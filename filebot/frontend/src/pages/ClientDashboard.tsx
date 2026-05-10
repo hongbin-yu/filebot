@@ -90,31 +90,13 @@ const ClientDashboard: React.FC = () => {
     const p = overridePage ?? currentPage;
     const s = overrideSize ?? pageSize;
     try {
-      // Calculate folder depth (segments after app slug)
-      // e.g. /boarding/canadasite → depth 1, /boarding/canadasite/fr → depth 2
-      const pathWithoutApp = folderPath.replace(new RegExp(`^/${appSlug}/?`), '');
-      const depth = pathWithoutApp ? pathWithoutApp.split('/').filter(Boolean).length : 0;
-      
-      // Top 3 folder levels: show direct documents only
-      // After level 3: show all descendant docs recursively (path_prefix)
-      const isDeepFolder = depth > 3;
-      
-      let documentsData;
-      if (isDeepFolder) {
-        documentsData = await documentService.getDocumentsByPathPrefix(folderPath, {
-          skip: (p - 1) * s,
-          limit: s,
-          sort_by: 'created_at',
-          sort_order: 'desc'
-        });
-      } else {
-        documentsData = await documentService.getDocumentsByFolderPath(folderPath, {
-          skip: (p - 1) * s,
-          limit: s,
-          sort_by: 'created_at',
-          sort_order: 'desc'
-        });
-      }
+      // Always use recursive query to show all descendant documents
+      let documentsData = await documentService.getDocumentsByFolderPath(folderPath, {
+        skip: (p - 1) * s,
+        limit: s,
+        sort_by: 'created_at',
+        sort_order: 'desc'
+      });
       
       setDocuments(documentsData);
       
