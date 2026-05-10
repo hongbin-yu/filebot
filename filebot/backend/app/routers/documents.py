@@ -1449,29 +1449,35 @@ def download_document(
     request: Request,
     document_identifier: str,
     download_type: str = Query("original", description="Download type: original or pdf"),
+    preview: bool = Query(False, description="Enable preview mode (skip publish status check)"),
     current_user: User = Depends(get_current_active_user_allow_query),
     db: Session = Depends(get_db)
 ):
     """Download document file by identifier (UUID or path)
     
-    Supports downloading original file or converted PDF
+    Supports downloading original file or converted PDF.
     """
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # Check publish status: only PUBLISHED docs accessible via URL
-    # Allow access if publish_status is None (legacy docs)
-    
-    # Check for WebBot request (special permission for unpublished docs)
     import logging
     logger = logging.getLogger(__name__)
-    is_webbot_request = request.headers.get("X-WebBot-Access") == "true"
-    if is_webbot_request:
-        logger.info(f"WebBot request accessing unpublished doc {document.path}, skipping publish status check")
-    elif document.publish_status is not None and document.publish_status != PublishStatus.PUBLISHED:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Document not published, cannot access via URL"
-        )
+    
+    # Preview mode (from editor/admin UI): skip publish status check
+    if preview:
+        logger.info(f"Preview mode accessing doc {document.path}, skipping publish status check")
+    else:
+        # Check publish status: only PUBLISHED docs accessible via URL
+        # Allow access if publish_status is None (legacy docs)
+        
+        # Check for WebBot request (special permission for unpublished docs)
+        is_webbot_request = request.headers.get("X-WebBot-Access") == "true"
+        if is_webbot_request:
+            logger.info(f"WebBot request accessing unpublished doc {document.path}, skipping publish status check")
+        elif document.publish_status is not None and document.publish_status != PublishStatus.PUBLISHED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Document not published, cannot access via URL"
+            )
     
     # TODO: Build actual file path based on configured storage path
     # This is just an example implementation
@@ -1513,7 +1519,8 @@ def download_document(
     return FileResponse(
         path=file_path,
         filename=filename,
-        media_type=media_type
+        media_type=media_type,
+        content_disposition_type="inline" if preview else "attachment"
     )
 
 
