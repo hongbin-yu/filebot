@@ -5,7 +5,7 @@ import folderService, { Folder } from '../services/folder.service';
 import appService, { App } from '../services/app.service';
 
 const ClientDocumentDetail: React.FC = () => {
-  // 从URL获取标识符（支持UUID和路径）
+  // Get identifier from URL (supports UUID and path)
   const splat = useParams()['*'] || '';
   const identifier = splat.startsWith('/') ? splat : '/' + splat;
   
@@ -19,9 +19,9 @@ const ClientDocumentDetail: React.FC = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [htmlContentUrl, setHtmlContentUrl] = useState<string | null>(null);
 
-  // 解析文档标识符
+  // Parse document identifier
   const getDocIdentifier = (): string => {
-    // UUID去掉前面加的/
+    // Remove the leading / from UUID
     const uuidPattern = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
     if (uuidPattern.test(identifier)) {
       return identifier.slice(1);
@@ -34,7 +34,7 @@ const ClientDocumentDetail: React.FC = () => {
   useEffect(() => {
     const fetchDocument = async () => {
       if (!docIdentifier) {
-        setError('文档标识符无效');
+        setError('Invalid document identifier');
         setLoading(false);
         return;
       }
@@ -46,7 +46,7 @@ const ClientDocumentDetail: React.FC = () => {
         const data = await documentService.getDocumentByIdentifier(docIdentifier);
         setDocument(data);
         
-        // 获取文件夹和应用信息（优先使用路径）
+        // Get folder and app info (prefer path)
         const folderIdentifier = data.folder_path || data.folder_id;
         if (folderIdentifier) {
           try {
@@ -59,12 +59,12 @@ const ClientDocumentDetail: React.FC = () => {
               if (appData) setApp(appData);
             }
           } catch (folderErr) {
-            console.warn('获取文件夹信息失败:', folderErr);
+            console.warn('Failed to get folder info:', folderErr);
           }
         }
       } catch (err: any) {
-        console.error('获取文档详情失败:', err);
-        setError(err.message || '加载文档失败');
+        console.error('Failed to fetch document details:', err);
+        setError(err.message || 'Failed to load document');
       } finally {
         setLoading(false);
       }
@@ -73,7 +73,7 @@ const ClientDocumentDetail: React.FC = () => {
     fetchDocument();
   }, [docIdentifier]);
 
-  // 处理HTML预览内容加载
+  // Handle HTML preview content loading
   useEffect(() => {
     let currentBlobUrl: string | null = null;
     
@@ -82,7 +82,7 @@ const ClientDocumentDetail: React.FC = () => {
         return;
       }
 
-      // 如果已经有内容URL，先释放
+      // If there's already a content URL, release it first
       if (currentBlobUrl) {
         URL.revokeObjectURL(currentBlobUrl);
         currentBlobUrl = null;
@@ -99,7 +99,7 @@ const ClientDocumentDetail: React.FC = () => {
         const blob = await documentService.downloadDocument(docApiId, 'original');
         
         if (blob.size === 0) {
-          const emptyHtml = '<html><body><h3>文件内容为空</h3></body></html>';
+          const emptyHtml = '<html><body><h3>File is empty</h3></body></html>';
           const emptyBlob = new Blob([emptyHtml], { type: 'text/html' });
           const url = URL.createObjectURL(emptyBlob);
           currentBlobUrl = url;
@@ -110,10 +110,10 @@ const ClientDocumentDetail: React.FC = () => {
           setHtmlContentUrl(url);
         }
       } catch (error: any) {
-        console.error('加载HTML预览内容失败:', error);
+        console.error('Failed to load HTML preview content:', error);
         const errorHtml = `<html><body>
-          <h3 style="color: #d32f2f;">加载HTML预览失败</h3>
-          <p>错误信息: ${error.message || '未知错误'}</p>
+          <h3 style="color: #d32f2f;">Failed to load HTML preview</h3>
+          <p>Error: ${error.message || 'Unknown error'}</p>
         </body></html>`;
         const errorBlob = new Blob([errorHtml], { type: 'text/html' });
         const url = URL.createObjectURL(errorBlob);
@@ -148,8 +148,8 @@ const ClientDocumentDetail: React.FC = () => {
       window.URL.revokeObjectURL(url);
       window.document.body.removeChild(a);
     } catch (err: any) {
-      console.error('下载失败:', err);
-      window.showWetAlert('下载失败: ' + err.message);
+      console.error('Download failed:', err);
+      window.showWetAlert('Download failed: ' + err.message);
     }
   };
 
@@ -172,7 +172,7 @@ const ClientDocumentDetail: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
         <div className="max-w-4xl mx-auto text-center py-16">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">加载文档详情中...</p>
+          <p className="mt-4 text-gray-600">Loading document details...</p>
         </div>
       </div>
     );
@@ -183,13 +183,13 @@ const ClientDocumentDetail: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-xl shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">加载失败</h2>
-            <p className="text-gray-700 mb-6">{error || '文档不存在'}</p>
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Load failed</h2>
+            <p className="text-gray-700 mb-6">{error || 'Document not found'}</p>
             <button
               onClick={handleBack}
               className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
-              返回文档列表
+              Back to document list
             </button>
           </div>
         </div>
@@ -202,10 +202,10 @@ const ClientDocumentDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="max-w-6xl mx-auto">
-        {/* 面包屑导航 */}
+        {/* Breadcrumb navigation */}
         <div className="mb-6">
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-            <Link to="/apps" className="hover:text-blue-600">应用列表</Link>
+            <Link to="/apps" className="hover:text-blue-600">App list</Link>
             <span>›</span>
             {app && (
               <>
@@ -230,7 +230,7 @@ const ClientDocumentDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* 标题和操作按钮 */}
+        {/* Title and action buttons */}
         <div className="bg-white rounded-xl shadow p-6 mb-6">
           <div className="flex justify-between items-start">
             <div>
@@ -240,10 +240,10 @@ const ClientDocumentDetail: React.FC = () => {
                   {document.file_type.toUpperCase()}
                 </span>
                 <span className="text-gray-600">
-                  大小: {formatFileSize(document.file_size)}
+                  Size: {formatFileSize(document.file_size)}
                 </span>
                 <span className="text-gray-600">
-                  上传时间: {new Date(document.created_at).toLocaleDateString()}
+                  Uploaded: {new Date(document.created_at).toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -252,29 +252,29 @@ const ClientDocumentDetail: React.FC = () => {
                 onClick={handleBack}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
-                返回
+                Back
               </button>
               <button
                 onClick={() => handleDownload('original')}
                 className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                下载
+                Download
               </button>
             </div>
           </div>
         </div>
 
-        {/* 文档预览区域 */}
+        {/* Document preview area */}
         {isHtmlFile ? (
           <div className="bg-white rounded-xl shadow overflow-hidden">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">HTML 预览</h2>
+              <h2 className="text-xl font-bold text-gray-800">HTML Preview</h2>
             </div>
             <div className="p-6">
               {previewLoading ? (
                 <div className="text-center py-12">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <p className="mt-3 text-gray-600">加载HTML内容中...</p>
+                  <p className="mt-3 text-gray-600">Loading HTML content...</p>
                 </div>
               ) : htmlContentUrl ? (
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
@@ -289,18 +289,18 @@ const ClientDocumentDetail: React.FC = () => {
                       onClick={() => handleDownload('original')}
                       className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     >
-                      下载HTML文件
+                      Download HTML file
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-gray-600">无法加载HTML预览</p>
+                  <p className="text-gray-600">Unable to load HTML preview</p>
                   <button
                     onClick={() => window.location.reload()}
                     className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                   >
-                    重试
+                    Retry
                   </button>
                 </div>
               )}
@@ -314,24 +314,24 @@ const ClientDocumentDetail: React.FC = () => {
               </svg>
             </div>
             <h3 className="text-xl font-medium text-gray-900 mb-2">
-              文件类型预览暂不可用
+              File type preview not available
             </h3>
             <p className="text-gray-500 mb-6">
-              {document.file_type.toUpperCase()} 格式的文件预览功能正在开发中。
-              您可以下载文件后在本地查看。
+              Preview for {document.file_type.toUpperCase()} files is under development.
+              You can download the file to view it locally.
             </p>
             <button
               onClick={() => handleDownload('original')}
               className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
-              下载 {document.file_type.toUpperCase()} 文件
+              Download {document.file_type.toUpperCase()} file
             </button>
           </div>
         )}
 
-        {/* 底部 */}
+        {/* Footer */}
         <footer className="mt-12 pt-8 border-t border-gray-200 text-center text-gray-500 text-sm">
-          <p>FileBot Client Portal • 文档详情 • {document.original_filename}</p>
+          <p>FileBot Client Portal • Document Details • {document.original_filename}</p>
         </footer>
       </div>
     </div>

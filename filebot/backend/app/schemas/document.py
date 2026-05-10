@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field, validator
 from typing import Optional, Dict, Any
 from datetime import datetime
-import uuid
 import enum
 
 
@@ -89,21 +88,14 @@ class DocumentBase(BaseModel):
 
 class DocumentCreate(DocumentBase):
     """文档创建模型"""
-    folder_id: uuid.UUID = Field(..., description="所属文件夹ID")
-    uploaded_by: uuid.UUID = Field(..., description="上传用户ID")
+    folder_path: str = Field(..., description="所属文件夹路径")
+    uploaded_by: str = Field(..., description="上传者标识")
     created_by: Optional[str] = Field(None, description="创建者用户名")
     
     # 存储文件名由系统生成
     stored_filename: Optional[str] = Field(None, description="存储文件名（系统生成）")
     converted_pdf_path: Optional[str] = Field(None, description="转换后PDF路径")
     conversion_error: Optional[str] = Field(None, description="转换错误信息")
-    
-    @validator("stored_filename")
-    def generate_stored_filename(cls, v):
-        """如果未提供存储文件名，则生成UUID"""
-        if v is None:
-            return str(uuid.uuid4())
-        return v
 
 
 class DocumentUpdate(BaseModel):
@@ -130,9 +122,7 @@ class DocumentUpdate(BaseModel):
 
 class DocumentResponse(DocumentBase):
     """文档响应模型"""
-    id: uuid.UUID
-    folder_id: uuid.UUID
-    uploaded_by: uuid.UUID
+    uploaded_by: Optional[str]
     stored_filename: str
     converted_pdf_path: Optional[str]
     conversion_error: Optional[str]
@@ -143,9 +133,8 @@ class DocumentResponse(DocumentBase):
     
     # 路径字段
     storage_path: Optional[str] = None
-    path: Optional[str] = None  # 公共URL路径（原url_path）
-    folder_path: Optional[str] = None  # 父文件夹路径
-    parent_folder_path: Optional[str] = None  # 与folder_path相同，保持兼容性
+    path: Optional[str] = None  # 公共URL路径
+    folder_path: Optional[str] = None  # 所属文件夹路径
     
     class Config:
         from_attributes = True
@@ -182,7 +171,7 @@ class PageBase(BaseModel):
 
 class PageCreate(PageBase):
     """页面创建模型"""
-    document_id: uuid.UUID = Field(..., description="所属文档ID")
+    document_path: str = Field(..., description="所属文档路径")
     created_by: Optional[str] = Field(None, description="创建者用户名")
 
 
@@ -214,8 +203,8 @@ class PageUpdate(BaseModel):
 
 class PageResponse(PageBase):
     """页面响应模型"""
-    id: uuid.UUID
-    document_id: uuid.UUID
+    id: str
+    document_path: str = Field(..., description="所属文档路径")
     created_by: Optional[str]
     updated_by: Optional[str]
     created_at: datetime

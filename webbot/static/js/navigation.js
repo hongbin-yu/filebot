@@ -46,6 +46,7 @@ function initDom() {
     btnPublish = $('#btn-top-publish');
     btnDelete = $('#btn-top-delete');
     btnRefresh = $('#btn-top-refresh');
+    btnProperties = $('#btn-top-properties');
 }
 
 // ============================================================================
@@ -515,12 +516,14 @@ function updateButtons() {
     btnMove.disabled = !hasSelection;
     btnPublish.disabled = !hasSelection;
     btnDelete.disabled = !hasSelection;
+    btnProperties.disabled = !hasSelection;
 
     btnEdit.className = hasSelection ? 'btn btn-edit' : 'btn btn-edit disabled';
     btnPreview.className = hasSelection ? 'btn btn-info' : 'btn btn-info disabled';
     btnMove.className = hasSelection ? 'btn btn-move' : 'btn btn-move disabled';
     btnPublish.className = hasSelection ? 'btn btn-publish' : 'btn btn-publish disabled';
     btnDelete.className = hasSelection ? 'btn btn-delete' : 'btn btn-delete disabled';
+    btnProperties.className = hasSelection ? 'btn btn-primary' : 'btn btn-primary disabled';
 
     // Tooltip messages for disabled state (#8)
     btnEdit.title = hasSelection ? 'Edit selected page' : 'Select a page to edit';
@@ -528,6 +531,7 @@ function updateButtons() {
     btnMove.title = hasSelection ? 'Move selected page' : 'Select a page to move';
     btnPublish.title = hasSelection ? 'Publish selected page' : 'Select a page to publish';
     btnDelete.title = hasSelection ? 'Delete selected page' : 'Select a page to delete';
+    btnProperties.title = hasSelection ? 'View/edit page properties' : 'Select a page to view properties';
 }
 
 // ============================================================================
@@ -561,7 +565,11 @@ function setupButtons() {
     var createPageModal = document.getElementById('createPageModal');
     var createPageForm = document.getElementById('createPageForm');
     var newPageTitle = document.getElementById('newPageTitle');
+    var newPageName = document.getElementById('newPageName');
+    var newPageFrTitle = document.getElementById('newPageFrTitle');
+    var newPageFrName = document.getElementById('newPageFrName');
     var newPageParent = document.getElementById('newPageParent');
+    var newPageOtherLangParent = document.getElementById('newPageOtherLangParent');
     var urlPreview = document.getElementById('urlPreview');
     var createPageError = document.getElementById('createPageError');
     var createPageSuccess = document.getElementById('createPageSuccess');
@@ -644,31 +652,361 @@ function setupButtons() {
     });
 
     // ============================================================================
+    // PROPERTIES button
+    // ============================================================================
+    btnProperties.addEventListener('click', function() {
+        if (!selectedPageData) return;
+        loadAndShowProperties(selectedPageData);
+    });
+
+    // ============================================================================
+    // PROPERTIES modal logic
+    // ============================================================================
+    function loadAndShowProperties(pageData) {
+        var modal = document.getElementById('propertiesModal');
+        if (!modal) { showToast('Properties modal not found', 'danger'); return; }
+
+        // Determine the page ID to fetch
+        var pageId = pageData.id || pageData.path;
+        if (!pageId) { showToast('Cannot determine page ID', 'danger'); return; }
+
+        showToast('Loading properties...', 'info');
+
+        fetch('/api/v1/pages/' + encodeURIComponent(pageId) + '/properties')
+            .then(function(r) {
+                if (!r.ok) throw new Error('Failed: ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                // Page ID = last segment of path
+                var thePath = data.path || pageData.path || '';
+                var pageId = thePath.replace(/\/$/, '').split('/').pop() || data.id || '—';
+                setPropVal('prop-id', pageId);
+                setPropVal('prop-title', data.title);
+                setPropVal('prop-language', data.language);
+                setPropVal('prop-path', thePath);
+
+                // Derive parent path: remove last segment from path
+                var parentPath = data.parent_path;
+                if (!parentPath && thePath) {
+                    var parts = thePath.replace(/\/$/, '').split('/');
+                    parts.pop();
+                    parentPath = parts.join('/') || '';
+                }
+                setPropVal('prop-parent', parentPath || '—');
+                setPropVal('prop-created-by', data.created_by || '—');
+                setPropVal('prop-created-at', data.created_at || '—');
+                setPropVal('prop-updated-at', data.updated_at || data.last_modified || '—');
+                setPropVal('prop-published-at', data.published_at || data.last_published || '—');
+
+                // Other language path: use value from DB first, fall back to alternate_fr_url
+                var otherLangPath = data.other_language_path || '';
+                if (!otherLangPath) {
+                    var altUrl = data.metadata && data.metadata.alternate_fr_url;
+                    if (altUrl) {
+                        // e.g. 'https://www.canada.ca/fr/patrimoine-canadien.html' → '/fr/patrimoine-canadien'
+                        otherLangPath = altUrl
+                            .replace('https://www.canada.ca', '')
+                            .replace(/\.html?$/i, '');
+                    }
+                }
+                setPropVal('prop-other-lang', otherLangPath);
+
+                // File path (from metadata)
+                var filePath = data.file_path || (data.metadata && data.metadata.file_path) || '';
+                setPropVal('prop-filepath', filePath);
+
+                // Has children
+                var childEl = document.getElementById('prop-has-children');
+                if (childEl && data.has_children !== undefined) {
+                    childEl.checked = !!data.has_children;
+                }
+
+                // Status dropdown
+                var statusEl = document.getElementById('prop-status');
+                if (statusEl && data.status) {
+                    statusEl.value = data.status;
+                }
+
+                // Hide in Navigation
+                var hideNavEl = document.getElementById('prop-hide-nav');
+                if (hideNavEl && data.hide_in_navigation !== undefined) {
+                    hideNavEl.checked = !!data.hide_in_navigation;
+                }
+
+                showModal(modal);
+            })
+            .catch(function(err) {
+                console.error('Properties load error:', err);
+                showToast('Failed to load properties: ' + err.message, 'danger');
+            });
+    }
+
+    // Helper: set input value
+    function setPropVal(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.value = (val != null) ? val : '—';
+    }
+
+    // Helper: get input value
+    function getPropVal(id) {
+        var el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    }
+
+    // Save properties handler
+    var propSaveBtn = document.getElementById('prop-save-btn');
+    if (propSaveBtn) {
+        propSaveBtn.addEventListener('click', function() {
+            var modal = document.getElementById('propertiesModal');
+            // Use full path for API, not the display ID (last segment)
+            var pagePath = getPropVal('prop-path');
+            if (!pagePath) { showToast('No page path', 'danger'); return; }
+
+            var filePath = getPropVal('prop-filepath');
+            var otherLang = getPropVal('prop-other-lang');
+
+            // Other language path is mandatory
+            if (!otherLang || !otherLang.trim()) {
+                showToast('Other Language Path is required!', 'danger');
+                document.getElementById('prop-other-lang').focus();
+                return;
+            }
+
+            var payload = {
+                title: getPropVal('prop-title') || undefined,
+                status: document.getElementById('prop-status') ? document.getElementById('prop-status').value : undefined,
+                file_path: filePath || undefined,
+                other_language_path: otherLang.trim(),
+                hide_in_navigation: document.getElementById('prop-hide-nav') ? document.getElementById('prop-hide-nav').checked : undefined
+            };
+
+            // Remove undefined values
+            Object.keys(payload).forEach(function(k) {
+                if (payload[k] === undefined) delete payload[k];
+            });
+
+            fetch('/api/v1/pages/' + encodeURIComponent(pagePath), {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || e.message || r.status); });
+                return r.json();
+            })
+            .then(function() {
+                showToast('✅ Properties saved!', 'success');
+                hideModal(modal);
+                // Refresh current view without jumping to root
+                loadedPaths = {};
+                var restorePath = currentPath.slice(); // copy
+                if (restorePath.length > 0) {
+                    initNavigationAt(restorePath);
+                } else {
+                    initNavigation();
+                }
+            })
+            .catch(function(err) {
+                showToast('Failed to save: ' + err.message, 'danger');
+            });
+        });
+    }
+
+    // Bind close for properties modal
+    var propModal = document.getElementById('propertiesModal');
+    if (propModal) {
+        propModal.querySelectorAll('[data-dismiss="modal"]').forEach(function(btn) {
+            btn.addEventListener('click', function() { hideModal(propModal); });
+        });
+    }
+
+    // ============================================================================
     // CREATE MODAL helpers
     // ============================================================================
     function showCreatePageModal(parentPath) {
         newPageParent.value = parentPath;
         newPageTitle.value = '';
+        newPageName.value = '';
+        newPageFrTitle.value = '';
+        newPageFrName.value = '';
+        newPageOtherLangParent.value = '';
         createPageError.style.display = 'none';
         createPageSuccess.style.display = 'none';
         createPageSaveBtn.disabled = false;
         createPageSaveBtn.textContent = 'Create & Edit';
-        // Update URL preview (fix #3)
-        if (urlPreview) urlPreview.textContent = parentPath + '/';
+        var parentInfoText = document.getElementById('parentInfoText');
+        if (parentInfoText) parentInfoText.textContent = '';
+        if (parentPath) {
+            fetch('/api/v1/pages/by-path?path=' + encodeURIComponent(parentPath))
+                .then(function(resp) {
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    return resp.json();
+                })
+                .then(function(data) {
+                    if (data) {
+                        if (data.title && parentInfoText) {
+                            parentInfoText.textContent = '📄 ' + data.title;
+                        }
+                        if (data.other_language_path && newPageOtherLangParent) {
+                            newPageOtherLangParent.value = data.other_language_path;
+                        }
+                        updateCreatePreviews();
+                    }
+                })
+                .catch(function(err) {
+                    // Silent fail
+                });
+        }
+        updateCreatePreviews();
         showModal(createPageModal);
         setTimeout(function() { newPageTitle.focus(); }, 300);
     }
 
     // ============================================================================
-    // URL live preview (fix #3)
+    // Update path previews for Create modal
+    // ============================================================================
+    var createEnPathPreview = document.getElementById('createEnPathPreview');
+    var createFrPathPreview = document.getElementById('createFrPathPreview');
+    function updateCreatePreviews() {
+        var parentPath = newPageParent ? newPageParent.value : '';
+        var nameVal = newPageName ? newPageName.value.trim() : '';
+        var frParentVal = newPageOtherLangParent ? newPageOtherLangParent.value.trim() : '';
+        var frNameVal = newPageFrName ? newPageFrName.value.trim() : '';
+        // English path preview
+        if (createEnPathPreview) {
+            if (nameVal && parentPath) {
+                createEnPathPreview.textContent = parentPath.replace(/\/+$/, '') + '/' + nameVal;
+            } else {
+                createEnPathPreview.textContent = '';
+            }
+        }
+        // French path preview
+        if (createFrPathPreview) {
+            if (frNameVal && frParentVal) {
+                createFrPathPreview.textContent = frParentVal.replace(/\/+$/, '') + '/' + frNameVal;
+            } else {
+                createFrPathPreview.textContent = '';
+            }
+        }
+    }
+
+    // ============================================================================
+    // URL live preview + name auto-generation (fix #3)
     // ============================================================================
     if (urlPreview) {
+        // Auto-generate EN name from title (only if user hasn't manually edited the name field)
+        var nameManuallyEdited = false;
         newPageTitle.addEventListener('input', function() {
             var title = this.value.trim();
             var parentPath = newPageParent.value;
             var slug = generateSlug(title);
-            var fullPath = parentPath ? parentPath + '/' + slug : '/' + slug;
-            urlPreview.textContent = slug ? fullPath : (parentPath ? parentPath + '/' : '/');
+            if (!nameManuallyEdited && newPageName) {
+                newPageName.value = slug;
+            }
+            var usedSlug = newPageName ? (newPageName.value.trim() || slug) : slug;
+            var fullPath = parentPath ? parentPath + '/' + usedSlug : '/' + usedSlug;
+            urlPreview.textContent = usedSlug ? fullPath : (parentPath ? parentPath + '/' : '/');
+            if (typeof updateCreatePreviews === 'function') updateCreatePreviews();
+        });
+        if (newPageName) {
+            newPageName.addEventListener('input', function() {
+                nameManuallyEdited = true;
+                var slug = this.value.trim();
+                var parentPath = newPageParent.value;
+                var fullPath = parentPath ? parentPath + '/' + slug : '/' + slug;
+                urlPreview.textContent = slug ? fullPath : (parentPath ? parentPath + '/' : '/');
+                if (typeof updateCreatePreviews === 'function') updateCreatePreviews();
+            });
+            newPageName.addEventListener('blur', function() {
+                if (!this.value.trim()) {
+                    nameManuallyEdited = false;
+                }
+            });
+        }
+    } else {
+        // No old urlPreview element — register bare event listeners that call updateCreatePreviews
+        newPageTitle.addEventListener('input', function() {
+            var title = this.value.trim();
+            var slug = generateSlug(title);
+            if (typeof nameManuallyEdited === 'undefined' || !nameManuallyEdited) {
+                if (newPageName) newPageName.value = slug;
+            }
+            if (typeof updateCreatePreviews === 'function') updateCreatePreviews();
+        });
+        if (newPageName) {
+            newPageName.addEventListener('input', function() {
+                nameManuallyEdited = true;
+                if (typeof updateCreatePreviews === 'function') updateCreatePreviews();
+            });
+            newPageName.addEventListener('blur', function() {
+                if (!this.value.trim()) nameManuallyEdited = false;
+            });
+        }
+    }
+
+    // Always register FR name auto-generation and Other Language Parent Path preview updates
+    if (newPageFrTitle && newPageFrName) {
+        var frNameManuallyEdited = false;
+        newPageFrTitle.addEventListener('input', function() {
+            var frTitle = this.value.trim();
+            var frSlug = generateSlug(frTitle);
+            if (!frNameManuallyEdited) {
+                newPageFrName.value = frSlug;
+            }
+            if (typeof updateCreatePreviews === 'function') updateCreatePreviews();
+        });
+        newPageFrName.addEventListener('input', function() {
+            frNameManuallyEdited = true;
+            if (typeof updateCreatePreviews === 'function') updateCreatePreviews();
+        });
+        newPageFrName.addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                frNameManuallyEdited = false;
+            }
+        });
+    }
+    if (newPageOtherLangParent) {
+        newPageOtherLangParent.addEventListener('input', function() {
+            if (typeof updateCreatePreviews === 'function') updateCreatePreviews();
+        });
+    }
+
+    // ============================================================================
+    // TRANSLATE button handler
+    // ============================================================================
+    var btnTranslate = document.getElementById('btnTranslateFr');
+    if (btnTranslate) {
+        btnTranslate.addEventListener('click', async function() {
+            var enTitle = newPageTitle.value.trim();
+            if (!enTitle) {
+                showToast('Please enter an English title first.', 'warning');
+                newPageTitle.focus();
+                return;
+            }
+            btnTranslate.disabled = true;
+            btnTranslate.textContent = '...';
+            try {
+                var resp = await fetch('/api/v1/pages/translate?text=' + encodeURIComponent(enTitle));
+                if (!resp.ok) {
+                    var errData = null;
+                    try { errData = await resp.json(); } catch(e) {}
+                    throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+                }
+                var data = await resp.json();
+                if (newPageFrTitle) {
+                    newPageFrTitle.value = data.translated;
+                    // Auto-trigger input event to generate FR name
+                    var evt = new Event('input', { bubbles: true });
+                    newPageFrTitle.dispatchEvent(evt);
+                }
+                showToast('✅ Translated: "' + data.translated + '"', 'success');
+            } catch (err) {
+                showToast('Translation failed: ' + err.message, 'danger');
+            } finally {
+                btnTranslate.disabled = false;
+                btnTranslate.textContent = '⟳ Translate';
+            }
         });
     }
 
@@ -695,8 +1033,32 @@ function setupButtons() {
         }
 
         // Generate path from title using Chinese-friendly slug (fix #4)
-        var slug = generateSlug(title);
+        // Use user-editable name field if non-empty, otherwise fallback to auto-generated
+        var slug;
+        if (newPageName && newPageName.value.trim()) {
+            slug = generateSlug(newPageName.value.trim());
+        } else {
+            slug = generateSlug(title);
+        }
         var pagePath = parentPath.endsWith('/') ? parentPath + slug : parentPath + '/' + slug;
+
+        // Collect French fields
+        var frTitle = newPageFrTitle ? newPageFrTitle.value.trim() : '';
+        var frName = newPageFrName ? newPageFrName.value.trim() : '';
+        var otherLangParent = newPageOtherLangParent ? newPageOtherLangParent.value.trim() : '';
+
+        // Build metadata with FR fields
+        var metadata = {};
+        if (frTitle) metadata.fr_title = frTitle;
+        if (frName) metadata.fr_name = frName;
+        if (otherLangParent) metadata.fr_parent_path = otherLangParent;
+
+        // Build other_language_path from FR fields
+        var otherLanguagePath = '';
+        if (frName && otherLangParent) {
+            var frParentClean = otherLangParent.replace(/\/+$/, '');
+            otherLanguagePath = frParentClean + '/' + frName;
+        }
 
         createPageError.style.display = 'none';
         createPageSuccess.style.display = 'none';
@@ -704,6 +1066,7 @@ function setupButtons() {
         createPageSaveBtn.textContent = 'Creating...';
 
         try {
+            // 1. Create English page
             var response = await fetch('/api/v1/pages/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -711,10 +1074,11 @@ function setupButtons() {
                     title: title,
                     path: pagePath,
                     parent_path: parentPath,
-                    language: parentPath.indexOf('/fr') !== -1 ? 'fr' : 'en',
+                    language: 'en',
                     status: 'draft',
                     content: '',
-                    metadata: {}
+                    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+                    other_language_path: otherLanguagePath || undefined
                 })
             });
 
@@ -726,15 +1090,52 @@ function setupButtons() {
 
             var newPage = await response.json();
             var actualPagePath = newPage.path || pagePath;
+            var frCreated = false;
 
-            // Show toast instead of modal message (fix #5)
-            showToast('Page "' + title + '" created!', 'success');
+            // 2. Create French page too if FR fields present
+            if (frTitle && frName && otherLangParent) {
+                var frParentClean = otherLangParent.replace(/\/+$/, '');
+                var frPagePath = frParentClean + '/' + frName;
 
-            // Refresh navigation with state retention (fix #9)
+                try {
+                    var frResp = await fetch('/api/v1/pages/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: frTitle,
+                            path: frPagePath,
+                            parent_path: otherLangParent,
+                            language: 'fr',
+                            status: 'draft',
+                            content: '',
+                            metadata: {
+                                en_title: title,
+                                en_name: slug,
+                                en_parent_path: parentPath
+                            },
+                            other_language_path: actualPagePath
+                        })
+                    });
+                    frCreated = frResp.ok;
+                } catch(e) {
+                    // French page creation failed silently
+                }
+            }
+
+            // Show toast
+            var msg = '✅ Page "' + title + '" created!';
+            if (frCreated) {
+                msg += ' French page "' + frTitle + '" also created.';
+            } else if (frTitle) {
+                msg += ' (French page was not created — check FR fields.)';
+            }
+            showToast(msg, 'success');
+
+            // Refresh navigation
             loadedPaths = {};
             columnsCache = [];
 
-            // Navigate to editor immediately (fix #7 - no 800ms delay)
+            // Navigate to English page editor
             var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
             window.location.href = editorUrl;
 

@@ -144,7 +144,7 @@ const ClientNavigation: React.FC = () => {
   // When selected folder changes, load its documents
   useEffect(() => {
     if (selectedFolder?.id) {
-      // 优先使用路径，如果不存在则使用ID
+      // Prefer path, fall back to ID if not available
       const folderIdentifier = selectedFolder.path || selectedFolder.id;
       loadDocuments(folderIdentifier);
     }

@@ -1,11 +1,11 @@
 """
-文件管理路由 - 集成FileBot文件功能
-提供文件上传、列表、预览功能，界面与WebBot一体
+File management routes - integrated with FileBot
+Provides file upload, listing, and preview
 
-第一阶段：模拟实现，返回示例数据
-第二阶段：集成FileBot API调用
+第一阶段：模拟实现，返回Example数据
+Phase 2: Integrated FileBot API calls
 
-现在实现第二阶段：集成真实的FileBot文档访问
+Currently implemented第二阶段：Integration真实的FileBot文档访问
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
@@ -18,7 +18,7 @@ import json
 import sqlite3
 import requests
 
-# aiohttp是可选的，用于转发上传到FileBot
+# aiohttpOptional的，用于Forward upload to FileBot
 try:
     import aiohttp
     import asyncio
@@ -31,18 +31,19 @@ except ImportError:
 FILEBOT_DB_PATH = "/home/hongb/.openclaw/workspace/filebot/backend/filebot.db"
 
 def get_db_connection():
-    """获取数据库连接"""
+    """Get read-only FileBot database connection"""
     try:
-        conn = sqlite3.connect(FILEBOT_DB_PATH)
-        conn.row_factory = sqlite3.Row  # 返回字典格式的结果
+        conn = sqlite3.connect(FILEBOT_DB_PATH, timeout=10)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
         return conn
     except sqlite3.Error as e:
-        print(f"数据库连接错误: {e}")
+        print(f"FileBot DB connection error: {e}")
         raise
 
 router = APIRouter(prefix="/api/v1/files", tags=["files"])
 
-# 模拟文件数据存储（内存中）
+# 模拟File data存储（内存中）
 mock_files_db = [
     {
         "id": "doc-001",
@@ -50,7 +51,7 @@ mock_files_db = [
         "type": "application/pdf",
         "size": 1024576,
         "uploaded_at": "2026-04-02T10:30:00Z",
-        "description": "示例PDF文档",
+        "description": "ExamplePDF文档",
         "url": "/api/v1/files/doc-001/download",
         "thumbnail_url": "/api/v1/files/doc-001/thumbnail"
     },
@@ -86,17 +87,17 @@ mock_files_db = [
     }
 ]
 
-# 存储上传的文件元数据（内存中，重启会丢失）
+# 存储上传的文件Metadata（内存中，重启会丢失）
 uploaded_files = mock_files_db.copy()
 
 @router.get("/")
 async def list_files(
-    folder_id: Optional[str] = Query(None, description="文件夹ID"),
-    limit: int = Query(50, ge=1, le=100, description="返回文件数量"),
-    offset: int = Query(0, ge=0, description="分页偏移量")
+    folder_id: Optional[str] = Query(None, description="Folder ID"),
+    limit: int = Query(50, ge=1, le=100, description="Number of files to return"),
+    offset: int = Query(0, ge=0, description="Pagination offset")
 ):
     """
-    获取文件列表 - 集成FileBot真实数据
+    Get file list - integrated with FileBot for real data
     """
     try:
         # 首先尝试从FileBot数据库获取真实数据
@@ -116,8 +117,8 @@ async def list_files(
             
             params = []
             if folder_id and folder_id != "default-folder":
-                # 如果需要文件夹筛选，但FileBot有folder_id字段
-                # 先简单实现，不筛选文件夹
+                # If需要文件夹Filter，但FileBot有folder_id字段
+                # 先简单实现，不Filter文件夹
                 pass
                 
             query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
@@ -131,16 +132,16 @@ async def list_files(
             cursor.execute(count_query)
             total = cursor.fetchone()["total"]
             
-            # 转换为API响应格式
+            # Transform为API响应格式
             files = []
             for row in rows:
                 # 构建下载URL - 指向FileBot的API
                 # FileBot运行在端口8001
                 download_url = f"http://localhost:8001/api/v1/documents/{row['id']}/download"
                 
-                # 如果是PDF且有转换后路径，优先使用转换后的PDF
+                # IfPDF且有Transform后路径，优先使用Transform后的PDF
                 if row['converted_pdf_path'] and os.path.exists(row['converted_pdf_path']):
-                    # 对于转换后的PDF，可能需要不同的URL
+                    # 对于Transform后的PDF，可能需要不同的URL
                     download_url = f"http://localhost:8001/api/v1/documents/{row['id']}/download?converted=true"
                 
                 file_record = {
@@ -153,17 +154,17 @@ async def list_files(
                     "url": download_url,
                     "thumbnail_url": f"/api/v1/files/{row['id']}/thumbnail",
                     "source": "filebot",  # 标记来源为FileBot
-                    "file_type": row["file_type"]  # 原始文件类型
+                    "file_type": row["file_type"]  # 原始File type
                 }
                 files.append(file_record)
             
             conn.close()
             
-            # 总是包含模拟上传的文件（用于测试）
+            # 总包含模拟上传的文件（用于测试）
             # 合并数据库文件和模拟文件，去重
             all_files = files.copy()
             for mock_file in uploaded_files:
-                # 检查是否已存在（基于ID）
+                # 检查已存在（基于ID）
                 if not any(f['id'] == mock_file['id'] for f in all_files):
                     all_files.append(mock_file)
             
@@ -180,12 +181,12 @@ async def list_files(
             }
             
         except Exception as db_error:
-            # 如果数据库查询失败，回退到模拟数据
-            print(f"数据库查询失败，回退到模拟数据: {db_error}")
+            # If数据库Query failed，回退到模拟数据
+            print(f"数据库Query failed，回退到模拟数据: {db_error}")
             if conn:
                 conn.close()
             
-            # 应用分页到模拟数据
+            # 应用Pagination到模拟数据
             start = offset
             end = offset + limit
             paginated_files = uploaded_files[start:end]
@@ -200,7 +201,7 @@ async def list_files(
             }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Get file list失败: {str(e)}")
 
 @router.post("/upload")
 async def upload_file(
@@ -210,14 +211,14 @@ async def upload_file(
     description: Optional[str] = Form(None)
 ):
     """
-    上传文件 - 尝试转发到FileBot，失败则使用模拟存储
+    Upload file - attempts to forward to FileBot, falls back to mock storage
     """
     try:
         # 读取文件内容
         contents = await file.read()
         file_size = len(contents)
         
-        # 首先尝试转发到FileBot API（如果aiohttp可用）
+        # 首先尝试转发到FileBot API（Ifaiohttp可用）
         if AIOHTTP_AVAILABLE:
             try:
                 # 创建FormData
@@ -230,13 +231,13 @@ async def upload_file(
                 if description:
                     form_data.add_field('description', description)
                 
-                # 发送到FileBot，添加X-WebBot-Access头
+                # 发送到FileBot，AddX-WebBot-Access头
                 filebot_url = "http://localhost:8001/api/v1/documents/upload/"
                 
-                # 设置较短的超时时间
+                # Settings较短的超时时间
                 timeout = aiohttp.ClientTimeout(total=30)
                 
-                # 添加X-WebBot-Access头，允许WebBot访问
+                # AddX-WebBot-Access头，允许WebBot访问
                 headers = {"X-WebBot-Access": "true"}
                 
                 async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
@@ -244,7 +245,7 @@ async def upload_file(
                         if response.status == 200:
                             filebot_result = await response.json()
                             
-                            # 从FileBot响应中提取文件信息
+                            # 从FileBot响应中提取文件Information
                             file_record = {
                                 "id": filebot_result.get("id", f"filebot-{uuid.uuid4().hex[:8]}"),
                                 "name": file.filename,
@@ -274,7 +275,7 @@ async def upload_file(
                 print(f"转发到FileBot失败，使用模拟存储: {filebot_error}")
                 # 继续到模拟存储
         
-        # 如果aiohttp不可用，或者转发失败，使用模拟存储
+        # Ifaiohttp不可用，或者转发失败，使用模拟存储
         file_id = f"file-{uuid.uuid4().hex[:8]}"
         
         # 创建文件记录
@@ -290,10 +291,10 @@ async def upload_file(
             "source": "mock-storage"
         }
         
-        # 添加到内存数据库
-        uploaded_files.insert(0, file_record)  # 添加到开头
+        # Add到内存数据库
+        uploaded_files.insert(0, file_record)  # Add到开头
         
-        forwarded = AIOHTTP_AVAILABLE  # 如果aiohttp可用，我们至少尝试过转发
+        forwarded = AIOHTTP_AVAILABLE  # Ifaiohttp可用，我们至少尝试过转发
         return {
             "success": True,
             "file": file_record,
@@ -302,14 +303,14 @@ async def upload_file(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"文件上传失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
     finally:
         await file.close()
 
 @router.get("/{file_id}")
 async def get_file_info(file_id: str):
     """
-    获取文件详细信息 - 集成FileBot真实数据
+    Get file details - integrated with FileBot for real data
     """
     try:
         # 首先尝试从FileBot数据库获取真实数据
@@ -332,11 +333,11 @@ async def get_file_info(file_id: str):
             # 构建下载URL
             download_url = f"http://localhost:8001/api/v1/documents/{row['id']}/download"
             
-            # 如果是PDF且有转换后路径
+            # IfPDF且有Transform后路径
             if row['converted_pdf_path'] and os.path.exists(row['converted_pdf_path']):
                 download_url = f"http://localhost:8001/api/v1/documents/{row['id']}/download?converted=true"
             
-            # 解析文档元数据
+            # 解析文档Metadata
             metadata = {}
             if row['document_metadata']:
                 try:
@@ -362,19 +363,19 @@ async def get_file_info(file_id: str):
             }
             return file_info
         
-        # 如果数据库中找不到，回退到模拟数据
+        # If数据库中找不到，回退到模拟数据
         for file in uploaded_files:
             if file["id"] == file_id:
                 return file
         
-        # 如果模拟数据中也找不到，返回示例数据
+        # If模拟数据中也找不到，返回Example数据
         return {
             "id": file_id,
             "name": f"example-file-{file_id}.pdf",
             "type": "application/pdf",
             "size": 1048576,
             "uploaded_at": "2026-04-02T10:30:00Z",
-            "description": "示例文件（未在FileBot中找到）",
+            "description": "Example文件（未在FileBot中找到）",
             "url": f"/api/v1/files/{file_id}/download",
             "thumbnail_url": f"/api/v1/files/{file_id}/thumbnail",
             "source": "mock-data"
@@ -386,26 +387,26 @@ async def get_file_info(file_id: str):
             if file["id"] == file_id:
                 return file
         
-        # 如果模拟数据中也找不到，返回示例数据
+        # If模拟数据中也找不到，返回Example数据
         return {
             "id": file_id,
             "name": f"example-file-{file_id}.pdf",
             "type": "application/pdf",
             "size": 1048576,
             "uploaded_at": "2026-04-02T10:30:00Z",
-            "description": f"示例文件（查询错误: {str(e)}）",
+            "description": f"Example文件（查询错误: {str(e)}）",
             "url": f"/api/v1/files/{file_id}/download",
             "thumbnail_url": f"/api/v1/files/{file_id}/thumbnail",
             "source": "error-fallback"
         }
 
 @router.get("/{file_id}/download")
-async def download_file(file_id: str, converted: bool = Query(False, description="是否下载转换后的PDF版本")):
+async def download_file(file_id: str, converted: bool = Query(False, description="Download converted PDF version")):
     """
-    下载文件 - 重定向到FileBot的下载端点
+    Download file - redirects to FileBot download endpoint
     """
     try:
-        # 首先检查文件是否存在于FileBot数据库中
+        # 首先检查文件存在于FileBot数据库中
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -424,10 +425,10 @@ async def download_file(file_id: str, converted: bool = Query(False, description
             # 返回重定向响应
             return RedirectResponse(url=filebot_url, status_code=307)  # 307保持请求方法
         
-        # 如果数据库中不存在，检查模拟数据
+        # If数据库中不存在，检查模拟数据
         for file in uploaded_files:
             if file["id"] == file_id:
-                # 对于模拟文件，返回信息
+                # 对于模拟文件，返回Information
                 return {
                     "id": file_id,
                     "name": file["name"],
@@ -439,16 +440,16 @@ async def download_file(file_id: str, converted: bool = Query(False, description
         raise HTTPException(status_code=404, detail="文件未找到")
         
     except Exception as e:
-        # 出错时返回错误信息
+        # 出错时返回错误Information
         raise HTTPException(status_code=500, detail=f"文件下载失败: {str(e)}")
 
 @router.get("/{file_id}/thumbnail")
 async def get_file_thumbnail(file_id: str):
     """
-    获取文件缩略图 - 尝试从FileBot获取，失败则回退到模拟
+    Get file thumbnail - attempts to get from FileBot, falls back to mock
     """
     try:
-        # 首先检查文件是否存在于FileBot数据库中
+        # 首先检查文件存在于FileBot数据库中
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -461,21 +462,21 @@ async def get_file_thumbnail(file_id: str):
             mime_type = row["mime_type"]
             file_type = row["file_type"]
             
-            # 根据文件类型返回不同的缩略图
+            # 根据File type返回不同的缩略图
             if mime_type and mime_type.startswith("image/"):
                 # 图片文件：重定向到FileBot的预览或直接下载
                 filebot_url = f"http://localhost:8001/api/v1/documents/{file_id}/download"
                 return {"thumbnail_url": filebot_url}
             elif file_type in ["pdf", "tiff"]:
-                # PDF或TIFF文件：如果有第一页预览，重定向到预览
+                # PDF或TIFF文件：If有第一页预览，重定向到预览
                 # FileBot可能有预览端点
                 preview_url = f"http://localhost:8001/api/v1/documents/{file_id}/tiff-preview/1"
                 return {"thumbnail_url": preview_url}
             else:
-                # 其他文件类型：返回通用图标
+                # 其他File type：返回通用图标
                 return {"thumbnail_url": "/static/icons/file-icon.png"}
         
-        # 如果数据库中不存在，检查模拟数据
+        # If数据库中不存在，检查模拟数据
         for file in uploaded_files:
             if file["id"] == file_id:
                 if file["type"].startswith("image/"):
@@ -492,10 +493,10 @@ async def get_file_thumbnail(file_id: str):
 @router.delete("/{file_id}")
 async def delete_file(file_id: str):
     """
-    删除文件 - 对于FileBot文档返回提示信息
+    Delete file - returns informational prompt for FileBot documents
     """
     try:
-        # 首先检查文件是否存在于FileBot数据库中
+        # 首先检查文件存在于FileBot数据库中
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -505,22 +506,22 @@ async def delete_file(file_id: str):
         conn.close()
         
         if row:
-            # 文件存在于FileBot中，返回提示信息
+            # 文件存在于FileBot中，返回提示Information
             return {
                 "success": False,
-                "message": f"文件 '{row['original_filename']}' 由FileBot管理。请在FileBot界面中删除。",
+                "message": f"文件 '{row['original_filename']}' 由FileBotManagement。请在FileBot界面中Delete。",
                 "filebot_management_url": f"http://localhost:8001/documents/{file_id}",
                 "can_delete": False
             }
         
-        # 如果数据库中不存在，检查模拟数据
+        # If数据库中不存在，检查模拟数据
         global uploaded_files
         for i, file in enumerate(uploaded_files):
             if file["id"] == file_id:
                 uploaded_files.pop(i)
                 return {
                     "success": True,
-                    "message": f"文件 {file_id} 已删除（模拟）",
+                    "message": f"文件 {file_id} 已Delete（模拟）",
                     "can_delete": True
                 }
         
@@ -530,12 +531,12 @@ async def delete_file(file_id: str):
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"删除文件失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Delete file失败: {str(e)}")
 
 @router.get("/folders/")
 async def list_folders():
     """
-    获取可用的文件夹列表 - 尝试从FileBot获取真实文件夹
+    Get folder list - attempts to get from FileBot
     """
     try:
         # 首先尝试从FileBot数据库获取真实文件夹
@@ -574,18 +575,18 @@ async def list_folders():
                 }
                 folders.append(folder_info)
             
-            # 添加默认文件夹选项
+            # Add默认文件夹Options
             folders.insert(0, {
                 "id": "default-folder",
                 "name": "All Files",
-                "description": "所有文件（不按文件夹筛选）",
+                "description": "所有文件（不按文件夹Filter）",
                 "file_count": sum(f["file_count"] for f in folders),
                 "source": "virtual"
             })
             
             return {"folders": folders, "source": "filebot-database"}
         
-        # 如果没有找到文件夹，回退到模拟数据
+        # If没有找到文件夹，回退到模拟数据
         return {
             "folders": [
                 {
@@ -614,7 +615,7 @@ async def list_folders():
         
     except Exception as e:
         # 出错时回退到模拟数据
-        print(f"获取文件夹列表失败: {e}")
+        print(f"获取文件夹List失败: {e}")
         return {
             "folders": [
                 {
@@ -630,7 +631,7 @@ async def list_folders():
 @router.post("/folders/")
 async def create_folder(name: str, description: Optional[str] = None):
     """
-    创建新文件夹（模拟）
+    Create new folder (mock)
     """
     folder_id = str(uuid.uuid4())
     return {
@@ -645,20 +646,20 @@ async def create_folder(name: str, description: Optional[str] = None):
 
 
 @router.get("/content/{document_id}")
-async def get_document_content(document_id: str, download_type: str = Query("original", description="下载类型: original 或 pdf")):
+async def get_document_content(document_id: str, download_type: str = Query("original", description="Download type: original or pdf")):
     """
-    通过FileBot API获取文档内容（使用X-WebBot-Access头）
-    支持访问未发布文档
+    Get document content via FileBot API (uses X-WebBot-Access header)
+    Supports access to unpublished documentspublished documents
     """
     try:
         # 构建FileBot API URL
         filebot_url = f"http://localhost:8001/api/v1/documents/{document_id}"
         
-        # 如果是PDF请求，添加参数
+        # IfPDF请求，AddParameter
         if download_type == "pdf":
             filebot_url += f"?download_type=pdf"
         
-        # 发送请求到FileBot，添加X-WebBot-Access头
+        # 发送请求到FileBot，AddX-WebBot-Access头
         headers = {"X-WebBot-Access": "true"}
         
         response = requests.get(filebot_url, headers=headers)
@@ -667,7 +668,7 @@ async def get_document_content(document_id: str, download_type: str = Query("ori
             # 成功获取文档，返回FileBot的响应
             content_type = response.headers.get("Content-Type", "application/octet-stream")
             
-            # 检查是否为文件下载
+            # 检查为文件下载
             content_disposition = response.headers.get("Content-Disposition", "")
             if "attachment" in content_disposition or "filename=" in content_disposition:
                 # 文件下载，直接返回二进制数据
@@ -677,11 +678,11 @@ async def get_document_content(document_id: str, download_type: str = Query("ori
                     headers=dict(response.headers)
                 )
             else:
-                # 可能是JSON响应（文档信息）
+                # 可能JSON响应（文档Information）
                 try:
                     return response.json()
                 except:
-                    # 如果不是JSON，返回原始内容
+                    # If不JSON，返回Raw content
                     return Response(
                         content=response.content,
                         media_type=content_type,
@@ -702,16 +703,16 @@ async def get_document_content(document_id: str, download_type: str = Query("ori
     except requests.exceptions.ConnectionError:
         raise HTTPException(status_code=503, detail="无法连接到FileBot服务")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取文档内容失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Get document content失败: {str(e)}")
 
 
 @router.get("/by-path/{path:path}")
-async def get_document_by_path(path: str, download_type: str = Query("original", description="下载类型: original 或 pdf")):
+async def get_document_by_path(path: str, download_type: str = Query("original", description="Download type: original or pdf")):
     """
-    通过原始URL路径获取文档内容（使用X-WebBot-Access头）
-    支持访问未发布文档
+    Get document content via original URL path (uses X-WebBot-Access header)
+    Supports access to unpublished documents
     
-    路径格式: /en/services/indigenous-peoples.html
+    Path format: /en/services/indigenous-peoples.html
     匹配FileBot的document_metadata.url字段
     """
     try:
@@ -722,12 +723,12 @@ async def get_document_by_path(path: str, download_type: str = Query("original",
         # 构建FileBot API URL
         filebot_url = f"http://localhost:8001/api/v1/documents/by-path/{path}"
         
-        # 添加查询参数
+        # Add查询Parameter
         params = {}
         if download_type == "pdf":
             params["download_type"] = "pdf"
         
-        # 发送请求到FileBot，添加X-WebBot-Access头
+        # 发送请求到FileBot，AddX-WebBot-Access头
         headers = {"X-WebBot-Access": "true"}
         
         response = requests.get(filebot_url, headers=headers, params=params)
@@ -736,7 +737,7 @@ async def get_document_by_path(path: str, download_type: str = Query("original",
             # 成功获取文档，返回FileBot的响应
             content_type = response.headers.get("Content-Type", "application/octet-stream")
             
-            # 检查是否为文件下载
+            # 检查为文件下载
             content_disposition = response.headers.get("Content-Disposition", "")
             if "attachment" in content_disposition or "filename=" in content_disposition:
                 # 文件下载，直接返回二进制数据
@@ -746,11 +747,11 @@ async def get_document_by_path(path: str, download_type: str = Query("original",
                     headers=dict(response.headers)
                 )
             else:
-                # 可能是JSON响应（文档信息）
+                # 可能JSON响应（文档Information）
                 try:
                     return response.json()
                 except:
-                    # 如果不是JSON，返回原始内容
+                    # If不JSON，返回Raw content
                     return Response(
                         content=response.content,
                         media_type=content_type,

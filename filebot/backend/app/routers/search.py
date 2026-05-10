@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 from typing import List, Optional, Dict, Any
-import uuid
 import traceback
 
 from app.db.database import get_db
@@ -17,27 +16,27 @@ from app.schemas.document import DocumentResponse, PageResponse
 router = APIRouter()
 
 
-# ========== 权限检查辅助函数 ==========
+# ========== Permission Check Helpers ==========
 
 def build_permission_query(current_user: User, db: Session):
-    """构建权限查询基础：用户只能访问自己有权限的应用下的文档
+    """Build permission-filtered base query: users can only access documents under their apps
     
     Returns:
-        查询对象，已应用权限筛选
+        Query object with permission filter applied
     """
     from sqlalchemy.orm import aliased
     
-    # 基础查询，关联到文件夹、应用（移除抽屉层）
+    # Base query, join to folder and app (drawer layer removed)
     query = db.query(Document).options(
         joinedload(Document.folder).joinedload(Folder.app)
     )
     
     if current_user.is_superuser:
-        # 管理员可以访问所有文档
+        # Admin can access all documents
         return query
     
-    # 普通用户：只能访问自己拥有的应用下的文档
-    # 通过文件夹→抽屉→应用链进行筛选
+    # Regular users: only access documents under their own apps
+    # Filter through folder -> app chain
     user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
     
     query = query.join(Folder).join(App)
@@ -46,64 +45,63 @@ def build_permission_query(current_user: User, db: Session):
     return query
 
 
-# ========== 搜索路由 ==========
+# ========== Search Routes ==========
 
 @router.get("/documents", response_model=List[DocumentResponse])
 def search_documents(
-    # 文档属性搜索
-    title: Optional[str] = Query(None, description="文档标题（模糊匹配）"),
-    description: Optional[str] = Query(None, description="文档描述（模糊匹配）"),
-    document_number: Optional[str] = Query(None, description="文档编号（精确匹配）"),
+    # Document attribute search
+    title: Optional[str] = Query(None, description="Document title (fuzzy match)"),
+    description: Optional[str] = Query(None, description="Document description (fuzzy match)"),
+    document_number: Optional[str] = Query(None, description="Document number (exact match)"),
     
-    # 文档状态筛选
-    status: Optional[DocumentStatus] = Query(None, description="文档状态"),
-    document_type: Optional[DocumentType] = Query(None, description="文档类型"),
-    conversion_status: Optional[ConversionStatus] = Query(None, description="转换状态"),
+    # Document status filters
+    status: Optional[DocumentStatus] = Query(None, description="Document status"),
+    document_type: Optional[DocumentType] = Query(None, description="Document type"),
+    conversion_status: Optional[ConversionStatus] = Query(None, description="Conversion status"),
     
-    # 文件属性筛选
-    file_type: Optional[FileType] = Query(None, description="文件类型"),
-    mime_type: Optional[str] = Query(None, description="MIME类型"),
+    # File attribute filters
+    file_type: Optional[FileType] = Query(None, description="File type"),
+    mime_type: Optional[str] = Query(None, description="MIME type"),
     
-    # 文件夹相关筛选
-    folder_id: Optional[uuid.UUID] = Query(None, description="按文件夹ID筛选"),
-    drawer_id: Optional[uuid.UUID] = Query(None, description="按抽屉ID筛选"),
-    app_id: Optional[uuid.UUID] = Query(None, description="按应用ID筛选"),
+    # Folder-related filters
+    folder_path: Optional[str] = Query(None, description="Filter by folder path"),
+    app_id: Optional[str] = Query(None, description="Filter by app ID"),
     
-    # 上传者筛选
-    uploaded_by: Optional[uuid.UUID] = Query(None, description="上传用户ID"),
+    # Uploader filter
+    uploaded_by: Optional[str] = Query(None, description="Uploader user ID"),
     
-    # 时间范围筛选
-    created_after: Optional[str] = Query(None, description="创建时间之后（格式：YYYY-MM-DD）"),
-    created_before: Optional[str] = Query(None, description="创建时间之前（格式：YYYY-MM-DD）"),
-    updated_after: Optional[str] = Query(None, description="更新时间之后（格式：YYYY-MM-DD）"),
-    updated_before: Optional[str] = Query(None, description="更新时间之前（格式：YYYY-MM-DD）"),
+    # Time range filters
+    created_after: Optional[str] = Query(None, description="Created after (format: YYYY-MM-DD)"),
+    created_before: Optional[str] = Query(None, description="Created before (format: YYYY-MM-DD)"),
+    updated_after: Optional[str] = Query(None, description="Updated after (format: YYYY-MM-DD)"),
+    updated_before: Optional[str] = Query(None, description="Updated before (format: YYYY-MM-DD)"),
     
-    # 归档状态
-    is_archived: Optional[bool] = Query(None, description="是否已归档"),
+    # Archive status
+    is_archived: Optional[bool] = Query(None, description="Is archived"),
     
-    # 路径筛选
-    path: Optional[str] = Query(None, description="路径前缀匹配 (LIKE 'path%')"),
+    # Path filter
+    path: Optional[str] = Query(None, description="Path prefix match (LIKE 'path%')"),
     
-    # 分页参数
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    # Pagination
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     
-    # 排序参数
-    sort_by: Optional[str] = Query("created_at", description="排序字段：created_at, updated_at, title, file_size"),
-    sort_order: Optional[str] = Query("desc", description="排序顺序：asc, desc"),
+    # Sort parameters
+    sort_by: Optional[str] = Query("created_at", description="Sort field: created_at, updated_at, title, file_size"),
+    sort_order: Optional[str] = Query("desc", description="Sort order: asc, desc"),
     
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """搜索文档
+    """Search documents
     
-    支持多条件组合搜索，包括文档属性、状态、文件夹层级、时间范围等。
+    Supports multi-condition combined search, including document attributes, status, folder hierarchy, time range, etc.
     """
     try:
-        # 构建基础查询（已应用权限筛选）
+        # Build base query (permission filter already applied)
         query = build_permission_query(current_user, db)
     
-        # ===== 文档属性搜索 =====
+        # ===== Document attribute search =====
         if title:
             query = query.filter(Document.title.ilike(f"%{title}%"))
     
@@ -113,7 +111,7 @@ def search_documents(
         if document_number:
             query = query.filter(Document.document_number == document_number)
     
-        # ===== 文档状态筛选 =====
+        # ===== Document status filters =====
         if status:
             query = query.filter(Document.status == status)
     
@@ -123,46 +121,38 @@ def search_documents(
         if conversion_status:
             query = query.filter(Document.conversion_status == conversion_status)
     
-        # ===== 文件属性筛选 =====
+        # ===== File attribute filters =====
         if file_type:
             query = query.filter(Document.file_type == file_type)
     
         if mime_type:
             query = query.filter(Document.mime_type.ilike(f"%{mime_type}%"))
     
-        # ===== 文件夹层级筛选 =====
-        if folder_id:
-            # 验证用户是否有权限访问该文件夹
+        # ===== Folder hierarchy filters =====
+        if folder_path:
+            # Verify user has permission to access this folder
             try:
-                # 使用文档路由中的权限检查函数
                 from app.routers.documents import check_folder_access
-                check_folder_access(folder_id, current_user, db)
-                query = query.filter(Document.folder_id == str(folder_id))  # 转换为字符串
+                check_folder_access(folder_path, current_user, db)
+                query = query.filter(Document.folder_path == folder_path)
             except HTTPException:
-                # 用户没有权限访问该文件夹，返回空结果
+                # User has no permission, return empty
                 return []
     
-        if drawer_id:
-            # 抽屉层已移除，此参数不再支持
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="抽屉层已移除，请使用app_id参数"
-            )
-    
         if app_id:
-            # 通过文件夹直接关联到应用（移除抽屉层）
+            # Join directly through folder -> app (drawer layer removed)
             query = query.join(Folder).filter(Folder.app_id == app_id)
     
-        # ===== 上传者筛选 =====
+        # ===== Uploader filter =====
         if uploaded_by:
             query = query.filter(Document.uploaded_by == uploaded_by)
     
-        # ===== 路径筛选 =====
+        # ===== Path filter =====
         if path:
-            # 使用LIKE进行前缀匹配
+            # Use LIKE for prefix matching
             query = query.filter(Document.path.like(f"{path}%"))
     
-        # ===== 时间范围筛选 =====
+        # ===== Time range filters =====
         if created_after:
             query = query.filter(Document.created_at >= created_after)
     
@@ -175,11 +165,11 @@ def search_documents(
         if updated_before:
             query = query.filter(Document.updated_at <= updated_before)
     
-        # ===== 归档状态筛选 =====
+        # ===== Archive status filter =====
         if is_archived is not None:
             query = query.filter(Document.is_archived == is_archived)
     
-        # ===== 排序 =====
+        # ===== Sorting =====
         sort_field_map = {
             "created_at": Document.created_at,
             "updated_at": Document.updated_at,
@@ -193,7 +183,7 @@ def search_documents(
         else:
             query = query.order_by(sort_field.desc())
     
-        # ===== 分页 =====
+        # ===== Pagination =====
         documents = query.offset(skip).limit(limit).all()
     
         return documents
@@ -204,62 +194,62 @@ def search_documents(
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"搜索失败: {str(e)}"
+            detail=f"Search failed: {str(e)}"
         )
 
 @router.get("/pages", response_model=List[PageResponse])
 def search_pages(
-    # 索引字段搜索（支持9个索引字段）
-    index1: Optional[str] = Query(None, description="索引字段1（模糊匹配）"),
-    index2: Optional[str] = Query(None, description="索引字段2（模糊匹配）"),
-    index3: Optional[str] = Query(None, description="索引字段3（模糊匹配）"),
-    index4: Optional[str] = Query(None, description="索引字段4（模糊匹配）"),
-    index5: Optional[str] = Query(None, description="索引字段5（模糊匹配）"),
-    index6: Optional[str] = Query(None, description="索引字段6（模糊匹配）"),
-    index7: Optional[str] = Query(None, description="索引字段7（模糊匹配）"),
-    index8: Optional[str] = Query(None, description="索引字段8（模糊匹配）"),
-    index9: Optional[str] = Query(None, description="索引字段9（模糊匹配）"),
+    # Index field search (9 index fields)
+    index1: Optional[str] = Query(None, description="Index field 1 (fuzzy match)"),
+    index2: Optional[str] = Query(None, description="Index field 2 (fuzzy match)"),
+    index3: Optional[str] = Query(None, description="Index field 3 (fuzzy match)"),
+    index4: Optional[str] = Query(None, description="Index field 4 (fuzzy match)"),
+    index5: Optional[str] = Query(None, description="Index field 5 (fuzzy match)"),
+    index6: Optional[str] = Query(None, description="Index field 6 (fuzzy match)"),
+    index7: Optional[str] = Query(None, description="Index field 7 (fuzzy match)"),
+    index8: Optional[str] = Query(None, description="Index field 8 (fuzzy match)"),
+    index9: Optional[str] = Query(None, description="Index field 9 (fuzzy match)"),
     
-    # 页码范围
-    page_min: Optional[int] = Query(None, ge=1, description="最小页码"),
-    page_max: Optional[int] = Query(None, ge=1, description="最大页码"),
+    # Page range
+    page_min: Optional[int] = Query(None, ge=1, description="Minimum page number"),
+    page_max: Optional[int] = Query(None, ge=1, description="Maximum page number"),
     
-    # OCR文本搜索
-    ocr_text: Optional[str] = Query(None, description="OCR文本（模糊匹配）"),
+    # OCR text search
+    ocr_text: Optional[str] = Query(None, description="OCR text (fuzzy match)"),
     
-    # 尺寸筛选
-    width_min: Optional[int] = Query(None, ge=0, description="最小宽度"),
-    width_max: Optional[int] = Query(None, ge=0, description="最大宽度"),
-    height_min: Optional[int] = Query(None, ge=0, description="最小高度"),
-    height_max: Optional[int] = Query(None, ge=0, description="最大高度"),
+    # Size filters
+    width_min: Optional[int] = Query(None, ge=0, description="Minimum width"),
+    width_max: Optional[int] = Query(None, ge=0, description="Maximum width"),
+    height_min: Optional[int] = Query(None, ge=0, description="Minimum height"),
+    height_max: Optional[int] = Query(None, ge=0, description="Maximum height"),
     
-    # 分页参数
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    # Pagination
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """搜索页面（基于索引字段）
+    """Search pages (based on index fields)
     
-    这是核心搜索功能，基于页面的9个索引字段进行搜索。
-    搜索结果会返回完整的页面信息，包括关联的文档。
+    Core search functionality, searching based on 9 index fields.
+    Results return full page information including associated documents.
     """
-    # 构建基础查询，关联文档以便进行权限检查（移除抽屉层）
+    # Build base query, join documents for permission check (drawer layer removed)
     query = db.query(Page).options(
         joinedload(Page.document).joinedload(Document.folder).joinedload(Folder.app)
     )
     
-    # 应用权限筛选：只能访问用户有权限的文档下的页面
+    # Apply permission filter: only pages under accessible documents
     if not current_user.is_superuser:
-        # 普通用户：通过文档→文件夹→应用链进行权限筛选（移除抽屉层）
+        # Regular users: permission filter through document -> folder -> app chain
         user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
         
         query = query.join(Document).join(Folder).join(App)
         query = query.filter(App.id.in_(user_apps_subquery))
     
-    # ===== 索引字段搜索 =====
-    # 支持多个索引字段的组合搜索（AND关系）
+    # ===== Index field search =====
+    # Support combined search with multiple index fields (AND relationship)
     index_filters = []
     
     if index1:
@@ -284,18 +274,18 @@ def search_pages(
     if index_filters:
         query = query.filter(and_(*index_filters))
     
-    # ===== 页码范围筛选 =====
+    # ===== Page range filters =====
     if page_min:
         query = query.filter(Page.page_number >= page_min)
     
     if page_max:
         query = query.filter(Page.page_number <= page_max)
     
-    # ===== OCR文本搜索 =====
+    # ===== OCR text search =====
     if ocr_text:
         query = query.filter(Page.ocr_text.ilike(f"%{ocr_text}%"))
     
-    # ===== 尺寸筛选 =====
+    # ===== Size filters =====
     if width_min:
         query = query.filter(Page.width >= width_min)
     
@@ -308,8 +298,8 @@ def search_pages(
     if height_max:
         query = query.filter(Page.height <= height_max)
     
-    # ===== 排序和分页 =====
-    query = query.order_by(Page.document_id, Page.page_number)
+    # ===== Sort and paginate =====
+    query = query.order_by(Page.document_path, Page.page_number)
     pages = query.offset(skip).limit(limit).all()
     
     return pages
@@ -317,46 +307,46 @@ def search_pages(
 
 @router.get("/combined", response_model=List[DocumentResponse])
 def combined_search(
-    # 文档搜索参数（复用文档搜索的参数）
-    title: Optional[str] = Query(None, description="文档标题（模糊匹配）"),
-    description: Optional[str] = Query(None, description="文档描述（模糊匹配）"),
-    document_number: Optional[str] = Query(None, description="文档编号（精确匹配）"),
+    # Document search parameters (reusing document search params)
+    title: Optional[str] = Query(None, description="Document title (fuzzy match)"),
+    description: Optional[str] = Query(None, description="Document description (fuzzy match)"),
+    document_number: Optional[str] = Query(None, description="Document number (exact match)"),
     
-    # 页面索引搜索参数
-    index1: Optional[str] = Query(None, description="索引字段1（模糊匹配）"),
-    index2: Optional[str] = Query(None, description="索引字段2（模糊匹配）"),
-    index3: Optional[str] = Query(None, description="索引字段3（模糊匹配）"),
-    index4: Optional[str] = Query(None, description="索引字段4（模糊匹配）"),
-    index5: Optional[str] = Query(None, description="索引字段5（模糊匹配）"),
-    index6: Optional[str] = Query(None, description="索引字段6（模糊匹配）"),
-    index7: Optional[str] = Query(None, description="索引字段7（模糊匹配）"),
-    index8: Optional[str] = Query(None, description="索引字段8（模糊匹配）"),
-    index9: Optional[str] = Query(None, description="索引字段9（模糊匹配）"),
+    # Page index search parameters
+    index1: Optional[str] = Query(None, description="Index field 1 (fuzzy match)"),
+    index2: Optional[str] = Query(None, description="Index field 2 (fuzzy match)"),
+    index3: Optional[str] = Query(None, description="Index field 3 (fuzzy match)"),
+    index4: Optional[str] = Query(None, description="Index field 4 (fuzzy match)"),
+    index5: Optional[str] = Query(None, description="Index field 5 (fuzzy match)"),
+    index6: Optional[str] = Query(None, description="Index field 6 (fuzzy match)"),
+    index7: Optional[str] = Query(None, description="Index field 7 (fuzzy match)"),
+    index8: Optional[str] = Query(None, description="Index field 8 (fuzzy match)"),
+    index9: Optional[str] = Query(None, description="Index field 9 (fuzzy match)"),
     
-    # OCR文本搜索
-    ocr_text: Optional[str] = Query(None, description="OCR文本（模糊匹配）"),
+    # OCR text search
+    ocr_text: Optional[str] = Query(None, description="OCR text (fuzzy match)"),
     
-    # 其他筛选参数
-    status: Optional[DocumentStatus] = Query(None, description="文档状态"),
-    document_type: Optional[DocumentType] = Query(None, description="文档类型"),
-    folder_id: Optional[uuid.UUID] = Query(None, description="按文件夹ID筛选"),
+    # Other filters
+    status: Optional[DocumentStatus] = Query(None, description="Document status"),
+    document_type: Optional[DocumentType] = Query(None, description="Document type"),
+    folder_path: Optional[str] = Query(None, description="Filter by folder path"),
     
-    # 分页参数
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    # Pagination
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """组合搜索：同时基于文档属性和页面索引字段搜索
+    """Combined search: search based on both document attributes and page index fields
     
-    这是最强大的搜索功能，可以在文档级别搜索，同时根据页面索引字段进行筛选。
-    返回满足所有条件的文档。
+    This is the most powerful search feature, enabling document-level search
+    while filtering by page index fields. Returns documents matching all conditions.
     """
-    # 构建基础文档查询（已应用权限筛选）
+    # Build base document query (permission filter already applied)
     query = build_permission_query(current_user, db)
     
-    # ===== 文档属性搜索 =====
+    # ===== Document attribute search =====
     if title:
         query = query.filter(Document.title.ilike(f"%{title}%"))
     
@@ -372,25 +362,25 @@ def combined_search(
     if document_type:
         query = query.filter(Document.type == document_type)
     
-    if folder_id:
+    if folder_path:
         try:
             from app.routers.documents import check_folder_access
-            check_folder_access(folder_id, current_user, db)
-            query = query.filter(Document.folder_id == str(folder_id))  # 转换为字符串
+            check_folder_access(folder_path, current_user, db)
+            query = query.filter(Document.folder_path == folder_path)
         except HTTPException:
             return []
     
-    # ===== 页面索引字段搜索 =====
-    # 如果提供了任何索引字段或OCR文本搜索条件，需要关联页面表
+    # ===== Page index field search =====
+    # If any index field or OCR text condition is provided, join pages table
     has_page_conditions = any([
         index1, index2, index3, index4, index5, index6, index7, index8, index9, ocr_text
     ])
     
     if has_page_conditions:
-        # 关联页面表
+        # Join pages table
         query = query.join(Page)
         
-        # 构建页面条件
+        # Build page conditions
         page_conditions = []
         
         if index1:
@@ -418,10 +408,10 @@ def combined_search(
         if page_conditions:
             query = query.filter(or_(*page_conditions))
         
-        # 使用 distinct 确保文档不重复
+        # Use distinct to avoid duplicate documents
         query = query.distinct()
     
-    # ===== 排序和分页 =====
+    # ===== Sort and paginate =====
     query = query.order_by(Document.created_at.desc())
     documents = query.offset(skip).limit(limit).all()
     
@@ -430,55 +420,55 @@ def combined_search(
 
 @router.get("/advanced", response_model=Dict[str, Any])
 def advanced_search(
-    # 搜索模式
-    search_mode: str = Query("and", description="搜索模式: and, or"),
+    # Search mode
+    search_mode: str = Query("and", description="Search mode: and, or"),
     
-    # 搜索词（支持多个，以逗号分隔）
-    keywords: Optional[str] = Query(None, description="关键词，逗号分隔，如：发票,2024,合同"),
+    # Search keywords (comma-separated)
+    keywords: Optional[str] = Query(None, description="Keywords, comma-separated, e.g.: invoice,2024,contract"),
     
-    # 搜索字段范围
+    # Search field scope
     search_fields: Optional[str] = Query(
-        "all", 
-        description="搜索字段：all, title, description, indices, ocr, document_number"
+        "all",
+        description="Search fields: all, title, description, indices, ocr, document_number"
     ),
     
-    # 其他参数
-    folder_id: Optional[uuid.UUID] = Query(None, description="按文件夹ID筛选"),
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    # Other parameters
+    folder_path: Optional[str] = Query(None, description="Filter by folder path"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """高级搜索：支持多关键词、多字段、布尔搜索
+    """Advanced search: multi-keyword, multi-field, boolean search
     
-    这是为高级用户提供的搜索接口，支持更复杂的搜索需求。
+    This interface is for advanced users, supporting more complex search requirements.
     """
     if not keywords:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="必须提供关键词"
+            detail="Keywords are required"
         )
     
-    # 解析关键词
+    # Parse keywords
     keyword_list = [k.strip() for k in keywords.split(",") if k.strip()]
     
-    # 构建基础查询
+    # Build base query
     query = build_permission_query(current_user, db)
     
-    # 应用文件夹筛选
-    if folder_id:
+    # Apply folder filter
+    if folder_path:
         try:
             from app.routers.documents import check_folder_access
-            check_folder_access(folder_id, current_user, db)
-            query = query.filter(Document.folder_id == str(folder_id))  # 转换为字符串
+            check_folder_access(folder_path, current_user, db)
+            query = query.filter(Document.folder_path == folder_path)
         except HTTPException:
             return {"results": [], "total": 0, "keywords": keyword_list}
     
-    # 构建搜索条件
+    # Build search conditions
     search_conditions = []
     
-    # 确定搜索字段
+    # Determine search fields
     if search_fields == "all" or "title" in search_fields:
         for keyword in keyword_list:
             search_conditions.append(Document.title.ilike(f"%{keyword}%"))
@@ -491,13 +481,13 @@ def advanced_search(
         for keyword in keyword_list:
             search_conditions.append(Document.document_number.ilike(f"%{keyword}%"))
     
-    # 如果需要搜索索引字段或OCR文本，需要关联页面表
+    # If searching index fields or OCR text, join pages table
     if search_fields == "all" or "indices" in search_fields or "ocr" in search_fields:
         query = query.join(Page)
         
         if search_fields == "all" or "indices" in search_fields:
             for keyword in keyword_list:
-                # 搜索所有9个索引字段
+                # Search all 9 index fields
                 index_conditions = or_(
                     Page.index1.ilike(f"%{keyword}%"),
                     Page.index2.ilike(f"%{keyword}%"),
@@ -515,23 +505,23 @@ def advanced_search(
             for keyword in keyword_list:
                 search_conditions.append(Page.ocr_text.ilike(f"%{keyword}%"))
         
-        # 使用 distinct 确保文档不重复
+        # Use distinct to avoid duplicate documents
         query = query.distinct()
     
-    # 应用搜索条件
+    # Apply search conditions
     if search_conditions:
         if search_mode == "and":
-            # AND模式：必须满足所有关键词
+            # AND mode: must match all keywords
             for condition in search_conditions:
                 query = query.filter(condition)
         else:
-            # OR模式：满足任意一个关键词
+            # OR mode: match any keyword
             query = query.filter(or_(*search_conditions))
     
-    # 计算总数
+    # Count total
     total = query.count()
     
-    # 应用分页
+    # Apply pagination
     query = query.order_by(Document.created_at.desc())
     documents = query.offset(skip).limit(limit).all()
     

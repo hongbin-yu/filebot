@@ -24,6 +24,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import ClientDocuments from './pages/ClientDocuments';
 import ClientDocumentDetail from './pages/ClientDocumentDetail';
 import ClientNavigation from './pages/ClientNavigation';
+import ClientAppFolders from './pages/ClientAppFolders';
 import ClientLayout from './components/layout/ClientLayout';
 
 // Protected Route Component
@@ -152,6 +153,16 @@ function App() {
             <ClientProtectedRoute>
               <ClientLayout>
                 <ClientDocumentDetail />
+              </ClientLayout>
+            </ClientProtectedRoute>
+          } />
+          
+          {/* Client文件夹浏览（通配路由放置末尾，避免干扰其他特定路由）
+              捕获 /apps/:appSlug/... 中未匹配的路径作为文件夹路径 */}
+          <Route path="/apps/:appSlug/*" element={
+            <ClientProtectedRoute>
+              <ClientLayout>
+                <ClientAppFolders />
               </ClientLayout>
             </ClientProtectedRoute>
           } />

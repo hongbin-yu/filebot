@@ -26,25 +26,25 @@ const ClientLogin: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // 使用现有的认证服务
-      // 注意：实际部署中，可能需要为Client创建专门的登录端点
+      // Use existing auth service
+      // Note: In production, a dedicated Client login endpoint may be needed
       const response = await authService.login({ username, password });
       
-      // 检查用户是否有Client访问权限
-      // 这里可以添加权限检查逻辑
+      // Check if user has Client access permission
+      // Add permission check logic here
       
-      // 存储Client特定的标记（可选）
+      // Store Client-specific flag (optional)
       if (rememberMe) {
         localStorage.setItem('client_remember', 'true');
       }
       
-      // 导航到Client App选择页面 (APP-first导航)
+      // Navigate to Client App selection page (APP-first navigation)
       navigate('/client/apps');
       
     } catch (err: any) {
       console.error(t('clientLogin.clientLoginFailed'), err);
       
-      // 提供友好的错误消息
+      // Provide friendly error messages
       if (err.response?.status === 401) {
         setError(t('clientLogin.invalidUsernamePassword'));
       } else if (err.response?.status === 403) {
@@ -62,20 +62,20 @@ const ClientLogin: React.FC = () => {
   };
 
   const handleDemoLogin = () => {
-    // 演示账户（如果后端有配置）
+    // Demo account (if configured on backend)
     setUsername('demo-client');
     setPassword('demo123');
   };
 
   const handleBackToMain = () => {
-    // 返回到主系统登录页
+    // Navigate back to main system login page
     navigate('/login');
   };
 
   return (
     <div className="client-login min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo和标题 */}
+        {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-lg mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -86,7 +86,7 @@ const ClientLogin: React.FC = () => {
           <p className="text-gray-600 mt-2">{t('clientLogin.portalSubtitle')}</p>
         </div>
         
-        {/* 登录卡片 */}
+        {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('clientLogin.loginTitle')}</h2>
           <p className="text-gray-600 mb-6">{t('clientLogin.loginInstruction')}</p>
@@ -104,7 +104,7 @@ const ClientLogin: React.FC = () => {
           
           <form onSubmit={handleSubmit}>
             <div className="space-y-5">
-              {/* 用户名输入 */}
+              {/* Username Input */}
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
                   {t('clientLogin.usernameLabel')}
@@ -121,7 +121,7 @@ const ClientLogin: React.FC = () => {
                 />
               </div>
               
-              {/* 密码输入 */}
+              {/* Password Input */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   {t('clientLogin.passwordLabel')}
@@ -138,7 +138,7 @@ const ClientLogin: React.FC = () => {
                 />
               </div>
               
-              {/* 记住我和忘记密码 */}
+              {/* Remember Me and Forgot Password */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <input
@@ -157,14 +157,14 @@ const ClientLogin: React.FC = () => {
                 <button
                   type="button"
                   className="text-sm text-blue-600 hover:text-blue-800"
-                  onClick={() => window.showWetAlert('请联系管理员重置密码')}
+                  onClick={() => window.showWetAlert('Please contact the administrator to reset your password')}
                   disabled={loading}
                 >
                   {t('clientLogin.forgotPassword')}
                 </button>
               </div>
               
-              {/* 登录按钮 */}
+              {/* Sign In Button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -181,7 +181,7 @@ const ClientLogin: React.FC = () => {
                 ) : t('clientLogin.signIn')}
               </button>
               
-              {/* 演示账户按钮 */}
+              {/* Demo Account Button */}
               <button
                 type="button"
                 onClick={handleDemoLogin}
@@ -193,14 +193,14 @@ const ClientLogin: React.FC = () => {
             </div>
           </form>
           
-          {/* 分隔线 */}
+          {/* Divider */}
           <div className="my-6 flex items-center">
             <div className="flex-1 border-t border-gray-300"></div>
             <div className="mx-4 text-sm text-gray-500">{t('clientLogin.or')}</div>
             <div className="flex-1 border-t border-gray-300"></div>
           </div>
           
-          {/* 返回主系统 */}
+          {/* Back to Main System */}
           <div className="text-center">
             <p className="text-gray-600 text-sm mb-3">{t('clientLogin.needManagementAccess')}</p>
             <button
@@ -214,7 +214,7 @@ const ClientLogin: React.FC = () => {
           </div>
         </div>
         
-        {/* 页脚说明 */}
+        {/* Footer Note */}
         <div className="mt-8 text-center text-sm text-gray-500">
           <p>© 2026 FileBot Client Portal. {t('clientLogin.footerForAuthorizedUsers')}</p>
           <p className="mt-1">{t('clientLogin.footerReadOnlyInterface')}</p>

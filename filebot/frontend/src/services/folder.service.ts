@@ -61,7 +61,6 @@ class FolderService {
   async getFolders(
     appSlug: string, 
     params?: {
-      parent_folder_id?: string;
       parent_folder_path?: string;
       skip?: number;
       limit?: number;
@@ -73,40 +72,24 @@ class FolderService {
       throw new Error('应用标识符不能为空');
     }
 
-    // 检查是否意外传递了UUID
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appSlug);
-    if (isUuid) {
-      console.warn(`⚠️ [WARNING] folderService.getFolders: appSlug "${appSlug}" appears to be a UUID. Expected a slug like "boarding"`);
-    }
-
-    // 准备请求参数
+    // 准备请求参数 - 过滤掉空值
     const requestParams: any = {
-      ...(params || {}),
-      app_id: appSlug // 始终使用应用slug
+      ...Object.fromEntries(
+        Object.entries(params || {}).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      )
     };
 
-    // 调试日志
-    console.log('🔍 [DEBUG] folderService.getFolders:', {
-      appSlug,
-      isUuid,
-      requestParams,
-      timestamp: new Date().toISOString()
-    });
+    console.log('🔍 [DEBUG] folderService.getFolders:', { appSlug, requestParams });
 
-    // 调用API
     const response = await api.get('/folders/', { 
       params: requestParams
     });
 
-    // 响应日志
     console.log('🔍 [DEBUG] folderService.getFolders response:', {
       count: response.data?.length,
       sample: response.data?.slice(0, 3).map((f: Folder) => ({
-        id: f.id,
         name: f.name,
-        path: f.path,
-        app_id: f.app_id,
-        app_slug: f.app_slug
+        path: f.path
       })),
       status: response.status
     });
@@ -115,60 +98,29 @@ class FolderService {
   }
 
   /**
-   * 获取单个文件夹详情 - 支持路径或UUID
-   * @param folderIdentifier 文件夹路径（如 "/boarding/canada-site"）或UUID
+   * 获取单个文件夹详情 - 仅支持路径
+   * @param folderPath 文件夹路径（如 "/boarding/canadasite/fr"）
    * @returns 文件夹详情
    */
-  async getFolder(folderIdentifier: string): Promise<Folder> {
-    // 验证标识符格式
-    if (!folderIdentifier) {
-      throw new Error('Folder identifier cannot be empty');
+  async getFolder(folderPath: string): Promise<Folder> {
+    if (!folderPath) {
+      throw new Error('文件夹路径不能为空');
     }
 
-    console.log('🔍 [DEBUG] folderService.getFolder called with:', folderIdentifier);
+    console.log('🔍 [DEBUG] folderService.getFolder:', { folderPath });
     
-    // 判断标识符类型：UUID 或 路径
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(folderIdentifier);
-    const isPath = folderIdentifier.startsWith('/');
-    
-    let url: string;
-    if (isUuid) {
-      // UUID：使用通用端点
-      url = `/folders/${folderIdentifier}`;
-      console.log('🔍 [DEBUG] folderService.getFolder: UUID detected, using generic endpoint');
-    } else if (isPath) {
-      // 路径：使用专用路径端点
-      // 确保路径以斜杠开头（已经是）
-      const normalizedPath = folderIdentifier.startsWith('/') ? folderIdentifier : '/' + folderIdentifier;
-      url = `/folders/by-path/${encodeURIComponent(normalizedPath)}`;
-      console.log('🔍 [DEBUG] folderService.getFolder: Path detected, using by-path endpoint');
-    } else {
-      // 既不是UUID也不是路径：可能是其他标识符，尝试通用端点
-      url = `/folders/${encodeURIComponent(folderIdentifier)}`;
-      console.log('🔍 [DEBUG] folderService.getFolder: Unknown identifier type, trying generic endpoint');
-    }
-    
-    console.log('🔍 [DEBUG] folderService.getFolder request URL:', url);
+    const normalizedPath = folderPath.startsWith('/') ? folderPath : '/' + folderPath;
     
     try {
-      const response = await api.get(url);
-      
-      console.log('🔍 [DEBUG] folderService.getFolder response:', {
-        id: response.data.id,
-        name: response.data.name,
-        path: response.data.path,
-        app_id: response.data.app_id,
-        status: response.status
+      // 后端路由是 GET /by-path?path=...，用 query parameter 传参
+      const response = await api.get('/folders/by-path', {
+        params: { path: normalizedPath }
       });
-      
       return response.data;
     } catch (error: any) {
       console.error('❌ folderService.getFolder error:', {
-        url,
-        folderIdentifier,
-        identifierType: isUuid ? 'UUID' : (isPath ? 'Path' : 'Unknown'),
+        folderPath,
         status: error.response?.status,
-        statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message
       });
@@ -182,19 +134,12 @@ class FolderService {
    * @returns 文件夹对象
    */
   async getFolderByPath(folderPath: string): Promise<Folder> {
-    console.log('🔍 [DEBUG] folderService.getFolderByPath called with:', folderPath);
+    console.log('🔍 [DEBUG] folderService.getFolderByPath:', { folderPath });
     const normalizedPath = folderPath.startsWith('/') ? folderPath : '/' + folderPath;
     return this.getFolder(normalizedPath);
   }
 
-  /**
-   * 获取文件夹详情 - 基于ID（已弃用，仅用于兼容）
-   * @deprecated 请使用 getFolder 方法（基于路径）
-   */
-  async getFolderById(folderId: string): Promise<Folder> {
-    console.warn('⚠️ folderService.getFolderById 已弃用，请使用 getFolder 方法（基于路径）');
-    return this.getFolder(folderId);
-  }
+
 
   /**
    * 创建文件夹
@@ -202,12 +147,6 @@ class FolderService {
    * @returns 创建的文件夹
    */
   async createFolder(data: FolderCreateRequest): Promise<Folder> {
-    // 验证app_id不是UUID格式
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.app_id);
-    if (isUuid) {
-      console.warn(`⚠️ folderService.createFolder: app_id "${data.app_id}" appears to be a UUID. Expected a slug like "boarding"`);
-    }
-
     console.log('🔍 [DEBUG] folderService.createFolder:', data);
     const response = await api.post('/folders/', data);
     return response.data;
@@ -320,6 +259,23 @@ class FolderService {
     });
     
     return response.data;
+  }
+
+  /**
+   * 获取指定路径下所有子文件夹路径（递归，单DB查询）
+   * 替代前端BFS循环调用，避免大量API请求
+   * @param appSlug 应用slug
+   * @param rootPath 根文件夹路径，如 /boarding/canadasite
+   * @returns 路径列表（包含rootPath自身）
+   */
+  async getDescendantPaths(appSlug: string, rootPath: string): Promise<string[]> {
+    console.log('🔍 [DEBUG] folderService.getDescendantPaths:', { appSlug, rootPath });
+    const response = await api.get('/folders/descendant-paths', {
+      params: { app_id: appSlug, root_path: rootPath }
+    });
+    const paths: string[] = response.data?.paths || [];
+    console.log('🔍 [DEBUG] folderService.getDescendantPaths response:', { count: response.data?.count, paths: paths.slice(0, 5) });
+    return paths;
   }
 
   /**

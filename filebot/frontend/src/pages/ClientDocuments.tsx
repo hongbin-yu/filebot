@@ -3,8 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import appService from '../services/app.service';
 import folderService from '../services/folder.service';
 import documentService from '../services/document.service';
+import PreviewOverlay from '../components/PreviewOverlay';
 
-// 树状文件夹组件
+// Tree folder component
 interface FolderTreeNode {
   id: string;
   name: string;
@@ -41,7 +42,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
           style={{ paddingLeft: `${level * 20 + 12}px` }}
           onClick={() => onFolderClick(node.path || node.id)}
         >
-          {/* 展开/折叠图标 */}
+          {/* Expand/collapse icon */}
           {node.children && node.children.length > 0 && (
             <button
               onClick={(e) => {
@@ -62,12 +63,12 @@ const FolderTree: React.FC<FolderTreeProps> = ({
             </button>
           )}
           
-          {/* 占位空间（无子文件夹的情况） */}
+          {/* Placeholder (no sub-folders) */}
           {(!node.children || node.children.length === 0) && (
             <div className="mr-7 w-5"></div>
           )}
           
-          {/* 文件夹图标 */}
+          {/* Folder icon */}
           <div className="mr-3">
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -76,12 +77,12 @@ const FolderTree: React.FC<FolderTreeProps> = ({
             </div>
           </div>
           
-          {/* 文件夹信息 */}
+          {/* Folder info */}
           <div className="flex-grow min-w-0">
             <div className="font-medium text-gray-800 truncate">{node.name}</div>
             <div className="text-xs text-gray-500 truncate">
               {node.document_count !== undefined && (
-                <span className="mr-2">{node.document_count} 个文档</span>
+                <span className="mr-2">{node.document_count} docs</span>
               )}
               {node.total_size !== undefined && node.total_size > 0 && (
                 <span>{(node.total_size / 1024 / 1024).toFixed(1)} MB</span>
@@ -90,7 +91,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
           </div>
         </div>
         
-        {/* 递归渲染子文件夹 */}
+        {/* Recursively render sub-folders */}
         {node.expanded && node.children && node.children.length > 0 && (
           <div className="mt-1">
             {renderTree(node.children, level + 1)}
@@ -118,11 +119,58 @@ const ClientDocuments: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
+
+  // Preview overlay state
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+
+  // Build preview URL based on file type
+  const buildPreviewUrl = (doc: any): string | null => {
+    const identifier = doc.path || doc.storage_path || doc.id;
+    if (!identifier) return null;
+
+    const encodedId = encodeURIComponent(identifier);
+    const token = localStorage.getItem('access_token');
+    const fileType = doc.file_type?.toLowerCase() || '';
+
+    // HTML files: use dedicated preview endpoint (same origin, /etc/designs etc. load properly)
+    if (fileType.match(/html?/)) {
+      return token
+        ? `/api/v1/documents/${encodedId}/preview/html?token=${encodeURIComponent(token)}`
+        : `/api/v1/documents/${encodedId}/preview/html`;
+    }
+
+    // Images (non-TIFF): prefer original URL (from crawler), fallback to preview endpoint
+    if (fileType.match(/(jpe?g|png|gif|bmp|webp|svg)/)) {
+      const originalUrl = doc.document_metadata?.url || doc.metadata?.url;
+      if (originalUrl) {
+        try {
+          const urlObj = new URL(originalUrl);
+          return urlObj.pathname; // same-origin path
+        } catch {}
+      }
+      return token
+        ? `/api/v1/documents/${encodedId}/preview?token=${encodeURIComponent(token)}`
+        : `/api/v1/documents/${encodedId}/preview`;
+    }
+
+    // TIFF: real-time convert to PDF for browser display
+    if (fileType.match(/tiff?/)) {
+      return token
+        ? `/api/v1/documents/${encodedId}/download?download_type=pdf&token=${encodeURIComponent(token)}`
+        : `/api/v1/documents/${encodedId}/download?download_type=pdf`;
+    }
+
+    // PDF & others: use download endpoint (browsers render PDF natively)
+    return token
+      ? `/api/v1/documents/${encodedId}/download?token=${encodeURIComponent(token)}`
+      : `/api/v1/documents/${encodedId}/download`;
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   
-  // 文件上传和过滤状态
+  // File upload and filter state
   const [fileTypeFilter, setFileTypeFilter] = useState<string>('all'); // all, image, document, media, component
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
@@ -136,38 +184,38 @@ const ClientDocuments: React.FC = () => {
     try {
       setLoading(true);
       
-      // 获取应用详情
+      // Fetch app details
       const appData = await appService.getAppById(appSlug || '');
       if (appData) {
         setApp(appData);
         
-        // 获取文件夹树
+        // Fetch folder tree
         const treeData = await folderService.getFolderTree(appData.id);
-        // 初始化所有节点为展开状态（可选，根据需求调整）
+        // Initialize all nodes as expanded (optional, adjust as needed)
         const initializeTree = (nodes: any[], level: number = 0): FolderTreeNode[] => {
           return nodes.map(node => ({
             ...node,
-            expanded: true, // 默认展开所有节点
+            expanded: true, // Expand all nodes by default
             level: level,
             children: node.children ? initializeTree(node.children, level + 1) : []
           }));
         };
         setFolderTree(initializeTree(treeData, 0));
         
-        // 获取当前文件夹详情（如果有folderId，支持UUID或path）
+        // Get current folder details (supports UUID or path)
         let currentFolderData = folder;
         if (folderId) {
-          // 解码可能的URL编码（特别是path包含斜杠的情况）
+          // Decode potential URL encoding (especially path with slashes)
           const folderIdentifier = decodeURIComponent(folderId);
           currentFolderData = await folderService.getFolder(folderIdentifier);
           setFolder(currentFolderData);
         } else if (treeData.length > 0) {
-          // 如果没有folderId，默认选择第一个文件夹
+          // If no folderId, select the first folder
           const firstFolder = findFirstFolder(treeData);
           if (firstFolder) {
             currentFolderData = firstFolder;
             setFolder(firstFolder);
-            // 更新URL中的folderId（可选），优先使用path
+            // Update URL folderId (optional), prefer path
             const folderIdentifier = getFolderIdentifier(firstFolder);
             const encodedIdentifier = encodeFolderIdentifier(folderIdentifier);
             navigate(`/apps/${appSlug}/folders/${encodedIdentifier}`, { replace: true });
@@ -175,13 +223,13 @@ const ClientDocuments: React.FC = () => {
           }
         }
         
-        // 获取文件夹文档（带分页）
+        // Fetch folder documents (with pagination)
         const targetFolderIdentifier = folderId || (folder ? getFolderIdentifier(folder) : '');
         if (targetFolderIdentifier) {
-          // 检查文件夹深度，如果深度>=6，获取所有子孙文档
+          // Check folder depth - if >=3 (department level), fetch all descendant docs
           const folderNode = findFolderInTree(folderTree, currentFolderData?.id || '');
-          if (folderNode && folderNode.level !== undefined && folderNode.level >= 6) {
-            console.log(`📁 文件夹深度 ${folderNode.level} >= 6，获取所有子孙文档`);
+          if (folderNode && folderNode.level !== undefined && folderNode.level >= 3) {
+            console.log(`📁 Folder depth ${folderNode.level} >= 3 (department level), fetching all descendant docs`);
             await fetchAllDescendantDocuments(folderNode);
           } else {
             const documentsData = await documentService.getDocuments(targetFolderIdentifier, {
@@ -192,12 +240,12 @@ const ClientDocuments: React.FC = () => {
             });
             setDocuments(documentsData);
             
-            // 获取文档总数用于分页（需要后端支持总数查询，暂时使用简单分页）
-            // 这里假设返回的数组长度小于limit时表示最后一页
+            // Get total docs for pagination (simple pagination for now)
+            // Assume array length < limit means last page
             if (documentsData.length < pageSize) {
               setTotalPages(currentPage);
             } else {
-              // 暂时设置为当前页+5，实际应该从API获取总数
+              // Temporarily set to current page + 5
               setTotalPages(currentPage + 5);
             }
           }
@@ -206,12 +254,12 @@ const ClientDocuments: React.FC = () => {
         setLoading(false);
       }
     } catch (err: any) {
-      console.error('获取数据失败:', err);
+      console.error('Failed to fetch data:', err);
       setLoading(false);
     }
   };
 
-  // 查找树中的第一个文件夹（用于默认选择）
+  // Find the first folder in tree (for default selection)
   const findFirstFolder = (nodes: any[]): any | null => {
     for (const node of nodes) {
       return node;
@@ -219,21 +267,21 @@ const ClientDocuments: React.FC = () => {
     return null;
   };
 
-  // 获取文件夹标识符（优先使用path，其次使用id）
+  // Get folder identifier (prefer path, fall back to id)
   const getFolderIdentifier = (folder: any): string => {
     return folder?.path || folder?.id || '';
   };
 
-  // 编码文件夹标识符用于URL（对path进行编码）
+  // Encode folder identifier for URL (encode path)
   const encodeFolderIdentifier = (identifier: string): string => {
-    // 如果是path（以/开头），进行URI编码
+    // If path (starts with /), URI encode it
     if (identifier.startsWith('/')) {
       return encodeURIComponent(identifier);
     }
     return identifier;
   };
 
-  // 递归查找文件夹节点
+  // Recursively find folder node
   const findFolderInTree = (nodes: FolderTreeNode[], folderId: string): FolderTreeNode | null => {
     for (const node of nodes) {
       if (node.id === folderId) {
@@ -247,12 +295,12 @@ const ClientDocuments: React.FC = () => {
     return null;
   };
 
-  // 递归获取文件夹的所有子孙文件夹标识符（路径优先）
+  // Recursively get all descendant folder identifiers (path preferred)
   const getAllDescendantFolderIdentifiers = (node: FolderTreeNode): string[] => {
     const identifiers: string[] = [];
     if (node.children && node.children.length > 0) {
       for (const child of node.children) {
-        // 使用路径优先的标识符
+        // Use path-first identifier
         const childIdentifier = getFolderIdentifier(child);
         identifiers.push(childIdentifier);
         identifiers.push(...getAllDescendantFolderIdentifiers(child));
@@ -261,15 +309,15 @@ const ClientDocuments: React.FC = () => {
     return identifiers;
   };
 
-  // 获取文件夹及其所有子孙文件夹的文档
+  // Fetch docs for folder and all descendants
   const fetchAllDescendantDocuments = async (folderNode: FolderTreeNode) => {
     try {
-      // 获取当前文件夹和所有子孙文件夹的标识符
+      // Get current folder and all descendant identifiers
       const currentFolderIdentifier = getFolderIdentifier(folderNode);
       const folderIdentifiers = [currentFolderIdentifier, ...getAllDescendantFolderIdentifiers(folderNode)];
-      console.log(`📁 获取 ${folderIdentifiers.length} 个文件夹的文档（深度 ${folderNode.level}）`);
+      console.log(`📁 Fetching docs for ${folderIdentifiers.length} folders (depth ${folderNode.level})`);
       
-      // 为每个文件夹获取文档
+      // Fetch docs for each folder
       const allDocuments: any[] = [];
       for (const folderId of folderIdentifiers) {
         try {
@@ -281,28 +329,28 @@ const ClientDocuments: React.FC = () => {
           });
           allDocuments.push(...documents);
         } catch (err) {
-          console.error(`获取文件夹 ${folderId} 的文档失败:`, err);
+          console.error(`Failed to fetch docs for folder ${folderId}:`, err);
         }
       }
       
-      // 去重（按ID）
+      // Deduplicate by ID
       const uniqueDocuments = allDocuments.filter((doc, index, self) => 
         index === self.findIndex(d => d.id === doc.id)
       );
       
-      console.log(`✅ 共获取 ${uniqueDocuments.length} 个文档`);
+      console.log(`✅ Got ${uniqueDocuments.length} unique docs total`);
       setDocuments(uniqueDocuments);
       
-      // 更新分页信息
+      // Update pagination info
       setTotalPages(1);
       setCurrentPage(1);
     } catch (err: any) {
-      console.error('获取子孙文档失败:', err);
+      console.error('Failed to fetch descendant docs:', err);
       setDocuments([]);
     }
   };
 
-  // 更新树节点的展开状态
+  // Toggle tree node expand state
   const updateTreeExpansion = (nodes: FolderTreeNode[], folderId: string): FolderTreeNode[] => {
     return nodes.map(node => {
       if (node.id === folderId) {
@@ -315,32 +363,32 @@ const ClientDocuments: React.FC = () => {
     });
   };
 
-  // 处理文件夹点击
+  // Handle folder click
   const handleFolderClick = (folderIdentifier: string) => {
     const encodedIdentifier = encodeFolderIdentifier(folderIdentifier);
     navigate(`/apps/${appSlug}/folders/${encodedIdentifier}`);
   };
 
-  // 处理树节点展开/折叠
+  // Handle tree node expand/collapse
   const handleToggleExpand = (folderId: string) => {
     setFolderTree(prevTree => updateTreeExpansion(prevTree, folderId));
   };
 
-  // 处理页面变化
+  // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // 处理页面大小变化
+  // Handle page size change
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
-    setCurrentPage(1); // 重置到第一页
+    setCurrentPage(1); // Reset to page 1
   };
 
-  // 处理文档下载
+  // Handle document download
   const handleDownload = async (documentId: string, filename: string) => {
     try {
-      console.log('开始下载文档:', documentId, filename);
+      console.log('Starting document download:', documentId, filename);
       const blob = await documentService.downloadDocument(documentId);
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
@@ -350,30 +398,39 @@ const ClientDocuments: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       window.document.body.removeChild(a);
-      console.log('文档下载完成:', filename);
+      console.log('Document download complete:', filename);
     } catch (err: any) {
-      console.error('下载失败:', err);
-      window.showWetAlert(`下载失败: ${err.message || '未知错误'}`);
+      console.error('Download failed:', err);
+      window.showWetAlert(`Download failed: ${err.message || 'Unknown error'}`);
     }
   };
 
-  // 处理文档预览
+  // Handle document preview (using lightbox overlay)
   const handlePreview = (doc: any) => {
-    const docPath = doc.path || doc.storage_path || doc.id;
-    window.open(`/documents/${docPath.replace(/^\//, '')}`, '_blank');
+    const url = buildPreviewUrl(doc);
+    if (url) {
+      setPreviewUrl(url);
+      setPreviewTitle(doc.title || doc.original_filename || 'Document Preview');
+    }
   };
 
-  // 处理文件上传
+  // Close preview overlay
+  const handleClosePreview = () => {
+    setPreviewUrl(null);
+    setPreviewTitle('');
+  };
+
+  // Handle file upload
   const handleFileUpload = async (files: FileList) => {
     if (!folderId && !folder?.id) {
-      window.showWetAlert('请先选择一个文件夹');
+      window.showWetAlert('Please select a folder first');
       return;
     }
 
-    // 获取文件夹标识符（路径优先）
+    // Get folder identifier (path preferred)
     const targetFolderIdentifier = folderId || (folder ? getFolderIdentifier(folder) : '');
     if (!targetFolderIdentifier) {
-      window.showWetAlert('无法确定目标文件夹');
+      window.showWetAlert('Could not determine target folder');
       return;
     }
 
@@ -382,14 +439,14 @@ const ClientDocuments: React.FC = () => {
 
     const uploadPromises = Array.from(files).map(async (file, index) => {
       try {
-        // 构建上传请求，优先使用folder_path
+        // Build upload request, prefer folder_path
         const uploadRequest: any = {
           file,
-          title: file.name.replace(/\.[^/.]+$/, ""), // 移除扩展名作为标题
+          title: file.name.replace(/\.[^/.]+$/, ''), // Remove extension for title
           description: `Uploaded on ${new Date().toLocaleDateString()}`
         };
         
-        // 路径优先：如果是路径，使用folder_path；否则使用folder_id（向后兼容）
+        // Path preferred: use folder_path if path, else folder_id (backward compat)
         if (targetFolderIdentifier.startsWith('/')) {
           uploadRequest.folder_path = targetFolderIdentifier;
           console.log('🔍 [DEBUG] ClientDocuments upload: using folder_path:', targetFolderIdentifier);
@@ -398,7 +455,7 @@ const ClientDocuments: React.FC = () => {
           console.warn('⚠️ ClientDocuments upload: using deprecated folder_id:', targetFolderIdentifier);
         }
 
-        // 模拟上传进度（实际API可能不支持进度事件）
+        // Simulate upload progress (API may not support progress events)
         const progressInterval = setInterval(() => {
           setUploadProgress(prev => {
             const newProgress = prev + (10 / files.length);
@@ -409,11 +466,11 @@ const ClientDocuments: React.FC = () => {
         const document = await documentService.uploadDocument(uploadRequest);
         
         clearInterval(progressInterval);
-        setUploadProgress(prev => prev + (10 / files.length)); // 完成这个文件
+        setUploadProgress(prev => prev + (10 / files.length)); // One more file done
 
         return document;
       } catch (error) {
-        console.error(`文件上传失败 ${file.name}:`, error);
+        console.error(`File upload failed ${file.name}:`, error);
         return null;
       }
     });
@@ -422,24 +479,24 @@ const ClientDocuments: React.FC = () => {
       const results = await Promise.all(uploadPromises);
       setUploadProgress(100);
       
-      // 等待1秒显示完成状态
+      // Wait 1 second showing completion status
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 刷新文档列表
+      // Refresh documents
       fetchData();
       
       const successCount = results.filter(r => r !== null).length;
-      window.showWetAlert(`上传完成！成功: ${successCount} 个文件, 失败: ${files.length - successCount} 个文件`);
+      window.showWetAlert(`Upload complete! Success: ${successCount}, Failed: ${files.length - successCount}`);
     } catch (error) {
-      console.error('上传过程中出错:', error);
-      window.showWetAlert('上传过程中出现错误');
+      console.error('Error during upload:', error);
+      window.showWetAlert('Error during upload');
     } finally {
       setUploading(false);
       setUploadProgress(0);
     }
   };
 
-  // 处理拖放事件
+  // Handle drag-and-drop events
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -468,20 +525,20 @@ const ClientDocuments: React.FC = () => {
     }
   };
 
-  // 处理文件选择器
+  // Handle file picker
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       handleFileUpload(e.target.files);
-      // 重置input以便可以选择相同文件再次上传
+      // Reset input to allow re-selecting same file
       e.target.value = '';
     }
   };
 
-  // 过滤文档函数
+  // Filter documents function
   const filterDocuments = (docs: any[]) => {
     let filtered = [...docs];
     
-    // 应用文件类型过滤
+    // Apply file type filter
     if (fileTypeFilter !== 'all') {
       filtered = filtered.filter(doc => {
         const fileType = doc.file_type?.toLowerCase() || '';
@@ -494,7 +551,7 @@ const ClientDocuments: React.FC = () => {
           case 'media':
             return ['mp4', 'avi', 'mov', 'wmv', 'mp3', 'wav', 'ogg'].includes(fileType);
           case 'component':
-            // 组件类型可能基于metadata或其他字段
+            // Component type may be based on metadata or other fields
             return doc.file_type === 'html' || doc.file_type === 'htm' || 
                    (doc.document_metadata && doc.document_metadata.component_type);
           default:
@@ -506,35 +563,35 @@ const ClientDocuments: React.FC = () => {
     return filtered;
   };
 
-  // 处理文件类型过滤器变化
+  // Handle file type filter change
   const handleFileTypeFilterChange = (type: string) => {
     setFileTypeFilter(type);
-    // 注意：这里我们只是设置了过滤器状态，实际过滤在getDisplayDocuments中应用
+    // Note: we only set filter state, actual filtering is in getDisplayDocuments
   };
 
-  // 处理路径显示 - 从文件夹路径或文档路径获取
+  // Handle path display - get from folder path or doc path
   const getCurrentPath = () => {
-    return folder?.path || folder?.name || '未选择文件夹';
+    return folder?.path || folder?.name || 'No folder selected';
   };
 
-  // 获取显示的文档（应用搜索和过滤）
+  // Get displayed docs (apply search and filter)
   const getDisplayDocuments = () => {
     const docsToDisplay = searchResults !== null ? searchResults : documents;
     return filterDocuments(docsToDisplay);
   };
 
-  // 处理搜索
+  // Handle search
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     if (!searchQuery.trim()) {
-      // 如果搜索查询为空，清除搜索结果
+      // If search query is empty, clear results
       setSearchResults(null);
       return;
     }
     
     if (!folderId) {
-      window.showWetAlert('文件夹ID缺失，无法搜索');
+      window.showWetAlert('Missing folder ID, cannot search');
       return;
     }
     
@@ -547,46 +604,70 @@ const ClientDocuments: React.FC = () => {
       });
       setSearchResults(results);
     } catch (error) {
-      console.error('搜索失败:', error);
-      window.showWetAlert('搜索失败，请稍后重试');
+      console.error('Search failed:', error);
+      window.showWetAlert('Search failed, please try again');
       setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
   };
 
-  // 清除搜索
+  // Clear search
   const handleClearSearch = () => {
     setSearchQuery('');
     setSearchResults(null);
   };
 
-  // 检查是否正在显示搜索结果
+  // Check if showing search results
   const isShowingSearchResults = () => {
     return searchResults !== null && searchQuery.trim() !== '';
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
+    <>
+      <PreviewOverlay url={previewUrl} title={previewTitle} onClose={handleClosePreview} />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* 头部面包屑导航 */}
+        {/* Header breadcrumb navigation */}
         <header className="mb-8">
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-            <Link to="/apps" className="hover:text-blue-600">应用列表</Link>
+            <Link to="/apps" className="hover:text-blue-600">Apps</Link>
             <span>›</span>
-            <Link to={`/apps/${appSlug}`} className="hover:text-blue-600">{app?.name || '应用'}</Link>
-            <span>›</span>
-            <span className="text-gray-700 font-medium">{folder?.name || '当前文件夹'}</span>
+            <Link to={`/apps/${appSlug}`} className="hover:text-blue-600">{app?.name || 'App'}</Link>
+            {folder?.path && (() => {
+              const segments = folder.path.split('/').filter(Boolean);
+              let accumulatedPath = '';
+              return segments.map((segment: string, index: number) => {
+                accumulatedPath += '/' + segment;
+                const isLast = index === segments.length - 1;
+                return (
+                  <React.Fragment key={segment}>
+                    <span>›</span>
+                    {isLast ? (
+                      <span className="text-gray-700 font-medium">{folder?.name || segment}</span>
+                    ) : (
+                      <Link to={`/apps/${appSlug}/folders/${encodeURIComponent(accumulatedPath)}`} className="hover:text-blue-600">{segment}</Link>
+                    )}
+                  </React.Fragment>
+                );
+              });
+            })()}
+            {!folder?.path && folder?.name && (
+              <>
+                <span>›</span>
+                <span className="text-gray-700 font-medium">{folder.name}</span>
+              </>
+            )}
           </div>
           
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">{folder?.name || '文件夹浏览'}</h1>
+              <h1 className="text-3xl font-bold text-gray-800">{folder?.name || 'Browse Folders'}</h1>
               <p className="text-gray-600 mt-2">
-                {app?.name} • {folder?.description || '浏览文件夹内容和文档'}
+                {app?.name} • {folder?.description || 'Browse folder contents'}
                 {folder?.document_count !== undefined && (
                   <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded">
-                    {folder.document_count} 个文档
+                    {folder.document_count} docs
                   </span>
                 )}
               </p>
@@ -596,26 +677,26 @@ const ClientDocuments: React.FC = () => {
                 to={`/apps/${appSlug}`}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
-                返回应用首页
+                Back to App Home
               </Link>
             </div>
           </div>
         </header>
 
-        {/* 主要内容 - 两栏布局 */}
+        {/* Main content - two column layout */}
         {loading ? (
           <div className="text-center py-16">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">加载文件夹内容中...</p>
+            <p className="mt-4 text-gray-600">Loading folder contents...</p>
           </div>
         ) : (
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* 左侧文件夹导航 - 占1/3 */}
+            {/* Left folder tree - 1/3 */}
             <div className="lg:w-[30%]">
               <div className="bg-white rounded-xl shadow overflow-hidden">
                 <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <h2 className="text-xl font-bold text-gray-800">文件夹树状视图</h2>
-                  <p className="text-gray-600 text-sm mt-1">完整的文件夹层级结构，支持展开/折叠</p>
+                  <h2 className="text-xl font-bold text-gray-800">Folder Tree</h2>
+                  <p className="text-gray-600 text-sm mt-1">Full folder hierarchy with expand/collapse support</p>
                 </div>
                 
                 {folderTree.length === 0 ? (
@@ -625,8 +706,8 @@ const ClientDocuments: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                       </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">无文件夹</h3>
-                    <p className="text-gray-500">此应用没有文件夹。</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Folders</h3>
+                    <p className="text-gray-500">This app has no folders.</p>
                   </div>
                 ) : (
                   <div className="p-4 max-h-[600px] overflow-y-auto">
@@ -639,51 +720,51 @@ const ClientDocuments: React.FC = () => {
                   </div>
                 )}
                 
-                {/* 当前文件夹信息 */}
+                {/* Current folder info */}
                 <div className="border-t border-gray-200 p-4 bg-gray-50">
-                  <h4 className="font-medium text-gray-700 text-sm mb-2">当前文件夹信息</h4>
+                  <h4 className="font-medium text-gray-700 text-sm mb-2">Current Folder</h4>
                   <div className="space-y-1 text-xs text-gray-600">
                     <div className="flex justify-between">
-                      <span>路径:</span>
+                      <span>Path:</span>
                       <span className="font-mono truncate max-w-[200px]" title={folder?.path}>{folder?.path || '/'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>文档数:</span>
-                      <span>{documents.length} 个</span>
+                      <span>Docs:</span>
+                      <span>{documents.length} </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>创建时间:</span>
-                      <span>{folder?.created_at ? new Date(folder.created_at).toLocaleDateString() : '未知'}</span>
+                      <span>Created:</span>
+                      <span>{folder?.created_at ? new Date(folder.created_at).toLocaleDateString() : 'Unknown'}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 右侧文档列表 - 占2/3 */}
+            {/* Right docs panel - 2/3 */}
             <div className="lg:w-[70%]">
               <div className="bg-white rounded-xl shadow overflow-hidden">
                 <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <div className="space-y-4">
-                    {/* 标题区域 */}
+                    {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-xl font-bold text-gray-800">文档列表</h2>
+                        <h2 className="text-xl font-bold text-gray-800">Documents</h2>
                         <p className="text-gray-600 text-sm mt-1">
-                          显示最新100个文档
+                          Showing latest 100 docs
                           {isShowingSearchResults() && (
                             <span className="ml-2 text-blue-600 font-medium">
-                              (搜索结果)
+                              (Search results)
                             </span>
                           )}
                         </p>
                       </div>
                     </div>
 
-                    {/* 文件操作功能区 */}
+                    {/* File actions toolbar */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* 左侧：拖放区域 */}
+                        {/* Left: drag-and-drop zone */}
                         <div 
                           className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
                             dragActive 
@@ -697,12 +778,12 @@ const ClientDocuments: React.FC = () => {
                         >
                           <div className="flex flex-col items-center justify-center h-full">
                             <div className="text-3xl mb-2">📁</div>
-                            <p className="font-medium text-gray-700">拖放文件到此处上传</p>
-                            <p className="text-sm text-gray-500 mt-1">支持图片、文档、媒体文件</p>
+                            <p className="font-medium text-gray-700">Drag & drop files here to upload</p>
+                            <p className="text-sm text-gray-500 mt-1">Supports images, documents, media files</p>
                             
                             <div className="mt-4">
                               <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-                                <span>选择文件</span>
+                                <span>Select Files</span>
                                 <input 
                                   type="file" 
                                   multiple 
@@ -716,7 +797,7 @@ const ClientDocuments: React.FC = () => {
                             {uploading && (
                               <div className="mt-4 w-full">
                                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                  <span>上传中...</span>
+                                  <span>Uploading...</span>
                                   <span>{Math.round(uploadProgress)}%</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
@@ -730,12 +811,12 @@ const ClientDocuments: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* 中间：路径和类型过滤 */}
+                        {/* Middle: path and type filter */}
                         <div className="space-y-4">
-                          {/* 路径显示 */}
+                          {/* Path display */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              当前路径
+                              Current Path
                             </label>
                             <div className="flex items-center bg-white border border-gray-300 rounded-lg px-3 py-2">
                               <span className="text-gray-400 mr-2">📍</span>
@@ -745,18 +826,18 @@ const ClientDocuments: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* 文件类型过滤 */}
+                          {/* File type filter */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              文件类型过滤
+                              File Type Filter
                             </label>
                             <div className="flex flex-wrap gap-2">
                               {[
-                                { id: 'all', label: '全部', icon: '📄' },
-                                { id: 'image', label: '图片', icon: '🖼️' },
-                                { id: 'document', label: '文档', icon: '📝' },
-                                { id: 'media', label: '媒体', icon: '🎬' },
-                                { id: 'component', label: '组件', icon: '🧩' }
+                                { id: 'all', label: 'All', icon: '📄' },
+                                { id: 'image', label: 'Images', icon: '🖼️' },
+                                { id: 'document', label: 'Documents', icon: '📝' },
+                                { id: 'media', label: 'Media', icon: '🎬' },
+                                { id: 'component', label: 'Components', icon: '🧩' }
                               ].map(type => (
                                 <button
                                   key={type.id}
@@ -776,31 +857,31 @@ const ClientDocuments: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* 右侧：统计信息 */}
+                        {/* Right: stats */}
                         <div className="bg-white border border-gray-200 rounded-lg p-4">
-                          <h4 className="font-medium text-gray-700 text-sm mb-3">📊 当前文件夹统计</h4>
+                          <h4 className="font-medium text-gray-700 text-sm mb-3">📊 Folder Stats</h4>
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">文档总数:</span>
+                              <span className="text-gray-600">Total Docs:</span>
                               <span className="font-medium">{documents.length}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">显示文档:</span>
+                              <span className="text-gray-600">Showing:</span>
                               <span className="font-medium">{getDisplayDocuments().length}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">文件夹大小:</span>
+                              <span className="text-gray-600">Folder Size:</span>
                               <span className="font-medium">
                                 {(documents.reduce((sum, doc) => sum + doc.file_size, 0) / 1024 / 1024).toFixed(2)} MB
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">当前过滤:</span>
+                              <span className="text-gray-600">Filter:</span>
                               <span className="font-medium">
-                                {fileTypeFilter === 'all' ? '全部类型' : 
-                                 fileTypeFilter === 'image' ? '图片' :
-                                 fileTypeFilter === 'document' ? '文档' :
-                                 fileTypeFilter === 'media' ? '媒体' : '组件'}
+                                {fileTypeFilter === 'all' ? 'All Types' : 
+                                 fileTypeFilter === 'image' ? 'Images' :
+                                 fileTypeFilter === 'document' ? 'Documents' :
+                                 fileTypeFilter === 'media' ? 'Media' : 'Components'}
                               </span>
                             </div>
                           </div>
@@ -808,10 +889,10 @@ const ClientDocuments: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* 搜索栏 */}
+                    {/* Search bar */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="text-sm text-gray-600">
-                        快速查找文档
+                        Quick Search
                       </div>
                       <form onSubmit={handleSearch} className="flex items-center">
                         <div className="relative">
@@ -819,7 +900,7 @@ const ClientDocuments: React.FC = () => {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="搜索文档标题..."
+                            placeholder="Search document titles..."
                             className="w-full sm:w-64 px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                           <div className="absolute left-3 top-2.5 text-gray-400">
@@ -850,9 +931,9 @@ const ClientDocuments: React.FC = () => {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              搜索
+                              Search
                             </>
-                          ) : '搜索'}
+                          ) : 'Search'}
                         </button>
                       </form>
                     </div>
@@ -861,14 +942,14 @@ const ClientDocuments: React.FC = () => {
                   {isShowingSearchResults() && (
                     <div className="mt-3 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
                       <div className="text-sm text-blue-700">
-                        <span className="font-medium">{searchResults?.length || 0}</span> 个搜索结果，关键词: "<span className="font-medium">{searchQuery}</span>"
+                        <span className="font-medium">{searchResults?.length || 0}</span> search results, keyword: "<span className="font-medium">{searchQuery}</span>"
                       </div>
                       <button
                         type="button"
                         onClick={handleClearSearch}
                         className="text-sm text-blue-600 hover:text-blue-800 underline"
                       >
-                        清除搜索
+                        Clear search
                       </button>
                     </div>
                   )}
@@ -882,19 +963,19 @@ const ClientDocuments: React.FC = () => {
                       </svg>
                     </div>
                     <h3 className="text-xl font-medium text-gray-900 mb-2">
-                      {isShowingSearchResults() ? '未找到搜索结果' : '暂无文档'}
+                      {isShowingSearchResults() ? 'No search results found' : 'No documents'}
                     </h3>
                     <p className="text-gray-500 mb-6">
                       {isShowingSearchResults() 
-                        ? `没有找到与"${searchQuery}"相关的文档。请尝试其他关键词。`
-                        : '此文件夹还没有任何文档。'}
+                        ? `No documents found matching "${searchQuery}". Try other keywords.`
+                        : 'This folder has no documents yet.'}
                     </p>
                     {isShowingSearchResults() && (
                       <button
                         onClick={handleClearSearch}
                         className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                       >
-                        清除搜索
+                        Clear search
                       </button>
                     )}
                   </div>
@@ -904,22 +985,22 @@ const ClientDocuments: React.FC = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            文档名称
+                            Name
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            类型
+                            Type
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            大小
+                            Size
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            页数
+                            Pages
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            上传时间
+                            Upload Date
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            操作
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -930,6 +1011,7 @@ const ClientDocuments: React.FC = () => {
                               <div>
                                 <div className="font-medium text-gray-900">{doc.title}</div>
                                 <div className="text-sm text-gray-500 truncate max-w-xs">{doc.original_filename}</div>
+                                {doc.path && <div className="text-xs text-gray-400 truncate max-w-xs mt-0.5" title={doc.path}>{doc.path}</div>}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -957,7 +1039,7 @@ const ClientDocuments: React.FC = () => {
                                   onClick={() => handleDownload(doc.path || doc.storage_path || doc.id, doc.original_filename)}
                                   className="text-blue-600 hover:text-blue-900 px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
                                 >
-                                  下载
+                                  Download
                                 </button>
                                 <button 
                                   onClick={() => handlePreview(doc)}
@@ -972,19 +1054,19 @@ const ClientDocuments: React.FC = () => {
                       </tbody>
                     </table>
                     
-                    {/* 表格底部信息 */}
+                    {/* Table footer info */}
                     <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
                       <div className="flex items-center justify-between text-sm text-gray-500">
                         <div>
-                          显示 <span className="font-medium">{getDisplayDocuments().length}</span> 个文档
+                          Showing <span className="font-medium">{getDisplayDocuments().length}</span> docs
                           {isShowingSearchResults() && (
                             <span className="ml-2 text-blue-600">
-                              (搜索结果)
+                              (Search results)
                             </span>
                           )}
                         </div>
                         <div>
-                          总大小: <span className="font-medium">
+                          Total size: <span className="font-medium">
                             {(getDisplayDocuments().reduce((sum, doc) => sum + doc.file_size, 0) / 1024 / 1024).toFixed(2)} MB
                           </span>
                         </div>
@@ -994,7 +1076,7 @@ const ClientDocuments: React.FC = () => {
                 )}
               </div>
               
-              {/* 当前文件夹统计信息 */}
+              {/* Current folder stats */}
               <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl shadow p-4">
                   <div className="flex items-center">
@@ -1006,7 +1088,7 @@ const ClientDocuments: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-gray-700">文档总数</h4>
+                      <h4 className="text-sm font-medium text-gray-700">Total Docs</h4>
                       <p className="text-2xl font-bold text-gray-900">{documents.length}</p>
                     </div>
                   </div>
@@ -1022,7 +1104,7 @@ const ClientDocuments: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-gray-700">PDF文档</h4>
+                      <h4 className="text-sm font-medium text-gray-700">PDF Docs</h4>
                       <p className="text-2xl font-bold text-gray-900">
                         {documents.filter(d => d.file_type === 'pdf').length}
                       </p>
@@ -1040,7 +1122,7 @@ const ClientDocuments: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-gray-700">总大小</h4>
+                      <h4 className="text-sm font-medium text-gray-700">Total Size</h4>
                       <p className="text-2xl font-bold text-gray-900">
                         {(documents.reduce((sum, doc) => sum + doc.file_size, 0) / 1024 / 1024).toFixed(1)} MB
                       </p>
@@ -1052,13 +1134,14 @@ const ClientDocuments: React.FC = () => {
           </div>
         )}
 
-        {/* 底部 */}
+        {/* Footer */}
         <footer className="mt-12 pt-8 border-t border-gray-200 text-center text-gray-500 text-sm">
-          <p>FileBot Client Portal • {app?.name || '应用'} • {folder?.name || '文件夹'}</p>
-          <p className="mt-1">显示最新100个文档 • 左侧显示完整的文件夹树状视图</p>
+          <p>FileBot Client Portal • {app?.name || 'App'} • {folder?.name || 'Folder'}</p>
+          <p className="mt-1">Showing latest 100 docs • Left: full folder tree</p>
         </footer>
       </div>
     </div>
+    </>
   );
 };
 

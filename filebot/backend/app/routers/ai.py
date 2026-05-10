@@ -1,5 +1,5 @@
 """
-AI功能路由
+AI feature routes
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
@@ -32,29 +32,29 @@ async def classify_document(
     db: Session = Depends(get_db)
 ):
     """
-    分类文档
+    Classify a document
     
-    支持直接提供文本内容或文档ID
+    Supports direct text input or document path lookup
     """
     if request.document_id:
-        # 通过文档ID分类
-        document = db.query(Document).filter(Document.id == request.document_id).first()
+        # Classify by document id (path)
+        document = db.query(Document).filter(Document.path == request.document_id).first()
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"文档 {request.document_id} 不存在"
+                detail=f"Document {request.document_id} not found"
             )
         
         result = classifier.classify_document(document, db, extract_text=request.extract_text)
         
     elif request.text:
-        # 直接分类文本
+        # Classify text directly
         result = classifier.classify_text(request.text, model=request.model)
         
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="必须提供 document_id 或 text"
+            detail="Must provide document_id or text"
         )
     
     return AIClassifyResponse(
@@ -71,32 +71,32 @@ async def classify_document(
 
 @router.post("/classify-batch", response_model=List[AIClassifyResponse])
 async def classify_documents_batch(
-    document_ids: List[str],
+    document_paths: List[str],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """
-    批量分类文档
+    Batch classify documents
     
-    返回任务ID，实际处理在后台进行
+    Returns task ID, actual processing happens in background
     """
-    # 验证文档存在
-    documents = db.query(Document).filter(Document.id.in_(document_ids)).all()
-    if len(documents) != len(document_ids):
-        found_ids = [doc.id for doc in documents]
-        missing_ids = set(document_ids) - set(found_ids)
+    # Validate documents exist
+    documents = db.query(Document).filter(Document.path.in_(document_paths)).all()
+    if len(documents) != len(document_paths):
+        found_paths = [doc.path for doc in documents]
+        missing_paths = set(document_paths) - set(found_paths)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"以下文档不存在: {missing_ids}"
+            detail=f"Documents not found: {missing_paths}"
         )
     
-    # TODO: 实现后台批量处理
-    # 目前先简单同步处理
+    # TODO: Implement background batch processing
+    # For now, process synchronously
     results = []
     for document in documents:
         result = classifier.classify_document(document, db)
         results.append(AIClassifyResponse(
-            document_id=document.id,
+            document_id=document.path,
             success=result["success"],
             category=result["category"].value if result.get("category") else None,
             ai_category=result.get("ai_category"),
@@ -112,7 +112,7 @@ async def classify_documents_batch(
 
 @router.get("/test-connection")
 async def test_ai_connection():
-    """测试AI服务连接"""
+    """Test AI service connection"""
     is_connected = classifier.test_connection()
     
     if is_connected:
@@ -125,12 +125,12 @@ async def test_ai_connection():
     else:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="无法连接到Ollama服务，请确保服务正在运行"
+            detail="Unable to connect to Ollama service, please ensure the service is running"
         )
 
 @router.get("/categories")
 async def get_ai_categories():
-    """获取可用的AI分类类别"""
+    """Get available AI classification categories"""
     categories = []
     for category in AICategory:
         categories.append({
@@ -152,67 +152,66 @@ async def crawl_website(
     db: Session = Depends(get_db)
 ):
     """
-    爬取网站内容并导入到指定文件夹
+    Crawl website content and import to specified folder
     
-    这是一个长时间运行的任务，会在后台执行
+    This is a long-running task that executes in the background
     """
     import uuid
     from datetime import datetime
     from ..models.folder import Folder
-    from ..models.crawl_task import CrawlTask, CrawlTaskStatus
     
-    # 通过路径验证文件夹是否存在
+    # Validate folder exists by path
     folder = db.query(Folder).filter(Folder.path == request.folder_path).first()
     if not folder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"文件夹 {request.folder_path} 不存在"
+            detail=f"Folder {request.folder_path} not found"
         )
     
-    # 验证URL格式
+    # Validate URL format
     try:
         from urllib.parse import urlparse
         parsed_url = urlparse(request.url)
         if not parsed_url.scheme or not parsed_url.netloc:
-            raise ValueError("无效的URL")
+            raise ValueError("Invalid URL")
     except:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="无效的URL格式，请提供完整的URL（如 https://example.com）"
+            detail="Invalid URL format, please provide full URL (e.g., https://example.com)"
         )
     
-    # 生成任务ID
+    # Generate task ID
     task_id = f"crawl_{uuid.uuid4().hex[:12]}"
     
-    # 创建爬取任务记录
+    # Create crawl task record
     crawl_task = CrawlTask(
         task_id=task_id,
         status=CrawlTaskStatus.PENDING,
         url=request.url,
         depth=request.depth,
-        folder_id=folder.id,  # 使用解析后的文件夹UUID
+        folder_path=folder.path,
         include_images=1 if request.include_images else 0,
         follow_external_links=1 if request.follow_external_links else 0,
         respect_robots_txt=1 if request.respect_robots_txt else 0,
         total_pages=estimate_page_count(request.url, request.depth),
         started_at=datetime.now(),
         created_by=current_user.username if current_user else "system",
-        current_status="任务已创建，等待开始..."
+        current_status="Task created, waiting to start..."
     )
     
     db.add(crawl_task)
     db.commit()
     db.refresh(crawl_task)
     
-    logger.info(f"创建爬取任务: {task_id}, URL: {request.url}, 文件夹: {folder.name}")
+    logger.info(f"Created crawl task: {task_id}, URL: {request.url}, folder: {folder.name}")
     
-    # 启动后台爬取任务
+    # Start background crawl task
     background_tasks.add_task(
         crawl_website_background,
         task_id=task_id,
         url=request.url,
         depth=request.depth,
-        folder_id=folder.id,
+        folder_path=folder.path,
         include_images=request.include_images,
         follow_external_links=request.follow_external_links,
         respect_robots_txt=request.respect_robots_txt,
@@ -226,7 +225,7 @@ async def crawl_website(
         depth=request.depth,
         estimated_pages=estimate_page_count(request.url, request.depth),
         started_at=datetime.now(),
-        message="网站爬取任务已开始，将在后台执行"
+        message="Website crawl task started, will run in background"
     )
 
 
@@ -239,24 +238,22 @@ async def get_crawl_tasks(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    获取所有网站爬取任务列表
+    Get list of all website crawl tasks
     
-    支持分页和状态过滤
+    Supports pagination and status filtering
     """
     from datetime import datetime
     from sqlalchemy import desc
     
-    # 构建查询
+    # Build query
     query = db.query(CrawlTask)
     
-    # 状态过滤
+    # Status filter
     if status_filter:
-        from ..models.crawl_task import CrawlTaskStatus
         try:
             status_enum = CrawlTaskStatus(status_filter)
             query = query.filter(CrawlTask.status == status_enum)
         except ValueError:
-            # 如果状态值无效，返回空列表
             return WebsiteCrawlTaskList(
                 tasks=[],
                 total=0,
@@ -266,16 +263,15 @@ async def get_crawl_tasks(
                 failed=0
             )
     
-    # 获取总数（用于分页）
+    # Get total count (for pagination)
     total = query.count()
     
-    # 应用分页和排序（最新的在前面）
+    # Apply pagination and sorting (newest first)
     tasks = query.order_by(desc(CrawlTask.created_at)).offset(offset).limit(limit).all()
     
-    # 转换为响应模型
+    # Convert to response model
     task_responses = []
     for task in tasks:
-        # 转换状态枚举值为字符串
         status_value = task.status.value if hasattr(task.status, 'value') else str(task.status)
         
         task_responses.append(WebsiteCrawlStatus(
@@ -292,16 +288,12 @@ async def get_crawl_tasks(
             estimated_completion=None
         ))
     
-    # 统计各种状态的任务数
+    # Count tasks by status
     stats_query = db.query(CrawlTask.status, func.count(CrawlTask.id).label('count'))
-    if status_filter:
-        # 如果已过滤状态，统计就不需要了
-        stats = {}
-    else:
+    stats = {}
+    if not status_filter:
         stats = {row[0]: row[1] for row in stats_query.group_by(CrawlTask.status).all()}
     
-    # 计算各状态数量
-    from ..models.crawl_task import CrawlTaskStatus
     pending_count = stats.get(CrawlTaskStatus.PENDING, 0)
     active_count = stats.get(CrawlTaskStatus.CRAWLING, 0) + stats.get(CrawlTaskStatus.PROCESSING, 0)
     completed_count = stats.get(CrawlTaskStatus.COMPLETED, 0)
@@ -323,20 +315,17 @@ async def get_crawl_status(
     db: Session = Depends(get_db)
 ):
     """
-    获取网站爬取任务状态
+    Get website crawl task status
     """
-    # 从数据库获取任务状态
     crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
     if not crawl_task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"任务 {task_id} 不存在"
+            detail=f"Task {task_id} not found"
         )
     
-    # 转换状态枚举值为字符串
     status_value = crawl_task.status.value if hasattr(crawl_task.status, 'value') else str(crawl_task.status)
     
-    # 转换为WebsiteCrawlStatus响应
     return WebsiteCrawlStatus(
         task_id=crawl_task.task_id,
         status=status_value,
@@ -348,7 +337,7 @@ async def get_crawl_status(
         errors=crawl_task.errors or [],
         started_at=crawl_task.started_at if crawl_task.started_at else crawl_task.created_at,
         updated_at=crawl_task.updated_at or crawl_task.created_at,
-        estimated_completion=None  # 可以基于进度计算，但暂时留空
+        estimated_completion=None
     )
 
 
@@ -359,23 +348,23 @@ async def cancel_crawl_task(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    取消爬取任务
+    Cancel a crawl task
     
-    支持取消 pending 状态的任务。
-    已经 running/crawling 的任务标记为 cancelled 后，
-    后台爬虫下次检查状态时会自动停止。
+    Supports canceling pending tasks.
+    Already running/crawling tasks are marked as cancelled,
+    the background crawler will stop on next status check.
     """
     crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
     if not crawl_task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"任务 {task_id} 不存在"
+            detail=f"Task {task_id} not found"
         )
     
     if crawl_task.status in [CrawlTaskStatus.COMPLETED, CrawlTaskStatus.FAILED]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"任务已结束（{crawl_task.status.value}），无法取消"
+            detail=f"Task has already ended ({crawl_task.status.value}), cannot cancel"
         )
     
     crawl_task.status = CrawlTaskStatus.CANCELLED
@@ -401,97 +390,94 @@ def crawl_website_background(
     task_id: str,
     url: str,
     depth: int,
-    folder_id: str,
+    folder_path: str,
     include_images: bool,
     follow_external_links: bool,
     respect_robots_txt: bool,
     db: Session
 ):
     """
-    后台爬取网站的任务函数
+    Background crawl task function
     """
-    from ..models.crawl_task import CrawlTask, CrawlTaskStatus
     from datetime import datetime
     
-    logger.info(f"开始爬取网站: {url}, 深度: {depth}, 任务ID: {task_id}")
+    logger.info(f"Starting website crawl: {url}, depth: {depth}, task ID: {task_id}")
     
     try:
-        # 更新任务状态为爬取中
+        # Update task status to crawling
         crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
         if crawl_task:
             crawl_task.status = CrawlTaskStatus.CRAWLING
-            crawl_task.current_status = "开始爬取网站..."
+            crawl_task.current_status = "Starting website crawl..."
             crawl_task.started_at = datetime.now()
             db.commit()
         
-        # 调用网站爬取任务
+        # Execute crawl task
         result = crawl_website_task(
             task_id=task_id,
             url=url,
             depth=depth,
-            folder_id=folder_id,
+            folder_path=folder.path,
             include_images=include_images,
             follow_external_links=follow_external_links,
             respect_robots_txt=respect_robots_txt,
             db=db
         )
         
-        # 更新任务状态
+        # Update task status
         if crawl_task:
             if result.get('success'):
                 crawl_task.status = CrawlTaskStatus.COMPLETED
-                crawl_task.current_status = "爬取完成"
+                crawl_task.current_status = "Crawl completed"
                 crawl_task.stats = result.get('stats', {})
                 crawl_task.pages_crawled = result.get('stats', {}).get('total_pages', 0)
                 crawl_task.pages_processed = result.get('stats', {}).get('successful_pages', 0)
                 crawl_task.images_crawled = result.get('stats', {}).get('total_images', 0)
                 crawl_task.progress = 100
                 crawl_task.completed_at = datetime.now()
-                logger.info(f"网站爬取完成: {url}, 任务ID: {task_id}, 结果: {result.get('stats', {})}")
+                logger.info(f"Website crawl completed: {url}, task ID: {task_id}, stats: {result.get('stats', {})}")
             else:
                 crawl_task.status = CrawlTaskStatus.FAILED
-                crawl_task.current_status = f"爬取失败: {result.get('error', '未知错误')}"
-                crawl_task.error_message = result.get('error', '未知错误')
-                logger.error(f"网站爬取失败: {url}, 任务ID: {task_id}, 错误: {result.get('error')}")
+                crawl_task.current_status = f"Crawl failed: {result.get('error', 'Unknown error')}"
+                crawl_task.error_message = result.get('error', 'Unknown error')
+                logger.error(f"Website crawl failed: {url}, task ID: {task_id}, error: {result.get('error')}")
             
             db.commit()
             
     except Exception as e:
-        logger.error(f"爬取任务执行异常: {task_id}, 错误: {str(e)}")
-        # 更新任务状态为失败
+        logger.error(f"Crawl task execution exception: {task_id}, error: {str(e)}")
         try:
             crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
             if crawl_task:
                 crawl_task.status = CrawlTaskStatus.FAILED
-                crawl_task.current_status = f"任务执行异常: {str(e)[:200]}"
+                crawl_task.current_status = f"Task execution error: {str(e)[:200]}"
                 crawl_task.error_message = str(e)
                 crawl_task.error_traceback = str(e)
                 db.commit()
         except:
-            pass  # 忽略更新错误
+            pass
 
 
-# ===== Sitemap 导入 =====
+# ===== Sitemap Import =====
 
 def sitemap_import_background(
     task_id: str,
     sitemap_url: str,
-    folder_id: str,
+    folder_path: str,
     include_images: bool,
     max_depth: int = 0,
     db: Session = None
 ):
     """
-    后台 sitemap 导入任务
+    Background sitemap import task
     """
-    from ..models.crawl_task import CrawlTask, CrawlTaskStatus
     from datetime import datetime
     from ..ai.scrapling_crawler import ScraplingCrawler
     
-    logger.info(f"开始 Sitemap 导入: {sitemap_url}, 文件夹ID: {folder_id}")
+    logger.info(f"Starting Sitemap import: {sitemap_url}, folder path: {folder_path}")
     
     try:
-        # 更新任务状态
+        # Update task status
         crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
         if crawl_task:
             crawl_task.status = CrawlTaskStatus.CRAWLING
@@ -499,21 +485,21 @@ def sitemap_import_background(
             crawl_task.started_at = datetime.now()
             db.commit()
         
-        # 读取爬取深度（从 CrawlTask 记录中获取）
+        # Read crawl depth
         depth = max_depth
         if crawl_task:
             depth = crawl_task.depth if crawl_task.depth is not None else max_depth
         
-        # 创建爬虫并执行 sitemap 导入
+        # Create crawler and execute sitemap import
         crawler = ScraplingCrawler(db, task_id=task_id, use_stealth=False, use_dynamic=False)
         stats = crawler.crawl_from_sitemap(
             sitemap_url=sitemap_url,
-            folder_id=folder_id,
+            folder_path=folder.path,
             include_images=include_images,
             max_depth=depth
         )
         
-        # 更新任务状态
+        # Update task status
         if crawl_task:
             crawl_task.status = CrawlTaskStatus.COMPLETED
             crawl_task.current_status = f"Sitemap import complete: {stats.get('successful_pages', 0)} pages imported"
@@ -524,11 +510,11 @@ def sitemap_import_background(
             crawl_task.total_pages = stats.get('total_from_sitemap', 0)
             crawl_task.progress = 100
             crawl_task.completed_at = datetime.now()
-            logger.info(f"Sitemap 导入完成: {sitemap_url}, 结果: {stats}")
+            logger.info(f"Sitemap import completed: {sitemap_url}, stats: {stats}")
             db.commit()
             
     except Exception as e:
-        logger.error(f"Sitemap 导入失败: {task_id}, 错误: {str(e)}")
+        logger.error(f"Sitemap import failed: {task_id}, error: {str(e)}")
         try:
             crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
             if crawl_task:
@@ -549,25 +535,24 @@ async def crawl_from_sitemap(
     db: Session = Depends(get_db)
 ):
     """
-    从 sitemap.xml 导入并爬取网站内容
+    Import and crawl website content from sitemap.xml
     
-    解析 sitemap.xml 获取所有 URL 列表，然后逐个爬取每个页面
-    支持标准 sitemap 和 sitemap index（自动递归解析子 sitemap）
+    Parse sitemap.xml to get URL list, then crawl each page.
+    Supports standard sitemap and sitemap index (auto-recursive parsing of sub-sitemaps).
     """
     import uuid
     from datetime import datetime
     from ..models.folder import Folder
-    from ..models.crawl_task import CrawlTask, CrawlTaskStatus
     
-    # 通过路径验证文件夹
+    # Validate folder by path
     folder = db.query(Folder).filter(Folder.path == request.folder_path).first()
     if not folder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"文件夹 {request.folder_path} 不存在"
+            detail=f"Folder {request.folder_path} not found"
         )
     
-    # 先快速解析 sitemap 获取 URL 总数（用于估算）
+    # Quick parse sitemap to estimate URL count
     total_urls = None
     try:
         urls = parse_sitemap_urls(request.sitemap_url, max_urls=100)
@@ -575,16 +560,16 @@ async def crawl_from_sitemap(
     except:
         pass
     
-    # 生成任务 ID
+    # Generate task ID
     task_id = f"sitemap_{uuid.uuid4().hex[:12]}"
     
-    # 创建爬取任务记录
+    # Create crawl task record
     crawl_task = CrawlTask(
         task_id=task_id,
         status=CrawlTaskStatus.PENDING,
         url=request.sitemap_url,
         depth=request.depth,
-        folder_id=folder.id,  # 使用解析后的文件夹UUID
+        folder_path=folder.path,
         include_images=1 if request.include_images else 0,
         follow_external_links=0,
         respect_robots_txt=1,
@@ -598,14 +583,14 @@ async def crawl_from_sitemap(
     db.commit()
     db.refresh(crawl_task)
     
-    logger.info(f"创建 Sitemap 导入任务: {task_id}, URL: {request.sitemap_url}")
+    logger.info(f"Created Sitemap import task: {task_id}, URL: {request.sitemap_url}")
     
-    # 启动后台任务
+    # Start background task
     background_tasks.add_task(
         sitemap_import_background,
         task_id=task_id,
         sitemap_url=request.sitemap_url,
-        folder_id=folder.id,
+        folder_path=folder.path,
         include_images=request.include_images,
         max_depth=request.depth,
         db=db
@@ -622,8 +607,7 @@ async def crawl_from_sitemap(
 
 
 def estimate_page_count(url: str, depth: int) -> int:
-    """预估页面数量（简单实现）"""
-    # 简单的估算逻辑
+    """Estimate page count (simple implementation)"""
     base_pages = 10
-    multiplier = 5 ** (depth - 1)  # 指数增长
-    return min(base_pages * multiplier, 1000)  # 限制最大1000页
+    multiplier = 5 ** (depth - 1)
+    return min(base_pages * multiplier, 1000)

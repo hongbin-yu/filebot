@@ -446,7 +446,25 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ isOpen, onClose, onSucc
                 </p>
               </div>
 
-              {/* 图标 - 用于统一仪表板 */}
+              {/* Default Entry Path */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+Default Entry Path
+                </label>
+                <input
+                  type="text"
+                  value={(formData as any).default_entry || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, default_entry: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g. canadasite"
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+Optional default entry path. When set, clicking this app goes directly to /apps/:slug/:path
+                </p>
+              </div>
+
+              {/* Icon */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
 {t('appModal.iconLabel')}

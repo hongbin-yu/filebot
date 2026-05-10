@@ -3,116 +3,15 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import appService from '../services/app.service';
 import folderService from '../services/folder.service';
 import documentService from '../services/document.service';
-
-// 树状文件夹组件 (从ClientDocuments.tsx复制)
-interface FolderTreeNode {
-  id: string;
-  name: string;
-  description?: string;
-  parent_folder_id?: string;
-  children?: FolderTreeNode[];
-  expanded?: boolean;
-  level?: number;
-  path?: string;
-  document_count?: number;
-  total_size?: number;
-}
-
-interface FolderTreeProps {
-  folders: FolderTreeNode[];
-  currentFolderId: string | undefined;
-  onFolderClick: (folderId: string) => void;
-  onToggleExpand: (folderId: string) => void;
-}
-
-const FolderTree: React.FC<FolderTreeProps> = ({
-  folders,
-  currentFolderId,
-  onFolderClick,
-  onToggleExpand
-}) => {
-  const renderTree = (nodes: FolderTreeNode[], level: number = 0) => {
-    return nodes.map(node => (
-      <div key={node.id} className="select-none">
-        <div
-          className={`flex items-center py-2 px-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-            (currentFolderId === node.id || currentFolderId === node.path) ? 'bg-blue-50 border border-blue-200' : ''
-          }`}
-          style={{ paddingLeft: `${level * 20 + 12}px` }}
-          onClick={() => onFolderClick(node.path || node.id)}
-        >
-          {/* 展开/折叠图标 */}
-          {node.children && node.children.length > 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand(node.id);
-              }}
-              className="mr-2 w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-700"
-            >
-              {node.expanded ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-              )}
-            </button>
-          )}
-          
-          {/* 占位空间（无子文件夹的情况） */}
-          {(!node.children || node.children.length === 0) && (
-            <div className="mr-7 w-5"></div>
-          )}
-          
-          {/* 文件夹图标 */}
-          <div className="mr-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-              </svg>
-            </div>
-          </div>
-          
-          {/* 文件夹信息 */}
-          <div className="flex-grow min-w-0">
-            <div className="font-medium text-gray-800 truncate">{node.name}</div>
-            <div className="text-xs text-gray-500 truncate">
-              {node.document_count !== undefined && (
-                <span className="mr-2">{node.document_count} 个文档</span>
-              )}
-              {node.total_size !== undefined && node.total_size > 0 && (
-                <span>{(node.total_size / 1024 / 1024).toFixed(1)} MB</span>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* 递归渲染子文件夹 */}
-        {node.expanded && node.children && node.children.length > 0 && (
-          <div className="mt-1">
-            {renderTree(node.children, level + 1)}
-          </div>
-        )}
-      </div>
-    ));
-  };
-
-  return (
-    <div className="space-y-1">
-      {renderTree(folders)}
-    </div>
-  );
-};
+import type { Folder } from '../services/folder.service';
+import PreviewOverlay from '../components/PreviewOverlay';
 
 const ClientDashboard: React.FC = () => {
   const { appSlug } = useParams<{ appSlug: string }>();
   const navigate = useNavigate();
   const [app, setApp] = useState<any>(null);
-  const [folder, setFolder] = useState<any>(null);
-  const [folderTree, setFolderTree] = useState<FolderTreeNode[]>([]);
+  const [childFolders, setChildFolders] = useState<Folder[]>([]);
+  const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,236 +20,221 @@ const ClientDashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  // Cache all folders locally so we can filter by path client-side
+  const [allFolders, setAllFolders] = useState<Folder[]>([]);
 
   useEffect(() => {
     fetchData();
   }, [appSlug]);
 
+  // Fetch root folders: get immediate children of /{appSlug}
+  const fetchRootFolders = async () => {
+    try {
+      const rootPath = '/' + appSlug;
+      console.log('📁 fetchRootFolders: sending parent_folder_path=', rootPath);
+      const folders = await folderService.getFolders(appSlug || '', {
+        parent_folder_path: rootPath,
+        limit: 1000
+      });
+      console.log('📁 fetchRootFolders: got', folders?.length, 'folders');
+      setAllFolders(folders || []);
+      setChildFolders(folders || []);
+    } catch (err) {
+      console.error('📁 Failed to fetch root folders:', err);
+      setChildFolders([]);
+    }
+  };
+
+  // Fetch child folders by parent path: call backend with parent_folder_path
+  const fetchChildFolders = async (parentFolderPath: string) => {
+    try {
+      const children = await folderService.getFolders(appSlug || '', {
+        parent_folder_path: parentFolderPath,
+        limit: 1000
+      });
+      // Accumulate in cache
+      setAllFolders(prev => {
+        const existing = new Map(prev.map(f => [f.path, f]));
+        (children || []).forEach(f => existing.set(f.path, f));
+        return Array.from(existing.values());
+      });
+      setChildFolders(children || []);
+    } catch (err) {
+      console.error('Failed to fetch child folders:', err);
+      setChildFolders([]);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      // 获取应用详情
+      // Fetch app details
       const appData = await appService.getAppById(appSlug || '');
       if (appData) {
         setApp(appData);
         
-        // 获取文件夹树
-        const treeData = await folderService.getFolderTree(appData.id);
-        // 初始化所有节点为展开状态
-        const initializeTree = (nodes: any[], level: number = 0): FolderTreeNode[] => {
-          return nodes.map(node => ({
-            ...node,
-            expanded: true, // 默认展开所有节点
-            level: level,
-            children: node.children ? initializeTree(node.children, level + 1) : []
-          }));
-        };
-        const initializedTree = initializeTree(treeData, 0);
-        setFolderTree(initializedTree);
-        
-        // 如果没有选中文件夹，选择第一个文件夹
-        if (initializedTree.length > 0 && !folder) {
-          const firstFolder = findFirstFolder(initializedTree);
-          if (firstFolder) {
-            setFolder(firstFolder);
-            // 获取该文件夹的文档，优先使用path
-            const folderIdentifier = getFolderIdentifier(firstFolder);
-            await fetchFolderDocuments(folderIdentifier);
-          }
-        } else if (folder) {
-          // 如果已有选中文件夹，获取其文档
-          const folderIdentifier = getFolderIdentifier(folder);
-          await fetchFolderDocuments(folderIdentifier);
-        }
-        
+        // Fetch/refresh all folders and filter root level
+        await fetchRootFolders();
         setLoading(false);
       }
     } catch (err: any) {
-      console.error('获取数据失败:', err);
+      console.error('Failed to fetch data:', err);
       setLoading(false);
     }
   };
 
-  // 获取文件夹文档（支持路径和ID）
-  const fetchFolderDocuments = async (folderIdentifier: string) => {
+  // Fetch folder documents by path
+  // Accepts optional page/size to avoid stale closure values after setState
+  const fetchFolderDocuments = async (folderPath: string, overridePage?: number, overrideSize?: number) => {
+    const p = overridePage ?? currentPage;
+    const s = overrideSize ?? pageSize;
     try {
-      const documentsData = await documentService.getDocuments(folderIdentifier, {
-        skip: (currentPage - 1) * pageSize,
-        limit: pageSize,
-        sort_by: 'created_at',
-        sort_order: 'desc'
-      });
+      // Calculate folder depth (segments after app slug)
+      // e.g. /boarding/canadasite → depth 1, /boarding/canadasite/fr → depth 2
+      const pathWithoutApp = folderPath.replace(new RegExp(`^/${appSlug}/?`), '');
+      const depth = pathWithoutApp ? pathWithoutApp.split('/').filter(Boolean).length : 0;
+      
+      // Top 3 folder levels: show direct documents only
+      // After level 3: show all descendant docs recursively (path_prefix)
+      const isDeepFolder = depth > 3;
+      
+      let documentsData;
+      if (isDeepFolder) {
+        documentsData = await documentService.getDocumentsByPathPrefix(folderPath, {
+          skip: (p - 1) * s,
+          limit: s,
+          sort_by: 'created_at',
+          sort_order: 'desc'
+        });
+      } else {
+        documentsData = await documentService.getDocumentsByFolderPath(folderPath, {
+          skip: (p - 1) * s,
+          limit: s,
+          sort_by: 'created_at',
+          sort_order: 'desc'
+        });
+      }
+      
       setDocuments(documentsData);
       
-      // 简单的分页逻辑
-      if (documentsData.length < pageSize) {
-        setTotalPages(currentPage);
+      // Simple pagination logic
+      if (documentsData.length < s) {
+        setTotalPages(p);
       } else {
-        setTotalPages(currentPage + 5);
+        setTotalPages(p + 5);
       }
     } catch (err: any) {
-      console.error('获取文档失败:', err);
+      console.error('Failed to fetch docs:', err);
       setDocuments([]);
     }
   };
 
-  // 查找树中的第一个文件夹
-  const findFirstFolder = (nodes: any[]): any | null => {
-    for (const node of nodes) {
-      return node;
-    }
-    return null;
+  // Navigate into a folder — navigates to the URL-based view (ClientAppFolders)
+  const handleFolderClick = async (folder: Folder) => {
+    // Navigate to the URL for this folder (e.g., /apps/boarding/canadasite)
+    // folder.path format: /boarding/canadasite
+    navigate(`/apps${folder.path}`);
   };
 
-  // 递归查找文件夹节点
-  const findFolderInTree = (nodes: FolderTreeNode[], folderIdentifier: string): FolderTreeNode | null => {
-    for (const node of nodes) {
-      // 匹配ID或path
-      if (node.id === folderIdentifier || node.path === folderIdentifier) {
-        return node;
-      }
-      if (node.children) {
-        const found = findFolderInTree(node.children, folderIdentifier);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
-  // 递归获取文件夹的所有子孙文件夹标识符（路径优先）
-  const getAllDescendantFolderIdentifiers = (node: FolderTreeNode): string[] => {
-    const identifiers: string[] = [];
-    if (node.children && node.children.length > 0) {
-      for (const child of node.children) {
-        // 使用路径优先的标识符
-        const childIdentifier = getFolderIdentifier(child);
-        identifiers.push(childIdentifier);
-        identifiers.push(...getAllDescendantFolderIdentifiers(child));
-      }
-    }
-    return identifiers;
-  };
-
-  // 获取文件夹及其所有子孙文件夹的文档
-  const fetchAllDescendantDocuments = async (folderNode: FolderTreeNode) => {
-    try {
-      // 获取当前文件夹和所有子孙文件夹的标识符
-      const currentFolderIdentifier = getFolderIdentifier(folderNode);
-      const folderIdentifiers = [currentFolderIdentifier, ...getAllDescendantFolderIdentifiers(folderNode)];
-      console.log(`📁 获取 ${folderIdentifiers.length} 个文件夹的文档（深度 ${folderNode.level}）`);
-      
-      // 为每个文件夹获取文档
-      const allDocuments: any[] = [];
-      for (const folderIdentifier of folderIdentifiers) {
-        try {
-          const documents = await documentService.getDocuments(folderIdentifier, {
-            skip: 0,
-            limit: 100, // 限制每个文件夹最多100个文档
-            sort_by: 'created_at',
-            sort_order: 'desc'
+  // Navigate to a specific breadcrumb ancestor folder
+  const navigateToBreadcrumb = async (targetPath: string) => {
+    // Try to find in cache first
+    let target = allFolders.find((f: Folder) => f.path === targetPath);
+    if (!target) {
+      try {
+        target = await folderService.getFolder(targetPath);
+        if (target) {
+          setAllFolders(prev => {
+            const existing = new Map(prev.map(f => [f.path, f]));
+            existing.set(target.path, target);
+            return Array.from(existing.values());
           });
-          allDocuments.push(...documents);
-        } catch (err) {
-          console.error(`获取文件夹 ${folderIdentifier} 的文档失败:`, err);
+        }
+      } catch {
+        // Intermediate path — no folder record
+      }
+    }
+    if (target) {
+      setCurrentFolder(target);
+      setCurrentPage(1);
+      await fetchChildFolders(targetPath);
+      await fetchFolderDocuments(targetPath);
+    } else {
+      // Root level (app root, no folder record) — just show subfolders, no documents
+      setCurrentFolder(null);
+      setDocuments([]);
+      setCurrentPage(1);
+      await fetchChildFolders(targetPath);
+    }
+  };
+
+  // Navigate back to parent folder using parent_folder_path
+  const backToParent = async () => {
+    if (!currentFolder) return;
+    
+    const parentPath = currentFolder.parent_folder_path;
+    if (parentPath) {
+      // Try to find parent folder in cache; if not, fetch from API
+      let parent = allFolders.find((f: Folder) => f.path === parentPath);
+      if (!parent) {
+        try {
+          parent = await folderService.getFolder(parentPath);
+          if (parent) {
+            setAllFolders(prev => {
+              const existing = new Map(prev.map(f => [f.path, f]));
+              existing.set(parent.path, parent);
+              return Array.from(existing.values());
+            });
+          }
+        } catch {
+          // No folder record — intermediate path
         }
       }
       
-      // 去重（按ID）
-      const uniqueDocuments = allDocuments.filter((doc, index, self) => 
-        index === self.findIndex(d => d.id === doc.id)
-      );
-      
-      console.log(`✅ 共获取 ${uniqueDocuments.length} 个文档`);
-      setDocuments(uniqueDocuments);
-      
-      // 更新分页信息
-      setTotalPages(1);
-      setCurrentPage(1);
-    } catch (err: any) {
-      console.error('获取子孙文档失败:', err);
-      setDocuments([]);
-    }
-  };
-
-  // 更新树节点的展开状态
-  const updateTreeExpansion = (nodes: FolderTreeNode[], folderId: string): FolderTreeNode[] => {
-    return nodes.map(node => {
-      if (node.id === folderId) {
-        return { ...node, expanded: !node.expanded };
-      }
-      if (node.children) {
-        return { ...node, children: updateTreeExpansion(node.children, folderId) };
-      }
-      return node;
-    });
-  };
-
-  // 获取文件夹标识符（优先使用path，其次使用id）
-  const getFolderIdentifier = (folder: any): string => {
-    return folder?.path || folder?.id || '';
-  };
-
-  // 编码文件夹标识符用于URL（对path进行编码）
-  const encodeFolderIdentifier = (identifier: string): string => {
-    // 如果是path（以/开头），进行URI编码
-    if (identifier.startsWith('/')) {
-      return encodeURIComponent(identifier);
-    }
-    return identifier;
-  };
-
-  // 处理文件夹点击
-  const handleFolderClick = async (folderIdentifier: string) => {
-    // 查找文件夹详情
-    const folderNode = findFolderInTree(folderTree, folderIdentifier);
-    if (folderNode) {
-      setFolder(folderNode);
-      // 获取该文件夹的文档
-      const targetIdentifier = getFolderIdentifier(folderNode);
-      
-      // 检查文件夹深度，如果深度>=6，获取所有子孙文档
-      if (folderNode.level !== undefined && folderNode.level >= 6) {
-        console.log(`📁 文件夹深度 ${folderNode.level} >= 6，获取所有子孙文档`);
-        await fetchAllDescendantDocuments(folderNode);
+      if (parent) {
+        // Parent folder exists as a record
+        setCurrentFolder(parent);
+        await fetchChildFolders(parentPath);
+        await fetchFolderDocuments(parentPath);
+        return;
       } else {
-        await fetchFolderDocuments(targetIdentifier);
+        // Intermediate path (no folder record, e.g. /boarding/canadasite/fr)
+        // Navigate to the parent path — show documents at this path
+        setCurrentFolder(null);
+        await fetchChildFolders(parentPath);
+        await fetchFolderDocuments(parentPath);
+        return;
       }
-      
-      // 更新URL（可选，保持URL与状态同步）
-      const encodedIdentifier = encodeFolderIdentifier(targetIdentifier);
-      navigate(`/apps/${appSlug}/folders/${encodedIdentifier}/documents`, { replace: true });
     }
+    
+    // Go back to root
+    setCurrentFolder(null);
+    await fetchRootFolders();
+    setDocuments([]);
   };
 
-  // 处理树节点展开/折叠
-  const handleToggleExpand = (folderId: string) => {
-    setFolderTree(prevTree => updateTreeExpansion(prevTree, folderId));
-  };
-
-  // 处理页面变化
+  // Handle page change — pass page override to avoid stale closure
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    if (folder) {
-      const folderIdentifier = getFolderIdentifier(folder);
-      fetchFolderDocuments(folderIdentifier);
+    if (currentFolder) {
+      fetchFolderDocuments(currentFolder.path || '', page, pageSize);
     }
   };
 
-  // 处理页面大小变化
+  // Handle page size change — pass size override
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setCurrentPage(1);
-    if (folder) {
-      const folderIdentifier = getFolderIdentifier(folder);
-      fetchFolderDocuments(folderIdentifier);
+    if (currentFolder) {
+      fetchFolderDocuments(currentFolder.path || '', 1, size);
     }
   };
 
-  // 处理文档下载
+  // Handle document download
   const handleDownload = async (documentId: string, filename: string) => {
     try {
-      console.log('开始下载文档:', documentId, filename);
+      console.log('Starting download:', documentId, filename);
       const blob = await documentService.downloadDocument(documentId);
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
@@ -360,31 +244,90 @@ const ClientDashboard: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       window.document.body.removeChild(a);
-      console.log('文档下载完成:', filename);
+      console.log('Download complete:', filename);
     } catch (err: any) {
-      console.error('下载失败:', err);
-      window.showWetAlert(`下载失败: ${err.message || '未知错误'}`);
+      console.error('Download failed:', err);
+      if (typeof window.showWetAlert === 'function') {
+        window.showWetAlert(`Download failed: ${err.message || 'Unknown error'}`);
+      }
     }
   };
 
-  // 处理文档预览
-  const handlePreview = (doc: any) => {
-    const docPath = doc.path || doc.storage_path || doc.id;
-    window.open(`/documents/${docPath.replace(/^\//, '')}`, '_blank');
+  // Preview overlay state
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+
+  // Build preview URL based on file type (matches ClientDocuments logic)
+  const buildPreviewUrl = (doc: any): string | null => {
+    const identifier = doc.path || doc.storage_path || doc.id;
+    if (!identifier) return null;
+
+    const encodedId = encodeURIComponent(identifier);
+    const token = localStorage.getItem('access_token');
+    const fileType = doc.file_type?.toLowerCase() || '';
+
+    // HTML files: use dedicated preview endpoint
+    if (fileType.match(/html?/)) {
+      return token
+        ? `/api/v1/documents/${encodedId}/preview/html?token=${encodeURIComponent(token)}`
+        : `/api/v1/documents/${encodedId}/preview/html`;
+    }
+
+    // Images (non-TIFF): prefer original URL from crawler, fallback to preview
+    if (fileType.match(/(jpe?g|png|gif|bmp|webp|svg)/)) {
+      const originalUrl = doc.document_metadata?.url || doc.metadata?.url;
+      if (originalUrl) {
+        try {
+          const urlObj = new URL(originalUrl);
+          return urlObj.pathname;
+        } catch {}
+      }
+      return token
+        ? `/api/v1/documents/${encodedId}/preview?token=${encodeURIComponent(token)}`
+        : `/api/v1/documents/${encodedId}/preview`;
+    }
+
+    // TIFF: convert to PDF for browser display
+    if (fileType.match(/tiff?/)) {
+      return token
+        ? `/api/v1/documents/${encodedId}/download?download_type=pdf&token=${encodeURIComponent(token)}`
+        : `/api/v1/documents/${encodedId}/download?download_type=pdf`;
+    }
+
+    // PDF & others: download endpoint (browsers render PDF natively)
+    return token
+      ? `/api/v1/documents/${encodedId}/download?token=${encodeURIComponent(token)}`
+      : `/api/v1/documents/${encodedId}/download`;
   };
 
-  // 处理搜索
+  // Handle document preview (lightbox overlay)
+  const handlePreview = (doc: any) => {
+    const url = buildPreviewUrl(doc);
+    if (url) {
+      setPreviewUrl(url);
+      setPreviewTitle(doc.title || doc.original_filename || 'Document Preview');
+    }
+  };
+
+  // Close preview overlay
+  const handleClosePreview = () => {
+    setPreviewUrl(null);
+    setPreviewTitle('');
+  };
+
+  // Handle search (uses path, not folder_id)
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     if (!searchQuery.trim()) {
-      // 如果搜索查询为空，清除搜索结果
       setSearchResults(null);
       return;
     }
     
-    if (!folder) {
-      window.showWetAlert('请先选择一个文件夹');
+    if (!currentFolder) {
+      if (typeof window.showWetAlert === 'function') {
+        window.showWetAlert('Please select a folder');
+      }
       return;
     }
     
@@ -393,67 +336,86 @@ const ClientDashboard: React.FC = () => {
     try {
       const results = await documentService.searchDocuments({
         q: searchQuery.trim(),
-        folder_id: folder.id
+        path: currentFolder.path
       });
       setSearchResults(results);
     } catch (error) {
-      console.error('搜索失败:', error);
-      window.showWetAlert('搜索失败，请稍后重试');
+      console.error('Search failed:', error);
+      if (typeof window.showWetAlert === 'function') {
+        window.showWetAlert('Search failed, please try again');
+      }
       setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
   };
 
-  // 清除搜索
+  // Clear search
   const handleClearSearch = () => {
     setSearchQuery('');
     setSearchResults(null);
   };
 
-  // 获取当前显示的文档（搜索结果或全部文档）
+  // Get currently displayed docs (search results or all)
   const getDisplayDocuments = () => {
     return searchResults !== null ? searchResults : documents;
   };
 
-  // 检查是否正在显示搜索结果
+  // Check if showing search results
   const isShowingSearchResults = () => {
     return searchResults !== null && searchQuery.trim() !== '';
-  };
-
-  // 获取应用的索引字段（用于表格列）
-  const getAppIndices = () => {
-    if (!app || !app.settings || !app.settings.indices) {
-      return []; // Smarti应用可能没有indices字段
-    }
-    return app.settings.indices;
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* 头部面包屑导航 */}
+        {/* Header breadcrumb navigation */}
         <header className="mb-8">
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-            <Link to="/apps" className="hover:text-blue-600">应用列表</Link>
+            <Link to="/apps" className="hover:text-blue-600">Apps</Link>
             <span>›</span>
-            <Link to={`/apps/${appSlug}`} className="hover:text-blue-600">{app?.name || '应用'}</Link>
-            {folder && (
+            <Link to={`/apps/${appSlug}`} className="hover:text-blue-600">{app?.name || 'App'}</Link>
+            {currentFolder?.path && (() => {
+              // Skip the first segment (app slug) since app name is already shown
+              const segments = currentFolder.path.split('/').filter(Boolean).slice(1);
+              if (segments.length === 0) return null;
+              let accumulatedPath = '/' + appSlug;
+              return segments.map((segment, index) => {
+                accumulatedPath += '/' + segment;
+                const isLast = index === segments.length - 1;
+                return (
+                  <React.Fragment key={segment}>
+                    <span>›</span>
+                    {isLast ? (
+                      <span className="text-gray-700 font-medium">{currentFolder?.name || segment}</span>
+                    ) : (
+                      <button
+                        onClick={() => navigateToBreadcrumb(accumulatedPath)}
+                        className="hover:text-blue-600 cursor-pointer bg-transparent border-none p-0 text-sm"
+                      >
+                        {segment}
+                      </button>
+                    )}
+                  </React.Fragment>
+                );
+              });
+            })()}
+            {!currentFolder?.path && currentFolder?.name && (
               <>
                 <span>›</span>
-                <span className="text-gray-700 font-medium">{folder?.name || '文件夹'}</span>
+                <span className="text-gray-700 font-medium">{currentFolder.name}</span>
               </>
             )}
           </div>
           
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">{app?.name || '应用详情'}</h1>
+              <h1 className="text-3xl font-bold text-gray-800">{app?.name || 'App Details'}</h1>
               <p className="text-gray-600 mt-2">
-                {app?.description || '公共文档门户'}
-                {folder && (
+                {app?.description || 'Public Document Portal'}
+                {currentFolder && (
                   <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded">
-                    {folder.document_count || 0} 个文档
+                    {documents.length} docs
                   </span>
                 )}
               </p>
@@ -463,65 +425,113 @@ const ClientDashboard: React.FC = () => {
                 to="/apps"
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
-                返回应用列表
+                Back to Apps
               </Link>
             </div>
           </div>
         </header>
 
-        {/* 主要内容 - 两栏布局 */}
+        {/* Main content - two column layout */}
         {loading ? (
           <div className="text-center py-16">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">加载应用中...</p>
+            <p className="mt-4 text-gray-600">Loading app...</p>
           </div>
         ) : (
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* 左侧文件夹树 - 占30% */}
+            {/* Left sidebar - flat folder list (30%) */}
             <div className="lg:w-[30%]">
               <div className="bg-white rounded-xl shadow overflow-hidden">
                 <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <h2 className="text-xl font-bold text-gray-800">文件夹树状视图</h2>
-                  <p className="text-gray-600 text-sm mt-1">完整的文件夹层级结构，支持展开/折叠</p>
+                  <h2 className="text-xl font-bold text-gray-800">
+                    {currentFolder ? currentFolder.name : 'Folders'}
+                  </h2>
+                  <p className="text-gray-600 text-sm mt-1">
+                    {currentFolder ? 'Sub-folders' : 'Root folders'}
+                  </p>
                 </div>
                 
-                {folderTree.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <div className="text-gray-400 mb-4">
-                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                {/* Back to parent button */}
+                {currentFolder && (
+                  <div className="px-4 pt-3">
+                    <button
+                      onClick={backToParent}
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                       </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">无文件夹</h3>
-                    <p className="text-gray-500">此应用没有文件夹。</p>
-                  </div>
-                ) : (
-                  <div className="p-4 max-h-[600px] overflow-y-auto">
-                    <FolderTree 
-                      folders={folderTree}
-                      currentFolderId={folder ? getFolderIdentifier(folder) : undefined}
-                      onFolderClick={handleFolderClick}
-                      onToggleExpand={handleToggleExpand}
-                    />
+                      .. / {currentFolder.parent_folder_path ? 'Parent folder' : 'Root'}
+                    </button>
+                    <hr className="my-2 border-gray-200" />
                   </div>
                 )}
                 
-                {/* 当前文件夹信息 */}
-                {folder && (
+                {childFolders.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="text-gray-400 mb-4">
+                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Sub-folders</h3>
+                    <p className="text-gray-500">This folder has no sub-folders.</p>
+                  </div>
+                ) : (
+                  <div className="p-4 max-h-[600px] overflow-y-auto">
+                    <div className="space-y-1">
+                      {childFolders.map(folder => (
+                        <div key={folder.path}>
+                          <div
+                            className={`flex items-center py-2 px-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
+                              currentFolder?.path === folder.path ? 'bg-blue-50 border border-blue-200' : ''
+                            }`}
+                            onClick={() => handleFolderClick(folder)}
+                          >
+                            {/* Folder icon */}
+                            <div className="mr-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                              </div>
+                            </div>
+                            
+                            {/* Folder info */}
+                            <div className="flex-grow min-w-0">
+                              <div className="font-medium text-gray-800 truncate">{folder.name}</div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {folder.document_count !== undefined && (
+                                  <span className="mr-2">{folder.document_count} docs</span>
+                                )}
+                                {folder.total_size !== undefined && folder.total_size > 0 && (
+                                  <span>{(folder.total_size / 1024 / 1024).toFixed(1)} MB</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Current folder info */}
+                {currentFolder && (
                   <div className="border-t border-gray-200 p-4 bg-gray-50">
-                    <h4 className="font-medium text-gray-700 text-sm mb-2">当前文件夹信息</h4>
+                    <h4 className="font-medium text-gray-700 text-sm mb-2">Current Folder</h4>
                     <div className="space-y-1 text-xs text-gray-600">
                       <div className="flex justify-between">
-                        <span>路径:</span>
-                        <span className="font-mono truncate max-w-[200px]" title={folder?.path}>{folder?.path || '/'}</span>
+                        <span>Path:</span>
+                        <span className="font-mono truncate max-w-[200px]" title={currentFolder?.path}>{currentFolder?.path || '/'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>文档数:</span>
-                        <span>{documents.length} 个</span>
+                        <span>Docs:</span>
+                        <span>{documents.length}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>创建时间:</span>
-                        <span>{folder?.created_at ? new Date(folder.created_at).toLocaleDateString() : '未知'}</span>
+                        <span>Created:</span>
+                        <span>{currentFolder?.created_at ? new Date(currentFolder.created_at).toLocaleDateString() : 'Unknown'}</span>
                       </div>
                     </div>
                   </div>
@@ -529,37 +539,37 @@ const ClientDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* 右侧文档表格 - 占70% */}
+            {/* Right side - document table (70%) */}
             <div className="lg:w-[70%]">
-              {folder ? (
+              {currentFolder ? (
                 <div className="bg-white rounded-xl shadow overflow-hidden">
                   <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-xl font-bold text-gray-800">文档列表</h2>
+                        <h2 className="text-xl font-bold text-gray-800">Documents</h2>
                         <p className="text-gray-600 text-sm mt-1">
-                          文件夹: <span className="font-medium">{folder.name}</span>
+                          Folder: <span className="font-medium">{currentFolder.name}</span>
                           {isShowingSearchResults() && (
                             <span className="ml-2 text-blue-600 font-medium">
-                              (搜索结果)
+                              (Search results)
                             </span>
                           )}
                         </p>
                       </div>
                       
-                      {/* 搜索栏 */}
+                      {/* Search bar */}
                       <form onSubmit={handleSearch} className="flex items-center">
                         <div className="relative">
                           <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="搜索文档标题..."
+                            placeholder="Search document titles..."
                             className="w-full sm:w-64 px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                           <div className="absolute left-3 top-2.5 text-gray-400">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                           </div>
                           {searchQuery && (
@@ -568,8 +578,8 @@ const ClientDashboard: React.FC = () => {
                               onClick={handleClearSearch}
                               className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
                           )}
@@ -582,12 +592,12 @@ const ClientDashboard: React.FC = () => {
                           {isSearching ? (
                             <>
                               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                               </svg>
-                              搜索
+                              Search
                             </>
-                          ) : '搜索'}
+                          ) : 'Search'}
                         </button>
                       </form>
                     </div>
@@ -595,14 +605,14 @@ const ClientDashboard: React.FC = () => {
                     {isShowingSearchResults() && (
                       <div className="mt-3 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
                         <div className="text-sm text-blue-700">
-                          <span className="font-medium">{searchResults?.length || 0}</span> 个搜索结果，关键词: "<span className="font-medium">{searchQuery}</span>"
+                          <span className="font-medium">{searchResults?.length || 0}</span> search results, keyword: "<span className="font-medium">{searchQuery}</span>"
                         </div>
                         <button
                           type="button"
                           onClick={handleClearSearch}
                           className="text-sm text-blue-600 hover:text-blue-800 underline"
                         >
-                          清除搜索
+                          Clear search
                         </button>
                       </div>
                     )}
@@ -611,24 +621,24 @@ const ClientDashboard: React.FC = () => {
                   {getDisplayDocuments().length === 0 ? (
                     <div className="p-12 text-center">
                       <div className="text-gray-400 mb-6">
-                        <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
                       <h3 className="text-xl font-medium text-gray-900 mb-2">
-                        {isShowingSearchResults() ? '未找到搜索结果' : '暂无文档'}
+                        {isShowingSearchResults() ? 'No search results found' : 'No documents'}
                       </h3>
                       <p className="text-gray-500 mb-6">
                         {isShowingSearchResults() 
-                          ? `没有找到与"${searchQuery}"相关的文档。请尝试其他关键词。`
-                          : '此文件夹还没有任何文档。'}
+                          ? `No documents found matching "${searchQuery}". Try other keywords.`
+                          : 'This folder has no documents yet.'}
                       </p>
                       {isShowingSearchResults() && (
                         <button
                           onClick={handleClearSearch}
                           className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                         >
-                          清除搜索
+                          Clear search
                         </button>
                       )}
                     </div>
@@ -638,28 +648,28 @@ const ClientDashboard: React.FC = () => {
                         <thead className="bg-gray-50">
                           <tr>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              文档名称
+                              Name
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              类型
+                              Type
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              大小
+                              Size
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              页数
+                              Pages
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              上传时间
+                              Upload Date
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              操作
+                              Actions
                             </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {getDisplayDocuments().map(doc => (
-                            <tr key={doc.id} className="hover:bg-gray-50">
+                            <tr key={doc.path || doc.storage_path} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div>
                                   <div className="font-medium text-gray-900">{doc.title}</div>
@@ -688,16 +698,16 @@ const ClientDashboard: React.FC = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex space-x-2">
                                   <button 
-                                    onClick={() => handleDownload(doc.path || doc.storage_path || doc.id, doc.original_filename)}
+                                    onClick={() => handleDownload(doc.path || doc.storage_path, doc.original_filename)}
                                     className="text-blue-600 hover:text-blue-900 px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm"
                                   >
-                                    下载
+                                    Download
                                   </button>
                                   <button 
                                     onClick={() => handlePreview(doc)}
                                     className="text-gray-600 hover:text-gray-900 px-3 py-1 bg-gray-50 hover:bg-gray-100 rounded text-sm"
                                   >
-                                    预览
+                                    Preview
                                   </button>
                                 </div>
                               </td>
@@ -706,104 +716,80 @@ const ClientDashboard: React.FC = () => {
                         </tbody>
                       </table>
                       
-                      {/* 表格底部信息 */}
+                      {/* Table footer info */}
                       <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
                         <div className="flex items-center justify-between text-sm text-gray-500">
                           <div>
-                            显示 <span className="font-medium">{getDisplayDocuments().length}</span> 个文档
+                            Showing <span className="font-medium">{getDisplayDocuments().length}</span> docs
                             {isShowingSearchResults() && (
                               <span className="ml-2 text-blue-600">
-                                (搜索结果)
+                                (Search results)
                               </span>
                             )}
                           </div>
-                          <div>
-                            总大小: <span className="font-medium">
-                              {(getDisplayDocuments().reduce((sum, doc) => sum + doc.file_size, 0) / 1024 / 1024).toFixed(2)} MB
-                            </span>
+                          <div className="flex items-center space-x-2">
+                            <select
+                              value={pageSize}
+                              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm"
+                            >
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Pagination */}
+                      {!isShowingSearchResults() && totalPages > 1 && (
+                        <div className="bg-white px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                          <div className="text-sm text-gray-500">
+                            Page {currentPage} of {totalPages}
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage <= 1}
+                              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Previous
+                            </button>
+                            <button
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={currentPage >= totalPages}
+                              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="bg-white rounded-xl shadow p-12 text-center">
                   <div className="text-gray-400 mb-6">
-                    <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                    <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">请选择一个文件夹</h3>
-                  <p className="text-gray-500 mb-6">点击左侧的文件夹树，查看其中的文档。</p>
-                </div>
-              )}
-              
-              {/* 当前文件夹统计信息 */}
-              {folder && documents.length > 0 && (
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-xl shadow p-4">
-                    <div className="flex items-center">
-                      <div className="mr-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                          </svg>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700">文档总数</h4>
-                        <p className="text-2xl font-bold text-gray-900">{documents.length}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl shadow p-4">
-                    <div className="flex items-center">
-                      <div className="mr-4">
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                          </svg>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700">PDF文档</h4>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {documents.filter(d => d.file_type === 'pdf').length}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl shadow p-4">
-                    <div className="flex items-center">
-                      <div className="mr-4">
-                        <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
-                          </svg>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700">总大小</h4>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {(documents.reduce((sum, doc) => sum + doc.file_size, 0) / 1024 / 1024).toFixed(1)} MB
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">Select a Folder</h3>
+                  <p className="text-gray-500 mb-6">Choose a folder from the left sidebar to view its documents.</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* 底部 */}
+        {/* Footer */}
         <footer className="mt-12 pt-8 border-t border-gray-200 text-center text-gray-500 text-sm">
-          <p>FileBot Client Portal • {app?.name || '应用'} • {folder?.name || '请选择文件夹'}</p>
-          <p className="mt-1">30/70分栏布局 • 左侧显示完整的文件夹树状视图 • 右侧显示文档表格</p>
+          <p>FileBot Client Portal • {app?.name || 'App'} • {currentFolder?.name || 'Select a Folder'}</p>
+          <p className="mt-1">30/70 two-column layout • Left: flat folder list • Right: document table</p>
         </footer>
+        {/* Preview Overlay (lightbox) */}
+        <PreviewOverlay url={previewUrl} onClose={handleClosePreview} />
       </div>
     </div>
   );

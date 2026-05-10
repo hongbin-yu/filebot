@@ -56,6 +56,9 @@
                 <button id="btn-top-delete" class="btn btn-delete" disabled title="Delete selected page">
                     Delete
                 </button>
+                <button id="btn-top-properties" class="btn btn-primary" disabled title="View/edit page properties">
+                    Properties
+                </button>
                 <div style="flex-grow: 1;"></div>
                 <button id="btn-top-refresh" class="btn btn-default" title="Refresh page list">
                     Refresh
@@ -119,15 +122,64 @@
                 </div>
                 <form id="createPageForm">
                     <div class="modal-body">
-                        <div class="form-group">
-                            <label for="newPageTitle">Page Title *</label>
-                            <input type="text" class="form-control" id="newPageTitle" placeholder="Enter page title" required autofocus>
-                            <small class="form-text text-muted">The URL path will be auto-generated from the title.</small>
-                            <div id="urlPreview" class="url-preview">/canadasite/en/</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="newPageTitle">English Title *</label>
+                                    <input type="text" class="form-control" id="newPageTitle" placeholder="Enter English page title" required autofocus>
+                                    <small class="form-text text-muted">The page display title.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="newPageName">English Name (slug)</label>
+                                    <input type="text" class="form-control" id="newPageName" placeholder="auto-generated from title">
+                                    <small class="form-text text-muted">URL path segment. Auto-generated, but you can override.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="newPageFrTitle">French Title</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="newPageFrTitle" placeholder="Titre en français">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-info" id="btnTranslateFr" title="Auto-translate from English title">⟳ Translate</button>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="newPageFrName">French Name (slug)</label>
+                                    <input type="text" class="form-control" id="newPageFrName" placeholder="auto-generated from French title">
+                                    <small class="form-text text-muted">URL segment for the French version.</small>
+                                </div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="newPageParent">Parent Path</label>
                             <input type="text" class="form-control" id="newPageParent" readonly>
+                            <small class="form-text text-muted" id="parentInfoText"></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPageOtherLangParent">Other Language Parent Path</label>
+                            <input type="text" class="form-control" id="newPageOtherLangParent" placeholder="e.g. /canadasite/fr/composants">
+                        </div>
+                        <div style="margin:10px 0;padding:10px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;">
+                            <div style="margin-bottom:6px;">
+                                <strong>Path</strong><br>
+                                <span style="font-family:monospace;">
+                                    <span id="createEnPathPreview" style="color:#888;">(enter English name to preview)</span>
+                                </span>
+                            </div>
+                            <div>
+                                <strong>Other language path</strong><br>
+                                <span style="font-family:monospace;">
+                                    <span id="createFrPathPreview" style="color:#888;">(enter French name to preview)</span>
+                                </span>
+                            </div>
                         </div>
                         <div id="createPageError" class="alert alert-danger" style="display: none;"></div>
                         <div id="createPageSuccess" class="alert alert-success" style="display: none;"></div>
@@ -137,6 +189,109 @@
                         <button type="submit" class="btn btn-primary" id="createPageSaveBtn">Create & Edit</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Properties Modal -->
+    <div class="modal fade" id="propertiesModal" tabindex="-1" role="dialog" aria-labelledby="propertiesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="propertiesModalLabel">Page Properties</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Page ID:</label>
+                        <input type="text" id="prop-id" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="prop-title">Title:</label>
+                        <input type="text" id="prop-title" class="form-control" placeholder="Page title">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="prop-language">Language:</label>
+                                <input type="text" id="prop-language" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="prop-status">Status:</label>
+                                <select id="prop-status" class="form-control">
+                                    <option value="draft">Draft</option>
+                                    <option value="published">Published</option>
+                                    <option value="review">Review</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="prop-path">Path:</label>
+                        <input type="text" id="prop-path" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="prop-parent">Parent Path:</label>
+                        <input type="text" id="prop-parent" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="prop-filepath">Image Location (FileBot):</label>
+                        <input type="text" id="prop-filepath" class="form-control" placeholder="/canadasite/images/en/...">
+                        <small class="form-text text-muted">Path for FileBot image storage. Leave empty to inherit from ancestor.</small>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="prop-created-by">Created By:</label>
+                                <input type="text" id="prop-created-by" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="prop-created-at">Created At:</label>
+                                <input type="text" id="prop-created-at" class="form-control" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="prop-updated-at">Last Modified:</label>
+                                <input type="text" id="prop-updated-at" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="prop-published-at">Published At:</label>
+                                <input type="text" id="prop-published-at" class="form-control" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="prop-other-lang">Other Language Path:</label>
+                        <input type="text" id="prop-other-lang" class="form-control" placeholder="/canadasite/fr/page-name" required>
+                        <small class="form-text text-muted">Link to the translated version of this page.</small>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="prop-has-children" disabled readonly> Has child pages
+                        </label>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="prop-hide-nav"> Hide in Navigation
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="prop-save-btn">Save</button>
+                </div>
             </div>
         </div>
     </div>

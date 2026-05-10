@@ -16,29 +16,29 @@ from app.schemas.file_naming_rule import (
 router = APIRouter(prefix="/apps/{app_id}/file-naming-rules", tags=["file-naming-rules"])
 
 
-# ========== 辅助函数 ==========
+# ========== Helper Functions ==========
 
 def get_app_or_404(db: Session, app_id: uuid.UUID, current_user: User) -> App:
-    """获取应用，如果不存在或无权访问则返回404"""
+    """Get app, return 404 if not found or no permission"""
     app = db.query(App).filter(App.id == str(app_id)).first()
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="应用不存在"
+            detail="App not found"
         )
     
-    # 检查权限：管理员或应用所有者
+    # Check permission: admin or app owner
     if not current_user.is_superuser and str(app.owner_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="无权访问此应用"
+            detail="No permission to access this app"
         )
     
     return app
 
 
 def get_rule_or_404(db: Session, rule_id: uuid.UUID, app_id: uuid.UUID, current_user: User) -> FileNamingRule:
-    """获取命名规则，如果不存在或无权访问则返回404"""
+    """Get naming rule, return 404 if not found or no permission"""
     rule = db.query(FileNamingRule).filter(
         FileNamingRule.id == str(rule_id),
         FileNamingRule.app_id == str(app_id)
@@ -47,26 +47,26 @@ def get_rule_or_404(db: Session, rule_id: uuid.UUID, app_id: uuid.UUID, current_
     if not rule:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="命名规则不存在"
+            detail="Naming rule not found"
         )
     
-    # 检查应用权限（通过应用）
+    # Check app permission (via app)
     get_app_or_404(db, app_id, current_user)
     
     return rule
 
 
-# ========== 文件命名规则路由 ==========
+# ========== File Naming Rule Routes ==========
 
 @router.get("/", response_model=List[FileNamingRuleResponse])
 def get_file_naming_rules(
     app_id: uuid.UUID,
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取应用的文件命名规则列表"""
+    """Get list of file naming rules for an app"""
     app = get_app_or_404(db, app_id, current_user)
     
     rules = db.query(FileNamingRule).filter(
@@ -83,10 +83,10 @@ def create_file_naming_rule(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """创建新的文件命名规则"""
+    """Create a new file naming rule"""
     app = get_app_or_404(db, app_id, current_user)
     
-    # 检查是否已存在相同basename的规则（可选，根据需求）
+    # Check if rule with same basename already exists
     existing_rule = db.query(FileNamingRule).filter(
         FileNamingRule.app_id == str(app_id),
         FileNamingRule.basename == rule_data.basename
@@ -95,10 +95,10 @@ def create_file_naming_rule(
     if existing_rule:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="此应用已存在相同前缀的命名规则"
+            detail="A naming rule with this prefix already exists for this app"
         )
     
-    # 创建新规则
+    # Create new rule
     rule = FileNamingRule(
         **rule_data.model_dump(exclude={"app_id", "created_by"}),
         app_id=str(app_id),
@@ -119,7 +119,7 @@ def get_file_naming_rule(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取单个文件命名规则"""
+    """Get a single file naming rule"""
     rule = get_rule_or_404(db, rule_id, app_id, current_user)
     return rule
 
@@ -132,13 +132,13 @@ def update_file_naming_rule(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """更新文件命名规则"""
+    """Update a file naming rule"""
     rule = get_rule_or_404(db, rule_id, app_id, current_user)
     
-    # 更新字段
+    # Update fields
     update_data = rule_data.model_dump(exclude_unset=True)
     
-    # 处理更新者信息
+    # Handle updater info
     if update_data:
         update_data["updated_by"] = rule_data.updated_by or current_user.username
     
@@ -158,7 +158,7 @@ def delete_file_naming_rule(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """删除文件命名规则"""
+    """Delete a file naming rule"""
     rule = get_rule_or_404(db, rule_id, app_id, current_user)
     
     db.delete(rule)
@@ -171,22 +171,22 @@ def delete_file_naming_rule(
 def get_next_filename(
     app_id: uuid.UUID,
     rule_id: uuid.UUID,
-    increment: bool = Query(False, description="是否递增序列号（预览模式）"),
+    increment: bool = Query(False, description="Whether to increment sequence number (preview mode)"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取下一个文档编号（可选择是否递增序列号）"""
+    """Get next document number (optionally increment the sequence)"""
     rule = get_rule_or_404(db, rule_id, app_id, current_user)
     
-    # 创建响应（包含下一个文档编号）
+    # Create response with next document number
     response = FileNamingRuleWithNext.from_orm_with_next(rule)
     
-    # 如果请求递增序列号
+    # If increment is requested
     if increment:
         rule.max_number += rule.increment_by
         db.commit()
         db.refresh(rule)
-        # 重新创建响应以反映更新后的序列号
+        # Recreate response to reflect updated sequence
         response = FileNamingRuleWithNext.from_orm_with_next(rule)
     
     return response
@@ -199,23 +199,22 @@ def generate_filename(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """生成文档编号并递增序列号（用于文档上传）"""
+    """Generate document number and increment sequence (for document upload)"""
     rule = get_rule_or_404(db, rule_id, app_id, current_user)
     
-    # 生成当前文档编号
+    # Generate current document number
     current_document_number = f"{rule.basename}{rule.max_number:04d}"
     
-    # 递增序列号
+    # Increment sequence
     rule.max_number += rule.increment_by
     rule.updated_by = current_user.username
     
     db.commit()
     db.refresh(rule)
     
-    # 创建响应
+    # Create response
     response = FileNamingRuleWithNext.from_orm_with_next(rule)
-    # 但这里需要返回生成的文档编号，不是下一个
-    # 调整：手动设置next_document_number为生成的文档编号
+    # Override to return the generated document number, not the next one
     response.next_document_number = current_document_number
     
     return response

@@ -18,6 +18,7 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
     settings: { indices: string[] };
     redirect_url: string;
     icon: string;
+    default_entry: string;
   }>({
     name: '',
     slug: '',
@@ -103,6 +104,13 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
     setFormData(prev => ({
       ...prev,
       icon: e.target.value
+    }));
+  };
+
+  const handleDefaultEntryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      default_entry: e.target.value
     }));
   };
 
@@ -297,7 +305,25 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
                 </p>
               </div>
 
-              {/* 图标 - 用于统一仪表板 */}
+              {/* Default Entry Path */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+Default Entry Path
+                </label>
+                <input
+                  type="text"
+                  value={formData.default_entry}
+                  onChange={handleDefaultEntryChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g. canadasite"
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+Optional default entry path. When set, clicking this app goes directly to /apps/:slug/:path
+                </p>
+              </div>
+
+              {/* Icon */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('appModal.iconLabel')}

@@ -1,10 +1,11 @@
 """
-AI辅助功能路由
+AI-assisted functionality routes
 """
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import sqlite3
 import uuid
+import os
 from datetime import datetime
 from typing import List
 
@@ -15,22 +16,27 @@ from app.models import (
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
+WEBBOT_DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
+
 def get_db_connection():
-    """获取数据库连接"""
+    """Get WebBot database connection"""
     try:
-        conn = sqlite3.connect("/home/hongb/.openclaw/workspace/filebot/backend/filebot.db")
+        conn = sqlite3.connect(WEBBOT_DB_PATH)
         conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:
-        raise HTTPException(status_code=500, detail=f"数据库连接失败: {e}")
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {e}")
 
 # 模拟AI服务
 class MockAIService:
-    """模拟AI服务，用于演示"""
+    """Mock AI service for demonstration"""
     
     @staticmethod
     def create_page(description: str) -> str:
-        """模拟AI创页"""
+        """Mock AI page creation"""
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -60,8 +66,8 @@ class MockAIService:
     
     @staticmethod
     def optimize_content(content: str) -> str:
-        """模拟AI优化内容"""
-        # 简单的优化：添加标题、格式化段落
+        """Mock AI content optimization"""
+        # 简单的优化：Add标题、格式化段落
         optimized = content.replace('\n\n', '</p><p>')
         if not optimized.startswith('<h1>'):
             optimized = f"<h1>Optimized Content</h1>\n<p>{optimized}</p>"
@@ -69,7 +75,7 @@ class MockAIService:
     
     @staticmethod
     def review_content(content: str) -> str:
-        """模拟AI审查内容"""
+        """Mock AI content review"""
         # 简单的合规检查
         issues = []
         
@@ -89,17 +95,17 @@ class MockAIService:
     
     @staticmethod
     def suggest_deletion(page_info: dict) -> str:
-        """模拟AI删除建议"""
+        """Mock AI deletion suggestions"""
         return f"AI suggests reviewing this page for potential deletion. Reason: The page '{page_info.get('title', 'Unknown')}' may be outdated or have low traffic. Consider updating or archiving instead of deletion."
 
-# 模拟AI任务处理
+# 模拟AITask处理
 async def process_ai_task(task_id: str, task_type: str, prompt: str):
-    """后台处理AI任务"""
+    """Background AI task processing"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 更新任务状态为处理中
+        # 更NewTaskStatus为处理中
         cursor.execute(
             "UPDATE webbot_tasks SET status = ?, started_at = ? WHERE id = ?",
             (TaskStatus.PROCESSING.value, datetime.now().isoformat(), task_id)
@@ -122,7 +128,7 @@ async def process_ai_task(task_id: str, task_type: str, prompt: str):
         elif task_type == TaskType.DELETE_PAGE.value:
             result = ai_service.suggest_deletion({"title": prompt})
         
-        # 更新任务为完成
+        # 更NewTask为完成
         cursor.execute(
             "UPDATE webbot_tasks SET status = ?, result = ?, completed_at = ? WHERE id = ?",
             (TaskStatus.COMPLETED.value, result, datetime.now().isoformat(), task_id)
@@ -130,7 +136,7 @@ async def process_ai_task(task_id: str, task_type: str, prompt: str):
         conn.commit()
         
     except Exception as e:
-        # 更新任务为失败
+        # 更NewTask为失败
         cursor.execute(
             "UPDATE webbot_tasks SET status = ?, error_message = ? WHERE id = ?",
             (TaskStatus.FAILED.value, str(e), task_id)
@@ -142,7 +148,7 @@ async def process_ai_task(task_id: str, task_type: str, prompt: str):
 
 @router.post("/create-task", response_model=AITaskResponse)
 async def create_ai_task(task: AITaskCreate, background_tasks: BackgroundTasks):
-    """创建AI任务"""
+    """Create AI task"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -150,7 +156,7 @@ async def create_ai_task(task: AITaskCreate, background_tasks: BackgroundTasks):
         task_id = f"task-{uuid.uuid4().hex[:12]}"
         now = datetime.now().isoformat()
         
-        # 插入任务
+        # 插入Task
         cursor.execute("""
             INSERT INTO webbot_tasks 
             (id, task_type, page_id, description, ai_model, prompt, status, created_at)
@@ -168,7 +174,7 @@ async def create_ai_task(task: AITaskCreate, background_tasks: BackgroundTasks):
         
         conn.commit()
         
-        # 启动后台任务处理
+        # 启动后台Task处理
         background_tasks.add_task(
             process_ai_task, 
             task_id, 
@@ -176,7 +182,7 @@ async def create_ai_task(task: AITaskCreate, background_tasks: BackgroundTasks):
             task.prompt
         )
         
-        # 获取创建的任务
+        # 获取创建的Task
         cursor.execute("SELECT * FROM webbot_tasks WHERE id = ?", (task_id,))
         created_task = cursor.fetchone()
         
@@ -184,13 +190,13 @@ async def create_ai_task(task: AITaskCreate, background_tasks: BackgroundTasks):
         
     except sqlite3.Error as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"创建任务失败: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create task: {e}")
     finally:
         conn.close()
 
 @router.get("/tasks", response_model=List[AITaskResponse])
 async def list_tasks(skip: int = 0, limit: int = 50):
-    """获取AI任务列表"""
+    """Get AI task list"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -205,13 +211,13 @@ async def list_tasks(skip: int = 0, limit: int = 50):
         return [AITaskResponse(**dict(task)) for task in tasks]
         
     except sqlite3.Error as e:
-        raise HTTPException(status_code=500, detail=f"查询失败: {e}")
+        raise HTTPException(status_code=500, detail=f"Query failed: {e}")
     finally:
         conn.close()
 
 @router.get("/tasks/{task_id}", response_model=AITaskResponse)
 async def get_task(task_id: str):
-    """获取AI任务详情"""
+    """Get AI task details"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -220,18 +226,18 @@ async def get_task(task_id: str):
         task = cursor.fetchone()
         
         if not task:
-            raise HTTPException(status_code=404, detail="任务未找到")
+            raise HTTPException(status_code=404, detail="Task未找到")
         
         return AITaskResponse(**dict(task))
         
     except sqlite3.Error as e:
-        raise HTTPException(status_code=500, detail=f"查询失败: {e}")
+        raise HTTPException(status_code=500, detail=f"Query failed: {e}")
     finally:
         conn.close()
 
 @router.post("/create-page", response_model=AIResponse)
 async def ai_create_page(request: AIRequest):
-    """AI辅助创建页面"""
+    """AI-assisted page creation"""
     ai_service = MockAIService()
     
     try:
@@ -257,7 +263,7 @@ async def ai_create_page(request: AIRequest):
 
 @router.post("/optimize-page", response_model=AIResponse)
 async def ai_optimize_page(request: AIRequest):
-    """AI辅助优化页面"""
+    """AI-assisted page optimization"""
     ai_service = MockAIService()
     
     try:
@@ -283,7 +289,7 @@ async def ai_optimize_page(request: AIRequest):
 
 @router.post("/review-page", response_model=AIResponse)
 async def ai_review_page(request: AIRequest):
-    """AI辅助审查页面"""
+    """AI-assisted page review"""
     ai_service = MockAIService()
     
     try:
@@ -309,7 +315,7 @@ async def ai_review_page(request: AIRequest):
 
 @router.post("/suggest-deletion", response_model=AIResponse)
 async def ai_suggest_deletion(request: AIRequest):
-    """AI辅助删除建议"""
+    """AI-assisted deletion suggestions"""
     ai_service = MockAIService()
     
     try:
@@ -319,7 +325,7 @@ async def ai_suggest_deletion(request: AIRequest):
                 error=f"Invalid action for this endpoint. Use {TaskType.DELETE_PAGE.value}"
             )
         
-        # 假设content包含页面信息
+        # 假设content包含pageInformation
         result = ai_service.suggest_deletion(request.context or {})
         
         return AIResponse(

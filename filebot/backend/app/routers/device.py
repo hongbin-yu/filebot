@@ -17,30 +17,30 @@ from app.schemas.device import (
 router = APIRouter(tags=["devices"])
 
 
-# ========== 辅助函数 ==========
+# ========== Helper Functions ==========
 
 def get_device_or_404(db: Session, device_id: uuid.UUID) -> Device:
-    """获取设备，如果不存在则返回404"""
+    """Get device by ID, return 404 if not found"""
     device = db.query(Device).filter(Device.id == str(device_id)).first()
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="设备不存在"
+            detail="Device not found"
         )
     return device
 
 
 def check_device_admin_access(device: Device, current_user: User) -> None:
-    """检查设备管理权限（管理员或创建者）"""
+    """Check device management permission (admin or creator)"""
     if not current_user.is_superuser and device.created_by != current_user.username:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="无权管理此设备"
+            detail="No permission to manage this device"
         )
 
 
 def device_to_status_response(device: Device) -> DeviceStatusResponse:
-    """将设备转换为状态响应"""
+    """Convert device to status response"""
     usage_percentage = device.get_usage_percentage()
     available_mb = device.get_available_mb()
     
@@ -61,28 +61,28 @@ def device_to_status_response(device: Device) -> DeviceStatusResponse:
 
 
 def get_capacity_suggestion(device: Device) -> Optional[str]:
-    """根据设备状态获取建议"""
+    """Get suggestion based on device status"""
     if device.status == DeviceStatus.FULL:
-        return "设备已满，请清理文件或添加新存储设备"
+        return "Device is full. Please clean files or add new storage."
     elif device.status == DeviceStatus.WARNING:
-        return f"设备使用率超过{device.warning_threshold}%，建议清理文件"
+        return f"Usage exceeds {device.warning_threshold}%. Consider cleaning files."
     elif device.get_usage_percentage() >= 80:
-        return "设备使用率较高，建议定期清理"
+        return "Usage is high. Regular cleanup recommended."
     return None
 
 
-# ========== 设备CRUD路由 ==========
+# ========== Device CRUD Routes ==========
 
 @router.get("/", response_model=List[DeviceResponse])
 def list_devices(
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
-    device_type: Optional[DeviceType] = Query(None, description="按设备类型过滤"),
-    is_active: Optional[bool] = Query(None, description="按激活状态过滤"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    device_type: Optional[DeviceType] = Query(None, description="Filter by device type"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取设备列表（所有用户可查看）"""
+    """Get device list (viewable by all users)"""
     query = db.query(Device)
     
     if device_type is not None:
@@ -101,16 +101,16 @@ def create_device(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """创建设备（需要管理员权限）"""
-    # 检查设备名称是否已存在
+    """Create device (admin permission required)"""
+    # Check if device name already exists
     existing = db.query(Device).filter(Device.name == device_data.name).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="设备名称已存在"
+            detail="Device name already exists"
         )
     
-    # 创建设备
+    # Create device
     device = Device(
         name=device_data.name,
         description=device_data.description,
@@ -124,7 +124,7 @@ def create_device(
         created_by=current_user.username
     )
     
-    # 如果提供了路径，尝试检测容量
+    # If path is provided, try to detect capacity
     if device.path:
         device.update_capacity_from_path()
     
@@ -141,18 +141,18 @@ def get_device(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取设备详情（包含容量信息）"""
+    """Get device details (includes capacity info)"""
     device = get_device_or_404(db, device_id)
     
-    # 构建容量信息
+    # Build capacity info
     capacity_info = {
         "usage_percentage": device.get_usage_percentage(),
         "available_mb": device.get_available_mb(),
-        "can_store_large_file": device.can_store_file(100),  # 能否存储100MB文件
+        "can_store_large_file": device.can_store_file(100),
         "last_updated": device.updated_at.isoformat() if device.updated_at else None
     }
     
-    # 如果设备有路径，添加路径信息
+    # If device has a path, add path info
     if device.path and os.path.exists(device.path):
         capacity_info["path_exists"] = True
         capacity_info["path"] = device.path
@@ -174,34 +174,34 @@ def update_device(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """更新设备（需要管理员权限）"""
+    """Update device (admin permission required)"""
     device = get_device_or_404(db, device_id)
     check_device_admin_access(device, current_user)
     
-    # 更新字段
+    # Build update dict
     update_dict = device_data.dict(exclude_unset=True)
     
-    # 移除不应直接更新的字段
+    # Remove fields that should not be directly updated
     update_dict.pop("updated_by", None)
     
-    # 如果更新了名称，检查是否重复
+    # If name was updated, check for duplicates
     if "name" in update_dict and update_dict["name"] != device.name:
         existing = db.query(Device).filter(Device.name == update_dict["name"]).first()
         if existing and existing.id != device.id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="设备名称已存在"
+                detail="Device name already exists"
             )
     
-    # 更新字段
+    # Apply updates
     for field, value in update_dict.items():
         if value is not None:
             setattr(device, field, value)
     
-    # 设置更新者
+    # Set updater
     device.updated_by = current_user.username
     
-    # 如果更新了路径或容量相关字段，重新检查状态
+    # If path or capacity fields were updated, re-check status
     if any(field in update_dict for field in ["path", "capacity_mb", "used_mb", "warning_threshold"]):
         device.check_capacity_status()
     
@@ -217,12 +217,12 @@ def delete_device(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """删除设备（需要管理员权限）"""
+    """Delete device (admin permission required)"""
     device = get_device_or_404(db, device_id)
     check_device_admin_access(device, current_user)
     
-    # 检查设备是否在使用中（如果有文档关联）
-    # TODO: 后续添加文档关联检查
+    # Check if device is in use (has document associations)
+    # TODO: Add document association check later
     
     db.delete(device)
     db.commit()
@@ -230,19 +230,19 @@ def delete_device(
     return None
 
 
-# ========== 容量检测与提示路由 ==========
+# ========== Capacity Detection & Status Routes ==========
 
 @router.get("/{device_id}/status", response_model=DeviceStatusResponse)
 def get_device_status(
     device_id: uuid.UUID,
-    update_capacity: bool = Query(False, description="是否重新检测路径容量"),
+    update_capacity: bool = Query(False, description="Whether to re-detect path capacity"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取设备状态（包含容量提示）"""
+    """Get device status (includes capacity tips)"""
     device = get_device_or_404(db, device_id)
     
-    # 如果需要，重新检测容量
+    # Re-detect capacity if requested
     if update_capacity and device.path:
         device.update_capacity_from_path()
         db.commit()
@@ -258,7 +258,7 @@ def detect_capacity(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """批量检测设备容量（后台任务）"""
+    """Batch detect device capacity (background task)"""
     query = db.query(Device)
     
     if request.device_ids:
@@ -270,7 +270,7 @@ def detect_capacity(
     if not devices:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="未找到符合条件的设备"
+            detail="No matching devices found"
         )
     
     warnings = []
@@ -280,33 +280,33 @@ def detect_capacity(
     
     for device in devices:
         try:
-            # 检测容量
+            # Detect capacity
             updated = False
             if device.path and (request.force_update or device.capacity_mb == 0):
                 updated = device.update_capacity_from_path()
                 if updated:
                     updated_count += 1
             
-            # 检查状态
+            # Check status
             device.check_capacity_status()
             
-            # 如果设备状态为警告或已满，添加警告
+            # Add warnings for devices in warning or full status
             if device.status == DeviceStatus.WARNING:
-                warnings.append(f"设备 '{device.name}' 使用率超过阈值 ({device.get_usage_percentage():.1f}%)")
+                warnings.append(f"Device '{device.name}' usage exceeds threshold ({device.get_usage_percentage():.1f}%)")
             elif device.status == DeviceStatus.FULL:
-                warnings.append(f"设备 '{device.name}' 已满 ({device.get_usage_percentage():.1f}%)")
+                warnings.append(f"Device '{device.name}' is full ({device.get_usage_percentage():.1f}%)")
             
-            # 添加到结果
+            # Add to results
             results.append(device_to_status_response(device))
             
-            # 提交更改（每10个设备提交一次）
+            # Commit every 10 devices
             if updated and updated_count % 10 == 0:
                 db.commit()
                 
         except Exception as e:
-            errors.append(f"设备 '{device.name}' 检测失败: {str(e)}")
+            errors.append(f"Device '{device.name}' detection failed: {str(e)}")
     
-    # 最终提交
+    # Final commit
     db.commit()
     
     return CapacityDetectionResponse(
@@ -321,19 +321,19 @@ def detect_capacity(
 
 @router.get("/system/status", response_model=List[DeviceStatusResponse])
 def get_system_storage_status(
-    show_warnings_only: bool = Query(False, description="只显示警告或已满的设备"),
+    show_warnings_only: bool = Query(False, description="Show only warning or full devices"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取系统存储状态概览（用于仪表板提示）"""
+    """Get system storage status overview (for dashboard alerts)"""
     query = db.query(Device).filter(Device.is_active == True)
     
     if show_warnings_only:
         query = query.filter(Device.status.in_([DeviceStatus.WARNING, DeviceStatus.FULL]))
     
     devices = query.order_by(
-        Device.status.desc(),  # FULL, WARNING 在前
-        Device.get_usage_percentage().desc()  # 使用率高的在前
+        Device.status.desc(),
+        Device.get_usage_percentage().desc()
     ).all()
     
     return [device_to_status_response(device) for device in devices]
@@ -345,20 +345,20 @@ def allocate_storage(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """分配存储空间（为文件选择合适的设备）"""
-    # 获取所有可用的设备
+    """Allocate storage space (pick the right device for a file)"""
+    # Get all available devices
     devices = db.query(Device).filter(
         Device.is_active == True,
-        Device.type == DeviceType.STORAGE  # 只考虑存储类型设备
+        Device.type == DeviceType.STORAGE
     ).order_by(Device.priority.desc()).all()
     
     if not devices:
         return StorageAllocationResponse(
             allocated=False,
-            message="没有可用的存储设备"
+            message="No available storage devices"
         )
     
-    # 如果有首选设备，优先考虑
+    # If preferred device is specified, try it first
     if request.preferred_device_id:
         preferred_device = db.query(Device).filter(
             Device.id == str(request.preferred_device_id),
@@ -366,62 +366,61 @@ def allocate_storage(
         ).first()
         
         if preferred_device and preferred_device.can_store_file(request.file_size_mb):
-            # 分配空间
+            # Allocate space
             if request.require_capacity_check:
                 if not preferred_device.allocate_space(request.file_size_mb):
                     return StorageAllocationResponse(
                         allocated=False,
-                        message=f"首选设备 '{preferred_device.name}' 空间不足"
+                        message=f"Preferred device '{preferred_device.name}' has insufficient space"
                     )
                 db.commit()
             
             warning = None
             if preferred_device.status == DeviceStatus.WARNING:
-                warning = f"设备 '{preferred_device.name}' 使用率接近阈值"
+                warning = f"Device '{preferred_device.name}' usage near threshold"
             
             return StorageAllocationResponse(
                 allocated=True,
                 device_id=uuid.UUID(preferred_device.id),
                 device_name=preferred_device.name,
                 available_mb=preferred_device.get_available_mb(),
-                message=f"空间已分配至 '{preferred_device.name}'",
+                message=f"Space allocated to '{preferred_device.name}'",
                 warning=warning
             )
     
-    # 寻找最佳设备
+    # Find the best device
     best_device = Device.find_best_device_for_storage(devices, request.file_size_mb)
     
     if not best_device:
-        # 尝试查找是否有容量未知的设备（capacity_mb=0）
+        # Try devices with unknown capacity (capacity_mb=0)
         unknown_capacity_devices = [d for d in devices if d.capacity_mb == 0]
         if unknown_capacity_devices:
-            # 使用优先级最高的未知容量设备
             best_device = max(unknown_capacity_devices, key=lambda d: d.priority)
         else:
             return StorageAllocationResponse(
                 allocated=False,
-                message="没有足够的可用存储空间"
+                message="Insufficient available storage space"
             )
     
-    # 分配空间
+    # Allocate space
     if request.require_capacity_check:
         if not best_device.allocate_space(request.file_size_mb):
             return StorageAllocationResponse(
                 allocated=False,
-                message=f"设备 '{best_device.name}' 空间不足"
+                message=f"Device '{best_device.name}' has insufficient space"
             )
         db.commit()
     
     warning = None
     if best_device.status == DeviceStatus.WARNING:
-        warning = f"设备 '{best_device.name}' 使用率接近阈值"
+        warning = f"Device '{best_device.name}' usage near threshold"
     
     return StorageAllocationResponse(
         allocated=True,
         device_id=uuid.UUID(best_device.id),
         device_name=best_device.name,
         available_mb=best_device.get_available_mb(),
-        message=f"空间已分配至 '{best_device.name}'",
+        message=f"Space allocated to '{best_device.name}'",
         warning=warning
     )
 
@@ -429,21 +428,21 @@ def allocate_storage(
 @router.post("/{device_id}/release-space")
 def release_device_space(
     device_id: uuid.UUID,
-    file_size_mb: int = Query(..., gt=0, description="释放的空间大小（MB）"),
+    file_size_mb: int = Query(..., gt=0, description="Size of space to release (MB)"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """释放设备空间（当文件被删除时调用）"""
+    """Release device space (called when files are deleted)"""
     device = get_device_or_404(db, device_id)
     
-    # 检查权限（管理员或文档所有者）
-    # TODO: 后续添加更精细的权限检查
+    # Check permissions (admin or document owner)
+    # TODO: Add finer permission check later
     
     device.release_space(file_size_mb)
     db.commit()
     
     return {
-        "message": f"已从设备 '{device.name}' 释放 {file_size_mb}MB 空间",
+        "message": f"Released {file_size_mb}MB from device '{device.name}'",
         "device_id": device_id,
         "used_mb": device.used_mb,
         "available_mb": device.get_available_mb(),
@@ -451,45 +450,45 @@ def release_device_space(
     }
 
 
-# ========== 设备初始化路由（兼容旧系统） ==========
+# ========== Device Initialization Routes (Legacy Compat) ==========
 
 @router.post("/initialize-legacy", status_code=status.HTTP_201_CREATED)
 def initialize_legacy_devices(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """初始化旧系统兼容设备（Recycle Bin等）"""
-    # 检查是否已存在回收站
+    """Initialize legacy compatible devices (Recycle Bin, etc.)"""
+    # Check if Recycle Bin already exists
     recycle_bin = db.query(Device).filter(Device.type == DeviceType.RECYCLE_BIN).first()
     
     devices_created = []
     
     if not recycle_bin:
-        # 创建回收站（对应旧系统类型1）
+        # Create Recycle Bin (corresponds to old system type 1)
         recycle_bin = Device(
             name="Recycle Bin",
-            description="回收站（旧系统兼容）",
+            description="Recycle Bin (legacy compatible)",
             type=DeviceType.RECYCLE_BIN,
             is_active=True,
-            capacity_mb=0,  # 容量未知
+            capacity_mb=0,
             warning_threshold=90,
-            priority=10,  # 最低优先级
+            priority=10,
             created_by=current_user.username
         )
         db.add(recycle_bin)
         devices_created.append("Recycle Bin")
     
-    # 创建默认存储设备（如果不存在）
+    # Create default storage device if not exists
     default_storage = db.query(Device).filter(Device.type == DeviceType.STORAGE, Device.priority == 1).first()
     if not default_storage:
         default_storage = Device(
             name="Default Storage",
-            description="默认存储设备",
+            description="Default storage device",
             type=DeviceType.STORAGE,
             is_active=True,
-            capacity_mb=0,  # 自动检测
+            capacity_mb=0,
             warning_threshold=85,
-            priority=1,  # 最高优先级
+            priority=1,
             created_by=current_user.username
         )
         db.add(default_storage)
@@ -499,7 +498,7 @@ def initialize_legacy_devices(
         db.commit()
     
     return {
-        "message": "旧系统设备初始化完成",
+        "message": "Legacy device initialization complete",
         "devices_created": devices_created,
         "recycle_bin_id": recycle_bin.id if recycle_bin else None
     }

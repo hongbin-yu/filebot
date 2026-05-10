@@ -92,7 +92,10 @@ const AdminAppFolders: React.FC = () => {
   // Load folders
   const loadFolders = async (appIdentifier: string) => {
     try {
-      const foldersData = await folderService.getFolders(appIdentifier);
+      const foldersData = await folderService.getFolders(appIdentifier, {
+        parent_folder_path: '/' + appIdentifier,
+        limit: 1000
+      });
       setFolders(foldersData);
       
       // Read folder path from URL params — no auto-select
@@ -513,6 +516,41 @@ const AdminAppFolders: React.FC = () => {
     }
   };
 
+  // Export to WebBot state
+  const [showExportWebBotModal, setShowExportWebBotModal] = useState(false);
+  const [exportDepth, setExportDepth] = useState(1);
+  const [exportingToWebBot, setExportingToWebBot] = useState(false);
+  const [exportResult, setExportResult] = useState<any>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  
+  // Handle export to WebBot
+  const handleExportToWebBot = async () => {
+    if (!currentFolderPath) {
+      setExportError('Please select a folder first');
+      return;
+    }
+    
+    setExportingToWebBot(true);
+    setExportError(null);
+    setExportResult(null);
+    
+    try {
+      // Strip app slug from path for webbot export
+      const webbotPath = currentFolderPath.replace(new RegExp(`^/${appSlug}`), '') || '/';
+      const response = await fetch(`/api/v1/export/folder/${encodeURIComponent(webbotPath)}?include_documents=true&recursive=${exportDepth > 0}`);
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+      setExportResult(data);
+    } catch (error: any) {
+      console.error('Export to WebBot failed:', error);
+      setExportError(error.message || 'Export failed. Check backend service.');
+    } finally {
+      setExportingToWebBot(false);
+    }
+  };
+
   // Handle sitemap import
   const handleSubmitImportSitemap = async () => {
     if (!sitemapUrl.trim() || !currentFolderPath || !app) {
@@ -802,6 +840,22 @@ const AdminAppFolders: React.FC = () => {
                   <div className="font-medium text-purple-600">Import Website</div>
                   <div className="text-sm text-purple-500">Crawl web pages and images from a URL</div>
                 </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-indigo-50 text-left border-indigo-200"
+                  onClick={() => {
+                    if (!currentFolderPath) {
+                      window.showWetAlert('Please select a folder first');
+                      return;
+                    }
+                    setExportDepth(1);
+                    setExportResult(null);
+                    setExportError(null);
+                    setShowExportWebBotModal(true);
+                  }}
+                >
+                  <div className="font-medium text-indigo-600">Export to WebBot</div>
+                  <div className="text-sm text-indigo-500">Export folder structure and pages to WebBot</div>
+                </button>
               </div>
             </div>
           </div>
@@ -970,6 +1024,107 @@ const AdminAppFolders: React.FC = () => {
           mode="edit"
           folderToEdit={editingFolder}
         />
+      )}
+      
+      {/* Export to WebBot Modal */}
+      {showExportWebBotModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-indigo-800">Export to WebBot</h3>
+                <button
+                  onClick={() => setShowExportWebBotModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-600">
+                    <strong>Folder:</strong> {currentFolderPath || 'Not selected'}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Export Depth (1-20)
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={exportDepth}
+                      onChange={(e) => setExportDepth(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+                      className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      disabled={exportingToWebBot}
+                    />
+                    <span className="text-sm text-gray-500">
+                      depth 1 = current folder only
+                    </span>
+                  </div>
+                </div>
+                
+                {exportError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                    {exportError}
+                  </div>
+                )}
+                
+                <button
+                  onClick={handleExportToWebBot}
+                  disabled={exportingToWebBot || !currentFolderPath}
+                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exportingToWebBot ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                      </svg>
+                      Exporting...
+                    </span>
+                  ) : (
+                    '🚀 Export'
+                  )}
+                </button>
+                
+                {exportResult && (
+                  <div className="mt-4 border-t pt-4">
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-md p-3 mb-3">
+                      <p className="text-sm text-indigo-800">
+                        <strong>Total:</strong> {exportResult.total} pages exported
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                        Exported Pages Preview ({Math.min(10, (exportResult.pages || []).length)} of {exportResult.total})
+                      </h4>
+                      <div className="bg-gray-50 border border-gray-200 rounded-md p-3 max-h-80 overflow-y-auto">
+                        <pre className="text-xs text-gray-700 whitespace-pre-wrap break-all">
+                          {JSON.stringify({
+                            path: exportResult.path,
+                            depth: exportResult.depth,
+                            total: exportResult.total,
+                            pages: (exportResult.pages || []).slice(0, 10).map((p: any) => ({
+                              id: p.id,
+                              parent_path: p.parent_path,
+                              path: p.path,
+                              language: p.language
+                            }))
+                          }, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       
       {/* Import Website Modal */}

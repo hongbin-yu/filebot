@@ -8,7 +8,7 @@
         "icon": "fas fa-code",
         "html_template": "<div class=\"mustache-renderer-container\" data-template=\"{{template_text}}\" data-json=\"{{json_data}}\" data-escape-html=\"{{escape_html}}\">\n    <!-- Mustache rendered content appears here -->\n    <div class=\"mustache-placeholder\">\n        <p><em>Mustache content will render on page load</em></p>\n    </div>\n    <!-- Error state (hidden by default) -->\n    <div class=\"mustache-error alert alert-danger\" style=\"display: none;\"></div>\n</div>",
         "css_template": ".mustache-renderer-container {\n    border: 1px solid #ddd;\n    border-radius: 4px;\n    padding: 15px;\n    margin: 10px 0;\n    background-color: #f9f9f9;\n}\n.mustache-placeholder {\n    color: #666;\n    font-style: italic;\n    padding: 10px;\n    background-color: #f0f0f0;\n    border-radius: 3px;\n}",
-        "js_template": "// Mustache Renderer \u2014 client logic\n(function() {\n    const containers = document.querySelectorAll('.mustache-renderer-container');\n    containers.forEach(container => {\n        const template = container.dataset.template || '';\n        const jsonData = container.dataset.json || '{}';\n        const escapeHtml = container.dataset.escapeHtml !== 'false';\n        try {\n            const data = JSON.parse(jsonData);\n            // Render with Mustache-style substitution\n            let rendered = template.replace(/\\{\\{([^}]+)\\}\\}/g, (match, key) => {\n                const val = data[key.trim()];\n                if (val === undefined || val === null) return '';\n                if (escapeHtml) {\n                    const div = document.createElement('div');\n                    div.textContent = String(val);\n                    return div.innerHTML;\n                }\n                return String(val);\n            });\n            container.innerHTML = rendered;\n        } catch (e) {\n            container.innerHTML = '<div class=\"alert alert-danger\">Parse error: ' + e.message + '</div>';\n        }\n    });\n})();",
+        "js_template": "// Mustache Renderer — client logic\n(function() {\n    const containers = document.querySelectorAll('.mustache-renderer-container');\n    containers.forEach(container => {\n        const template = container.dataset.template || '';\n        const jsonData = container.dataset.json || '{}';\n        const escapeHtml = container.dataset.escapeHtml !== 'false';\n        try {\n            const data = JSON.parse(jsonData);\n            // Render with Mustache-style substitution\n            let rendered = template.replace(/\\{\\{([^}]+)\\}\\}/g, (match, key) => {\n                const val = data[key.trim()];\n                if (val === undefined || val === null) return '';\n                if (escapeHtml) {\n                    const div = document.createElement('div');\n                    div.textContent = String(val);\n                    return div.innerHTML;\n                }\n                return String(val);\n            });\n            container.innerHTML = rendered;\n        } catch (e) {\n            container.innerHTML = '<div class=\"alert alert-danger\">Parse error: ' + e.message + '</div>';\n        }\n    });\n})();",
         "properties": {
             "template_text": {
                 "name": "template_text",
@@ -64,7 +64,7 @@
         "icon": "fas fa-database",
         "html_template": "<div class=\"api-data-card\" data-wb-json='{{api_url}}'>\n    <div class=\"card\">\n        <div class=\"card-header\">\n            <h3 class=\"card-title\" data-json-key=\"{{title_field}}\">Loading...</h3>\n        </div>\n        <div class=\"card-body\">\n            <img src=\"\" alt=\"\" class=\"card-img-top mb-3\" data-json-key=\"{{image_field}}\" style=\"max-height: 200px; display: none;\">\n            <p class=\"card-text\" data-json-key=\"{{description_field}}\">Loading...</p>\n        </div>\n        <div class=\"card-footer text-muted\">\n            <small>Data source: {{api_url}}</small>\n        </div>\n    </div>\n</div>",
         "css_template": "",
-        "js_template": "// API Data Card \u2014 dynamic JSON loading\n// Uses WET-BOEW data-wb-json for server-side rendering\n// Falls back to direct fetch if WET-BOEW is not available\n(function() {\n    const cards = document.querySelectorAll('.api-data-card');\n    if (cards.length === 0) return;\n    \n    cards.forEach(card => {\n        const apiUrl = card.dataset.wbJson;\n        if (!apiUrl) {\n            card.innerHTML = '<div class=\"alert alert-warning\">API Data Card: missing data-wb-json attribute</div>';\n            return;\n        }\n        \n        // If WET-BOEW is active, let it handle rendering\n        if (typeof $.fn.wbJson !== 'undefined') {\n            return; // WET-BOEW handles it\n        }\n        \n        // Fallback: direct fetch\n        fetch(apiUrl)\n            .then(res => res.json())\n            .then(data => {\n                const titleKey = card.querySelector('[data-json-key]')?.dataset.jsonKey || 'title';\n                const descKey = card.querySelector('.card-text')?.dataset.jsonKey || 'description';\n                \n                const title = getNestedValue(data, titleKey) || 'No title';\n                const description = getNestedValue(data, descKey) || 'No description';\n                \n                const titleEl = card.querySelector('.card-title');\n                const descEl = card.querySelector('.card-text');\n                if (titleEl) titleEl.textContent = title;\n                if (descEl) descEl.textContent = description;\n            })\n            .catch(err => {\n                card.innerHTML = '<div class=\"alert alert-danger\">Failed to load data: ' + err.message + '</div>';\n            });\n    });\n    \n    function getNestedValue(obj, path) {\n        return path.split('.').reduce((current, key) => {\n            return current && current[key] !== undefined ? current[key] : undefined;\n        }, obj);\n    }\n})();",
+        "js_template": "// API Data Card — dynamic JSON loading\n// Uses WET-BOEW data-wb-json for server-side rendering\n// Falls back to direct fetch if WET-BOEW is not available\n(function() {\n    const cards = document.querySelectorAll('.api-data-card');\n    if (cards.length === 0) return;\n    \n    cards.forEach(card => {\n        const apiUrl = card.dataset.wbJson;\n        if (!apiUrl) {\n            card.innerHTML = '<div class=\"alert alert-warning\">API Data Card: missing data-wb-json attribute</div>';\n            return;\n        }\n        \n        // If WET-BOEW is active, let it handle rendering\n        if (typeof $.fn.wbJson !== 'undefined') {\n            return; // WET-BOEW handles it\n        }\n        \n        // Fallback: direct fetch\n        fetch(apiUrl)\n            .then(res => res.json())\n            .then(data => {\n                const titleKey = card.querySelector('[data-json-key]')?.dataset.jsonKey || 'title';\n                const descKey = card.querySelector('.card-text')?.dataset.jsonKey || 'description';\n                \n                const title = getNestedValue(data, titleKey) || 'No title';\n                const description = getNestedValue(data, descKey) || 'No description';\n                \n                const titleEl = card.querySelector('.card-title');\n                const descEl = card.querySelector('.card-text');\n                if (titleEl) titleEl.textContent = title;\n                if (descEl) descEl.textContent = description;\n            })\n            .catch(err => {\n                card.innerHTML = '<div class=\"alert alert-danger\">Failed to load data: ' + err.message + '</div>';\n            });\n    });\n    \n    function getNestedValue(obj, path) {\n        return path.split('.').reduce((current, key) => {\n            return current && current[key] !== undefined ? current[key] : undefined;\n        }, obj);\n    }\n})();",
         "properties": {
             "api_url": {
                 "name": "api_url",
@@ -146,7 +146,7 @@
         "display_name": "Tabs Component (WET-BOEW)",
         "category": "content",
         "description": "WET-BOEW tabs component supporting horizontal/vertical layouts with user selection memory",
-        "icon": "\ud83d\udcd1",
+        "icon": "📑",
         "html_template": "<div class=\"wb-tabs\">\n    <div class=\"tabpanels\">\n        <details id=\"tabpanel1\" open=\"open\">\n            <summary id=\"tab1\">Tab1: {{tab1_title}}</summary>\n            <div class=\"panel-body\">\n                <p>{{tab1_content}}</p>\n            </div>\n        </details>\n        <details id=\"tabpanel2\">\n            <summary id=\"tab2\">Tab2: {{tab2_title}}</summary>\n            <div class=\"panel-body\">\n                <p>{{tab2_content}}</p>\n            </div>\n        </details>\n        <details id=\"tabpanel3\">\n            <summary id=\"tab3\">Tab3: {{tab3_title}}</summary>\n            <div class=\"panel-body\">\n                <p>{{tab3_content}}</p>\n            </div>\n        </details>\n    </div>\n</div>",
         "css_template": "",
         "js_template": "",
@@ -265,7 +265,7 @@
         "display_name": "Carousel Component (WET-BOEW)",
         "category": "content",
         "description": "WET-BOEW carousel component with auto-play, controls and indicators",
-        "icon": "\ud83d\uddbc\ufe0f",
+        "icon": "🖼️",
         "html_template": "<div class=\"wb-carousel carousel slide\" data-wb-carousel='{\n    \"autoPlay\": {{auto_play}},\n    \"delay\": {{delay}},\n    \"continuous\": {{continuous}},\n    \"showControls\": {{show_controls}},\n    \"showIndicators\": {{show_indicators}}\n}'>\n    <div class=\"carousel-inner\">\n        <div class=\"carousel-item active\">\n            <img src=\"{{slide1_src}}\" class=\"d-block w-100\" alt=\"{{slide1_alt}}\">\n            <div class=\"carousel-caption\">\n                <h5>{{slide1_title}}</h5>\n                <p>{{slide1_description}}</p>\n            </div>\n        </div>\n        <div class=\"carousel-item\">\n            <img src=\"{{slide2_src}}\" class=\"d-block w-100\" alt=\"{{slide2_alt}}\">\n            <div class=\"carousel-caption\">\n                <h5>{{slide2_title}}</h5>\n                <p>{{slide2_description}}</p>\n            </div>\n        </div>\n        <div class=\"carousel-item\">\n            <img src=\"{{slide3_src}}\" class=\"d-block w-100\" alt=\"{{slide3_alt}}\">\n            <div class=\"carousel-caption\">\n                <h5>{{slide3_title}}</h5>\n                <p>{{slide3_description}}</p>\n            </div>\n        </div>\n    </div>\n    <button class=\"carousel-control-prev\" type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide=\"prev\">\n        <span class=\"carousel-control-prev-icon\" aria-hidden=\"true\"></span>\n        <span class=\"visually-hidden\">Previous</span>\n    </button>\n    <button class=\"carousel-control-next\" type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide=\"next\">\n        <span class=\"carousel-control-next-icon\" aria-hidden=\"true\"></span>\n        <span class=\"visually-hidden\">Next</span>\n    </button>\n    <div class=\"carousel-indicators\">\n        <button type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide-to=\"0\" class=\"active\" aria-label=\"Slide 1\"></button>\n        <button type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide-to=\"1\" aria-label=\"Slide 2\"></button>\n        <button type=\"button\" data-bs-target=\".wb-carousel\" data-bs-slide-to=\"2\" aria-label=\"Slide 3\"></button>\n    </div>\n</div>",
         "css_template": "",
         "js_template": "",
@@ -431,7 +431,7 @@
         "display_name": "AJAX Table Component (WET-BOEW)",
         "category": "content",
         "description": "WET-BOEW AJAX table component with server-side pagination, sorting and filtering",
-        "icon": "\ud83d\udcca",
+        "icon": "📊",
         "html_template": "<table class=\"wb-tables table table-striped table-hover\" data-wb-tables=\"{ \\\"ordering\\\": false, \\\"ajaxSource\\\": \\\"{{ajax_source}}\\\" }\">\n{tableContent}\n</table>",
         "css_template": null,
         "js_template": null,
@@ -506,8 +506,8 @@
         "name": "wet-table-ajax-simple",
         "display_name": "WET-BOEW AJAX Table",
         "category": "content",
-        "description": "WET-BOEW AJAX data table \u2014 just configure the data source URL",
-        "icon": "\ud83d\udcca",
+        "description": "WET-BOEW AJAX data table — just configure the data source URL",
+        "icon": "📊",
         "html_template": "<table class=\"wb-tables table table-striped table-hover\" data-wb-tables=\"{\"ordering\": false, \"ajaxSource\": \"{{ajax_source}}\"}\">\n</table>",
         "css_template": null,
         "js_template": null,
@@ -569,7 +569,7 @@
         "display_name": "Test with Dependencies",
         "category": "content",
         "description": "Test with Dependencies component",
-        "icon": "\ud83d\udcca",
+        "icon": "📊",
         "html_template": "<div>test</div>",
         "css_template": null,
         "js_template": null,
@@ -601,7 +601,7 @@
         "display_name": "Test AJAX Table",
         "category": "content",
         "description": "Test AJAX Table component",
-        "icon": "\ud83d\udcca",
+        "icon": "📊",
         "html_template": "<table data-source=\"{{ajax_source}}\"><tr><td>test</td></tr></table>",
         "css_template": null,
         "js_template": null,
@@ -642,7 +642,7 @@
         "display_name": "Simple Table 2",
         "category": "content",
         "description": "Simple Table component 2",
-        "icon": "\ud83d\udcca",
+        "icon": "📊",
         "html_template": "<table><tr><td>Sample Table 2</td></tr></table>",
         "css_template": null,
         "js_template": null,
@@ -667,7 +667,7 @@
         "display_name": "Simple Table",
         "category": "content",
         "description": "Simple Table component",
-        "icon": "\ud83d\udcca",
+        "icon": "📊",
         "html_template": "<table><tr><td>Sample Table</td></tr></table>",
         "css_template": null,
         "js_template": null,
@@ -692,7 +692,7 @@
         "display_name": "Group Container (WET-BOEW)",
         "category": "layout",
         "description": "Container for grouping other components",
-        "icon": "\ud83d\udce6",
+        "icon": "📦",
         "html_template": "\n<div class=\"group-container {{className}}\">\n  <div class=\"group-content\">\n    {{{children}}}\n  </div>\n</div>",
         "css_template": null,
         "js_template": null,
@@ -762,8 +762,8 @@
         "display_name": "Footnotes (WET-BOEW)",
         "category": "content",
         "description": "Standard WET-BOEW footnotes component",
-        "icon": "\ud83d\udcdd",
-        "html_template": "\n<section class=\"footnotes {{className}}\">\n  <h2>{{title}}</h2>\n  <ol>\n    {{#each footnotes}}\n    <li id=\"fn{{@index}}\">\n      <p>{{this}} <a href=\"#fnref{{@index}}\" class=\"footnote-backref\">\u21a9</a></p>\n    </li>\n    {{/each}}\n  </ol>\n</section>",
+        "icon": "📝",
+        "html_template": "\n<section class=\"footnotes {{className}}\">\n  <h2>{{title}}</h2>\n  <ol>\n    {{#each footnotes}}\n    <li id=\"fn{{@index}}\">\n      <p>{{this}} <a href=\"#fnref{{@index}}\" class=\"footnote-backref\">↩</a></p>\n    </li>\n    {{/each}}\n  </ol>\n</section>",
         "css_template": null,
         "js_template": null,
         "properties": {
@@ -828,7 +828,7 @@
         "display_name": "Featured Link (WET-BOEW)",
         "category": "navigation",
         "description": "Featured link with icon",
-        "icon": "\ud83d\udd17",
+        "icon": "🔗",
         "html_template": "\n<a href=\"{{url}}\" class=\"featured-link {{className}}\" {{#if target}}target=\"{{target}}\"{{/if}}>\n  {{#if icon}}\n  <span class=\"featured-link-icon\">{{icon}}</span>\n  {{/if}}\n  <span class=\"featured-link-text\">{{text}}</span>\n</a>",
         "css_template": null,
         "js_template": null,
@@ -852,7 +852,7 @@
                 "name": "icon",
                 "type": "string",
                 "label": "Icon",
-                "default": "\u2794",
+                "default": "➔",
                 "description": "Icon character or emoji"
             },
             "target": {
@@ -917,7 +917,7 @@
         "display_name": "HTML Embed (WET-BOEW)",
         "category": "content",
         "description": "Embed custom HTML code",
-        "icon": "\ud83d\udcc4",
+        "icon": "📄",
         "html_template": "\n<div class=\"embed-html {{className}}\">\n  {{{html}}}\n</div>",
         "css_template": null,
         "js_template": null,
@@ -975,7 +975,7 @@
         "display_name": "Horizontal Line (WET-BOEW)",
         "category": "content",
         "description": "Standard WET-BOEW horizontal rule",
-        "icon": "\u2796",
+        "icon": "➖",
         "html_template": "\n<hr class=\"{{className}}\">",
         "css_template": null,
         "js_template": null,
@@ -1036,7 +1036,7 @@
         "display_name": "Image (WET-BOEW)",
         "category": "content",
         "description": "Standard WET-BOEW image component with responsive and accessible support",
-        "icon": "\ud83d\uddbc\ufe0f",
+        "icon": "🖼️",
         "html_template": "\n<figure class=\"{{figureClass}}\">\n  <img src=\"{{src}}\" alt=\"{{altText}}\" class=\"{{imageClass}}\" width=\"{{width}}\" height=\"{{height}}\">\n  {{#if caption}}\n  <figcaption>{{caption}}</figcaption>\n  {{/if}}\n</figure>",
         "css_template": null,
         "js_template": null,
@@ -1127,7 +1127,7 @@
         "display_name": "Feature Columns (WET-BOEW)",
         "category": "content",
         "description": "Standard WET-BOEW feature image columns for showcasing content",
-        "icon": "\ud83d\uddbc\ufe0f",
+        "icon": "🖼️",
         "html_template": "\n<div class=\"row\">\n  {{#each columns}}\n  <div class=\"col-md-{{../columnSize}}\">\n    <div class=\"feature-item\">\n      {{#if imageUrl}}\n      <div class=\"feature-image\">\n        <img src=\"{{imageUrl}}\" alt=\"{{imageAlt}}\" class=\"img-responsive\">\n      </div>\n      {{/if}}\n      <div class=\"feature-content\">\n        {{#if title}}<h3>{{title}}</h3>{{/if}}\n        {{#if description}}<p>{{description}}</p>{{/if}}\n      </div>\n    </div>\n  </div>\n  {{/each}}\n</div>",
         "css_template": null,
         "js_template": null,
@@ -1136,7 +1136,7 @@
                 "name": "columns",
                 "type": "string",
                 "label": "Columns Data (JSON Array)",
-                "description": "JSON array \u2014 each item: imageUrl, imageAlt, title, description",
+                "description": "JSON array — each item: imageUrl, imageAlt, title, description",
                 "default": "[{\"imageUrl\": \"https://via.placeholder.com/300x200\", \"imageAlt\": \"Feature 1\", \"title\": \"Feature 1\", \"description\": \"Description for feature 1\"}, {\"imageUrl\": \"https://via.placeholder.com/300x200\", \"imageAlt\": \"Feature 2\", \"title\": \"Feature 2\", \"description\": \"Description for feature 2\"}, {\"imageUrl\": \"https://via.placeholder.com/300x200\", \"imageAlt\": \"Feature 3\", \"title\": \"Feature 3\", \"description\": \"Description for feature 3\"}]",
                 "required": true,
                 "i18n": true
@@ -1200,7 +1200,7 @@
         "display_name": "List (WET-BOEW)",
         "category": "content",
         "description": "Standard WET-BOEW list, supports ordered and unordered lists",
-        "icon": "\ud83d\udccb",
+        "icon": "📋",
         "html_template": "\n<{{listType}} class=\"{{className}}\">\n  {{#each items}}\n  <li>{{this}}</li>\n  {{/each}}\n</{{listType}}>",
         "css_template": null,
         "js_template": null,
@@ -1269,8 +1269,8 @@
         "name": "wet-title",
         "display_name": "Heading (WET-BOEW)",
         "category": "content",
-        "description": "Standard WET-BOEW heading, supports h1\u2013h6 levels",
-        "icon": "\ud83c\udff7\ufe0f",
+        "description": "Standard WET-BOEW heading, supports h1–h6 levels",
+        "icon": "🏷️",
         "html_template": "\n<{{level}} class=\"{{className}}\" id=\"{{id}}\">\n  {{text}}\n</{{level}}>",
         "css_template": null,
         "js_template": null,
@@ -1354,7 +1354,7 @@
         "display_name": "Text Input (WET-BOEW)",
         "category": "form",
         "description": "Accessible text input field compliant with WCAG standards",
-        "icon": "\ud83d\udcdd",
+        "icon": "📝",
         "html_template": "\n            <div class=\"form-group\">\n                <label for=\"{{id}}\">{{label}}</label>\n                <input type=\"text\" id=\"{{id}}\" class=\"form-control\" \n                       placeholder=\"{{placeholder}}\" \n                       {{#if required}}required{{/if}}>\n            </div>\n            ",
         "css_template": null,
         "js_template": null,
@@ -1414,7 +1414,7 @@
         "display_name": "Primary Button (WET-BOEW)",
         "category": "wet_boew",
         "description": "Government of Canada standard primary button, compliant with WET-BOEW accessibility",
-        "icon": "\ud83d\udd18",
+        "icon": "🔘",
         "html_template": "<button class=\"btn btn-primary\" data-wet-boew=\"button\" {{#if disabled}}disabled{{/if}}>{{text}}</button>",
         "css_template": null,
         "js_template": null,
@@ -1473,5 +1473,191 @@
         "created_at": "2026-03-29 13:06:38",
         "updated_at": "2026-03-29 13:06:38",
         "usage_count": 0
+    },
+    {
+        "id": "gc-badges",
+        "name": "Badges (徽章)",
+        "category": "gcweb",
+        "path": "/template-container/gc-badges"
+    },
+    {
+        "id": "gc-bold-content",
+        "name": "Bold Content",
+        "category": "gcweb",
+        "path": "/template-container/gc-bold-content"
+    },
+    {
+        "id": "gc-byline",
+        "name": "Institutional Byline",
+        "category": "gcweb",
+        "path": "/template-container/gc-byline"
+    },
+    {
+        "id": "gc-conjunctions",
+        "name": "Conjunctions (And/Or)",
+        "category": "gcweb",
+        "path": "/template-container/gc-conjunctions"
+    },
+    {
+        "id": "gc-chckbxrdio",
+        "name": "Checkboxes & Radio Buttons",
+        "category": "gcweb",
+        "path": "/template-container/gc-chckbxrdio"
+    },
+    {
+        "id": "gc-dwnld",
+        "name": "Download Link",
+        "category": "gcweb",
+        "path": "/template-container/gc-dwnld"
+    },
+    {
+        "id": "gc-featured-link",
+        "name": "Featured Link",
+        "category": "gcweb",
+        "path": "/template-container/gc-featured-link"
+    },
+    {
+        "id": "gc-features",
+        "name": "Context-specific Features",
+        "category": "gcweb",
+        "path": "/template-container/gc-features"
+    },
+    {
+        "id": "gc-follow-us",
+        "name": "Social Media Follow",
+        "category": "gcweb",
+        "path": "/template-container/gc-follow-us"
+    },
+    {
+        "id": "gc-minister",
+        "name": "Minister Bio",
+        "category": "gcweb",
+        "path": "/template-container/gc-minister"
+    },
+    {
+        "id": "gc-most-requested",
+        "name": "Most Requested",
+        "category": "gcweb",
+        "path": "/template-container/gc-most-requested"
+    },
+    {
+        "id": "gc-srvinfo",
+        "name": "Services & Information",
+        "category": "gcweb",
+        "path": "/template-container/gc-srvinfo"
+    },
+    {
+        "id": "gc-stp-stp",
+        "name": "Step by Step",
+        "category": "gcweb",
+        "path": "/template-container/gc-stp-stp"
+    },
+    {
+        "id": "gc-subway",
+        "name": "Subway Navigation",
+        "category": "gcweb",
+        "path": "/template-container/gc-subway"
+    },
+    {
+        "id": "gc-table",
+        "name": "Responsive Table",
+        "category": "gcweb",
+        "path": "/template-container/gc-table"
+    },
+    {
+        "id": "gc-toc",
+        "name": "Table of Contents",
+        "category": "gcweb",
+        "path": "/template-container/gc-toc"
+    },
+    {
+        "id": "gc-images",
+        "name": "Image Shapes",
+        "category": "gcweb",
+        "path": "/template-container/gc-images"
+    },
+    {
+        "id": "gc-labels",
+        "name": "Labels",
+        "category": "gcweb",
+        "path": "/template-container/gc-labels"
+    },
+    {
+        "id": "gc-list",
+        "name": "List Styles",
+        "category": "gcweb",
+        "path": "/template-container/gc-list"
+    },
+    {
+        "id": "gc-list-steps",
+        "name": "Step List",
+        "category": "gcweb",
+        "path": "/template-container/gc-list-steps"
+    },
+    {
+        "id": "gc-panels",
+        "name": "Panels",
+        "category": "gcweb",
+        "path": "/template-container/gc-panels"
+    },
+    {
+        "id": "gc-header-rwd",
+        "name": "Responsive Header",
+        "category": "gcweb",
+        "path": "/template-container/gc-header-rwd"
+    },
+    {
+        "id": "gc-redacted",
+        "name": "Redacted Text",
+        "category": "gcweb",
+        "path": "/template-container/gc-redacted"
+    },
+    {
+        "id": "gcds-card",
+        "name": "GCDS Card",
+        "category": "gcweb",
+        "path": "/template-container/gcds-card"
+    },
+    {
+        "id": "gc-deprecated",
+        "name": "Deprecated Markup",
+        "category": "gcweb",
+        "path": "/template-container/gc-deprecated"
+    },
+    {
+        "id": "gc-tbl-floatcolumn",
+        "name": "Float Column Table",
+        "category": "gcweb",
+        "path": "/template-container/gc-tbl-floatcolumn"
+    },
+    {
+        "id": "wb-suggest",
+        "name": "Datalist Suggest",
+        "category": "gcweb",
+        "path": "/template-container/wb-suggest"
+    },
+    {
+        "id": "wb-fieldflow",
+        "name": "Field Flow",
+        "category": "gcweb",
+        "path": "/template-container/wb-fieldflow"
+    },
+    {
+        "id": "wb-doaction",
+        "name": "Do Action (Toggle)",
+        "category": "gcweb",
+        "path": "/template-container/wb-doaction"
+    },
+    {
+        "id": "wb-urlmapping",
+        "name": "URL Mapping",
+        "category": "gcweb",
+        "path": "/template-container/wb-urlmapping"
+    },
+    {
+        "id": "wb5-click-postback",
+        "name": "Click Postback",
+        "category": "gcweb",
+        "path": "/template-container/wb5-click-postback"
     }
 ]

@@ -60,6 +60,29 @@ class AIClassifier:
             logger.error(f"Ollama连接异常: {e}")
             return False
     
+    def _get_available_models(self) -> List[str]:
+        """获取Ollama可用的模型列表"""
+        try:
+            resp = requests.get(f"{self.ollama_url}/api/tags", timeout=10)
+            if resp.status_code == 200:
+                models = resp.json().get("models", [])
+                return [m.get("name", "") for m in models if m.get("name")]
+        except Exception as e:
+            logger.warning(f"获取Ollama模型列表失败: {e}")
+        return []
+
+    def _find_available_model(self, preferred: str) -> str:
+        """查找可用的模型，优先使用preferred"""
+        available = self._get_available_models()
+        if not available:
+            logger.warning("Ollama无可用模型，返回preferred")
+            return preferred
+        if preferred in available:
+            return preferred
+        # 回退到第一个可用的模型
+        logger.warning(f"模型 {preferred} 不可用，可用列表: {available[:5]}, 使用: {available[0]}")
+        return available[0]
+
     def classify_text(self, text: str, model: Optional[str] = None) -> Dict[str, Any]:
         """
         分类文档文本
@@ -83,18 +106,51 @@ class AIClassifier:
             "options": {
                 "temperature": 0.3,
                 "top_p": 0.9,
-                "max_tokens": 50
+                "max_tokens": 200  # 提高最大token数确保完整响应
             }
         }
         
         try:
             start_time = time.time()
-            response = requests.post(f"{self.ollama_url}/api/generate", json=data, timeout=60)
+            response = requests.post(f"{self.ollama_url}/api/generate", json=data, timeout=120)
             end_time = time.time()
             
             if response.status_code == 200:
                 result = response.json()
                 response_text = result.get("response", "").strip()
+                
+                # Bug 3 修复：处理空响应
+                if not response_text:
+                    logger.warning(f"Ollama返回空响应 (model={model}), 尝试切换可用模型后重试...")
+                    alt_model = self._find_available_model(model)
+                    if alt_model != model:
+                        # 有可用模型，用替代模型重试
+                        data["model"] = alt_model
+                        retry_start = time.time()
+                        try:
+                            retry_resp = requests.post(f"{self.ollama_url}/api/generate", json=data, timeout=120)
+                            if retry_resp.status_code == 200:
+                                retry_result = retry_resp.json()
+                                response_text = retry_result.get("response", "").strip()
+                                if response_text:
+                                    model = alt_model
+                                    end_time = time.time()
+                        except Exception as retry_err:
+                            logger.error(f"重试分类失败: {retry_err}")
+                    
+                    if not response_text:
+                        logger.error(f"Ollama分类返回空内容 (model={model}), 原始结果: {result}")
+                        return {
+                            "category": AICategory.GENERAL,
+                            "ai_category": AICategory.GENERAL.value,
+                            "document_type": DocumentType.GENERAL.value,
+                            "confidence": 0.0,
+                            "raw_response": "",
+                            "processing_time": end_time - start_time,
+                            "model": model,
+                            "error": "Ollama returned empty content",
+                            "success": False
+                        }
                 
                 # 解析分类结果
                 category = self._parse_category(response_text)
@@ -109,6 +165,27 @@ class AIClassifier:
                     "processing_time": end_time - start_time,
                     "model": model,
                     "success": True
+                }
+            elif response.status_code == 404:
+                # 模型不存在 - 尝试自动切换可用模型
+                logger.warning(f"模型 {model} 不存在 (HTTP 404), 尝试自动切换...")
+                alt_model = self._find_available_model(model)
+                if alt_model != model:
+                    data["model"] = alt_model
+                    try:
+                        retry_resp = requests.post(f"{self.ollama_url}/api/generate", json=data, timeout=120)
+                        if retry_resp.status_code == 200:
+                            # 递归调用自身但使用新模型
+                            return self.classify_text(text, model=alt_model)
+                    except Exception:
+                        pass
+                return {
+                    "category": AICategory.GENERAL,
+                    "ai_category": AICategory.GENERAL.value,
+                    "document_type": DocumentType.GENERAL.value,
+                    "confidence": 0.0,
+                    "error": f"HTTP {response.status_code}: Model '{model}' not found. Available: {self._get_available_models()}",
+                    "success": False
                 }
             else:
                 logger.error(f"分类请求失败: HTTP {response.status_code}, 响应: {response.text}")
@@ -150,7 +227,7 @@ class AIClassifier:
         
         if not text_content and extract_text:
             # 未来可以从转换后的PDF提取文本
-            logger.warning(f"文档 {document.id} 无文本内容，无法进行AI分类")
+            logger.warning(f"文档 {document.path} 无文本内容，无法进行AI分类")
             return {
                 "category": AICategory.GENERAL,
                 "ai_category": AICategory.GENERAL.value,
@@ -232,7 +309,7 @@ class AIClassifier:
         # 检查文档是否有AI字段（需要先修改模型）
         try:
             # 临时方案：记录到日志，实际更新需要模型修改
-            logger.info(f"文档 {document.id} AI分类结果: {ai_result}")
+            logger.info(f"文档 {document.path} AI分类结果: {ai_result}")
             
             # TODO: 更新文档的AI字段
             # document.ai_category = ai_result['ai_category']

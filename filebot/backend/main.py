@@ -27,7 +27,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
+    """Application lifecycle management"""
     # 启动时
     logger.info("启动 FileBot 应用...")
     
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 # 创建FastAPI应用
 app = FastAPI(
     title="FileBot API",
-    description="文档管理和转换系统",
+    description="Document Management and Conversion System",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -83,7 +83,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """根端点，健康检查"""
+    """Root endpoint, health check"""
     return {
         "message": "Welcome to FileBot API",
         "version": "1.0.0",
@@ -94,7 +94,7 @@ async def root():
 
 @app.get("/api/health")
 async def health_check(db: Session = Depends(get_db)):
-    """健康检查端点"""
+    """Health check endpoint"""
     from app.core.config import settings
     from sqlalchemy import text
     import os
@@ -161,19 +161,19 @@ async def health_check(db: Session = Depends(get_db)):
 from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export, pages
 
 # 注册路由
-app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["认证"])
-app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["用户"])
-app.include_router(apps.router, prefix=f"{settings.API_V1_STR}/apps", tags=["应用"])
-app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["文档"])
-app.include_router(pages.router, prefix=f"{settings.API_V1_STR}/pages", tags=["页面"])
-app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["搜索"])
-app.include_router(conversion.router, prefix=f"{settings.API_V1_STR}/conversion", tags=["转换"])
-app.include_router(file_naming_rules.router, prefix=f"{settings.API_V1_STR}", tags=["文件命名规则"])
-app.include_router(device.router, prefix=f"{settings.API_V1_STR}/devices", tags=["设备管理"])
-app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["AI功能"])
-app.include_router(features.router, prefix=f"{settings.API_V1_STR}/features", tags=["特性管理"])
-app.include_router(folders.router, prefix=f"{settings.API_V1_STR}/folders", tags=["文件夹"])
-app.include_router(export.router, prefix=f"{settings.API_V1_STR}/export", tags=["导出"])
+app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
+app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["Users"])
+app.include_router(apps.router, prefix=f"{settings.API_V1_STR}/apps", tags=["Apps"])
+app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["Documents"])
+app.include_router(pages.router, prefix=f"{settings.API_V1_STR}/pages", tags=["Pages"])
+app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["Search"])
+app.include_router(conversion.router, prefix=f"{settings.API_V1_STR}/conversion", tags=["Conversion"])
+app.include_router(file_naming_rules.router, prefix=f"{settings.API_V1_STR}", tags=["File Naming Rules"])
+app.include_router(device.router, prefix=f"{settings.API_V1_STR}/devices", tags=["Device Management"])
+app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["AI Features"])
+app.include_router(features.router, prefix=f"{settings.API_V1_STR}/features", tags=["Feature Management"])
+app.include_router(folders.router, prefix=f"{settings.API_V1_STR}/folders", tags=["Folders"])
+app.include_router(export.router, prefix=f"{settings.API_V1_STR}/export", tags=["Export"])
 
 # 静态文件服务 - 用于已发布的文档
 # 确保静态目录存在
@@ -292,7 +292,7 @@ class DamProxyASGI:
         await self._send_error(send, 404, "Not Found")
 
     async def _send_file(self, send, file_path: Path):
-        """发送文件内容（流式大文件、小文件全量一次发）"""
+        """Send file content (stream for large files, full send for small files)"""
         content_type = self.mt.guess_type(str(file_path))[0] or "application/octet-stream"
         file_size = file_path.stat().st_size
         await send({

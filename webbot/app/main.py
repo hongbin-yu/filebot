@@ -12,13 +12,20 @@ import os
 
 # 导入路由
 try:
-    from .routes import pages_router, ai_router, files_router, components_router, mustache_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED
+    from .routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED
 except ImportError:
     # 备用导入方式
-    from routes import pages_router, ai_router, files_router, components_router, mustache_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED
+    from routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED
 
 # 数据库路径
-FILEBOT_DB_PATH = "/home/hongb/.openclaw/workspace/filebot/backend/filebot.db"
+WEBBOT_DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "webbot.db")
+)
+FILEBOT_DB_PATH = os.environ.get(
+    "FILEBOT_DB_PATH",
+    "/home/hongb/.openclaw/workspace/filebot/backend/filebot.db"
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,9 +41,14 @@ async def lifespan(app: FastAPI):
 # 创建FastAPI应用
 app = FastAPI(
     title="WebBot API",
-    description="AI增强的网站内容管理系统",
+    description="Web Content Management System",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    swagger_ui_parameters={
+        "tryItOutEnabled": True,
+        "displayRequestDuration": True,
+        "filter": True
+    }
 )
 
 # 添加CORS中间件
@@ -49,25 +61,111 @@ app.add_middleware(
 )
 
 def get_db_connection():
-    """获取数据库连接"""
+    """获取WebBot数据库连接"""
     try:
-        conn = sqlite3.connect(FILEBOT_DB_PATH)
-        conn.row_factory = sqlite3.Row  # 返回字典格式的结果
+        conn = sqlite3.connect(WEBBOT_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
         return conn
     except sqlite3.Error as e:
-        print(f"数据库连接错误: {e}")
+        print(f"Database connection error: {e}")
         raise
 
+def get_filebot_db_connection():
+    """获取FileBot只读数据库连接"""
+    try:
+        conn = sqlite3.connect(FILEBOT_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+    except sqlite3.Error as e:
+        print(f"FileBot DB connection error: {e}")
+        return None
+
+def get_all_table_names(conn):
+    """Get all user table names from a database connection"""
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+    return [row[0] for row in cursor.fetchall()]
+
+def migrate_webbot_tables():
+    """Migrate WebBot-owned tables from filebot.db to webbot.db (one-time)"""
+    webbot_tables = ["webbot_page", "webbot_tasks", "webbot_tag", "webbot_page_tag",
+                     "component_templates", "component_versions", "component_instances",
+                     "ai_configurations", "component_current_versions"]
+    
+    if not os.path.exists(FILEBOT_DB_PATH):
+        return  # No source database to migrate from
+    
+    try:
+        src_conn = sqlite3.connect(FILEBOT_DB_PATH)
+        src_conn.row_factory = sqlite3.Row
+        src_tables = get_all_table_names(src_conn)
+        
+        dst_conn = get_db_connection()
+        dst_tables = get_all_table_names(dst_conn)
+        
+        migrated_any = False
+        for table in webbot_tables:
+            if table in src_tables and table not in dst_tables:
+                print(f"📦 Migrating table: {table}")
+                # Get CREATE TABLE statement
+                cursor = src_conn.execute(
+                    f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table}'"
+                )
+                row = cursor.fetchone()
+                if row and row[0]:
+                    dst_conn.execute(row[0])
+                
+                # Copy all data
+                rows = src_conn.execute(f"SELECT * FROM {table}").fetchall()
+                if rows:
+                    columns = [desc[0] for desc in src_conn.execute(f"SELECT * FROM {table}").description]
+                    placeholders = ",".join(["?"] * len(columns))
+                    col_names = ",".join(columns)
+                    for row_data in rows:
+                        dst_conn.execute(
+                            f"INSERT OR IGNORE INTO {table} ({col_names}) VALUES ({placeholders})",
+                            list(row_data)
+                        )
+                    print(f"  → Copied {len(rows)} rows")
+                
+                # Copy indexes
+                idx_cursor = src_conn.execute(
+                    f"SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='{table}' AND sql IS NOT NULL"
+                )
+                for idx_row in idx_cursor:
+                    try:
+                        dst_conn.execute(idx_row[0])
+                    except sqlite3.Error:
+                        pass  # Index may already exist
+                
+                migrated_any = True
+                dst_conn.commit()
+                print(f"✅ Migrated table: {table}")
+        
+        if not migrated_any:
+            print("✓ WebBot tables already up to date")
+        
+        src_conn.close()
+        dst_conn.close()
+        
+    except sqlite3.Error as e:
+        print(f"⚠️  Migration skipped (non-critical): {e}")
+
 def init_database():
-    """初始化数据库表"""
+    """Initialize WebBot database tables"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 检查是否已有webbot_page表
+        # Run migration from filebot.db first (one-time)
+        migrate_webbot_tables()
+        
+        # webbot_page table
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='webbot_page'")
         if not cursor.fetchone():
-            print("📦 创建webbot_page表...")
+            print("📦 Creating webbot_page table...")
             cursor.execute("""
                 CREATE TABLE webbot_page (
                     id TEXT PRIMARY KEY,
@@ -81,28 +179,25 @@ def init_database():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_published TIMESTAMP,
-                    metadata TEXT  -- JSON格式的元数据
+                    metadata TEXT
                 )
             """)
-            
-            # 创建索引
-            cursor.execute("CREATE INDEX idx_webbot_page_parent ON webbot_page(parent_path)")
-            cursor.execute("CREATE INDEX idx_webbot_page_language ON webbot_page(language)")
-            cursor.execute("CREATE INDEX idx_webbot_page_status ON webbot_page(status)")
-            
-            print("✅ webbot_page表创建完成")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_parent ON webbot_page(parent_path)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_language ON webbot_page(language)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_status ON webbot_page(status)")
+            print("✅ webbot_page table created")
         
-        # 检查是否已有webbot_tasks表 (AI任务)
+        # webbot_tasks table
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='webbot_tasks'")
         if not cursor.fetchone():
-            print("🤖 创建webbot_tasks表...")
+            print("🤖 Creating webbot_tasks table...")
             cursor.execute("""
                 CREATE TABLE webbot_tasks (
                     id TEXT PRIMARY KEY,
-                    task_type TEXT NOT NULL,  -- create, optimize, review, delete
+                    task_type TEXT NOT NULL,
                     page_id TEXT,
                     description TEXT,
-                    status TEXT DEFAULT 'pending',  -- pending, processing, completed, failed
+                    status TEXT DEFAULT 'pending',
                     ai_model TEXT,
                     prompt TEXT,
                     result TEXT,
@@ -113,33 +208,43 @@ def init_database():
                     completed_at TIMESTAMP
                 )
             """)
-            print("✅ webbot_tasks表创建完成")
+            print("✅ webbot_tasks table created")
         
-        # 检查组件表（如果启用了组件功能）
-        if COMPONENTS_ENABLED:
-            component_tables = [
-                "component_templates", "component_versions", "component_instances",
-                "ai_configurations", "component_current_versions"
-            ]
-            
-            missing_tables = []
-            for table in component_tables:
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
-                if not cursor.fetchone():
-                    missing_tables.append(table)
-            
-            if missing_tables:
-                print(f"⚠️  缺少组件表: {', '.join(missing_tables)}")
-                print("💡 请运行组件迁移脚本: python3 app/db_migration_components.py")
-            else:
-                print("✅ 组件表检查完成")
+        # webbot_tag table (for page tagging)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='webbot_tag'")
+        if not cursor.fetchone():
+            print("🏷️  Creating webbot_tag table...")
+            cursor.execute("""
+                CREATE TABLE webbot_tag (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    slug TEXT NOT NULL UNIQUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            print("✅ webbot_tag table created")
+        
+        # webbot_page_tag table (many-to-many)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='webbot_page_tag'")
+        if not cursor.fetchone():
+            print("🔗 Creating webbot_page_tag table...")
+            cursor.execute("""
+                CREATE TABLE webbot_page_tag (
+                    page_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL,
+                    PRIMARY KEY (page_id, tag_id),
+                    FOREIGN KEY (page_id) REFERENCES webbot_page(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES webbot_tag(id) ON DELETE CASCADE
+                )
+            """)
+            print("✅ webbot_page_tag table created")
         
         conn.commit()
         conn.close()
-        print("📊 数据库初始化完成")
+        print(f"📊 WebBot database ready at: {WEBBOT_DB_PATH}")
         
     except sqlite3.Error as e:
-        print(f"数据库初始化错误: {e}")
+        print(f"Database init error: {e}")
         raise
 
 # 包含路由
@@ -163,6 +268,9 @@ else:
 if MUSTACHE_ENABLED and mustache_router:
     app.include_router(mustache_router)
     print("✅ Mustache渲染路由已加载 (顶级 /mustache/{path})")
+
+if AUTH_ENABLED and auth_router:
+    app.include_router(auth_router)
 else:
     print("⚠️  Mustache渲染路由未加载")
 
@@ -319,6 +427,18 @@ async def filebot_picker_redirect():
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/static/filebot-picker.html")
 
+@app.get("/frontend/auto-token.html")
+async def auto_token_redirect():
+    """重定向 /frontend/auto-token.html 到 /static/auto-token.html"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/static/auto-token.html")
+
+@app.get("/frontend/{filename}")
+async def frontend_file_redirect(filename: str):
+    """重定向 /frontend/{filename} 到 /static/{filename}"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/static/{filename}")
+
 
 @app.get("/api/v1/export-folder")
 async def export_folder(path: str = "/canadasite", depth: int = Query(1, ge=1, le=20)):
@@ -375,7 +495,7 @@ async def api_info():
         "version": "1.0.0",
         "description": "AI增强的网站内容管理系统",
         "status": "running",
-        "database": "connected" if os.path.exists(FILEBOT_DB_PATH) else "not_found",
+        "database": "connected" if os.path.exists(WEBBOT_DB_PATH) else "not_found",
         "endpoints": {
             "pages": "/api/v1/pages",
             "ai_tasks": "/api/v1/ai/tasks",
@@ -409,7 +529,7 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     print("🌐 启动WebBot服务器...")
-    print(f"📁 数据库路径: {FILEBOT_DB_PATH}")
+    print(f"📁 WebBot数据库路径: {WEBBOT_DB_PATH}")
     print("🔗 API地址: http://localhost:8000")
     print("📚 API文档: http://localhost:8000/docs")
     print("🤖 AI功能: 创页、修正、审查、删除建议")

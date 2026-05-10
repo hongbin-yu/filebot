@@ -60,22 +60,22 @@ def generate_unique_slug(base_slug: str, db: Session, exclude_app_id: Optional[s
         counter += 1
 
 
-# ========== App (应用) 路由 ==========
+# ========== App Routes ==========
 
 @router.get("/", response_model=List[AppResponse])
 def get_apps(
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取用户的应用列表（只能看到自己的应用）"""
-    # 特殊处理：public用户可以访问所有应用（用于Client门户）
+    """Get user's app list (can only see own apps)"""
+    # Special handling: public user can see all apps (for Client portal)
     if current_user.is_superuser or current_user.username == "public":
-        # 管理员或public用户可以看到所有应用
+        # Admin or public user can see all apps
         apps = db.query(App).offset(skip).limit(limit).all()
     else:
-        # 普通用户只能看到自己的应用
+        # Regular users can only see their own apps
         apps = db.query(App).filter(App.owner_id == current_user.id).offset(skip).limit(limit).all()
     
     return apps
@@ -87,26 +87,26 @@ def create_app(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """创建新应用"""
-    # 生成或验证slug
+    """Create a new app"""
+    # Generate or validate slug
     if not app_data.slug or app_data.slug.strip() == "":
-        # 自动从name生成slug
+        # Auto-generate slug from name
         base_slug = to_slug(app_data.name)
         if not base_slug:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="无法从应用名称生成有效的slug，请手动提供slug"
+                detail="Unable to generate a valid slug from app name, please provide slug manually"
             )
         slug = generate_unique_slug(base_slug, db)
     else:
         slug = app_data.slug
-        # 检查slug是否唯一
+        # Check slug uniqueness
         existing_app = db.query(App).filter(App.slug == slug).first()
         if existing_app:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "该slug已被使用",
+                    "message": "This slug is already in use",
                     "conflict_type": "slug",
                     "existing_app": {
                         "id": existing_app.id,
@@ -120,7 +120,7 @@ def create_app(
                 }
             )
     
-    # 创建应用
+    # Create app
     app = App(
         name=app_data.name,
         slug=slug,
@@ -145,26 +145,26 @@ def get_app(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取单个应用（支持UUID或slug）"""
-    # 先尝试按UUID查找
+    """Get a single app (supports UUID or slug)"""
+    # Try UUID first
     app = db.query(App).filter(App.id == app_identifier).first()
-    # 如果没找到，尝试按slug查找
+    # If not found, try slug
     if not app:
         app = db.query(App).filter(App.slug == app_identifier).first()
     
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="应用不存在"
+            detail="App not found"
         )
     
-    # 权限检查
-    # 特殊处理：public用户可以访问所有应用（用于Client门户）
+    # Permission check
+    # Special handling: public user can see all apps (for Client portal)
     if current_user.username != "public":
         if not current_user.is_superuser and app.owner_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="没有权限访问此应用"
+                detail="No permission to access this app"
             )
     
     return app
@@ -176,22 +176,22 @@ def get_app_by_slug(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """根据slug获取单个应用（路径优先接口）"""
+    """Get a single app by slug (path-priority interface)"""
     app = db.query(App).filter(App.slug == slug).first()
     
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"应用不存在 (slug: {slug})"
+            detail=f"App not found (slug: {slug})"
         )
     
-    # 权限检查
-    # 特殊处理：public用户可以访问所有应用（用于Client门户）
+    # Permission check
+    # Special handling: public user can see all apps (for Client portal)
     if current_user.username != "public":
         if not current_user.is_superuser and app.owner_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="没有权限访问此应用"
+                detail="No permission to access this app"
             )
     
     return app
@@ -204,29 +204,29 @@ def update_app(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """更新应用（支持UUID或slug）"""
-    # 先尝试按UUID查找
+    """Update an app (supports UUID or slug)"""
+    # Try UUID first
     app = db.query(App).filter(App.id == app_identifier).first()
-    # 如果没找到，尝试按slug查找
+    # If not found, try slug
     if not app:
         app = db.query(App).filter(App.slug == app_identifier).first()
     
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="应用不存在"
+            detail="App not found"
         )
     
-    # 权限检查
+    # Permission check
     if not current_user.is_superuser and app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限更新此应用"
+            detail="No permission to update this app"
         )
     
-    # 更新字段
+    # Update fields
     if app_data.slug is not None and app_data.slug != app.slug:
-        # 检查新slug是否唯一（排除当前应用）
+        # Check new slug uniqueness (excluding current app)
         existing_app = db.query(App).filter(
             App.slug == app_data.slug,
             App.id != app.id
@@ -235,7 +235,7 @@ def update_app(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "该slug已被使用",
+                    "message": "This slug is already in use",
                     "conflict_type": "slug",
                     "existing_app": {
                         "id": existing_app.id,
@@ -277,45 +277,45 @@ def delete_app(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """删除应用（同时删除关联的文件夹和文档，支持UUID或slug）"""
-    # 先尝试按UUID查找
+    """Delete an app (also deletes associated folders and documents, supports UUID or slug)"""
+    # Try UUID first
     app = db.query(App).filter(App.id == app_identifier).first()
-    # 如果没找到，尝试按slug查找
+    # If not found, try slug
     if not app:
         app = db.query(App).filter(App.slug == app_identifier).first()
     
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="应用不存在"
+            detail="App not found"
         )
     
-    # 权限检查
+    # Permission check
     if not current_user.is_superuser and app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限删除此应用"
+            detail="No permission to delete this app"
         )
     
-    # 删除应用（级联删除文件夹和文档）
+    # Delete app (cascade deletes folders and documents)
     db.delete(app)
     db.commit()
     
-    return {"message": "应用删除成功"}
+    return {"message": "App deleted successfully"}
 
 
-# ========== 应用下的文件夹路由 ==========
+# ========== App Folders Routes ==========
 
 @router.get("/{app_identifier}/folders", response_model=List[FolderResponse])
 def get_app_folders(
     app_identifier: str,
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取应用下的所有文件夹（直接关联，无需抽屉）"""
-    # 查找应用
+    """Get all folders under an app (direct association, no drawer)"""
+    # Find app
     app = db.query(App).filter(App.id == app_identifier).first()
     if not app:
         app = db.query(App).filter(App.slug == app_identifier).first()
@@ -323,17 +323,17 @@ def get_app_folders(
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="应用不存在"
+            detail="App not found"
         )
     
-    # 权限检查
+    # Permission check
     if not current_user.is_superuser and app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限访问此应用的文件夹"
+            detail="No permission to access this app's folders"
         )
     
-    # 获取文件夹
+    # Get folders
     folders = db.query(Folder).filter(
         Folder.app_id == app.id
     ).offset(skip).limit(limit).all()

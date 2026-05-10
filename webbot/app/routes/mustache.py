@@ -1,6 +1,6 @@
 """
-Mustache 模板渲染路由
-支持从页面配置渲染 Mustache 模板，以及静态 mustache 模板的加载
+Mustache template rendering routes
+Supports rendering from page configuration and loading static templates
 """
 from fastapi import APIRouter, HTTPException, Request, Form, Query
 from fastapi.responses import Response, HTMLResponse
@@ -13,12 +13,12 @@ from typing import Optional
 router = APIRouter(prefix="", tags=["mustache"])
 
 # 数据库路径
-FILEBOT_DB_PATH = os.environ.get(
-    "FILEBOT_DB_PATH",
-    "/home/hongb/.openclaw/workspace/filebot/backend/filebot.db"
+WEBBOT_DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
 )
 
-# Mustache模板文件目录
+# Mustache template文件目录
 MUSTACHE_TEMPLATES_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "..",
@@ -27,14 +27,14 @@ MUSTACHE_TEMPLATES_DIR = os.path.join(
 )
 
 def get_db_connection():
-    """获取SQLite数据库连接"""
-    conn = sqlite3.connect(FILEBOT_DB_PATH)
+    """Get WebBot database connection"""
+    conn = sqlite3.connect(WEBBOT_DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def load_static_template(template_path: str) -> Optional[str]:
-    """尝试从静态mustache模板目录加载模板文件"""
+    """Load template file from static mustache templates directory"""
     # 清理路径 - 移除多余的 mustache-templates/ 目录前缀
     # 因为 MUSTACHE_TEMPLATES_DIR 已经包含了 mustache-templates/
     # URL: /mustache/en/mustache-templates/images.html
@@ -42,7 +42,7 @@ def load_static_template(template_path: str) -> Optional[str]:
     # File: mustache-templates/en/images.html
     clean_path = template_path.strip("/")
     
-    # 移除路径中的 mustache-templates/ 部分（因为目录本身就已是 mustache-templates）
+    # 移除路径中的 mustache-templates/ 部分（因为目录本身就已 mustache-templates）
     if clean_path.startswith("mustache-templates/"):
         clean_path = clean_path[len("mustache-templates/"):]
     elif "/mustache-templates/" in clean_path:
@@ -56,7 +56,7 @@ def load_static_template(template_path: str) -> Optional[str]:
         with open(static_path, "r", encoding="utf-8") as f:
             return f.read()
     
-    # 尝试添加 .html 后缀
+    # 尝试Add .html 后缀
     if not clean_path.endswith(".html"):
         static_path_html = static_path + ".html"
         if os.path.exists(static_path_html) and os.path.isfile(static_path_html):
@@ -69,11 +69,11 @@ def load_static_template(template_path: str) -> Optional[str]:
 @router.get("/mustache/{path:path}")
 async def render_mustache(path: str, request: Request):
     """
-    渲染Mustache模板
+    Render Mustache template
     
-    支持两种模式：
-    1. 从数据库页面配置中加载（页面content为包含 template/datasource/data 的JSON）
-    2. 从静态文件加载（前端编辑器侧边栏使用的模板）
+    Supports two modes:
+    1. Load from database page configurationion中加载（pagecontent为包含 template/datasource/data 的JSON）
+    2. 从静态文件加载（前端Edit器侧边栏使用的模板）
     """
     import chevron
     
@@ -82,11 +82,11 @@ async def render_mustache(path: str, request: Request):
     if static_content is not None:
         return HTMLResponse(content=static_content, status_code=200)
     
-    # 如果静态模板不存在，从数据库页面加载
+    # If静态模板不存在，从数据库page加载
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # 尝试匹配各种路径格式
+    # 尝试匹配各种Path format
     path_variants = [path]
     if not path.startswith("/"):
         path_variants.append(f"/{path}")
@@ -102,7 +102,7 @@ async def render_mustache(path: str, request: Request):
         )
         page = cursor.fetchone()
         if page:
-            print(f"调试: Mustache找到配置页面: id={page['id']}, path匹配: {pv}")
+            print(f"调试: Mustache找到Configurationpage: id={page['id']}, path匹配: {pv}")
             break
     
     if not page:
@@ -112,7 +112,7 @@ async def render_mustache(path: str, request: Request):
             status_code=200
         )
     
-    # 解析配置
+    # 解析Configuration
     raw_content = page["content"]
     if not raw_content:
         conn.close()
@@ -121,7 +121,7 @@ async def render_mustache(path: str, request: Request):
             status_code=200
         )
     
-    # 从HTML内容中提取JSON
+    # 从HTML内容中Extract JSON
     config_json = raw_content
     if "{" in raw_content and "}" in raw_content:
         start_idx = raw_content.find("{")
@@ -143,7 +143,7 @@ async def render_mustache(path: str, request: Request):
             status_code=200
         )
     
-    # 获取模板
+    # Get template
     template = config.get("template", "")
     if not template:
         conn.close()
@@ -182,6 +182,11 @@ async def render_mustache(path: str, request: Request):
                         # 合并数据
                         if isinstance(datasource_data, dict):
                             data = {**data, **datasource_data}
+                        elif isinstance(datasource_data, list):
+                            # If数据源返回数组,直接赋值给根上下文
+                            # 这样模板中的 {{#.}} 可以迭代数组项
+                            # 同时保留 datasource_raw 以供调试
+                            data = datasource_data
                         else:
                             data["items"] = datasource_data
         except Exception as e:
@@ -204,18 +209,18 @@ async def render_mustache(path: str, request: Request):
 
 @router.post("/render-mustache")
 async def render_mustache_template(
-    template: str = Form(..., description="Mustache模板"),
-    json_data: str = Form(..., description="JSON数据"),
-    escape_html: bool = Form(True, description="是否HTML转义")
+    template: str = Form(..., description="Mustache template"),
+    json_data: str = Form(..., description="JSON data"),
+    escape_html: bool = Form(True, description="HTML escaping")
 ):
     """
-    渲染Mustache模板（直接POST调用）
+    Render Mustache template (direct POST call)
     """
     import chevron
     import re
     
     try:
-        # 解析JSON数据
+        # 解析JSON data
         data = json.loads(json_data)
         
         # 渲染模板
@@ -236,5 +241,5 @@ async def render_mustache_template(
         return {
             "success": False,
             "html": "",
-            "error": f"渲染错误: {str(e)}"
+            "error": f"Render error: {str(e)}"
         }

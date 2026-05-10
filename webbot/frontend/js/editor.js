@@ -389,6 +389,9 @@
             }
 
 
+            // Load sidebar sections (Images, Components, etc.) via Mustache
+            initializeSidebarSections();
+
             // Initialize TinyMCE WYSIWYG Editor
             initializeTinyMCE();
 
@@ -411,6 +414,196 @@
             initLanguageSwitcher();
         });
 
+        /**
+         * Initialize sidebar sections (Images, Components, etc.)
+         * Loads mustache templates and data for each .wb-filter[data-filebot-url]
+         */
+        async function initializeSidebarSections() {
+            const sections = document.querySelectorAll('.wb-filter[data-filebot-url]');
+            if (!sections.length) return;
+
+            const templateCache = {};
+
+            // Map: template URL pattern -> (apiUrl, dataMapper)  
+            // dataMapper receives API response and returns { dataKey: itemsArray }
+            const sectionHandlers = {
+                'images.html': {
+                    apiUrl: '/api/v1/files/',
+                    dataKey: 'images',
+                    mapData: function(items) {
+                        return items.map(function(f) {
+                            return {
+                                id: f.id,
+                                title: f.name || f.title || 'Untitled',
+                                thumbnail_url: f.thumbnail_url || '',
+                                file_size: f.size || '',
+                                mime_type: f.type || f.mime_type || '',
+                                url: f.url || ''
+                            };
+                        });
+                    }
+                },
+                'components.html': {
+                    apiUrl: '/api/v1/components/templates',
+                    dataKey: 'components',
+                    mapData: function(items) {
+                        return items.map(function(c) {
+                            return {
+                                id: c.id,
+                                name: c.display_name || c.name || 'Unknown',
+                                description: c.description || '',
+                                category: c.category || 'basic',
+                                icon: c.icon || '',
+                                is_custom: c.category === 'custom' || false,
+                                has_preview: true
+                            };
+                        });
+                    }
+                },
+                'document-list.html': {
+                    apiUrl: '/api/v1/files/',
+                    dataKey: 'documents',
+                    mapData: function(items) {
+                        return items.map(function(f) {
+                            var type = (f.type || f.mime_type || '').toLowerCase();
+                            return {
+                                id: f.id,
+                                title: f.name || f.title || 'Untitled',
+                                original_filename: f.name || '',
+                                file_size: f.size || '',
+                                mime_type: type,
+                                is_pdf: type.indexOf('pdf') >= 0,
+                                is_word: type.indexOf('word') >= 0 || type.indexOf('doc') >= 0,
+                                is_excel: type.indexOf('excel') >= 0 || type.indexOf('sheet') >= 0,
+                                is_powerpoint: type.indexOf('powerpoint') >= 0 || type.indexOf('presentation') >= 0,
+                                document_number: f.id ? f.id.substring(0, 8) : ''
+                            };
+                        });
+                    }
+                },
+                'templates.html': {
+                    apiUrl: '/api/v1/pages/?limit=50',
+                    dataKey: 'templates',
+                    mapData: function(items) {
+                        return items.map(function(p) {
+                            return {
+                                id: p.id || p.path || '',
+                                title: p.title || p.name || 'Untitled',
+                                type: p.template_type || (p.parent_path === '/' ? 'Content Page' : 'Sub Page'),
+                                description: p.description || '',
+                                author: p.author || '',
+                                created_date: p.created_at ? new Date(p.created_at).toLocaleDateString() : '',
+                                is_official: false,
+                                is_custom: true,
+                                can_edit: true
+                            };
+                        });
+                    }
+                }
+            };
+
+            // Fetch raw template text from static
+            async function getTemplate(url) {
+                if (templateCache[url]) return templateCache[url];
+                // Convert /mustache/en/mustache-templates/name.html -> /static/mustache-templates/en/name.html
+                // The /mustache/ route goes through renderer; get raw template from static
+                // Pattern: /mustache/{lang}/mustache-templates/{name}.html
+                var parts = url.split('/');
+                var lang = parts[2];   // 'en'
+                var name = parts[4];   // 'images.html'
+                var staticPath = '/static/mustache-templates/' + lang + '/' + name;
+                try {
+                    var resp = await fetch(staticPath);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var text = await resp.text();
+                    templateCache[url] = text;
+                    return text;
+                } catch (e) {
+                    console.warn('Failed to load template from', staticPath, e);
+                    return null;
+                }
+            }
+
+            // Process each section
+            for (var i = 0; i < sections.length; i++) {
+                var el = sections[i];
+                var templateUrl = el.getAttribute('data-filebot-url');
+                if (!templateUrl) continue;
+
+                // Determine handler based on filename in URL
+                var filename = templateUrl.split('/').pop();
+                var handler = sectionHandlers[filename];
+                if (!handler) {
+                    console.warn('No data handler for template:', filename);
+                    continue;
+                }
+
+                // Fetch template + data in parallel
+                var templatePromise = getTemplate(templateUrl);
+                var dataPromise = fetch(handler.apiUrl).then(function(r) {
+                    if (!r.ok) throw new Error('API ' + r.status);
+                    return r.json();
+                }).catch(function(e) {
+                    console.warn('Failed to fetch data from', handler.apiUrl, e);
+                    return null;
+                });
+
+                var results = await Promise.all([templatePromise, dataPromise]);
+                var templateText = results[0];
+                var apiResult = results[1];
+
+                if (!templateText) {
+                    el.innerHTML = '<em style="color: #d32f2f;">Template loading failed</em>';
+                    continue;
+                }
+
+                // Extract items from API response
+                var items = [];
+                if (apiResult) {
+                    if (Array.isArray(apiResult)) {
+                        items = apiResult;
+                    } else if (apiResult.files) {
+                        items = apiResult.files;
+                    } else if (apiResult.pages) {
+                        items = apiResult.pages;
+                    } else if (apiResult.data) {
+                        items = apiResult.data;
+                    } else if (apiResult[handler.dataKey]) {
+                        items = apiResult[handler.dataKey];
+                    } else {
+                        // Try to find any array property
+                        for (var key in apiResult) {
+                            if (Array.isArray(apiResult[key])) {
+                                items = apiResult[key];
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Map data to match template expectations
+                var mapped = handler.mapData(items);
+
+                // Build render context: { images: [...], components: [...], etc. }
+                var context = {};
+                context[handler.dataKey] = mapped;
+
+                // Render with Mustache
+                try {
+                    if (typeof Mustache !== 'undefined' && Mustache.render) {
+                        var rendered = Mustache.render(templateText, context);
+                        el.innerHTML = rendered;
+                        console.log('Rendered', filename, '-', mapped.length, 'items');
+                    } else {
+                        el.innerHTML = '<em>Mustache.js not loaded</em>';
+                    }
+                } catch (renderError) {
+                    console.error('Mustache render error:', renderError);
+                    el.innerHTML = '<em style="color: #d32f2f;">Render error</em>';
+                }
+            }
+        }
+
         // Initialize Quill WYSIWYG Editor
         function initializeTinyMCE() {
             console.log('Initializing TinyMCE editor...');
@@ -431,7 +624,7 @@
                          'alignleft aligncenter alignright alignjustify | ' +
                          'bullist numlist outdent indent | link image media table | ' +
                          'blockquote pagebreak | charmap preview searchreplace visualblocks | ' +
-                         'code fullscreen help | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertFeatures insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | deleteComponent | aiAssistant',
+                         'code fullscreen help | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertFeatures insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | insertByPath | deleteComponent | aiAssistant',
                 content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
                 // Load Canada.ca CSS for editor content (makes editing look like preview)
                 content_css: [
@@ -463,6 +656,17 @@
                         tooltip: 'Insert Button',
                         onAction: function() {
                             insertComponent('button');
+                        }
+                    });
+
+                    editor.ui.registry.addButton('insertByPath', {
+                        text: '📄 Insert by Path',
+                        tooltip: 'Fetch a page by path and insert its content at cursor',
+                        onAction: function() {
+                            const path = prompt('Enter page path to insert\n(e.g. /en/contact or contact):');
+                            if (path && path.trim()) {
+                                insertPath(path.trim());
+                            }
                         }
                     });
 
@@ -3719,115 +3923,115 @@
         let currentSearch = '';
 
         function loadComponents() {
-            console.log('Loading components from page API /api/v1/pages/...');
+            console.log('Loading components...');
 
-            // 首先尝试从页面API获取组件页面
-            fetch('/api/v1/pages/?limit=1000')
+            // 主数据源: 从 /canadasite/en/components/ 子页面获取组件列表
+            fetch('/api/v1/pages/by-path/canadasite/en/components/children')
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
                 })
-                .then(pages => {
-                    console.log('Pages loaded from API:', pages.length, 'pages');
+                .then(childPages => {
+                    console.log(`Loaded ${childPages.length} component pages from /canadasite/en/components/`);
 
-                    // 筛选出组件模板页面
-                    const componentPages = pages.filter(page => {
-                        // 检查metadata中是否有is_template标记(新的组件页面使用这个标记)
-                        if (page.metadata && page.metadata.is_template === true) {
-                            return true;
-                        }
-                        // 或者检查metadata中是否有component_template标记(旧系统可能使用这个)
-                        if (page.metadata && page.metadata.component_template === true) {
-                            return true;
-                        }
-                        // 或者检查ID是否以'template-'开头
-                        if (page.id && page.id.startsWith('template-')) {
-                            return true;
-                        }
-                        // 或者检查父页面是否是template-container (使用parent_path或path)
-                        if (page.parent_path === '/en/template-container' ||
-                            (page.path && page.path.startsWith('/en/template-container/'))) {
-                            return true;
-                        }
-                        // 或者检查tags中是否包含"component"或"template"
-                        if (page.tags && Array.isArray(page.tags)) {
-                            if (page.tags.includes('component') || page.tags.includes('template')) {
-                                return true;
-                            }
-                        }
-                        return false;
-                    });
+                    // 将子页面转换为组件对象
+                    allComponents = childPages.map(page => ({
+                        id: page.id || page.path,
+                        name: page.title || page.path.split('/').pop(),
+                        description: (page.metadata && page.metadata._description) || page.description || '',
+                        category: 'components',
+                        source: 'page',
+                        path: page.path || '',
+                        url: '',
+                        pageData: page
+                    }));
 
-                    console.log(`Found ${componentPages.length} component pages`);
-
-                    if (componentPages.length > 0) {
-                        // 将页面转换为组件对象
-                        allComponents = componentPages.map(page => {
-                            // 使用页面ID作为组件ID
-                            let componentId = page.id;
-                            // 使用页面标题作为组件名称
-                            let componentName = page.title || 'Unnamed Component';
-
-                            // 确定组件分类
-                            let category = 'basic';
-                            if (page.metadata?.category) {
-                                category = page.metadata.category;
-                            } else if (page.metadata?.component_type) {
-                                // 从component_type中提取分类,例如"template-button-primary" -> "button"
-                                const type = page.metadata.component_type;
-                                if (type.startsWith('template-')) {
-                                    const parts = type.split('-');
-                                    if (parts.length > 1) {
-                                        category = parts[1]; // e.g. "button", "alert"
+                    // 也尝试加载 template-container 的模板页(补充,不移除已存在的)
+                    fetch('/api/v1/pages/?limit=500')
+                        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+                        .then(allPages => {
+                            const extraPages = allPages.filter(p =>
+                                p.metadata && (p.metadata.is_template === true || p.metadata.component_template === true)
+                            );
+                            if (extraPages.length > 0) {
+                                const existingPaths = new Set(allComponents.map(c => c.path));
+                                extraPages.forEach(page => {
+                                    if (!existingPaths.has(page.path)) {
+                                        let cat = 'gcweb';
+                                        if (page.metadata && page.metadata.category) {
+                                            cat = page.metadata.category;
+                                        }
+                                        allComponents.push({
+                                            id: page.id || page.path,
+                                            name: page.title || page.path.split('/').pop(),
+                                            description: page.description || '',
+                                            category: cat,
+                                            source: 'template',
+                                            path: page.path || '',
+                                            url: '',
+                                            pageData: page
+                                        });
                                     }
-                                }
-                            } else if (page.id && page.id.startsWith('template-')) {
-                                // 从ID中提取分类,例如"template-button-primary" -> "button"
-                                const parts = page.id.split('-');
-                                if (parts.length > 1) {
-                                    category = parts[1]; // e.g. "button", "alert"
-                                }
-                            } else if (page.tags && page.tags.length > 0) {
-                                // 使用第一个非component/template标签作为分类
-                                const nonComponentTag = page.tags.find(tag =>
-                                    tag !== 'component' && tag !== 'template'
-                                );
-                                if (nonComponentTag) {
-                                    category = nonComponentTag;
-                                }
+                                });
+                                console.log(`Supplemented with ${allComponents.length - childPages.length} template pages`);
                             }
+                            // Final render
+                            finishLoad();
+                        })
+                        .catch(() => finishLoad());
 
-                            // 确保分类是小写字母
-                            category = category.toLowerCase();
-
-                            return {
-                                id: componentId,
-                                name: componentName,
-                                description: page.description || '',
-                                category: category,
-                                source: 'page',
-                                path: page.path || '',
-                                url: '', // page does not need URL
-                                pageData: page // 保存完整的页面数据
-                            };
-                        });
-
-                        console.log(`Loaded ${allComponents.length} components from page API`);
+                    // 补充加载JSON定义的组件(确保wet-*组件不丢失)
+                    function finishLoad() {
                         updateComponentCategories();
                         filterComponents();
                         renderSidebarComponents();
-                    } else {
-                        console.log('No component pages found, falling back to components API...');
-                        fallbackToComponentsAPI();
+                        supplementFromStaticJSON();
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading components from page API:', error);
-                    console.log('Falling back to components API...');
-                    fallbackToComponentsAPI();
+                    console.error('Error loading component children:', error);
+                    // 回退到全部页面API
+                    fetchPageAPI();
                 });
+
+            // 回退: 使用全部页面API
+            function fetchPageAPI() {
+                console.log('Falling back to /api/v1/pages/?limit=1000...');
+                fetch('/api/v1/pages/?limit=1000')
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response.json();
+                    })
+                    .then(pages => {
+                        const componentPages = pages.filter(page => {
+                            if (page.metadata && page.metadata.is_template === true) return true;
+                            if (page.metadata && page.metadata.component_template === true) return true;
+                            if (page.parent_path === '/canadasite/en/components') return true;
+                            if (page.id && page.id.startsWith('template-')) return true;
+                            if (page.parent_path === '/en/template-container' ||
+                                (page.path && page.path.startsWith('/en/template-container/'))) return true;
+                            return false;
+                        });
+                        allComponents = componentPages.map(page => ({
+                            id: page.id || page.path,
+                            name: page.title || 'Unnamed',
+                            description: page.description || '',
+                            category: (page.metadata && page.metadata.category) || 'basic',
+                            source: 'page',
+                            path: page.path || '',
+                            url: '',
+                            pageData: page
+                        }));
+                        updateComponentCategories();
+                        filterComponents();
+                        renderSidebarComponents();
+                        supplementFromStaticJSON();
+                    })
+                    .catch(err => {
+                        console.error('Page API failed:', err);
+                        fallbackToComponentsAPI();
+                    });
+            }
 
             // 回退函数:使用原来的组件API
             function fallbackToComponentsAPI() {
@@ -3842,7 +4046,6 @@
                     .then(data => {
                         console.log('Components loaded from API:', data);
                         if (Array.isArray(data) && data.length > 0) {
-                            // API返回的是组件对象数组,每个对象有id、name、display_name等字段
                             allComponents = data.map(component => ({
                                 id: component.name || component.id,
                                 name: component.display_name || component.name,
@@ -3856,6 +4059,7 @@
                             updateComponentCategories();
                             filterComponents();
                             renderSidebarComponents();
+                            supplementFromStaticJSON();
                         } else {
                             console.error('No templates found in API response');
                             fallbackToStaticJSON();
@@ -3904,6 +4108,134 @@
                         allComponents = [];
                         renderSidebarComponents();
                     });
+            }
+
+            // 回退函数:使用原来的组件API
+            function fallbackToComponentsAPI() {
+                console.log('Loading components from API /api/v1/components/templates...');
+                fetch('/api/v1/components/templates')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Components loaded from API:', data);
+                        if (Array.isArray(data) && data.length > 0) {
+                            // API返回的是组件对象数组,每个对象有id、name、display_name等字段
+                            allComponents = data.map(component => ({
+                                id: component.name || component.id,
+                                name: component.display_name || component.name,
+                                description: component.description || '',
+                                category: component.category || 'basic',
+                                source: component.source || 'database',
+                                path: component.path || '',
+                                url: component.url || ''
+                            }));
+                            console.log(`Loaded ${allComponents.length} components from API`);
+                            updateComponentCategories();
+                            filterComponents();
+                            renderSidebarComponents();
+                            supplementFromStaticJSON();
+                        } else {
+                            console.error('No templates found in API response');
+                            fallbackToStaticJSON();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading components from API:', error);
+                        fallbackToStaticJSON();
+                    });
+            }
+
+            // 最终回退:使用静态JSON文件
+            function fallbackToStaticJSON() {
+                console.log('Falling back to static component-templates.json...');
+                fetch('/static/component-templates.json')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Components loaded from fallback JSON:', data);
+                        if (data.templates) {
+                            allComponents = Object.entries(data.templates).map(([key, component]) => ({
+                                id: key,
+                                name: component.name || key,
+                                description: component.description || '',
+                                category: component.category || 'basic',
+                                source: component.source || 'database',
+                                path: component.path || '',
+                                url: component.url || ''
+                            }));
+                            console.log(`Loaded ${allComponents.length} components from fallback`);
+                            updateComponentCategories();
+                            filterComponents();
+                            renderSidebarComponents();
+                        } else {
+                            console.error('No templates found in fallback JSON');
+                            allComponents = [];
+                            renderSidebarComponents();
+                        }
+                    })
+                    .catch(fallbackError => {
+                        console.error('Error loading components from fallback:', fallbackError);
+                        allComponents = [];
+                        renderSidebarComponents();
+                    });
+            }
+
+            // 补充加载:从component-templates.json合并组件(按id去重)
+            function supplementFromStaticJSON() {
+                console.log('Supplementing components from static JSON...');
+                fetch('/static/component-templates.json')
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        let extraComponents = [];
+                        if (data.templates) {
+                            extraComponents = Object.entries(data.templates).map(([key, component]) => ({
+                                id: key,
+                                name: component.name || key,
+                                description: component.description || '',
+                                category: component.category || 'basic',
+                                source: 'static',
+                                path: component.path || '',
+                                url: component.url || ''
+                            }));
+                        } else if (Array.isArray(data)) {
+                            extraComponents = data.map(c => ({
+                                id: c.id || c.name,
+                                name: c.name || c.display_name || c.id,
+                                description: c.description || '',
+                                category: c.category || 'basic',
+                                source: 'static',
+                                path: c.path || '',
+                                url: c.url || ''
+                            }));
+                        }
+                        // 合并去重
+                        const existingIds = new Set(allComponents.map(c => c.id));
+                        const newCount = extraComponents.filter(c => !existingIds.has(c.id)).length;
+                        extraComponents.forEach(c => {
+                            if (!existingIds.has(c.id)) {
+                                allComponents.push(c);
+                                existingIds.add(c.id);
+                            }
+                        });
+                        if (newCount > 0) {
+                            console.log(`Supplemented ${newCount} components from static JSON`);
+                            updateComponentCategories();
+                            filterComponents();
+                            renderSidebarComponents();
+                        }
+                    })
+                    .catch(err => console.warn('Could not supplement from static JSON:', err));
             }
         }
 
@@ -3998,7 +4330,11 @@
                     li.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        insertComponent(component.id);
+                        if (component.path) {
+                            insertPath(component.path);
+                        } else {
+                            insertComponent(component.id);
+                        }
                     });
 
                     sidebarEl.appendChild(li);
@@ -4655,22 +4991,6 @@
                                     '  </tbody>\n' +
                                     '</table>';
                     break;
-                case 'alert':
-                    componentHtml = '<div class="alert alert-info webbot-component">\n' +
-                                    '  <h3>Information</h3>\n' +
-                                    '  <p>This is an alert box.</p>\n' +
-                                    '</div>';
-                    break;
-                case 'alert-danger':
-                    componentHtml = '<section class="alert alert-danger webbot-component">\n' +
-                                    '  <h3>Danger alert</h3>\n' +
-                                    '  <p>Alert details.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-warning':
-                    componentHtml = '<section class="alert alert-warning webbot-component">\n' +
-                                    '  <h3>Warning alert</h3>\n' +
-                                    '  <p>Alert details.</p>\n' +
                                     '</section>';
                     break;
                 case 'alert-success':
@@ -5162,28 +5482,101 @@
         }
 
         // Insert component at cursor position
-        function insertComponent(componentType) {
+        /**
+         * Canada.ca component templates — parameterized.
+         * Colorable components (button, alert) use a shared color mapper
+         * instead of creating one variant per color.
+         */
+        const CANADA_CSS_PREFIXES = {
+            'button': 'btn',
+            'alert': 'alert',
+            'label': 'label',
+            'badge': 'label',
+            'background': 'bg',
+            'text': 'text'
+        };
+
+        const CANADA_COLOR_MAP_TEMPLATE = {
+            'danger': 'danger',
+            'success': 'success',
+            'info': 'info',
+            'warning': 'warning',
+            'primary': 'primary',
+            'red': 'danger',
+            'green': 'success',
+            'blue': 'info',
+            'yellow': 'warning'
+        };
+
+        /**
+         * Build HTML for a colorable component by type + color.
+         * Keeps templates DRY — no more 5 button variants, 8 alert variants, etc.
+         */
+        function makeButtonHtml(color, label) {
+            const cls = CANADA_CSS_PREFIXES['button'] + '-' + (CANADA_COLOR_MAP_TEMPLATE[color] || 'primary');
+            return '<button type="button" class="btn ' + cls + ' webbot-component">' + (label || 'Button') + '</button>';
+        }
+
+        function makeAlertHtml(color, withLink) {
+            const cls = 'alert-' + (CANADA_COLOR_MAP_TEMPLATE[color] || 'info');
+            const title = color === 'danger' ? 'Danger alert' : 
+                          color === 'warning' ? 'Warning alert' :
+                          color === 'success' ? 'Success alert' : 'Info alert';
+            if (withLink) {
+                return '<section class="alert ' + cls + ' webbot-component">\n' +
+                       '  <h3>(' + title + ')</h3>\n' +
+                       '  <p> Content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
+                       '</section>';
+            }
+            return '<div class="alert ' + cls + ' webbot-component">\n' +
+                   '  <h3>' + title + '</h3>\n' +
+                   '  <p>This is an alert box.</p>\n' +
+                   '</div>';
+        }
+
+        function insertComponent(componentType, options) {
             if (!tinyMceEditor) {
                 console.error('TinyMCE editor not initialized');
                 return false;
             }
 
             let componentHtml;
-            switch(componentType) {
+            
+            // Map old compound names (button-danger, alert-success-link) 
+            // to simple type + options
+            var match;
+            var parsedType = componentType;
+            var parsedColor = (options && options.color) || null;
+            var parsedLink = (options && options.link) || false;
+            
+            // Parse 'type-color' compound format (e.g. 'button-danger')
+            match = componentType.match(/^(button|alert)-(danger|success|info|warning)$/);
+            if (match) {
+                parsedType = match[1];
+                parsedColor = match[2];
+            }
+            
+            // Parse 'type-color-link' format (e.g. 'alert-success-link')
+            match = componentType.match(/^(alert)-(danger|success|info|warning)-link$/);
+            if (match) {
+                parsedType = match[1];
+                parsedColor = match[2];
+                parsedLink = true;
+            }
+            
+            // Handle new format: button(color: danger)
+            match = componentType.match(/^(button|alert)\(color:\s*(\w+)\)$/);
+            if (match) {
+                parsedType = match[1];
+                parsedColor = match[2];
+            }
+
+            switch(parsedType) {
                 case 'button':
-                    componentHtml = '<button type="button" class="btn btn-primary webbot-component">Button</button>';
+                    componentHtml = makeButtonHtml(parsedColor || 'primary');
                     break;
-                case 'button-success':
-                    componentHtml = '<button type="button" class="btn btn-success webbot-component">Success</button>';
-                    break;
-                case 'button-info':
-                    componentHtml = '<button type="button" class="btn btn-info webbot-component">Info</button>';
-                    break;
-                case 'button-warning':
-                    componentHtml = '<button type="button" class="btn btn-warning webbot-component">Warning</button>';
-                    break;
-                case 'button-danger':
-                    componentHtml = '<button type="button" class="btn btn-danger webbot-component">Danger</button>';
+                case 'alert':
+                    componentHtml = makeAlertHtml(parsedColor || 'info', parsedLink);
                     break;
                 case 'table':
                     componentHtml = '<table class="table table-striped webbot-component">\n' +
@@ -5203,61 +5596,6 @@
                                     '  </tbody>\n' +
                                     '</table>';
                     break;
-                case 'alert':
-                    componentHtml = '<div class="alert alert-info webbot-component">\n' +
-                                    '  <h3>Information</h3>\n' +
-                                    '  <p>This is an alert box.</p>\n' +
-                                    '</div>';
-                    break;
-                case 'alert-danger':
-                    componentHtml = '<section class="alert alert-danger webbot-component">\n' +
-                                    '  <h3>Danger alert</h3>\n' +
-                                    '  <p>Alert details.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-warning':
-                    componentHtml = '<section class="alert alert-warning webbot-component">\n' +
-                                    '  <h3>Warning alert</h3>\n' +
-                                    '  <p>Alert details.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-success':
-                    componentHtml = '<section class="alert alert-success webbot-component">\n' +
-                                    '  <h3>Success alert</h3>\n' +
-                                    '  <p>Alert details.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-info':
-                    componentHtml = '<section class="alert alert-info webbot-component">\n' +
-                                    '  <h3>Info alert</h3>\n' +
-                                    '  <p>Alert details.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-success-link':
-                    componentHtml = '<section class="alert alert-success webbot-component">\n' +
-                                    '  <h3>(Success Title)</h3>\n' +
-                                    '  <p> Success content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-info-link':
-                    componentHtml = '<section class="alert alert-info webbot-component">\n' +
-                                    '  <h3>(Info Title)</h3>\n' +
-                                    '  <p> Info content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-warning-link':
-                    componentHtml = '<section class="alert alert-warning webbot-component">\n' +
-                                    '  <h3>(Warning Title)</h3>\n' +
-                                    '  <p> Warning content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'alert-danger-link':
-                    componentHtml = '<section class="alert alert-danger webbot-component">\n' +
-                                    '  <h3>(Info Title)</h3>\n' +
-                                    '  <p> Danger content goes here <a href="#" class="alert-link">link text</a>.</p>\n' +
-                                    '</section>';
-                    break;
-                case 'breadcrumb':
                     componentHtml = '<nav class="wb-breadcrumb webbot-component" role="navigation" aria-label="Breadcrumb">\n' +
                                     '  <h2 class="wb-inv">You are here:</h2>\n' +
                                     '  <ul class="breadcrumb">\n' +
@@ -5804,6 +6142,70 @@
             }
         }
 
+        /**
+         * Insert page content at cursor position by path.
+         * Fetches page content via the by-path API and inserts into TinyMCE.
+         * @param {string} path - Page path (e.g. /en/contact)
+         * @returns {Promise<boolean>} - True if insertion succeeded
+         */
+        async function insertPath(path) {
+            if (!tinyMceEditor) {
+                console.error('TinyMCE editor not initialized');
+                return false;
+            }
+
+            if (!path || typeof path !== 'string') {
+                console.error('Invalid path:', path);
+                return false;
+            }
+
+            // Normalize path
+            let normalizedPath = path.trim();
+            if (!normalizedPath.startsWith('/')) {
+                normalizedPath = '/' + normalizedPath;
+            }
+
+            console.log('insertPath called with path:', normalizedPath);
+
+            try {
+                // Fetch page content by path
+                const apiUrl = `${API_BASE}/by-path?path=${encodeURIComponent(normalizedPath)}`;
+                console.log('Fetching page content from:', apiUrl);
+                
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const page = await response.json();
+                console.log('Page fetched:', page?.id, page?.title);
+
+                if (!page) {
+                    throw new Error('Page not found or returned empty response');
+                }
+
+                // Get page content
+                let content = page.content || '';
+                if (!content) {
+                    console.warn('Page has no content');
+                    return false;
+                }
+
+                // Clean content (remove header/footer)
+                content = cleanContent(content, normalizedPath);
+                console.log('Content cleaned, length:', content.length);
+
+                // Insert at cursor position
+                tinyMceEditor.insertContent(content);
+                console.log('Page content inserted successfully at cursor position');
+                return true;
+
+            } catch (error) {
+                console.error('Error inserting content by path:', error);
+                return false;
+            }
+        }
+
         // Delete component at cursor position
         function deleteComponent() {
             if (!tinyMceEditor) {
@@ -6084,7 +6486,7 @@
                         }
                     } else {
                         hideAITypingIndicator();
-                        addAIMessage(`I'm not sure what you mean by "${message}". Type "help" to see available commands, or try one of these:\n\n• /template - Insert a Mustache template\n• /html - Quick edit HTML at cursor position\n• /edit-html - Same as /html\n• insert button - Insert a button component\n• alert danger - Insert a danger alert`, 'assistant');
+                        addAIMessage(`I'm not sure what you mean by "${message}". Type "help" to see available commands, or try one of these:\n\n• /template - Insert a Mustache template\n• /html - Quick edit HTML at cursor position\n• /color - Change the color of a component\n• /edit-html - Same as /html\n• insert button - Insert a button component\n• alert danger - Insert a danger alert`, 'assistant');
                     }
                 }, 500);
                 return; // Exit early for slash commands
@@ -6536,6 +6938,41 @@
                             showCurrentElementHTMLEdit('wysiwyg');
                         }
                     }, 600);
+                } else if (lowerMsg.includes('what') || lowerMsg.includes('detect') || lowerMsg.includes('检测') || lowerMsg.includes('看看') || lowerMsg.includes('检查') || lowerMsg.includes('what is') || lowerMsg.includes('识别')) {
+                    // Detect and describe component at cursor
+                    if (window.CanadaColorManager) {
+                        response = window.CanadaColorManager.describeCurrent();
+                    } else {
+                        response = "Color/component manager not loaded. Try refreshing the page.";
+                    }
+                } else if (lowerMsg.includes('change') || lowerMsg.includes('改为') || lowerMsg.includes('改成') || lowerMsg.includes('make it') || lowerMsg.includes('turn it') || lowerMsg.includes('变成')) {
+                    // Color change command - natural language
+                    const colorKeywords = ['red', 'green', 'blue', 'yellow', 'danger', 'success', 'info', 'warning', '红色', '绿色', '蓝色', '黄色', '红', '绿', '蓝', '黄'];
+                    let colorTarget = null;
+                    for (const ck of colorKeywords) {
+                        if (lowerMsg.includes(ck)) {
+                            colorTarget = ck;
+                            break;
+                        }
+                    }
+                    if (colorTarget && window.CanadaColorManager) {
+                        const comp = window.CanadaColorManager.getCurrentComponent();
+                        if (comp) {
+                            const result = window.CanadaColorManager.changeColor(comp.element, colorTarget);
+                            if (result.success) {
+                                response = `🎨 ${result.display}`;
+                            } else {
+                                response = `❌ ${result.error}`;
+                            }
+                        } else {
+                            response = "Please click on a component first, then say 'change to red' or 'make it blue'.";
+                        }
+                    } else if (colorTarget) {
+                        response = "Color manager not loaded. Try refreshing the page.";
+                    } else {
+                        // Not a color change, fall through
+                        response = "I'm not sure what you mean. I can help you insert components like buttons, tables, alerts, breadcrumbs, sidebars, footers, search boxes, introduction blocks, most requested links, feature links, government initiatives, social media, calendar, theme pages, topic templates, or Services and Information sections.\n\n• To **change color** of a component: click on it, then say 'change to red', 'make it green', etc.\n• To **edit raw HTML** of an element: say 'edit html' or '/html'\n• To **edit a component visually** (WYSIWYG): say 'edit component' or '/edit-component'\n• To insert something, just describe it.\n\nType 'help' to see the full list.";
+                    }
                 } else {
                     response = "I'm not sure what you mean. I can help you insert components like buttons, tables, alerts, breadcrumbs, sidebars, footers, search boxes, introduction blocks, most requested links, feature links, government initiatives, social media, calendar, theme pages, topic templates, or Services and Information sections.\n\n• To **edit raw HTML** of an element: say 'edit html' or '/html'\n• To **edit a component visually** (WYSIWYG): say 'edit component' or '/edit-component'\n• To insert something, just describe it.\n\nType 'help' to see the full list.";
                 }
@@ -8677,6 +9114,7 @@
 
             // Initialize metadata modal functionality
             initializeMetadataModal();
+
         });
 
         // Initialize metadata modal functionality
@@ -11447,6 +11885,36 @@
                     return window.aiAssistantCommands["edit-component"].execute(args);
                 }
             };
-            console.log('HTML and Component edit commands added to AI assistant');
+            // Add color change command
+            window.aiAssistantCommands.color = {
+                name: 'color',
+                description: 'Change the color of a component at cursor position',
+                usage: '/color [red|green|blue|yellow]',
+                execute: function(args) {
+                    if (!window.CanadaColorManager) {
+                        return 'Error: Color manager not loaded. Please refresh the page.';
+                    }
+                    
+                    if (args.length === 0) {
+                        // Describe current component and available colors
+                        const desc = window.CanadaColorManager.describeCurrent();
+                        return desc;
+                    }
+                    
+                    const colorName = args.join(' ');
+                    const comp = window.CanadaColorManager.getCurrentComponent();
+                    if (!comp) {
+                        return 'Please place your cursor on a component first (click on a button, alert, etc.), then try again.';
+                    }
+                    
+                    const result = window.CanadaColorManager.changeColor(comp.element, colorName);
+                    if (result.success) {
+                        return result.display;
+                    } else {
+                        return result.error || `Cannot change to "${colorName}". ${result.available ? 'Available colors: ' + result.available.join(', ') : ''}`;
+                    }
+                }
+            };
+            console.log('🎨 Color command added to AI assistant');
         }
     

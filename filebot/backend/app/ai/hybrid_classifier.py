@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from ..models.document import Document, DocumentType
 from ..models.folder import Folder
-from ..models.drawer import Drawer
 from ..models.app import App
 from .ai_classifier import AIClassifier, AICategory
 
@@ -66,7 +65,7 @@ class HybridClassifier:
             if confidence >= self.ai_confidence_threshold:
                 # AI分类置信度高，直接使用
                 classification_status = ClassificationStatus.AI_CLASSIFIED
-                logger.info(f"文档 {document.id} AI分类成功，置信度: {confidence:.2f}")
+                logger.info(f"文档 {document.path} AI分类成功，置信度: {confidence:.2f}")
                 
                 # 更新文档AI字段
                 self._update_document_classification(
@@ -77,7 +76,7 @@ class HybridClassifier:
                 # 置信度中等，标记为需要审核
                 classification_status = ClassificationStatus.REVIEW_NEEDED
                 review_needed = True
-                logger.info(f"文档 {document.id} AI分类置信度中等，需要审核: {confidence:.2f}")
+                logger.info(f"文档 {document.path} AI分类置信度中等，需要审核: {confidence:.2f}")
                 
                 # 更新文档但标记为需要审核
                 self._update_document_classification(
@@ -88,7 +87,7 @@ class HybridClassifier:
                 # 置信度低，需要人工分类
                 classification_status = ClassificationStatus.NEEDS_MANUAL
                 needs_manual = True
-                logger.info(f"文档 {document.id} AI分类置信度低，需要人工分类: {confidence:.2f}")
+                logger.info(f"文档 {document.path} AI分类置信度低，需要人工分类: {confidence:.2f}")
                 
                 # 更新文档状态
                 self._update_document_classification(
@@ -102,7 +101,7 @@ class HybridClassifier:
             # AI分类失败，需要人工分类
             classification_status = ClassificationStatus.NEEDS_MANUAL
             needs_manual = True
-            logger.warning(f"文档 {document.id} AI分类失败，需要人工分类")
+            logger.warning(f"文档 {document.path} AI分类失败，需要人工分类")
             
             # 更新文档状态
             self._update_document_classification(
@@ -129,9 +128,9 @@ class HybridClassifier:
         folder_name: str = "待人工分类"
     ) -> Optional[Folder]:
         """
-        获取或创建待人工分类文件夹
+        获取或创建待人工分类文件夹（纯path架构，无Drawer）
         
-        通过文档找到所属的App，然后在系统Drawer中创建待人工分类文件夹
+        通过文档找到所属的App，然后在App下创建系统文件夹
         
         Args:
             document: 文档对象
@@ -142,69 +141,60 @@ class HybridClassifier:
             文件夹对象
         """
         # 获取文档当前的文件夹
-        current_folder = db.query(Folder).filter(Folder.id == document.folder_id).first()
+        current_folder = db.query(Folder).filter(Folder.path == document.folder_path).first()
         if not current_folder:
-            logger.error(f"文档 {document.id} 的文件夹不存在")
+            logger.error(f"文档 {document.path} 的文件夹不存在")
             return None
         
-        # 获取文件夹所属的Drawer
-        drawer = db.query(Drawer).filter(Drawer.id == current_folder.drawer_id).first()
-        if not drawer:
-            logger.error(f"文件夹 {current_folder.id} 的抽屉不存在")
-            return None
-        
-        # 获取Drawer所属的App
-        app = db.query(App).filter(App.id == drawer.app_id).first()
+        # 获取App（直接通过Folder.app_id）
+        app = db.query(App).filter(App.id == current_folder.app_id).first()
         if not app:
-            logger.error(f"抽屉 {drawer.id} 的应用不存在")
+            logger.error(f"文件夹 {current_folder.path} 的应用不存在")
             return None
         
-        # 查找或创建系统抽屉（用于存放系统文件夹）
-        system_drawer_name = "系统文件夹"
-        system_drawer = db.query(Drawer).filter(
-            Drawer.app_id == app.id,
-            Drawer.name == system_drawer_name
-        ).first()
+        # 系统文件夹根路径
+        system_root_path = f"/{app.slug}/_system"
+        manual_folder_path = f"{system_root_path}/{folder_name}"
         
-        if not system_drawer:
+        # 查找或创建系统根文件夹
+        system_root = db.query(Folder).filter(Folder.path == system_root_path).first()
+        if not system_root:
             try:
-                system_drawer = Drawer(
+                system_root = Folder(
                     app_id=app.id,
-                    name=system_drawer_name,
-                    description="系统自动创建的文件夹，用于存放待人工分类等系统文档",
-                    order_index=9998  # 放在最后
+                    name="_system",
+                    title="系统文件夹",
+                    path=system_root_path,
+                    description="系统自动创建的文件夹，用于存放待人工分类等系统文档"
                 )
-                db.add(system_drawer)
+                db.add(system_root)
                 db.commit()
-                db.refresh(system_drawer)
-                logger.info(f"创建系统抽屉: {system_drawer.id}")
+                db.refresh(system_root)
+                logger.info(f"创建系统文件夹: {system_root.path}")
             except Exception as e:
-                logger.error(f"创建系统抽屉失败: {e}")
+                logger.error(f"创建系统文件夹失败: {e}")
                 db.rollback()
                 return None
         
         # 查找是否已有待人工分类文件夹
         folder = db.query(Folder).filter(
-            Folder.drawer_id == system_drawer.id,
-            Folder.name == folder_name,
-            Folder.is_system_folder == True
+            Folder.path == manual_folder_path
         ).first()
         
         if not folder:
-            # 创建新的待人工分类文件夹
             try:
                 folder = Folder(
-                    drawer_id=system_drawer.id,
+                    app_id=app.id,
+                    parent_folder_path=system_root.path,
                     name=folder_name,
-                    path=f"/{app.name}/{system_drawer.name}/{folder_name}",
-                    description="AI无法自动分类的文档将移动到此文件夹，等待人工分类",
-                    order_index=9999,  # 放在最后
-                    is_system_folder=True
+                    title=folder_name,
+                    path=manual_folder_path,
+                    description="AI无法自动分类的文档将移动到此文件夹，等待人工分类"
                 )
                 db.add(folder)
                 db.commit()
                 db.refresh(folder)
-                logger.info(f"创建待人工分类文件夹: {folder.id}")
+                logger.info(f"创建待人工分类文件夹: {folder.path}")
             except Exception as e:
                 logger.error(f"创建待人工分类文件夹失败: {e}")
                 db.rollback()
@@ -236,10 +226,10 @@ class HybridClassifier:
                 return False
             
             # 更新文档的文件夹
-            document.folder_id = manual_folder.id
+            document.folder_path = manual_folder.path
             db.commit()
             
-            logger.info(f"文档 {document.id} 已移动到待人工分类文件夹")
+            logger.info(f"文档 {document.path} 已移动到待人工分类文件夹")
             return True
             
         except Exception as e:
@@ -287,7 +277,7 @@ class HybridClassifier:
             document.document_metadata = metadata
             
             db.commit()
-            logger.debug(f"文档 {document.id} 分类信息已更新")
+            logger.debug(f"文档 {document.path} 分类信息已更新")
             
         except Exception as e:
             logger.error(f"更新文档分类信息失败: {e}")
@@ -367,11 +357,11 @@ class HybridClassifier:
             
             db.commit()
             
-            logger.info(f"文档 {document.id} 已人工分类为: {category}")
+            logger.info(f"文档 {document.path} 已人工分类为: {category}")
             
             return {
                 "success": True,
-                "document_id": document.id,
+                "document_id": document.path,
                 "category": category,
                 "confidence": confidence,
                 "classification_status": ClassificationStatus.MANUAL_CLASSIFIED.value

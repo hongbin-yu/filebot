@@ -9,8 +9,8 @@ import uuid
 
 class ExportOptions(BaseModel):
     """导出选项"""
-    app_ids: Optional[List[uuid.UUID]] = Field(None, description="要导出的应用ID列表")
-    folder_ids: Optional[List[uuid.UUID]] = Field(None, description="要导出的文件夹ID列表")
+    app_ids: Optional[List[str]] = Field(None, description="要导出的应用ID列表")
+    folder_paths: Optional[List[str]] = Field(None, description="要导出的文件夹路径列表")
     include_documents: bool = Field(True, description="是否包含文档")
     include_metadata: bool = Field(True, description="是否包含元数据")
     recursive: bool = Field(True, description="是否递归包含子文件夹")
@@ -19,8 +19,8 @@ class ExportOptions(BaseModel):
 
 
 class DocumentExport(BaseModel):
-    """文档导出模型"""
-    id: uuid.UUID
+    """文档导出模型 — 用path替代UUID id"""
+    path: Optional[str]
     title: Optional[str]
     description: Optional[str]
     document_number: Optional[str]
@@ -43,14 +43,14 @@ class DocumentExport(BaseModel):
 
 
 class FolderExport(BaseModel):
-    """文件夹导出模型"""
-    id: uuid.UUID
+    """文件夹导出模型 — 用path替代UUID id"""
     name: str
     path: str
+    title: Optional[str] = None
     description: Optional[str]
-    app_id: uuid.UUID
+    app_id: str
     app_name: Optional[str]
-    parent_folder_id: Optional[uuid.UUID]
+    parent_folder_path: Optional[str]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     created_by: Optional[str]

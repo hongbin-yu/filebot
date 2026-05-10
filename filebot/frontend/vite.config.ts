@@ -50,6 +50,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/search/, '/content/search')
       },
+      // Export-folder 专用代理（不做路径重写，webbot 后端直接用 /api/v1/export-folder）
+      '/api/v1/export-folder': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
       // 通用API代理规则（捕获其他 /api/v1/* 路径）
       '/api/v1': {
         target: 'http://localhost:8000',

@@ -561,6 +561,13 @@
 .modal.fade.in {
     display: block;
 }
+.modal-header {
+    background: #fff !important;
+    border-bottom: 1px solid #dee2e6;
+}
+.modal-content {
+    background: #fff !important;
+}
 .modal-backdrop {
     position: fixed;
     top: 0;

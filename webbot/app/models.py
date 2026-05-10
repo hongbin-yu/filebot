@@ -59,6 +59,7 @@ class PageUpdate(BaseModel):
     other_language_path: Optional[str] = None
     status: Optional[PageStatus] = None
     metadata: Optional[Dict[str, Any]] = None
+    file_path: Optional[str] = Field(None, description="FileBot image storage path. If empty, inherits from ancestor pages.")
     hide_in_navigation: Optional[bool] = None
     tags: Optional[List[str]] = None
 
@@ -161,6 +162,7 @@ class PagePropertiesResponse(BaseModel):
     other_language_path: Optional[str] = None
     available_languages: List[str] = []
     has_children: bool = False
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class PageMetadataResponse(BaseModel):

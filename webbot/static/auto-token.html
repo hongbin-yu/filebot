@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Token for FileBot API Docs</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .token-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .instructions {
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Auto Token for FileBot API Docs</h1>
+        
+        <div class="instructions">
+            <p><strong>What this does:</strong> Automatically gets a valid JWT token and helps you use it in FileBot's Swagger UI.</p>
+            <p><strong>How to use:</strong></p>
+            <ol>
+                <li>Click "Get Token" below to fetch a fresh token</li>
+                <li>Copy the token (or use "Copy Token" button)</li>
+                <li>Go to <a href="http://localhost:8001/api/docs" target="_blank">FileBot API Docs</a></li>
+                <li>Click the "Authorize" button</li>
+                <li>Paste the token with "Bearer " prefix</li>
+                <li>OR use "Auto Fill" button to try automatic setup</li>
+            </ol>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="controls">
+            <button class="btn" onclick="getToken()">Get Token</button>
+            <button class="btn btn-secondary" onclick="openFileBotDocs()">Open FileBot Docs</button>
+            <button class="btn btn-secondary" onclick="autoFillToken()" id="autoFillBtn">Auto Fill Token</button>
+        </div>
+        
+        <div id="tokenContainer" style="display: none;">
+            <h3>Your Token:</h3>
+            <div class="token-display">
+                <span id="tokenDisplay"></span>
+                <button class="copy-btn" onclick="copyToken()">Copy</button>
+            </div>
+            <p><strong>Expires in:</strong> <span id="expiresIn"></span> seconds</p>
+            <p><strong>Full Authorization header:</strong></p>
+            <div class="token-display">
+                Bearer <span id="fullToken"></span>
+            </div>
+            <button class="btn" onclick="copyAuthHeader()">Copy Authorization Header</button>
+        </div>
+        
+        <div id="tokenInfo" class="info" style="display: none; margin-top: 20px;">
+            <h3>Token Information:</h3>
+            <p><strong>Token Source:</strong> WebBot Backend API</p>
+            <p><strong>Auto-refresh:</strong> Token is automatically refreshed before expiration</p>
+            <p><strong>Default User:</strong> admin (FileBot superuser)</p>
+            <p><strong>Token Lifetime:</strong> 30 days (configurable in FileBot .env)</p>
+        </div>
+    </div>
+
+    <script>
+        let currentToken = '';
+        let expiresIn = 0;
+        let refreshTimer = null;
+        
+        function showMessage(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        function getToken() {
+            showMessage('Fetching token from WebBot backend...', 'info');
+            
+            fetch('/api/v1/auth/filebot-token')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    currentToken = data.access_token;
+                    expiresIn = data.expires_in || 0;
+                    
+                    // Display token
+                    document.getElementById('tokenDisplay').textContent = currentToken;
+                    document.getElementById('fullToken').textContent = currentToken;
+                    document.getElementById('expiresIn').textContent = expiresIn;
+                    document.getElementById('tokenContainer').style.display = 'block';
+                    document.getElementById('tokenInfo').style.display = 'block';
+                    
+                    showMessage(`✅ Token fetched successfully! Expires in ${expiresIn} seconds.`, 'success');
+                    
+                    // Setup auto-refresh timer (refresh 5 minutes before expiry)
+                    if (expiresIn > 300) { // More than 5 minutes left
+                        const refreshTime = (expiresIn - 300) * 1000; // Convert to milliseconds
+                        if (refreshTimer) clearTimeout(refreshTimer);
+                        refreshTimer = setTimeout(() => {
+                            showMessage('Token will expire soon, auto-refreshing...', 'info');
+                            getToken();
+                        }, refreshTime);
+                    }
+                })
+                .catch(error => {
+                    showMessage(`❌ Error fetching token: ${error.message}`, 'error');
+                    console.error('Token fetch error:', error);
+                });
+        }
+        
+        function copyToken() {
+            navigator.clipboard.writeText(currentToken)
+                .then(() => showMessage('✅ Token copied to clipboard!', 'success'))
+                .catch(err => showMessage(`❌ Failed to copy: ${err}`, 'error'));
+        }
+        
+        function copyAuthHeader() {
+            const authHeader = `Bearer ${currentToken}`;
+            navigator.clipboard.writeText(authHeader)
+                .then(() => showMessage('✅ Authorization header copied!', 'success'))
+                .catch(err => showMessage(`❌ Failed to copy: ${err}`, 'error'));
+        }
+        
+        function openFileBotDocs() {
+            window.open('http://localhost:8001/api/docs', '_blank');
+        }
+        
+        function autoFillToken() {
+            showMessage('Trying to auto-fill token in FileBot docs...', 'info');
+            
+            // Try to open FileBot docs in a new window and inject token
+            const docsWindow = window.open('http://localhost:8001/api/docs', '_blank');
+            
+            // This is a best-effort approach - Swagger UI doesn't have a direct API for this
+            setTimeout(() => {
+                showMessage('⚠️ Manual step needed: Open FileBot docs, click "Authorize", and paste the token with "Bearer " prefix.', 'info');
+            }, 1000);
+        }
+        
+        // Try to get token automatically on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(getToken, 1000);
+        });
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 't') {
+                e.preventDefault();
+                getToken();
+            }
+            if (e.ctrlKey && e.key === 'c' && currentToken) {
+                e.preventDefault();
+                copyToken();
+            }
+        });
+    </script>
+</body>
+</html>

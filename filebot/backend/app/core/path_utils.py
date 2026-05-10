@@ -197,6 +197,10 @@ def generate_storage_paths(
     # HTML等文档页面直接挂载，图片等资源文件保持/content/dam/
     url_path = f"/{app_slug}{folder_path}/{safe_filename}"
     
+    # 移除 .html 后缀：URL 路径应使用干净路径
+    # 磁盘文件（storage_path）仍保留 .html 扩展名
+    url_path = re.sub(r'\.html?$', '', url_path)
+    
     return storage_path, url_path, safe_filename
 
 
@@ -327,7 +331,7 @@ def validate_path_system(document, db, settings) -> dict:
         验证结果字典
     """
     result = {
-        'document_id': str(document.id),
+        'document_id': str(document.path),
         'original_filename': document.original_filename,
         'has_storage_path': bool(document.storage_path),
         'has_path': bool(document.path),
@@ -411,7 +415,7 @@ def copy_to_static_directory(
             return {
                 'success': False,
                 'error': f'源文件不存在: {source_path}',
-                'document_id': str(document.id),
+                'document_id': str(document.path),
                 'filename': document.original_filename
             }
         
@@ -430,13 +434,13 @@ def copy_to_static_directory(
                 return {
                     'success': False,
                     'error': '无法获取应用或文件夹信息',
-                    'document_id': str(document.id)
+                    'document_id': str(document.path)
                 }
             
             # 构建路径：app_slug/folder_path/safe_filename
             safe_filename = make_filename_safe(document.original_filename)
             # 文件夹路径需要处理
-            folder_path = folder.path if folder.path else f'/{folder.id}'
+            folder_path = folder.path if folder.path else f'/{folder.path}'
             # 清理路径，防止重复包含应用slug
             folder_path = clean_folder_path_for_static(app.slug, folder_path)
             
@@ -451,7 +455,7 @@ def copy_to_static_directory(
         # 复制文件
         shutil.copy2(source_path, target_path)
         
-        logger.info(f"已发布文档复制到静态目录: {document.id} -> {target_path}")
+        logger.info(f"已发布文档复制到静态目录: {document.path} -> {target_path}")
         
         # 可选：更新文档的path指向静态URL
         # 静态URL格式: /static/files/{target_relative_path}
@@ -462,7 +466,7 @@ def copy_to_static_directory(
             'source_path': str(source_path),
             'target_path': str(target_path),
             'static_url': static_url,
-            'document_id': str(document.id),
+            'document_id': str(document.path),
             'file_size': target_path.stat().st_size
         }
         
@@ -471,7 +475,7 @@ def copy_to_static_directory(
         return {
             'success': False,
             'error': str(e),
-            'document_id': str(document.id) if document else 'unknown'
+            'document_id': str(document.path) if document else 'unknown'
         }
 
 
@@ -508,11 +512,11 @@ def remove_from_static_directory(
                 return {
                     'success': False,
                     'error': '无法获取应用或文件夹信息',
-                    'document_id': str(document.id)
+                    'document_id': str(document.path)
                 }
             
             safe_filename = make_filename_safe(document.original_filename)
-            folder_path = folder.path if folder.path else f'/{folder.id}'
+            folder_path = folder.path if folder.path else f'/{folder.path}'
             # 清理路径，防止重复包含应用slug
             folder_path = clean_folder_path_for_static(app.slug, folder_path)
             
@@ -523,7 +527,7 @@ def remove_from_static_directory(
         # 检查文件是否存在并删除
         if target_path.exists():
             target_path.unlink()
-            logger.info(f"已从静态目录删除文档: {document.id} -> {target_path}")
+            logger.info(f"已从静态目录删除文档: {document.path} -> {target_path}")
             
             # 可选：清理空目录
             try:
@@ -538,13 +542,13 @@ def remove_from_static_directory(
             return {
                 'success': True,
                 'deleted_path': str(target_path),
-                'document_id': str(document.id)
+                'document_id': str(document.path)
             }
         else:
             return {
                 'success': True,
                 'message': '静态文件不存在，无需删除',
-                'document_id': str(document.id)
+                'document_id': str(document.path)
             }
             
     except Exception as e:
@@ -552,7 +556,7 @@ def remove_from_static_directory(
         return {
             'success': False,
             'error': str(e),
-            'document_id': str(document.id) if document else 'unknown'
+            'document_id': str(document.path) if document else 'unknown'
         }
 
 

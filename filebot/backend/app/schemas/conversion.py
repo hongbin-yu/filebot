@@ -36,7 +36,7 @@ class ConversionTaskBase(BaseModel):
 
 class ConversionTaskCreate(ConversionTaskBase):
     """转换任务创建模型"""
-    document_id: uuid.UUID = Field(..., description="关联文档ID")
+    document_path: str = Field(..., description="关联文档路径")
 
 
 class ConversionTaskUpdate(BaseModel):
@@ -58,7 +58,7 @@ class ConversionTaskUpdate(BaseModel):
 class ConversionTaskResponse(ConversionTaskBase):
     """转换任务响应模型"""
     id: uuid.UUID
-    document_id: uuid.UUID
+    document_path: str
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
     created_at: datetime
@@ -71,7 +71,7 @@ class ConversionTaskResponse(ConversionTaskBase):
 # 文件上传相关
 class FileUploadRequest(BaseModel):
     """文件上传请求模型"""
-    folder_id: uuid.UUID = Field(..., description="目标文件夹ID")
+    folder_path: str = Field(..., description="目标文件夹路径")
     document_number: Optional[str] = Field(None, max_length=100, description="文档编号")
     title: Optional[str] = Field(None, max_length=255, description="文档标题")
     description: Optional[str] = Field(None, max_length=1000, description="文档描述")
@@ -82,7 +82,7 @@ class FileUploadRequest(BaseModel):
 
 class FileUploadResponse(BaseModel):
     """文件上传响应模型"""
-    document_id: uuid.UUID
+    document_path: str
     original_filename: str
     stored_filename: str
     file_size: int
@@ -93,12 +93,12 @@ class FileUploadResponse(BaseModel):
 # 批量操作
 class BatchConversionRequest(BaseModel):
     """批量转换请求模型"""
-    document_ids: list[uuid.UUID] = Field(..., min_items=1, description="文档ID列表")
+    document_paths: list[str] = Field(..., min_items=1, description="文档路径列表")
     target_format: str = Field("pdf", description="目标格式")
 
 
 class BatchConversionResponse(BaseModel):
     """批量转换响应模型"""
     task_count: int
-    queued_documents: list[uuid.UUID]
-    failed_documents: list[uuid.UUID]
+    queued_documents: list[str]
+    failed_documents: list[str]

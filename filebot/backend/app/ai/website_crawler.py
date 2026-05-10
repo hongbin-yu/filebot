@@ -5,7 +5,6 @@ Crawl website content and import as documents
 
 import logging
 import time
-import uuid
 from typing import List, Dict, Any, Optional, Set
 from urllib.parse import urljoin, urlparse
 import requests
@@ -24,7 +23,7 @@ from pathlib import Path
 # Scrapling爬虫导入
 from .scrapling_crawler import ScraplingCrawler
 
-def create_document(db: Session, document_data: DocumentCreate, folder_id: str, html_content: str = None) -> Document:
+def create_document(db: Session, document_data: DocumentCreate, folder_path: str, html_content: str = None) -> Document:
     """
     创建文档记录并保存文件内容
     
@@ -37,13 +36,11 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
     
     try:
         # 生成唯一的文件ID
-        file_id = str(uuid.uuid4())
-        
         # 获取文件夹信息
-        folder = db.query(Folder).filter(Folder.id == folder_id).first()
+        folder = db.query(Folder).filter(Folder.path == folder_path).first()
         if not folder:
-            logger.error(f"文件夹不存在: {folder_id}")
-            raise ValueError(f"文件夹 {folder_id} 不存在")
+            logger.error(f"文件夹不存在: {folder_path}")
+            raise ValueError(f"文件夹 {folder_path} 不存在")
         
         # 获取应用信息（用于纯path架构）
         from ..models.app import App
@@ -70,6 +67,10 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
             if clean_folder and not clean_folder.startswith('/'):
                 clean_folder = '/' + clean_folder
         expected_url_path = f"/{app_slug}{clean_folder}/{safe_filename}"
+        
+        # 移除 .html 后缀：URL 路径应使用干净路径（不含扩展名）
+        # 磁盘文件（storage_path/stored_filename）仍保留 .html
+        expected_url_path = re.sub(r'\.html?$', '', expected_url_path)
         
         existing_by_path = db.query(Document).filter(
             Document.path == expected_url_path
@@ -125,8 +126,8 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
         storage_path.parent.mkdir(parents=True, exist_ok=True)
         
         # 旧路径兼容（向后兼容）
-        # 格式: data/documents/{folder_id}/
-        docs_dir = Path("data/documents") / folder_id
+        # 格式: data/documents/{folder_path}/
+        docs_dir = Path("data/documents") / folder_path
         docs_dir.mkdir(parents=True, exist_ok=True)
         
         # 构建文件路径 - 使用safe_filename（纯path架构）
@@ -139,7 +140,7 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
             (Document.stored_filename == final_filename)
         ).first()
         if existing_doc:
-            logger.warning(f"文档已存在，跳过创建: storage_path='{storage_path}', 现有ID={existing_doc.id}")
+            logger.warning(f"文档已存在，跳过创建: storage_path='{storage_path}', 现有ID={existing_doc.path}")
             return existing_doc
         
         # 同时创建旧路径兼容文件（可选，用于向后兼容）
@@ -309,18 +310,16 @@ def create_document(db: Session, document_data: DocumentCreate, folder_id: str, 
         # 创建数据库记录（使用纯path架构）
         logger.debug(f"file_type: {document_data.file_type}, type: {type(document_data.file_type)}")
         document = Document(
-            id=file_id,
             title=document_data.title,
             description=document_data.description,
             original_filename=document_data.original_filename,
             stored_filename=safe_filename,  # 只存储安全文件名，不包含路径
             storage_path=str(storage_path.relative_to(data_root)),  # 相对存储路径
             path=url_path,  # 公共URL路径
-            parent_folder_path=folder_path,  # 父文件夹路径
+            folder_path=folder_path,  # 父文件夹路径
             file_type=FileType(document_data.file_type.value),
             file_size=actual_size,
             mime_type=document_data.mime_type,
-            folder_id=folder_id,
             document_metadata=document_data.document_metadata or {},
             status=DocumentStatus.ACTIVE,
             uploaded_by=str(document_data.uploaded_by),
@@ -416,27 +415,27 @@ def to_slug(text: str) -> str:
     return text
 
 
-def get_folder_for_url(db: Session, root_folder_id: str, url: str, username: str = "system") -> str:
+def get_folder_for_url(db: Session, root_folder_path: str, url: str, username: str = "system") -> str:
     """
-    根据URL路径创建或获取对应的嵌套文件夹结构
+    根据URL路径创建或获取对应的嵌套文件夹结构（纯path架构）
     
     Args:
         db: 数据库会话
-        root_folder_id: 根文件夹ID（用户选择的文件夹）
+        root_folder_path: 根文件夹路径
         url: 页面URL
         username: 创建者用户名（默认为"system"）
     
     Returns:
-        str: 最终的子文件夹ID
+        str: 最终的子文件夹路径
     """
     logger = logging.getLogger(__name__)
     
     try:
         # 获取根文件夹信息
-        root_folder = db.query(Folder).filter(Folder.id == root_folder_id).first()
+        root_folder = db.query(Folder).filter(Folder.path == root_folder_path).first()
         if not root_folder:
-            logger.error(f"根文件夹不存在: {root_folder_id}")
-            return root_folder_id  # 返回原始文件夹ID
+            logger.error(f"根文件夹不存在: {root_folder_path}")
+            return root_folder_path
         
         # 解析URL
         from urllib.parse import urlparse
@@ -445,27 +444,19 @@ def get_folder_for_url(db: Session, root_folder_id: str, url: str, username: str
         
         # 去除文件名部分（最后一个斜杠之后的内容）
         if '/' in path:
-            # 例如：/path/to/page.html -> /path/to/
-            # 或者：/path/to/ -> /path/to/
             if '.' in path.split('/')[-1]:
-                # 有文件扩展名，去掉文件名
                 path = '/'.join(path.split('/')[:-1]) + '/'
             elif not path.endswith('/'):
                 path = path + '/'
         
-        # 清理路径：去掉首尾斜杠，分割路径段
         if path == '/':
-            # 根路径，直接返回根文件夹
-            return root_folder_id
+            return root_folder_path
         
-        # 移除首尾斜杠，分割路径段
         path_segments = [segment for segment in path.strip('/').split('/') if segment]
         
         if not path_segments:
-            # 空路径，返回根文件夹
-            return root_folder_id
+            return root_folder_path
         
-        # 限制最大层数为10层，防止嵌套过深
         MAX_DEPTH = 10
         if len(path_segments) > MAX_DEPTH:
             logger.warning(f"URL路径段({len(path_segments)})超过最大限制({MAX_DEPTH})，截断后: {path_segments[:MAX_DEPTH]}")
@@ -474,46 +465,35 @@ def get_folder_for_url(db: Session, root_folder_id: str, url: str, username: str
         logger.info(f"URL路径解析: {url} -> 路径段: {path_segments}")
         
         # 从根文件夹开始，逐级创建或获取子文件夹
-        current_folder_id = root_folder_id
         current_folder = root_folder
         
         for i, segment in enumerate(path_segments):
-            # 清理文件夹名称：使用slug格式
-            folder_name = segment
-            
-            # 对于路径段，尽量保持可读性，但使用slug格式
-            # 例如："about-us" 保持为 "about-us"，但 "About Us!" 变为 "about-us"
-            folder_slug = to_slug(folder_name)
+            folder_slug = to_slug(segment)
             if not folder_slug:
                 folder_slug = f"folder-{i+1}"
             
-            # 查找是否存在同名的子文件夹
+            expected_path = f"{current_folder.path}/{folder_slug}" if current_folder.path else f"/{folder_slug}"
+            
+            # 查找是否存在同路径的子文件夹
             subfolder = db.query(Folder).filter(
-                Folder.name == folder_slug,
-                Folder.app_id == current_folder.app_id,
-                Folder.parent_folder_id == current_folder_id
+                Folder.path == expected_path
             ).first()
             
             if subfolder:
-                # 文件夹已存在，继续下一级
-                current_folder_id = subfolder.id
                 current_folder = subfolder
                 continue
             
-            # 创建新文件夹
             logger.info(f"创建子文件夹: {folder_slug} (原始路径段: {segment})，父文件夹: {current_folder.name}")
             
-            # 生成文件夹描述
             full_path = '/' + '/'.join(path_segments[:i+1])
             description = f"Auto-created folder for crawled website path: {full_path}"
             
-            # 创建文件夹记录
             new_folder = Folder(
-                id=str(uuid.uuid4()),
                 app_id=current_folder.app_id,
-                parent_folder_id=current_folder_id,
+                parent_folder_path=current_folder.path,
                 name=folder_slug,
-                path=f"{current_folder.path}/{folder_slug}" if current_folder.path else f"/{folder_slug}",
+                path=expected_path,
+                title=folder_slug,
                 description=description,
                 created_by=username
             )
@@ -522,17 +502,14 @@ def get_folder_for_url(db: Session, root_folder_id: str, url: str, username: str
             db.commit()
             db.refresh(new_folder)
             
-            # 更新当前文件夹引用
-            current_folder_id = new_folder.id
             current_folder = new_folder
         
-        logger.info(f"URL {url} 对应的文件夹ID: {current_folder_id}")
-        return current_folder_id
+        logger.info(f"URL {url} 对应的文件夹路径: {current_folder.path}")
+        return current_folder.path
         
     except Exception as e:
         logger.error(f"获取URL对应文件夹失败: {url}, 错误: {str(e)}")
-        # 出错时返回根文件夹ID
-        return root_folder_id
+        return root_folder_path
 
 
 logger = logging.getLogger(__name__)
@@ -602,7 +579,7 @@ class WebsiteCrawler:
         self,
         url: str,
         depth: int,
-        folder_id: str,
+        folder_path: str,
         include_images: bool = True,
         follow_external_links: bool = False,
         respect_robots_txt: bool = True
@@ -613,7 +590,7 @@ class WebsiteCrawler:
         Args:
             url: 起始URL
             depth: 爬取深度
-            folder_id: 目标文件夹ID
+            folder_path: 目标文件夹路径
             include_images: 是否包含图像
             follow_external_links: 是否跟踪外部链接
             respect_robots_txt: 是否遵守robots.txt
@@ -622,9 +599,9 @@ class WebsiteCrawler:
             爬取结果统计
         """
         # 验证文件夹
-        folder = self.db.query(Folder).filter(Folder.id == folder_id).first()
+        folder = self.db.query(Folder).filter(Folder.path == folder_path).first()
         if not folder:
-            raise ValueError(f"文件夹 {folder_id} 不存在")
+            raise ValueError(f"文件夹 {folder_path} 不存在")
         
         # 解析基础URL
         parsed_url = urlparse(url)
@@ -670,7 +647,6 @@ class WebsiteCrawler:
                 base_url=base_url,
                 current_depth=0,
                 max_depth=depth,
-                folder_id=folder_id,
                 include_images=include_images,
                 follow_external_links=follow_external_links,
                 stats=stats
@@ -709,7 +685,7 @@ class WebsiteCrawler:
         base_url: str,
         current_depth: int,
         max_depth: int,
-        folder_id: str,
+        folder_path: str,
         include_images: bool,
         follow_external_links: bool,
         stats: Dict[str, Any]
@@ -799,7 +775,7 @@ class WebsiteCrawler:
                     'url': url,
                     'title': existing_doc.title if existing_doc else 'Unknown',
                     'status': 'skipped_not_modified',
-                    'document_id': existing_doc.id if existing_doc else None
+                    'document_id': existing_doc.path if existing_doc else None
                 })
                 return
             
@@ -822,7 +798,7 @@ class WebsiteCrawler:
                             'url': url,
                             'title': existing_doc.title if existing_doc else 'Unknown',
                             'status': 'skipped_not_modified',
-                            'document_id': existing_doc.id if existing_doc else None
+                            'document_id': existing_doc.path if existing_doc else None
                         })
                         return
                 except Exception as e:
@@ -960,11 +936,11 @@ class WebsiteCrawler:
                 original_filename = f"{original_filename or 'index'}.html"
             
             # 根据URL路径获取或创建对应的文件夹
-            # 使用根文件夹ID（用户选择的文件夹）作为起点
+            # 使用根文件夹路径（用户选择的文件夹）作为起点
             # 用户名使用"system"，因为爬虫是系统任务
             folder_id_for_url = get_folder_for_url(
                 db=self.db,
-                root_folder_id=folder_id,
+                root_folder_path=folder_path,
                 url=url,
                 username="system"
             )
@@ -977,8 +953,8 @@ class WebsiteCrawler:
                 file_size=len(response.content),
                 file_type=FileType.HTML,
                 mime_type="text/html",
-                folder_id=folder_id_for_url,
-                uploaded_by=uuid.UUID("4dad6fa1-d521-417f-8877-efe95fcf1f04"),  # 管理员用户ID
+                folder_path=folder_id_for_url,
+                uploaded_by="4dad6fa1-d521-417f-8877-efe95fcf1f04",  # 管理员用户ID
                 original_url=url,
                 document_metadata={
                     'crawled_at': time.time(),
@@ -1022,10 +998,10 @@ class WebsiteCrawler:
                 document = create_document(
                     db=self.db,
                     document_data=document_data,
-                    folder_id=folder_id_for_url,
+                    folder_path=folder_id_for_url,
                     html_content=html_content
                 )
-                logger.info(f"文档保存成功: ID={document.id}, 标题='{title}'")
+                logger.info(f"文档保存成功: ID={document.path}, 标题='{title}'")
                 
                 # 记录成功
                 stats['successful_pages'] += 1
@@ -1033,7 +1009,7 @@ class WebsiteCrawler:
                     'url': url,
                     'title': title,
                     'status': 'success',
-                    'document_id': document.id
+                    'document_id': document.path
                 })
                 
                 logger.info(f"成功爬取并保存页面: {title}")
@@ -1059,7 +1035,7 @@ class WebsiteCrawler:
             
             # 提取图像（如果启用）
             if include_images and current_depth < max_depth:
-                self._extract_images(soup, url, folder_id, base_url, stats)
+                self._extract_images(soup, url, folder_path, base_url, stats)
             
             # 提取内部链接（递归爬取）
             if current_depth < max_depth:
@@ -1073,7 +1049,6 @@ class WebsiteCrawler:
                                 base_url=base_url,
                                 current_depth=current_depth + 1,
                                 max_depth=max_depth,
-                                folder_id=folder_id,
                                 include_images=include_images,
                                 follow_external_links=follow_external_links,
                                 stats=stats
@@ -1098,7 +1073,7 @@ class WebsiteCrawler:
                 'error': str(e)
             })
     
-    def _extract_images(self, soup: BeautifulSoup, page_url: str, folder_id: str, base_url: str, stats: Dict[str, Any]):
+    def _extract_images(self, soup: BeautifulSoup, page_url: str, folder_path: str, base_url: str, stats: Dict[str, Any]):
         """提取并下载页面中的图像"""
         img_tags = soup.find_all('img')
         
@@ -1165,7 +1140,7 @@ class WebsiteCrawler:
                 # 使用与HTML页面相同的路径逻辑
                 img_folder_id = get_folder_for_url(
                     db=self.db,
-                    root_folder_id=folder_id,
+                    root_folder_path=folder_path,
                     url=img_url,
                     username="system"
                 )
@@ -1189,8 +1164,8 @@ class WebsiteCrawler:
                     file_size=len(img_response.content),
                     file_type=get_filetype_for_filename(img_filename),
                     mime_type=content_type,
-                    folder_id=img_folder_id,
-                    uploaded_by=uuid.UUID("4dad6fa1-d521-417f-8877-efe95fcf1f04"),  # 管理员用户ID
+                    folder_path=img_folder_id,
+                    uploaded_by="4dad6fa1-d521-417f-8877-efe95fcf1f04",  # 管理员用户ID
                     original_url=img_url,
                     document_metadata={
                         'crawled_at': time.time(),
@@ -1211,18 +1186,16 @@ class WebsiteCrawler:
                     import tempfile
                     from pathlib import Path
                     
-                    # 获取文件夹信息
-                    folder = self.db.query(Folder).filter(Folder.id == img_folder_id).first()
-                    if not folder:
-                        logger.error(f"图片文件夹不存在: {img_folder_id}")
-                        continue
+                    # 生成存储时的安全路径（将文件夹路径中的/替换为_）
+                    safe_dir_name = img_folder_id.strip('/').replace('/', '_') or 'images'
                     
-                    # 创建基于文件夹ID的图片存储目录
-                    img_docs_dir = Path("data/documents") / img_folder_id
+                    # 创建基于安全目录名的图片存储目录
+                    img_docs_dir = Path("data/documents") / safe_dir_name
                     img_docs_dir.mkdir(parents=True, exist_ok=True)
                     
                     # 构建图片文件路径
                     img_file_path = img_docs_dir / img_filename
+                    img_storage_path = str(Path(safe_dir_name) / img_filename)
                     
                     # 保存图片文件
                     with open(img_file_path, 'wb') as f:
@@ -1230,36 +1203,30 @@ class WebsiteCrawler:
                     
                     # 创建数据库记录（使用现有的create_document函数，但需要修改以支持二进制内容）
                     # 暂时直接创建文档记录
-                    img_file_id = str(uuid.uuid4())
-                    
-                    # 计算文件哈希
-                    import hashlib
-                    img_file_hash = hashlib.md5(img_response.content).hexdigest()
-                    
-                    # 检查是否已存在相同存储文件名的图片文档（防止重复）
-                    img_stored_filename = f"{img_folder_id}/{img_filename}"
-                    existing_img_doc = self.db.query(Document).filter(Document.stored_filename == img_stored_filename).first()
+                    # 检查是否已存在相同路径的图片文档（防止重复）
+                    img_doc_path = f"{img_folder_id}/{img_filename}"
+                    existing_img_doc = self.db.query(Document).filter(Document.path == img_doc_path).first()
                     if existing_img_doc:
-                        logger.warning(f"图片文档已存在，跳过创建: stored_filename='{img_stored_filename}', 现有ID={existing_img_doc.id}")
+                        logger.warning(f"图片文档已存在，跳过创建: path='{img_doc_path}'")
                         # 统计跳过的图片
                         stats['skipped_images'] = stats.get('skipped_images', 0) + 1
                         continue
                     
-                    # 创建图片文档记录
+                    # 创建图片文档记录（纯path架构，无id/folder_id）
                     img_document = Document(
-                        id=img_file_id,
+                        path=img_doc_path,
                         title=img_filename[:100],
                         description=img_description[:500],
                         original_filename=img_filename,
-                        stored_filename=img_stored_filename,
+                        stored_filename=img_filename,
+                        storage_path=img_storage_path,
                         file_type=get_filetype_for_filename(img_filename),
                         file_size=len(img_response.content),
                         mime_type=content_type,
-                        folder_id=img_folder_id,
+                        folder_path=img_folder_id,
                         document_metadata=img_document_data.document_metadata or {},
                         status=DocumentStatus.ACTIVE,
                         uploaded_by=str(img_document_data.uploaded_by),
-                        parent_folder_path=folder.path if folder and hasattr(folder, 'path') else None,
                         conversion_status=ConversionStatus.PENDING
                     )
                     
@@ -1320,7 +1287,7 @@ def crawl_website_task(
     task_id: str,
     url: str,
     depth: int,
-    folder_id: str,
+    folder_path: str,
     include_images: bool,
     follow_external_links: bool,
     respect_robots_txt: bool,
@@ -1337,7 +1304,7 @@ def crawl_website_task(
         stats = crawler.crawl(
             url=url,
             depth=depth,
-            folder_id=folder_id,
+            folder_path=folder_path,
             include_images=include_images,
             follow_external_links=follow_external_links,
             respect_robots_txt=respect_robots_txt

@@ -8,15 +8,38 @@ venv/
 dist/
 build/
 
+# Large JSON backups
+**/*_backup_*.json
+
+# Separate projects
+/filebot-image/
+
+# Python translate scripts
+**/translate_*.py
+
+# Vite build cache
+**/.vite/
+
+# Zone Identifier (Windows sync)
+*:Zone.Identifier
+*:Zone.Identifier:*
+
 # Data & Uploads
 **/data/
 *.db
 *.db-shm
 *.db-wal
 *.db.backup*
+*.db.bak*
 *.sqlite3
 *.sqlite3-shm
 *.sqlite3-wal
+
+# Backups backup script files
+app/routes/pages.py.bak*
+app/routes/files.py.from-backup*
+app/routes/pages.py.from-backup*
+app/routes/auth.py
 
 # Logs
 *.log

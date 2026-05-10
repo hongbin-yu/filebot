@@ -1,12 +1,13 @@
 """
-组件管理系统路由
-支持WET-BOEW组件模板注册、管理、版本控制和AI集成
+Component management routes
+Supports WET-BOEW component registration, management, versioning, and AI integration
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 import sqlite3
 import json
 import uuid
+import os
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
@@ -23,8 +24,8 @@ try:
         ComponentCategory, ComponentStatus, AIMode
     )
 except ImportError:
-    print("⚠️ 警告: 无法导入组件模型，使用简化模型")
-    # 如果导入失败，使用简化模型（仅用于开发）
+    print("⚠️ Warning: Component model import failed, using simplified model")
+    # If导入失败，使用简化模型（仅用于开发）
     from pydantic import BaseModel
     from enum import Enum
     
@@ -95,48 +96,53 @@ except ImportError:
 
 router = APIRouter(prefix="/api/v1/components", tags=["components"])
 
+WEBBOT_DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
+
 def get_db_connection():
-    """获取数据库连接"""
+    """Get WebBot database connection"""
     try:
-        conn = sqlite3.connect("/home/hongb/.openclaw/workspace/filebot/backend/filebot.db")
+        conn = sqlite3.connect(WEBBOT_DB_PATH)
         conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:
-        raise HTTPException(status_code=500, detail=f"数据库连接失败: {e}")
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {e}")
 
 def generate_component_id(name: str) -> str:
-    """根据名称生成组件ID"""
+    """Generate component ID from name"""
     import re
     # 移除特殊字符，只保留字母数字和连字符
     cleaned = re.sub(r'[^a-zA-Z0-9\-]', '', name.replace(' ', '-'))
-    # 转换为小写
+    # Transform为小写
     component_id = cleaned.lower()
-    # 如果为空，生成随机ID
+    # If为空，Generate随机ID
     if not component_id:
         component_id = f"comp-{uuid.uuid4().hex[:8]}"
     return component_id
 
-# ============ 组件模板API ============
+# ============ Component templateAPI ============
 
 @router.post("/templates", response_model=ComponentTemplateResponse)
 def create_component_template(
     template: ComponentTemplateCreate,
-    user_id: str = Query("system", description="用户ID")
+    user_id: str = Query("system", description="User ID")
 ):
     """
-    创建新的组件模板
+    Create new component template
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 生成组件ID
+        # GenerateComponent ID
         component_id = generate_component_id(template.name)
         
-        # 检查名称是否已存在
+        # 检查Name已存在
         cursor.execute("SELECT id FROM component_templates WHERE name = ?", (template.name,))
         if cursor.fetchone():
-            raise HTTPException(status_code=400, detail=f"组件名称 '{template.name}' 已存在")
+            raise HTTPException(status_code=400, detail=f"组件Name '{template.name}' 已存在")
         
         # 准备数据
         now = datetime.now().isoformat()
@@ -169,27 +175,27 @@ def create_component_template(
             tags_json,
             template.author,
             template.version,
-            "draft",  # 初始状态
+            "draft",  # Initial state
             user_id,
             now,
             now
         ))
         
-        # 获取创建的模板
+        # Get created template
         cursor.execute("SELECT * FROM component_templates WHERE id = ?", (component_id,))
         row = cursor.fetchone()
         
         if not row:
-            raise HTTPException(status_code=500, detail="组件创建失败")
+            raise HTTPException(status_code=500, detail="Component creation failed")
         
         conn.commit()
         
-        # 转换为响应模型
+        # TransformFor response model
         return row_to_template_response(row)
         
     except sqlite3.Error as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"数据库错误: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
     finally:
         conn.close()
 
@@ -202,7 +208,7 @@ def list_component_templates(
     offset: int = Query(0, ge=0)
 ):
     """
-    列出组件模板，支持筛选
+    List component templates, supports filtering
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -237,7 +243,7 @@ def list_component_templates(
 @router.get("/templates/{component_id}", response_model=ComponentTemplateResponse)
 def get_component_template(component_id: str):
     """
-    获取特定组件模板
+    Get a specific component template
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -258,21 +264,21 @@ def get_component_template(component_id: str):
 def update_component_template(
     component_id: str,
     template_update: ComponentTemplateUpdate,
-    user_id: str = Query("system", description="用户ID")
+    user_id: str = Query("system", description="User ID")
 ):
     """
-    更新组件模板
+    Update component template
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 检查组件是否存在
+        # Check if component exists
         cursor.execute("SELECT id FROM component_templates WHERE id = ?", (component_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail=f"组件 '{component_id}' 不存在")
         
-        # 构建更新语句
+        # Build update statement
         update_fields = []
         params = []
         
@@ -328,23 +334,23 @@ def update_component_template(
             update_fields.append("version = ?")
             params.append(template_update.version)
         
-        # 如果没有更新字段
+        # IfNo update fields
         if not update_fields:
             cursor.execute("SELECT * FROM component_templates WHERE id = ?", (component_id,))
             row = cursor.fetchone()
             return row_to_template_response(row)
         
-        # 添加更新时间和更新者
+        # Add updated time和更New者
         update_fields.append("updated_at = ?")
         params.append(datetime.now().isoformat())
         
-        # 执行更新
+        # Execute update
         update_query = f"UPDATE component_templates SET {', '.join(update_fields)} WHERE id = ?"
         params.append(component_id)
         
         cursor.execute(update_query, params)
         
-        # 获取更新后的数据
+        # Get updated data
         cursor.execute("SELECT * FROM component_templates WHERE id = ?", (component_id,))
         row = cursor.fetchone()
         
@@ -354,32 +360,32 @@ def update_component_template(
         
     except sqlite3.Error as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"数据库错误: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
     finally:
         conn.close()
 
 @router.delete("/templates/{component_id}")
 def delete_component_template(
     component_id: str,
-    permanent: bool = Query(False, description="是否永久删除")
+    permanent: bool = Query(False, description="Permanently delete?")
 ):
     """
-    删除组件模板
+    Delete component template
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 检查组件是否存在
+        # Check if component exists
         cursor.execute("SELECT id FROM component_templates WHERE id = ?", (component_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail=f"组件 '{component_id}' 不存在")
         
         if permanent:
-            # 永久删除
+            # Permanently delete
             cursor.execute("DELETE FROM component_templates WHERE id = ?", (component_id,))
         else:
-            # 软删除：标记为已弃用
+            # Soft delete: mark as deprecated
             cursor.execute("""
                 UPDATE component_templates 
                 SET status = 'deprecated', updated_at = ?
@@ -388,37 +394,37 @@ def delete_component_template(
         
         conn.commit()
         
-        return {"success": True, "message": f"组件 '{component_id}' 已删除"}
+        return {"success": True, "message": f"组件 '{component_id}' 已Delete"}
         
     except sqlite3.Error as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"数据库错误: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
     finally:
         conn.close()
 
-# ============ 版本控制API (简单历史记录) ============
+# ============ Version control API (simple history) ============
 
 @router.post("/templates/{component_id}/versions", response_model=ComponentVersionResponse)
 def create_component_version(
     component_id: str,
-    change_description: str = Query(..., description="变更描述"),
-    user_id: str = Query("system", description="用户ID")
+    change_description: str = Query(..., description="Change description"),
+    user_id: str = Query("system", description="User ID")
 ):
     """
-    创建组件新版本
+    Create new component version
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 检查组件是否存在
+        # Check if component exists
         cursor.execute("SELECT * FROM component_templates WHERE id = ?", (component_id,))
         row = cursor.fetchone()
         
         if not row:
             raise HTTPException(status_code=404, detail=f"组件 '{component_id}' 不存在")
         
-        # 获取当前最高版本号
+        # 获取当前最高Version号
         cursor.execute("""
             SELECT MAX(version_number) as max_version 
             FROM component_versions 
@@ -427,7 +433,7 @@ def create_component_version(
         result = cursor.fetchone()
         next_version = (result['max_version'] or 0) + 1
         
-        # 创建版本内容（完整组件配置）
+        # Create version content（完整组件Configuration）
         version_content = {
             "component_id": component_id,
             "template_data": dict(row),
@@ -436,7 +442,7 @@ def create_component_version(
             "change_description": change_description
         }
         
-        # 插入版本记录
+        # Insert version record
         cursor.execute("""
             INSERT INTO component_versions 
             (component_id, version_number, content_json, change_description, created_by)
@@ -451,14 +457,14 @@ def create_component_version(
         
         version_id = cursor.lastrowid
         
-        # 更新当前版本指针
+        # Update current version pointer
         cursor.execute("""
             INSERT OR REPLACE INTO component_current_versions 
             (component_id, current_version_id)
             VALUES (?, ?)
         """, (component_id, version_id))
         
-        # 获取创建的版本
+        # Get created version
         cursor.execute("SELECT * FROM component_versions WHERE id = ?", (version_id,))
         version_row = cursor.fetchone()
         
@@ -468,7 +474,7 @@ def create_component_version(
         
     except sqlite3.Error as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"数据库错误: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
     finally:
         conn.close()
 
@@ -479,13 +485,13 @@ def list_component_versions(
     offset: int = Query(0, ge=0)
 ):
     """
-    列出组件版本历史
+    List component version history
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 检查组件是否存在
+        # Check if component exists
         cursor.execute("SELECT id FROM component_templates WHERE id = ?", (component_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail=f"组件 '{component_id}' 不存在")
@@ -507,7 +513,7 @@ def list_component_versions(
 @router.get("/templates/{component_id}/versions/{version_id}", response_model=ComponentVersionResponse)
 def get_component_version(component_id: str, version_id: int):
     """
-    获取特定版本
+    Get a specific version
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -521,7 +527,7 @@ def get_component_version(component_id: str, version_id: int):
         row = cursor.fetchone()
         
         if not row:
-            raise HTTPException(status_code=404, detail="版本不存在")
+            raise HTTPException(status_code=404, detail="Version does not exist")
         
         return row_to_version_response(row)
         
@@ -532,17 +538,17 @@ def get_component_version(component_id: str, version_id: int):
 def revert_component_version(
     component_id: str,
     version_id: int,
-    reason: str = Query(..., description="回滚原因"),
-    user_id: str = Query("system", description="用户ID")
+    reason: str = Query(..., description="Revert reason"),
+    user_id: str = Query("system", description="User ID")
 ):
     """
-    回滚到指定版本
+    Revert to a specific version
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 获取目标版本
+        # 获取目标Version
         cursor.execute("""
             SELECT * FROM component_versions 
             WHERE component_id = ? AND id = ?
@@ -551,13 +557,13 @@ def revert_component_version(
         version_row = cursor.fetchone()
         
         if not version_row:
-            raise HTTPException(status_code=404, detail="版本不存在")
+            raise HTTPException(status_code=404, detail="Version does not exist")
         
-        # 解析版本内容
+        # Parse version content
         version_content = json.loads(version_row['content_json'])
         template_data = version_content.get('template_data', {})
         
-        # 创建新版本（回滚版本）
+        # 创建NewVersion（回滚Version）
         cursor.execute("""
             SELECT MAX(version_number) as max_version 
             FROM component_versions 
@@ -566,7 +572,7 @@ def revert_component_version(
         result = cursor.fetchone()
         next_version = (result['max_version'] or 0) + 1
         
-        # 创建回滚版本内容
+        # Create revert version content
         revert_content = {
             "component_id": component_id,
             "template_data": template_data,
@@ -574,10 +580,10 @@ def revert_component_version(
             "reason": reason,
             "created_at": datetime.now().isoformat(),
             "created_by": user_id,
-            "change_description": f"回滚到版本 {version_id}: {reason}"
+            "change_description": f"回滚到Version {version_id}: {reason}"
         }
         
-        # 插入回滚版本
+        # Insert revert version
         cursor.execute("""
             INSERT INTO component_versions 
             (component_id, version_number, content_json, change_description, created_by)
@@ -586,13 +592,13 @@ def revert_component_version(
             component_id,
             next_version,
             json.dumps(revert_content, ensure_ascii=False),
-            f"回滚到版本 {version_id}: {reason}",
+            f"回滚到Version {version_id}: {reason}",
             user_id
         ))
         
         revert_version_id = cursor.lastrowid
         
-        # 更新当前版本指针
+        # Update current version pointer
         cursor.execute("""
             INSERT OR REPLACE INTO component_current_versions 
             (component_id, current_version_id)
@@ -603,20 +609,20 @@ def revert_component_version(
         
         return {
             "success": True,
-            "message": f"已回滚到版本 {version_id}",
+            "message": f"已回滚到Version {version_id}",
             "new_version_id": revert_version_id
         }
         
     except sqlite3.Error as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"数据库错误: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
     finally:
         conn.close()
 
-# ============ 辅助函数 ============
+# ============ Helper functions ============
 
 def row_to_template_response(row) -> Dict[str, Any]:
-    """将数据库行转换为模板响应"""
+    """Convert database row to template response"""
     return {
         "id": row['id'],
         "name": row['name'],
@@ -642,7 +648,7 @@ def row_to_template_response(row) -> Dict[str, Any]:
     }
 
 def row_to_version_response(row) -> Dict[str, Any]:
-    """将数据库行转换为版本响应"""
+    """Convert database row to version response"""
     content = json.loads(row['content_json']) if row['content_json'] else {}
     
     return {
@@ -655,18 +661,18 @@ def row_to_version_response(row) -> Dict[str, Any]:
         "created_at": datetime.fromisoformat(row['created_at']) if row['created_at'] else None
     }
 
-# ============ 健康检查端点 ============
+# ============ Health check endpoint ============
 
 @router.get("/health")
 def components_health():
     """
-    组件系统健康检查
+    Component system health check
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 检查所有表是否存在
+        # 检查所有表存在
         tables = ["component_templates", "component_versions", "component_instances", 
                   "ai_configurations", "component_current_versions"]
         
@@ -679,17 +685,17 @@ def components_health():
         if missing_tables:
             return {
                 "status": "degraded",
-                "message": f"缺少表: {', '.join(missing_tables)}",
+                "message": f"Missing table: {', '.join(missing_tables)}",
                 "tables": {table: "missing" for table in missing_tables}
             }
         
-        # 检查示例数据
+        # 检查Example数据
         cursor.execute("SELECT COUNT(*) as count FROM component_templates")
         template_count = cursor.fetchone()['count']
         
         return {
             "status": "healthy",
-            "message": f"组件系统正常，现有 {template_count} 个组件模板",
+            "message": f"Component system OK，现有 {template_count} 个Component template",
             "tables": {table: "ok" for table in tables},
             "template_count": template_count
         }
@@ -697,16 +703,16 @@ def components_health():
     finally:
         conn.close()
 
-# ============ 初始化端点 ============
+# ============ Initialize endpoint ============
 
 @router.post("/initialize")
 def initialize_components_system(
-    create_samples: bool = Query(True, description="是否创建示例组件")
+    create_samples: bool = Query(True, description="Create sample components?")
 ):
     """
-    初始化组件系统（仅用于开发/演示）
+    Initialize component system (development/demo only)
     """
-    # 这里可以添加更多初始化逻辑
+    # 这里可以Add更多初始化逻辑
     # 目前表已通过迁移脚本创建
     
     response = {
@@ -717,13 +723,13 @@ def initialize_components_system(
     }
     
     if create_samples:
-        # 示例数据已在迁移脚本中创建
+        # Example数据已在迁移脚本中创建
         response["sample_components"] = [
             {
                 "id": "wet-button-primary",
                 "name": "主要按钮 (WET-BOEW)",
                 "category": "wet_boew",
-                "description": "加拿大政府标准主要按钮"
+                "description": "加拿大政府Standard主要按钮"
             },
             {
                 "id": "wet-input-text",
@@ -736,17 +742,17 @@ def initialize_components_system(
     return response
 
 
-# ============ 页面渲染端点 ============
+# ============ page渲染端点 ============
 
-# 页面渲染请求模型
+# page渲染请求模型
 class PageRenderRequest(BaseModel):
-    """页面渲染请求数据模型"""
+    """Page rendering request data model"""
     component_instances: List[Dict[str, Any]]
-    page_title: str = "WebBot 生成的页面"
+    page_title: str = "WebBot Generate的page"
     include_wet_boew: bool = True
     include_accessibility: bool = True
-    include_admin_resources: bool = False  # 是否包含admin添加的CSS/JS资源
-    include_header_footer: bool = True  # 是否包含WET-BOEW标准的header和footer
+    include_admin_resources: bool = False  # Include adminAdd的CSS/JS资源
+    include_header_footer: bool = True  # 包含WET-BOEWStandard的header和footer
 
 
 @router.post("/render-page")
@@ -754,7 +760,7 @@ async def render_page_from_components(
     render_request: PageRenderRequest
 ):
     """
-    将组件实例列表渲染为完整HTML页面
+    Render component instances as a complete HTML page
     """
     try:
         component_instances = render_request.component_instances
@@ -763,7 +769,7 @@ async def render_page_from_components(
         include_accessibility = render_request.include_accessibility
         include_admin_resources = render_request.include_admin_resources
         include_header_footer = render_request.include_header_footer
-        # 1. 收集所有需要的组件模板
+        # 1. 收集所有需要的Component template
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -773,11 +779,11 @@ async def render_page_from_components(
         if not component_ids:
             return {
                 "success": False,
-                "error": "没有组件实例需要渲染",
+                "error": "No component instances to render",
                 "html": ""
             }
         
-        # 查询所有相关组件模板
+        # 查询所有相关Component template
         placeholders = ','.join(['?'] * len(component_ids))
         cursor.execute(f"""
             SELECT id, name, html_template, css_template, js_template, 
@@ -788,7 +794,7 @@ async def render_page_from_components(
         
         templates = {row['id']: dict(row) for row in cursor.fetchall()}
         
-        # 2. 渲染每个组件
+        # 2. Render each component
         for instance in component_instances:
             template_id = instance.get("template_id")
             if not template_id or template_id not in templates:
@@ -802,19 +808,19 @@ async def render_page_from_components(
             if not html_template:
                 continue
             
-            # 简化版Handlebars模板渲染
+            # Simplified Handlebars template rendering
             rendered_html = html_template
             
-            # 替换变量 {{variable}}
+            # Replace variables {{variable}}
             for key, value in config.items():
                 if value is None:
                     continue
-                # 替换 {{key}}
+                # Replace {{key}}
                 rendered_html = rendered_html.replace(f"{{{{{key}}}}}", str(value))
-                # 替换 {{ key }} (带空格的版本)
+                # Replace {{ key }} (带空格的Version)
                 rendered_html = rendered_html.replace(f"{{{{ {key} }}}}", str(value))
             
-            # 处理条件语句 {{#if condition}}...{{/if}}
+            # Handle conditional statements {{#if condition}}...{{/if}}
             import re
             
             # 首先处理所有条件语句，多次处理以确保嵌套或复杂的条件
@@ -829,10 +835,10 @@ async def render_page_from_components(
                     var_name = match.group(1).strip()
                     content = match.group(2)
                     if config.get(var_name):
-                        # 条件为真，保留内容
+                        # Condition is true, keep content
                         rendered_html = rendered_html.replace(match.group(0), content)
                     else:
-                        # 条件为假，移除内容
+                        # Condition is false, remove content
                         rendered_html = rendered_html.replace(match.group(0), "")
             
             # 处理 {{#unless var}}...{{/unless}}
@@ -852,22 +858,22 @@ async def render_page_from_components(
                         # 条件为真（unless为假），移除内容
                         rendered_html = rendered_html.replace(match.group(0), "")
             
-            # 清理可能留下的 {{/if}} 或 {{/unless}}
+            # Clean up any remaining {{/if}} 或 {{/unless}}
             rendered_html = rendered_html.replace("{{/if}}", "").replace("{{/unless}}", "")
             
-            # 根据是否包含admin资源决定是否添加外层包装
+            # 根据Include admin资源决定Add outer wrapper
             if include_admin_resources:
-                # Admin模式：添加外层包装用于编辑
+                # Admin模式：Add outer wrapper用于Edit
                 component_html = f"""
-                <!-- 组件: {template.get('name', template_id)} (编辑模式) -->
+                <!-- 组件: {template.get('name', template_id)} (Edit mode) -->
                 <div class="webot-component webot-admin-wrapper" data-component-id="{template_id}" data-instance-id="{instance.get('id', '')}">
                     {rendered_html}
                 </div>
                 """
             else:
-                # Client模式：直接渲染组件，不加包装
+                # ClientMode: render component directly, no wrapper
                 component_html = f"""
-                <!-- 组件: {template.get('name', template_id)} (发布模式) -->
+                <!-- 组件: {template.get('name', template_id)} (Publish mode) -->
                 {rendered_html}
                 """
             
@@ -879,8 +885,8 @@ async def render_page_from_components(
                 "alignment": instance.get("alignment", "left")
             })
         
-        # 3. 生成完整HTML页面
-        # 收集所有CSS和JS依赖
+        # 3. Generate完整HTMLpage
+        # Collect all CSS和JSDependencies
         css_deps = []
         js_deps = []
         
@@ -892,7 +898,7 @@ async def render_page_from_components(
                 if template.get("js_template"):
                     js_deps.append(f"<script>\n{template['js_template']}\n</script>")
                 
-                # 处理外部依赖
+                # 处理外部Dependencies
                 deps_json = template.get("dependencies_json")
                 if deps_json:
                     try:
@@ -907,39 +913,39 @@ async def render_page_from_components(
                     except:
                         pass
         
-        # 无论什么模式都包含WET-BOEW标准依赖（如果include_wet_boew为True）
+        # Always include WET-BOEWStandardDependencies（Ifinclude_wet_boew为True）
         
-        # WET-BOEW依赖 (使用GCWeb主题，与canada.ca一致)
+        # WET-BOEWDependencies (使用GCWebTheme，与canada.ca一致)
         if include_wet_boew:
             wet_css = """
-            <!-- GCWeb主题CSS (Canada.ca标准) - 本地版本 -->
-            <link rel="stylesheet" href="/gcweb/gcweb/GCWeb/css/theme.min.css">
-            <noscript><link rel="stylesheet" href="/gcweb/gcweb/wet-boew/css/noscript.min.css" /></noscript>
-            <link rel="stylesheet" href="/gcweb/external/font-awesome/5.8.1/css/all.css" crossorigin="anonymous">
+            <!-- GCWebThemeCSS (Canada.caStandard) - 本地Version -->
+            <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
+            <noscript><link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/noscript.min.css" /></noscript>
+            <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/all.css" crossorigin="anonymous">
             """
             wet_js = """
-            <!-- GCWeb主题JS (Canada.ca标准) - 本地版本 -->
-            <script src="/gcweb/external/jquery/2.2.4/jquery.min.js"></script>
-            <script src="/gcweb/gcweb/wet-boew/js/wet-boew.min.js"></script>
-            <script src="/gcweb/gcweb/GCWeb/js/theme.min.js"></script>
+            <!-- GCWebThemeJS (Canada.caStandard) - 本地Version -->
+            <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"></script>
+            <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js"></script>
+            <script src="/etc/designs/canada/wet-boew/js/theme.min.js"></script>
             """
             css_deps.insert(0, wet_css)
             js_deps.insert(0, wet_js)
         
-        # 可访问性增强
+        # Accessibility enhancements
         if include_accessibility:
             accessibility_js = """
-            <!-- 可访问性增强 -->
+            <!-- Accessibility enhancements -->
             <script>
             document.addEventListener('DOMContentLoaded', function() {
-                // 添加跳过链接
+                // Add skip link
                 const skipLink = document.createElement('a');
                 skipLink.href = '#main-content';
                 skipLink.className = 'wb-inv';
-                skipLink.textContent = '跳转到主要内容';
+                skipLink.textContent = 'Skip to main content';
                 document.body.insertBefore(skipLink, document.body.firstChild);
                 
-                // 添加主要内容区域
+                // Add main content area
                 const mainContent = document.createElement('main');
                 mainContent.id = 'main-content';
                 mainContent.setAttribute('role', 'main');
@@ -955,7 +961,7 @@ async def render_page_from_components(
             """
             js_deps.append(accessibility_js)
         
-        # 按对齐方式组织组件
+        # Organize components by alignment
         left_components = []
         center_components = []
         right_components = []
@@ -969,7 +975,7 @@ async def render_page_from_components(
             else:
                 left_components.append(comp)
         
-        # 生成组件HTML部分
+        # Generate组件HTML部分
         components_html = ""
         if left_components:
             components_html += '<div class="webot-alignment-left">\n'
@@ -989,8 +995,8 @@ async def render_page_from_components(
                 components_html += comp["html"] + "\n"
             components_html += '</div>\n'
         
-        # 完整HTML页面
-        # 定义WET-BOEW标准的header和footer（使用GCWeb/canada.ca主题）
+        # 完整HTMLpage
+        # 定义WET-BOEWStandard的header和footer（使用GCWeb/canada.caTheme）
         wet_header_html = '''<header role="banner">
     <div id="wb-bnr" class="container">
         <div class="row">
@@ -1018,7 +1024,7 @@ async def render_page_from_components(
                 <link property="logo" href="https://wet-boew.github.io/themes-dist/GCWeb/GCWeb/assets/wmms-blk.svg" />
             </div>
 
-            <!-- 搜索框 -->
+            <!-- Search框 -->
             <section id="wb-srch" class="col-lg-offset-4 col-md-offset-4 col-sm-offset-2 col-xs-12 col-sm-5 col-md-4">
                 <h2>Search</h2>
                 <form action="https://www.canada.ca/en/sr/srb.html" method="get" name="cse-search-box" role="search">
@@ -1096,9 +1102,9 @@ async def render_page_from_components(
     </div>
 </footer>'''
 
-        # 根据设置生成body内容
+        # 根据SettingsGeneratebody内容
         if include_header_footer and include_wet_boew:
-            # 使用WET-BOEW标准结构
+            # 使用WET-BOEWStandard结构
             body_content = f"""
 {wet_header_html}
 
@@ -1107,7 +1113,7 @@ async def render_page_from_components(
         <div class="webot-page-header">
             <h1 class="webot-page-title">{page_title}</h1>
             <div class="webot-page-meta">
-                由WebBot WET-BOEW组件编辑器生成 | 符合加拿大政府网站标准
+                由WebBot WET-BOEWComponent editorGenerate | 符合加拿大政府网站Standard
             </div>
         </div>
         
@@ -1116,8 +1122,8 @@ async def render_page_from_components(
         </div>
         
         <div class="webot-footer">
-            <p>© 2026 WebBot 组件编辑器 | 此页面使用WET-BOEW组件构建</p>
-            <p>生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>© 2026 WebBot Component editor | 此page使用WET-BOEW组件构建</p>
+            <p>Generate时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         </div>
     </div>
 </main>
@@ -1131,7 +1137,7 @@ async def render_page_from_components(
         <header class="webot-page-header">
             <h1 class="webot-page-title">{page_title}</h1>
             <div class="webot-page-meta">
-                由WebBot WET-BOEW组件编辑器生成 | 符合加拿大政府网站标准
+                由WebBot WET-BOEWComponent editorGenerate | 符合加拿大政府网站Standard
             </div>
         </header>
         
@@ -1140,8 +1146,8 @@ async def render_page_from_components(
         </main>
         
         <footer class="webot-footer">
-            <p>© 2026 WebBot 组件编辑器 | 此页面使用WET-BOEW组件构建</p>
-            <p>生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>© 2026 WebBot Component editor | 此page使用WET-BOEW组件构建</p>
+            <p>Generate时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         </footer>
     </div>
 """
@@ -1152,10 +1158,10 @@ async def render_page_from_components(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{page_title}</title>
-    <meta name="description" content="由WebBot组件编辑器生成的页面">
+    <meta name="description" content="由WebBotComponent editorGenerate的page">
     <meta name="generator" content="WebBot WET-BOEW Component Editor">
     
-    <!-- 基本样式 -->
+    <!-- Basic styles -->
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -1232,13 +1238,13 @@ async def render_page_from_components(
         }}
     </style>
     
-    <!-- 组件CSS依赖 -->
+    <!-- Component CSSDependencies -->
     {''.join(css_deps)}
 </head>
 <body>
 {body_content}
     
-    <!-- 组件JS依赖 -->
+    <!-- Component JSDependencies -->
     {''.join(js_deps)}
 </body>
 </html>"""
@@ -1262,5 +1268,5 @@ async def render_page_from_components(
         return {
             "success": False,
             "error": str(e),
-            "html": f"<html><body><h1>渲染错误</h1><p>{str(e)}</p></body></html>"
+            "html": f"<html><body><h1>Render error</h1><p>{str(e)}</p></body></html>"
         }

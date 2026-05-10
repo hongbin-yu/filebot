@@ -117,6 +117,65 @@ class DocumentService {
     return response.data;
   }
 
+  // 按路径前缀获取所有子孙文档（递归，用 path_prefix LIKE 查询 Document.path）
+  async getDocumentsByPathPrefix(folderPath: string, params?: {
+    skip?: number;
+    limit?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }): Promise<Document[]> {
+    if (!folderPath || folderPath.trim() === '') {
+      console.warn('⚠️ documentService.getDocumentsByPathPrefix: empty folderPath, returning empty array');
+      return [];
+    }
+    
+    const normalizedPath = folderPath.startsWith('/') ? folderPath : '/' + folderPath;
+    const response = await api.get('/documents/', { 
+      params: {
+        path_prefix: normalizedPath,
+        ...params
+      }
+    });
+    
+    return response.data;
+  }
+
+  // 获取文件夹中所有子孙文档（递归，单次API调用替代前端BFS + 多次文档查询）
+  async getDocumentsRecursive(folderPath: string, params?: {
+    skip?: number;
+    limit?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }): Promise<Document[]> {
+    if (!folderPath || folderPath.trim() === '') {
+      console.warn('⚠️ documentService.getDocumentsRecursive: empty folderPath, returning empty array');
+      return [];
+    }
+    
+    const normalizedPath = folderPath.startsWith('/') ? folderPath : '/' + folderPath;
+    
+    console.log('🔍 [DEBUG] documentService.getDocumentsRecursive:', { 
+      folderPath: normalizedPath, 
+      params,
+      timestamp: new Date().toISOString()
+    });
+    
+    const response = await api.get('/documents/by-folder-recursive', {
+      params: {
+        folder_path: normalizedPath,
+        skip: params?.skip || 0,
+        limit: params?.limit || 200,
+      }
+    });
+    
+    console.log('🔍 [DEBUG] documentService.getDocumentsRecursive response:', {
+      count: response.data?.length,
+      status: response.status
+    });
+    
+    return response.data;
+  }
+
   // 获取文件夹中的文档（基于ID，已弃用）
   async getDocumentsByFolderId(folderId: string, params?: {
     skip?: number;

@@ -15,9 +15,10 @@ export interface App {
   config?: Record<string, any>; // 应用配置
   app_type?: string;           // 应用类型：document_management, web_app, etc.
   is_active?: boolean;         // 应用是否激活
-  redirect_url?: string;  // 重定向URL，用于集成WebBot等外部应用
-  icon?: string;         // 图标URL或图标名称
+  redirect_url?: string;  // Redirect URL for integrating external apps like WebBot
+  icon?: string;         // Icon URL or icon name
   owner_id?: string;
+  default_entry?: string;  // Default entry path (e.g. 'canadasite' → /apps/:slug/canadasite)
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -33,9 +34,10 @@ export interface CreateAppRequest {
   app_type?: string;     // 应用类型：document_management, web_app, etc.
   is_active?: boolean;   // 应用是否激活
   config?: Record<string, any>; // 应用配置
-  redirect_url?: string;  // 重定向URL，用于集成WebBot等外部应用
-  icon?: string;         // 图标URL或图标名称
+  redirect_url?: string;  // Redirect URL for integrating external apps like WebBot
+  icon?: string;         // Icon URL or icon name
   owner_id?: string;
+  default_entry?: string;  // Default entry path
 }
 
 export interface AppUpdateRequest {

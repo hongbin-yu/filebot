@@ -17,11 +17,11 @@ def get_users(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取用户列表（仅管理员）"""
+    """Get user list (admin only)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限"
+            detail="No permission"
         )
     
     users = db.query(User).offset(skip).limit(limit).all()
@@ -34,19 +34,19 @@ def get_user(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取用户信息"""
-    # 用户只能查看自己的信息，除非是管理员
+    """Get user info"""
+    # Users can only view their own info unless admin
     if str(current_user.id) != user_id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限查看其他用户信息"
+            detail="No permission to view other user's info"
         )
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
+            detail="User not found"
         )
     
     return user
@@ -59,22 +59,22 @@ def update_user(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """更新用户信息"""
-    # 用户只能更新自己的信息，除非是管理员
+    """Update user info"""
+    # Users can only update their own info unless admin
     if str(current_user.id) != user_id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限更新其他用户信息"
+            detail="No permission to update other user's info"
         )
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
+            detail="User not found"
         )
     
-    # 更新字段
+    # Update fields
     update_data = user_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
@@ -91,28 +91,28 @@ def delete_user(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """删除用户（仅管理员）"""
+    """Delete user (admin only)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限"
+            detail="No permission"
         )
     
-    # 不能删除自己
+    # Cannot delete self
     if str(current_user.id) == user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不能删除自己"
+            detail="Cannot delete yourself"
         )
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
+            detail="User not found"
         )
     
     db.delete(user)
     db.commit()
     
-    return {"message": "用户删除成功"}
+    return {"message": "User deleted successfully"}

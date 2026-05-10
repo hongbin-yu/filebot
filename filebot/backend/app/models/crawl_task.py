@@ -31,7 +31,7 @@ class CrawlTask(Base):
     # 爬取参数
     url = Column(String(2000), nullable=False)
     depth = Column(Integer, default=1)
-    folder_id = Column(String(36), nullable=False)  # 目标文件夹ID
+    folder_path = Column(String(500), nullable=False)  # 目标文件夹路径
     include_images = Column(Integer, default=0)  # 0=否, 1=是
     follow_external_links = Column(Integer, default=0)
     respect_robots_txt = Column(Integer, default=1)

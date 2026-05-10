@@ -43,68 +43,65 @@ from app.core.path_utils import (
 router = APIRouter()
 
 
-# ========== 权限检查辅助函数 ==========
+# ========== Permission Check Helpers ==========
 
 def check_folder_access(
-    folder_id: uuid.UUID,
+    folder_path: str,
     current_user: User,
     db: Session,
     require_owner: bool = False
 ) -> Folder:
-    """检查用户是否有权限访问文件夹
+    """Check user permission to access a folder
     
     Args:
-        folder_id: 文件夹ID
-        current_user: 当前用户
-        db: 数据库会话
-        require_owner: 是否要求用户必须是文件夹的所有者（应用所有者）
+        folder_path: folder path
+        current_user: current user
+        db: database session
+        require_owner: whether user must be folder owner (app owner)
     
     Returns:
-        Folder对象（如果权限检查通过）
+        Folder object (if permission check passes)
     
     Raises:
-        HTTPException: 如果文件夹不存在或用户没有权限
+        HTTPException: if folder not found or user lacks permission
     """
-    # 将UUID转换为字符串进行查询
-    folder_id_str = str(folder_id)
-    
-    # 超级用户可以访问所有资源
+# Superuser can access all resources
     if current_user.is_superuser or current_user.username == "public":
         folder = db.query(Folder).options(
             joinedload(Folder.app)
-        ).filter(Folder.id == folder_id_str).first()
+        ).filter(Folder.path == folder_path).first()
         
         if not folder:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="文件夹不存在"
+                detail="Folder not found"
             )
         return folder
     
-    # 获取文件夹及其关联的应用
+    # Get folder and associated app
     folder = db.query(Folder).options(
         joinedload(Folder.app)
-    ).filter(Folder.id == folder_id_str).first()
+    ).filter(Folder.path == folder_path).first()
     
     if not folder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件夹不存在"
+            detail="Folder not found"
         )
     
-    # 检查应用权限
+    # Check app permission
     app = folder.app
     if app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限访问此文件夹"
+            detail="No permission to access this folder"
         )
     
-    # 如果要求所有者，确保用户是应用所有者
+    # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有所有者才能执行此操作"
+            detail="Only the owner can perform this operation"
         )
     
     return folder
@@ -117,39 +114,39 @@ def get_folder_by_identifier_or_path(
     require_owner: bool = False,
     create_if_not_exists: bool = False
 ) -> Folder:
-    """通过ID或路径获取文件夹并进行权限检查（路径优先）
+    """Get folder by ID or path with permission check (path-first)
     
     Args:
-        folder_identifier: 文件夹路径（如'/test-admin/public-documents'）或UUID（已弃用）
-        current_user: 当前用户
-        db: 数据库会话
-        require_owner: 是否要求用户必须是文件夹的所有者（应用所有者）
-        create_if_not_exists: 如果文件夹不存在，是否自动创建
+        folder_identifier: folder path (e.g. /test-admin/public-documents) or UUID (deprecated)
+        current_user: current user
+        db: database session
+        require_owner: whether user must be folder owner (app owner)
+        create_if_not_exists: auto-create folder if not found
     
     Returns:
-        Folder对象（如果权限检查通过）
+        Folder object (if permission check passes)
     
     Raises:
-        HTTPException: 如果文件夹不存在或用户没有权限
+        HTTPException: if folder not found or user lacks permission
     
-    注意：建议使用路径标识符，UUID支持已弃用
+    Note: path identifiers recommended, UUID support deprecated
     """
     logger = logging.getLogger(__name__)
     
-    # 优先按路径查找（路径优先策略）
+    # Try path first (path-first strategy)
     folder = None
     
-    # 检查是否是路径格式（以/开头）
+    # Check if path format (starts with /)
     if folder_identifier.startswith('/'):
-        # 直接按路径查找
+        # Search by path directly
         folder = db.query(Folder).options(
             joinedload(Folder.app)
         ).filter(Folder.path == folder_identifier).first()
         if folder:
-            logger.info(f"✅ 通过路径找到文件夹: {folder_identifier}")
+            logger.info(f"Found folder by path: {folder_identifier}")
     else:
-        # 可能是UUID或编码路径
-        # 先尝试按路径查找（可能传入的是编码路径）
+        # Could be UUID or encoded path
+        # Try path lookup first (might be encoded path)
         try:
             import urllib.parse
             decoded_path = urllib.parse.unquote(folder_identifier)
@@ -158,92 +155,81 @@ def get_folder_by_identifier_or_path(
                     joinedload(Folder.app)
                 ).filter(Folder.path == decoded_path).first()
                 if folder:
-                    logger.info(f"✅ 通过解码路径找到文件夹: {decoded_path} (原始: {folder_identifier})")
+                    logger.info(f"Found folder by decoded path: {decoded_path} (original: {folder_identifier})")
         except:
             pass
     
-    # 如果没找到，尝试按UUID查找（向后兼容）
+    # If not found, try as path with / prefix (backward compatible for bare names)
     if not folder:
-        # 检查是否是UUID格式
-        import re
-        uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
-        if uuid_pattern.match(folder_identifier):
-            folder = db.query(Folder).options(
-                joinedload(Folder.app)
-            ).filter(Folder.id == folder_identifier).first()
-            if folder:
-                logger.warning(f"⚠️  通过UUID找到文件夹: {folder_identifier} (路径: {folder.path})")
-        else:
-            # 既不是路径也不是UUID，尝试作为路径处理（添加/前缀）
-            path = '/' + folder_identifier
-            folder = db.query(Folder).options(
-                joinedload(Folder.app)
-            ).filter(Folder.path == path).first()
-            if folder:
-                logger.info(f"✅ 通过添加/前缀找到文件夹: {path} (原始: {folder_identifier})")
+        path = '/' + folder_identifier
+        folder = db.query(Folder).options(
+            joinedload(Folder.app)
+        ).filter(Folder.path == path).first()
+        if folder:
+            logger.info(f"Found folder by adding / prefix: {path} (original: {folder_identifier})")
     
-    # 如果文件夹不存在且允许创建
+    # If folder does not exist and creation is allowed
     if not folder and create_if_not_exists:
-        # 使用folder_identifier作为路径（可能已经添加了/前缀）
+        # Use folder_identifier as path (may have / prefix)
         path = folder_identifier
         if not path.startswith('/'):
             path = '/' + path
             
-        # 解析路径：格式为 /app-slug/folder-path
+        # Parse path: format is /app-slug/folder-path
         parts = path.strip('/').split('/')
         if len(parts) < 2:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="路径格式无效，应为 /app-slug/folder-path"
+                detail="Invalid path format, expected /app-slug/folder-path"
             )
     
-    # 如果文件夹不存在且允许创建
+    # If folder does not exist and creation is allowed
     if not folder and create_if_not_exists:
-        # 解析路径：格式为 /app-slug/folder-path
+        # Parse path: format is /app-slug/folder-path
         parts = path.strip('/').split('/')
         if len(parts) < 2:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="路径格式无效，应为 /app-slug/folder-path"
+                detail="Invalid path format, expected /app-slug/folder-path"
             )
         
         app_slug = parts[0]
         folder_path_parts = parts[1:]
         
-        # 查找应用
+        # Find app
         app = db.query(App).filter(App.slug == app_slug).first()
         if not app:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"应用 '{app_slug}' 不存在"
+                detail=f"App '{app_slug}' not found"
             )
         
-        # 检查应用权限（超级用户可以跳过）
+        # Check app permission (superuser can bypass)
         if not current_user.is_superuser and app.owner_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="没有权限在此应用中创建文件夹"
+                detail="No permission to create folder in this app"
             )
         
-        # 递归创建文件夹和所有父文件夹
+        # Recursively create folders and all parents
         current_path = ''
         parent_folder = None
         
         for i, folder_name in enumerate(folder_path_parts):
             current_path = f'/{app_slug}/{'/'.join(folder_path_parts[:i+1])}'
             
-            # 检查文件夹是否已存在
+            # Check if folder already exists
             existing_folder = db.query(Folder).filter(Folder.path == current_path).first()
             if existing_folder:
                 parent_folder = existing_folder
                 continue
             
-            # 创建新文件夹
+            # Create new folder
             new_folder = Folder(
                 name=folder_name,
                 path=current_path,
                 app_id=app.id,
-                parent_folder_id=parent_folder.id if parent_folder else None,
+                parent_folder_path=parent_folder.path if parent_folder else None,
                 created_by=current_user.username,
                 updated_by=current_user.username
             )
@@ -252,100 +238,97 @@ def get_folder_by_identifier_or_path(
             db.refresh(new_folder)
             parent_folder = new_folder
             
-            print(f"已创建文件夹: {current_path}")
+            print(f"Created folder: {current_path}")
         
         folder = parent_folder
-        # 重新加载关联的应用对象
+        # Reload associated app object
         folder = db.query(Folder).options(
             joinedload(Folder.app)
-        ).filter(Folder.id == folder.id).first()
+        ).filter(Folder.path == folder.path).first()
     
-    # 如果文件夹仍然不存在（且不允许创建）
+    # If folder still does not exist (and creation disabled)
     if not folder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件夹不存在"
+            detail="Folder not found"
         )
     
-    # 超级用户可以访问所有资源
+    # Superuser can access all resources
     if current_user.is_superuser or current_user.username == "public":
         return folder
     
-    # 检查应用权限
+    # Check app permission
     app = folder.app
     if app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限访问此文件夹"
+            detail="No permission to access this folder"
         )
     
-    # 如果要求所有者，确保用户是应用所有者
+    # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有所有者才能执行此操作"
+            detail="Only the owner can perform this operation"
         )
     
     return folder
 
 
 def check_document_access(
-    document_id: uuid.UUID,
+    document_path: str,
     current_user: User,
     db: Session,
     require_owner: bool = False
 ) -> Document:
-    """检查用户是否有权限访问文档
+    """Check user permission to access a document
     
     Args:
-        document_id: 文档ID
-        current_user: 当前用户
-        db: 数据库会话
-        require_owner: 是否要求用户必须是文档的所有者（应用所有者）
+        document_path: document path
+        current_user: current user
+        db: database session
+        require_owner: whether user must be document owner (app owner)
     
     Returns:
-        Document对象（如果权限检查通过）
+        Document object (if permission check passes)
     """
-    # 将UUID转换为字符串进行查询
-    document_id_str = str(document_id)
-    
-    # 超级用户可以访问所有资源
+    # Superuser can access all resources
     if current_user.is_superuser or current_user.username == "public":
         document = db.query(Document).options(
             joinedload(Document.folder).joinedload(Folder.app)
-        ).filter(Document.id == document_id_str).first()
+        ).filter(Document.path == document_path).first()
         
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="文档不存在"
+                detail="Document not found"
             )
         return document
     
-    # 获取文档及其关联的文件夹和应用
+    # Get document with associated folder and app
     document = db.query(Document).options(
             joinedload(Document.folder).joinedload(Folder.app)
-        ).filter(Document.id == document_id_str).first()
+        ).filter(Document.path == document_path).first()
     
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文档不存在"
+            detail="Document not found"
         )
     
-    # 检查应用权限
+    # Check app permission
     app = document.folder.app
     if app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限访问此文档"
+            detail="No permission to access this document"
         )
     
-    # 如果要求所有者，确保用户是应用所有者
+    # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有所有者才能执行此操作"
+            detail="Only the owner can perform this operation"
         )
     
     return document
@@ -357,63 +340,50 @@ def get_document_by_identifier(
     db: Session,
     require_owner: bool = False
 ) -> Document:
-    """通过标识符（UUID 或路径）获取文档并检查权限
+    """通过路径获取文档并检查权限
     
-    支持两种标识符格式：
-    1. UUID格式: "550e8400-e29b-41d4-a716-446655440000"
-    2. 路径格式: "/app_slug/folder_path/filename" 或 "/content/dam/..."
+    Supports path format: "/app_slug/folder_path/filename" or "/content/dam/..."
     
     Args:
-        document_identifier: 文档标识符（UUID字符串或路径）
-        current_user: 当前用户
-        db: 数据库会话
-        require_owner: 是否要求用户必须是文档的所有者（应用所有者）
+        document_identifier: document path
+        current_user: current user
+        db: database session
+        require_owner: whether user must be document owner (app owner)
     
     Returns:
-        Document对象（如果权限检查通过）
+        Document object (if permission check passes)
     """
-    import uuid as uuid_module
-    
-    # 首先尝试作为UUID解析
-    try:
-        doc_uuid = uuid_module.UUID(document_identifier)
-        # 调用现有的check_document_access函数
-        return check_document_access(doc_uuid, current_user, db, require_owner)
-    except ValueError:
-        # 不是有效的UUID，尝试作为路径处理
-        pass
-    
-    # 作为路径处理
-    # 规范化路径：确保以斜杠开头
+    # Handle as path (path-based lookup)
+    # Normalize path: ensure leading slash
     path = document_identifier
     if not path.startswith('/'):
         path = '/' + path
     
-    # 查找文档
-    # 首先尝试通过path字段匹配（新文档系统）
+    # Find document
+    # Try path field match first (new system)
     document = db.query(Document).options(
         joinedload(Document.folder).joinedload(Folder.app)
     ).filter(Document.path == path).first()
     
     if not document:
-        # 尝试通过storage_path匹配（相对路径）
+        # Try storage_path match (relative path)
         from app.core.config import settings as app_settings
         from pathlib import Path
         
         data_root = Path(app_settings.DATA_ROOT)
-        # 尝试将路径解释为相对于data_root的存储路径
-        # 路径格式可能是: app_slug/folder_path/filename
+        # Try to interpret path relative to data_root
+        # Path format: app_slug/folder_path/filename
         if path.startswith('/'):
-            path = path[1:]  # 移除开头的斜杠
+            path = path[1:]  # Remove leading slash
         
         document = db.query(Document).options(
             joinedload(Document.folder).joinedload(Folder.app)
         ).filter(Document.storage_path == path).first()
     
     if not document:
-        # 最后尝试通过组合路径查找（旧系统）
-        # 路径格式: /app_slug/folder_path/filename
-        # 需要解析出应用slug、文件夹路径和文件名
+        # Finally try combined lookup (legacy system)
+        # Path format: /app_slug/folder_path/filename
+        # Parse app slug, folder path and filename
         parts = path.strip('/').split('/')
         if len(parts) >= 2:
             app_slug = parts[0]
@@ -421,7 +391,7 @@ def get_document_by_identifier(
             folder_parts = parts[1:-1]
             folder_path = '/' + '/'.join(folder_parts) if folder_parts else '/'
             
-            # 通过应用和文件夹查找
+            # Find by app and folder
             app = db.query(App).filter(App.slug == app_slug).first()
             if app:
                 folder = db.query(Folder).filter(
@@ -432,17 +402,17 @@ def get_document_by_identifier(
                     document = db.query(Document).options(
                         joinedload(Document.folder).joinedload(Folder.app)
                     ).filter(
-                        Document.folder_id == folder.id,
+                        Document.folder_path == folder.path,
                         Document.original_filename.like(f'%{filename}%')
                     ).first()
     
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"文档不存在: {document_identifier}"
+            detail=f"Document not found: {document_identifier}"
         )
     
-    # 检查应用权限（复用check_document_access中的逻辑）
+    # Check app permission (reuse check_document_access logic)
     app = document.folder.app
     if current_user.is_superuser or current_user.username == "public":
         return document
@@ -450,14 +420,14 @@ def get_document_by_identifier(
     if app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="没有权限访问此文档"
+            detail="No permission to access this document"
         )
     
-    # 如果要求所有者，确保用户是应用所有者
+    # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有所有者才能执行此操作"
+            detail="Only the owner can perform this operation"
         )
     
     return document
@@ -465,55 +435,55 @@ def get_document_by_identifier(
 
 def get_document_file_path(document: Document, settings) -> Path:
     """
-    获取文档的实际存储文件路径
+    Get the actual storage file path of a document
     
-    根据文档的存储信息构建路径：
-    1. 优先使用新的路径系统 (storage_path)
-    2. 如果文档有 full_storage_path，使用设备存储路径
-    3. 否则，使用默认存储路径
-    4. 兼容旧版本爬虫存储路径 (data/documents/)
+    Build path from document storage info:
+    1. Use new path system first (storage_path)
+    2. If document has full_storage_path, use device storage path
+    3. Otherwise, use default storage path
+    4. Fallback to legacy crawler storage path (data/documents/)
     """
-    # 1. 优先使用新的路径系统
+    # 1. Use new path system first
     if document.storage_path:
-        # 构建完整路径
+        # Build full path
         storage_path = Path(settings.DATA_ROOT) / document.storage_path
         if storage_path.exists():
             return storage_path
         else:
-            print(f"[路径系统警告] 存储路径不存在: {storage_path}，回退到旧系统")
+            print(f"[Path System Warning] Storage path not found: {storage_path}, falling back to legacy")
     
-    # 2. 使用旧系统（保持向后兼容）
+    # 2. Use legacy system (backward compatible)
     if document.full_storage_path and document.stored_filename:
-        # 使用设备存储路径
+        # Use device storage path
         return Path(document.full_storage_path) / document.stored_filename
     
-    # 尝试多个可能的存储位置
+    # Try multiple possible storage locations
     possible_paths = []
     
-    # 1. 默认存储路径
+    # 1. Default storage path
     default_path = Path(settings.FILE_STORAGE_PATH) / "original" / document.stored_filename
     possible_paths.append(default_path)
     
-    # 2. 旧版本爬虫存储路径 (data/documents/)
+    # 2. Legacy crawler storage path (data/documents/)
     old_crawler_path = Path("data/documents") / document.stored_filename
     possible_paths.append(old_crawler_path)
     
-    # 3. 直接使用 stored_filename（如果它是绝对路径）
+    # 3. Use stored_filename directly (if absolute path)
     if document.stored_filename and os.path.isabs(document.stored_filename):
         possible_paths.append(Path(document.stored_filename))
     
-    # 检查哪个路径存在
+    # Check which path exists
     for path in possible_paths:
         if path.exists():
             return path
     
-    # 如果没有路径存在，返回默认路径（将导致404错误，但至少会抛出明确的异常）
+    # If no path exists, return default (will cause 404 but gives clear exception)
     return default_path
 
 
 def get_document_pdf_path(document: Document, settings) -> Optional[Path]:
     """
-    获取文档的PDF文件路径（如果已转换）
+    Get the PDF file path of a document (if converted)
     """
     if document.converted_pdf_path:
         return Path(document.converted_pdf_path)
@@ -528,80 +498,80 @@ def generate_thumbnail_for_image_document(
     """
     为图像文档生成缩略图并更新元数据
     
-    生成100x100 PNG缩略图，存储为base64字符串在document_metadata.original_html中，
-    并设置conversion_status为COMPLETED。
+    Generate 100x100 PNG thumbnail, store as base64 in document_metadata.original_html,
+    and set conversion_status to COMPLETED.
     
-    参数:
-        document: Document对象
-        db: 数据库会话
-        settings: 应用配置
+    Args:
+        document: Document object
+        db: database session
+        settings: application config
     
-    返回:
-        bool: 是否成功
+    Returns:
+        bool: whether successful
     """
     # Import ThumbnailStatus before try block to avoid Python 3.12+ scoping issues
     from app.models.document import ThumbnailStatus
 
     try:
-        # 获取文档文件路径
+        # Get document file path
         file_path = get_document_file_path(document, settings)
         if not file_path or not file_path.exists():
-            logging.error(f"文档文件不存在: {document.id}")
+            logging.error(f"Document file not found: {document.path}")
             return False
         
-        # 打开图像文件
+        # Open image file
         with Image.open(file_path) as img:
-            # 转换为RGB（如果需要）
+            # Convert to RGB (if needed)
             if img.mode not in ["RGB", "RGBA", "L"]:
                 img = img.convert("RGB")
             
-            # 生成100x100缩略图（保持宽高比）
+            # Generate 100x100 thumbnail (maintain aspect ratio)
             img.thumbnail((100, 100), Image.Resampling.LANCZOS)
             
-            # 如果图像是RGBA模式，添加白色背景
+            # If image is RGBA mode, add white background
             if img.mode == "RGBA":
                 background = Image.new("RGB", img.size, (255, 255, 255))
-                background.paste(img, mask=img.split()[-1])  # 使用alpha通道作为遮罩
+                background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
                 img = background
             
-            # 保存到BytesIO缓冲区（PNG格式）
+            # Save to BytesIO buffer (PNG format)
             buffer = BytesIO()
             img.save(buffer, format="PNG", optimize=True)
             buffer.seek(0)
             
-            # 转换为base64字符串
+            # Convert to base64 string
             thumbnail_base64 = base64.b64encode(buffer.read()).decode("utf-8")
             
-            # 更新文档元数据
+            # Update document metadata
             if not document.document_metadata:
                 document.document_metadata = {}
             
-            # 将base64缩略图存储在original_html字段中（按照老板要求）
+            # Store base64 thumbnail in original_html field (per boss request)
             document.document_metadata["original_html"] = thumbnail_base64
             
-            # 同时存储缩略图信息（可选）
+            # Also store thumbnail info (optional)
             document.document_metadata["thumbnail_base64_png"] = thumbnail_base64
             document.document_metadata["thumbnail_generated"] = True
             document.document_metadata["thumbnail_size"] = "100x100"
             document.document_metadata["thumbnail_format"] = "PNG"
             
-            # 更新转换状态为已完成
+            # Update conversion status to COMPLETED
             document.conversion_status = ConversionStatus.COMPLETED
             
-            # 更新缩略图状态
+            # Update thumbnail status
             document.thumbnail_status = ThumbnailStatus.GENERATED
             document.thumbnail_generated_at = datetime.utcnow()
             
-            # 保存更改到数据库
+            # Save changes to database
             db.add(document)
             db.commit()
             
-            logging.info(f"为图像文档 {document.id} 生成缩略图成功")
+            logging.info(f"Generated thumbnail for image document {document.path} successfully")
             return True
             
     except Exception as e:
-        logging.error(f"生成图像缩略图失败: {str(e)}", exc_info=True)
-        # 更新错误状态
+        logging.error(f"Failed to generate image thumbnail: {str(e)}", exc_info=True)
+        # Update error status
         document.thumbnail_status = ThumbnailStatus.FAILED
         document.thumbnail_error = str(e)[:1000]
         db.add(document)
@@ -609,70 +579,52 @@ def generate_thumbnail_for_image_document(
         return False
 
 
-# ========== Document (文档) 路由 ==========
+# ========== Document Routes ==========
 
 @router.get("/", response_model=List[DocumentResponse])
 def get_documents(
-    folder_id: Optional[uuid.UUID] = Query(None, description="按文件夹ID筛选（已弃用，建议使用folder_path）"),
-    folder_path: Optional[str] = Query(None, description="按文件夹路径筛选，格式: /app_slug/folder/subfolder（推荐）"),
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
-    status_filter: Optional[DocumentStatus] = Query(None, description="按文档状态筛选"),
-    type_filter: Optional[DocumentType] = Query(None, description="按文档类型筛选"),
-    conversion_status_filter: Optional[ConversionStatus] = Query(None, description="按转换状态筛选"),
-    search_term: Optional[str] = Query(None, description="搜索文档标题或描述"),
+    folder_path: Optional[str] = Query(None, description="Filter by folder path, exact match, format: /app_slug/folder/subfolder"),
+    parent_folder_path: Optional[str] = Query(None, description="Filter by parent folder path (LIKE match), returns docs in folder + all subfolders, format: /app_slug/folder"),
+    path_prefix: Optional[str] = Query(None, description="Filter by document path prefix (LIKE match), returns all descendant docs under path, format: /app_slug/folder/sub"),
+    skip: int = Query(0, ge=0, description="Records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Records to return"),
+    status_filter: Optional[DocumentStatus] = Query(None, description="Filter by document status"),
+    type_filter: Optional[DocumentType] = Query(None, description="Filter by document type"),
+    conversion_status_filter: Optional[ConversionStatus] = Query(None, description="Filter by conversion status"),
+    search_term: Optional[str] = Query(None, description="Search document title or description"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取文档列表（路径优先，兼容UUID）
+    """获取文档列表
     
-    支持多种筛选条件：
-    - 按文件夹路径筛选（推荐）
-    - 按文件夹ID筛选（已弃用）
-    - 按文档状态筛选
-    - 按文档类型筛选
-    - 按转换状态筛选
-    - 按标题/描述搜索
-    
-    注意：建议使用folder_path参数，folder_id参数已弃用
+    Supports multiple filter conditions:
+    - By folder path
+    - By document status
+    - By document type
+    - By conversion status
+    - By title/description search
     """
     logger = logging.getLogger(__name__)
     
-    # 检查参数冲突
-    if folder_id and folder_path:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不能同时提供folder_id和folder_path参数"
-        )
-    
-    # 记录警告如果使用folder_id
-    if folder_id:
-        logger.warning(f"⚠️  get_documents: 使用已弃用的folder_id参数: {folder_id}，建议使用folder_path")
-    
-    # 构建基础查询
-    # 注意：使用 selectinload 代替 joinedload 以避免与后续 query.join() 冲突
+    # Build base query
+    # Note: use selectinload instead of joinedload to avoid query.join() conflicts
     query = db.query(Document).options(
         selectinload(Document.folder).selectinload(Folder.app)
     )
     
-    # 添加权限筛选：只能查看自己有权限的应用下的文档
+    # Add permission filter: only visible apps
     if not current_user.is_superuser:
-        # 子查询：获取当前用户拥有的所有应用ID
+        # Subquery: get all app IDs owned by current user
         user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
         
-        # 通过文件夹→应用链进行筛选（移除抽屉层）
+        # Filter via folder->app chain (no drawer layer)
         query = query.join(Folder).join(App)
         query = query.filter(App.id.in_(user_apps_subquery))
     
-    # 应用筛选条件
-    if folder_id:
-        # 验证用户是否有权限访问该文件夹
-        folder = check_folder_access(folder_id, current_user, db)
-        # 将UUID转换为字符串进行查询，因为数据库中的folder_id是字符串类型
-        query = query.filter(Document.folder_id == str(folder_id))
-    elif folder_path:
-        # 通过文件夹路径筛选
-        # 确保路径以斜杠开头
+    # Apply filter conditions
+    if folder_path:
+        # Filter by folder path
+        # Ensure path starts with /
         path = folder_path
         if not path.startswith('/'):
             path = '/' + path
@@ -680,7 +632,7 @@ def get_documents(
         # 查找文件夹
         folder = db.query(Folder).filter(Folder.path == path).first()
         if not folder:
-            # 文件夹不存在，返回空列表
+            # Folder not found, return empty list
             return []
         
         # 检查权限
@@ -688,11 +640,28 @@ def get_documents(
         if not current_user.is_superuser and app.owner_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="没有权限访问此文件夹"
+                detail="No permission to access this folder"
             )
         
-        # 筛选文档
-        query = query.filter(Document.folder_id == str(folder.id))
+        # Filter documents
+        query = query.filter(Document.folder_path == folder.path)
+    
+    if parent_folder_path:
+        # LIKE match: get docs in this folder and all subfolders
+        path = parent_folder_path
+        if not path.startswith('/'):
+            path = '/' + path
+        # Ensure trailing slash so /boarding doesn't match /boarding-extra
+        like_path = path.rstrip('/') + '/%'
+        query = query.filter(Document.folder_path.like(like_path))
+    
+    if path_prefix:
+        # LIKE match on document path: get all descendant docs under this path prefix
+        prefix = path_prefix
+        if not prefix.startswith('/'):
+            prefix = '/' + prefix
+        # Use 'prefix%' to match everything under the path
+        query = query.filter(Document.path.like(prefix + '%'))
     
     if status_filter:
         query = query.filter(Document.status == status_filter)
@@ -711,7 +680,7 @@ def get_documents(
             (Document.document_number.ilike(search_pattern))
         )
     
-    # 排序和分页
+    # Sort and paginate
     query = query.order_by(Document.created_at.desc())
     documents = query.offset(skip).limit(limit).all()
     
@@ -720,76 +689,61 @@ def get_documents(
 
 @router.get("/path", response_model=List[DocumentResponse])
 def get_documents_by_path(
-    path: str = Query(..., description="文件夹路径，格式: /app_slug/folder/subfolder"),
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
-    status_filter: Optional[DocumentStatus] = Query(None, description="按文档状态筛选"),
-    type_filter: Optional[DocumentType] = Query(None, description="按文档类型筛选"),
-    conversion_status_filter: Optional[ConversionStatus] = Query(None, description="按转换状态筛选"),
-    search_term: Optional[str] = Query(None, description="搜索文档标题或描述"),
+    path: str = Query(..., description="Folder path, format: /app_slug/folder/subfolder"),
+    skip: int = Query(0, ge=0, description="Records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Records to return"),
+    status_filter: Optional[DocumentStatus] = Query(None, description="Filter by document status"),
+    type_filter: Optional[DocumentType] = Query(None, description="Filter by document type"),
+    conversion_status_filter: Optional[ConversionStatus] = Query(None, description="Filter by conversion status"),
+    search_term: Optional[str] = Query(None, description="Search document title or description"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """根据文件夹路径获取文档列表
     
-    通过文件夹路径获取该路径下的所有文档。
-    路径格式: /app_slug/folder/subfolder
+    Get all documents under the specified folder path.
+    Path format: /app_slug/folder/subfolder
     """
-    # 验证路径格式
+    # Validate path format
     if not path or not path.startswith('/'):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="路径必须以斜杠开头，格式: /app_slug/folder/subfolder"
+            detail="Path must start with /, format: /app_slug/folder/subfolder"
         )
     
-    # 通过路径查找文件夹
+    # Find folder by path
     folder = db.query(Folder).filter(Folder.path == path).first()
     if not folder:
-        # 如果文件夹不存在，返回空列表（或者可以尝试通过parent_folder_path查找？）
-        # 对于新系统，我们也可以尝试通过parent_folder_path查找文档
-        # 但为了安全起见，先检查文件夹是否存在
+        # Folder not found, return empty (or try parent_folder_path?)
+        # New system: also try parent_folder_path lookup
+        # For safety, verify folder exists first
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"找不到路径对应的文件夹: {path}"
+            detail=f"No folder found for path: {path}"
         )
     
-    # 验证用户是否有权限访问该文件夹
-    try:
-        # check_folder_access期望UUID，但我们的folder.id是字符串
-        # 转换为UUID进行验证
-        import uuid as uuid_module
-        folder_uuid = uuid_module.UUID(folder.id)
-        folder = check_folder_access(folder_uuid, current_user, db)
-    except ValueError:
-        # 如果ID不是有效的UUID，仍然进行基本权限检查
-        if not current_user.is_superuser:
-            # 检查用户是否拥有该应用
-            app = db.query(App).filter(App.id == folder.app_id).first()
-            if not app or app.owner_id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="没有权限访问此文件夹"
-                )
+    # Verify user has permission to access this folder
+    folder = check_folder_access(folder.path, current_user, db)
     
-    # 现在使用文件夹ID查询文档（重用get_documents的逻辑）
-    # 构建基础查询
+    # Now query documents by folder path (reuse get_documents logic)
+    # Build base query
     query = db.query(Document).options(
         joinedload(Document.folder).joinedload(Folder.app)
     )
     
-    # 添加权限筛选：只能查看自己有权限的应用下的文档
+    # Add permission filter: only visible apps
     if not current_user.is_superuser:
-        # 子查询：获取当前用户拥有的所有应用ID
+        # Subquery: get all app IDs owned by current user
         user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
         
-        # 通过文件夹→应用链进行筛选（移除抽屉层）
+        # Filter via folder->app chain (no drawer layer)
         query = query.join(Folder).join(App)
         query = query.filter(App.id.in_(user_apps_subquery))
     
-    # 按文件夹ID筛选
-    query = query.filter(Document.folder_id == folder.id)
+    # Filter by folder ID
+    query = query.filter(Document.folder_path == folder.path)
     
-    # 应用其他筛选条件
+    # Apply other filter conditions
     if status_filter:
         query = query.filter(Document.status == status_filter)
     
@@ -807,7 +761,7 @@ def get_documents_by_path(
             (Document.document_number.ilike(search_pattern))
         )
     
-    # 排序和分页
+    # Sort and paginate
     query = query.order_by(Document.created_at.desc())
     documents = query.offset(skip).limit(limit).all()
     
@@ -822,86 +776,86 @@ def get_document_by_path_detail(
 ):
     """通过完整路径获取文档详情
     
-    路径格式: /app_slug/folder_path/document_filename
-    示例: /my-app/marketing/brochure.pdf
+    Path format: /app_slug/folder_path/document_filename
+    Example: /my-app/marketing/brochure.pdf
     
-    支持新旧文档系统：
-    1. 新文档：通过path字段直接匹配
-    2. 旧文档：通过文件夹路径和文件名组合查找
+    Supports both new and legacy document systems:
+    1. New documents: match by path field directly
+    2. Legacy documents: match by combining folder path and filename
     """
     import logging
     logger = logging.getLogger(__name__)
     
-    # 规范化路径：确保以斜杠开头
+    # Normalize path: ensure leading slash
     if not path.startswith('/'):
         path = '/' + path
     
-    logger.info(f"通过路径获取文档详情: {path}")
+    logger.info(f"Get document details by path: {path}")
     
-    # 方法1：首先尝试通过path字段直接匹配（新文档系统，路径如 /content/dam/...）
+    # Method 1: try path field match (new system, paths like /content/dam/...)
     document = db.query(Document).options(
         joinedload(Document.folder).joinedload(Folder.app)
     ).filter(Document.path == path).first()
     
     if document:
-        logger.info(f"通过path字段找到文档: {document.id}, path: {path}")
-        # 检查访问权限
-        return check_document_access(document.id, current_user, db)
+        logger.info(f"Found document by path field: {document.path}, path: {path}")
+        # Check access permission
+        return check_document_access(document.path, current_user, db)
     
-    # 方法1.5：尝试通过旧前缀的path字段匹配（兼容旧数据）
-    # 新格式: /boarding/canadasite/... (无前缀)
-    # 旧格式1: /content/boarding/...
-    # 旧格式2: /content/dam/boarding/...
+    # Method 1.5: try legacy prefix path fields (backward compat)
+    # New format: /boarding/canadasite/... (no prefix)
+    # Legacy format 1: /content/boarding/...
+    # Legacy format 2: /content/dam/boarding/...
     for prefix in ['/content', '/content/dam']:
         url_path = f"{prefix}{path}"
         document = db.query(Document).options(
             joinedload(Document.folder).joinedload(Folder.app)
         ).filter(Document.path == url_path).first()
         if document:
-            logger.info(f"通过{prefix} path字段找到文档: {document.id}, url_path: {url_path}")
-            return check_document_access(document.id, current_user, db)
+            logger.info(f"Found document by {prefix} path field: {document.path}, url_path: {url_path}")
+            return check_document_access(document.path, current_user, db)
     
-    # 方法2：尝试通过storage_path字段匹配
-    # storage_path 存储时不带头斜杠(如 "boarding/canadasite/...")
-    # 所以同时尝试带/和不带/两种格式
+    # Method 2: try storage_path field match
+    # storage_path stored without leading slash (e.g. "boarding/canadasite/...")
+    # Try both with / and without /
     document = db.query(Document).options(
         joinedload(Document.folder).joinedload(Folder.app)
     ).filter(Document.storage_path == path).first()
     
     if not document:
-        # 去掉开头的斜杠再试一次
+        # Remove leading slash and try again
         storage_path = path.lstrip('/')
         document = db.query(Document).options(
             joinedload(Document.folder).joinedload(Folder.app)
         ).filter(Document.storage_path == storage_path).first()
     
     if document:
-        logger.info(f"通过storage_path字段找到文档: {document.id}, path: {path}")
-        # 检查访问权限
-        return check_document_access(document.id, current_user, db)
+        logger.info(f"Found document by storage_path field: {document.path}, path: {path}")
+        # Check access permission
+        return check_document_access(document.path, current_user, db)
     
-    # 方法3：解析路径为应用slug、文件夹路径和文件名
+    # Method 3: parse path into app slug, folder path and filename
     # 路径格式: /app_slug/folder_path/document_filename
     path_parts = path.strip('/').split('/')
     if len(path_parts) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="路径格式无效，至少需要应用slug和文件名"
+            detail="Invalid path format, need at least app slug and filename"
         )
     
     app_slug = path_parts[0]
     filename = path_parts[-1]
-    folder_path_parts = path_parts[1:-1]  # 中间部分为文件夹路径
+    folder_path_parts = path_parts[1:-1]  # Middle part is folder path
     folder_path = '/' + '/'.join(folder_path_parts) if folder_path_parts else '/' + app_slug
     
-    logger.info(f"解析路径: app_slug={app_slug}, folder_path={folder_path}, filename={filename}")
+    logger.info(f"Parsing path: app_slug={app_slug}, folder_path={folder_path}, filename={filename}")
     
-    # 查找应用
+    # Find app
     app = db.query(App).filter(App.slug == app_slug).first()
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"应用不存在: {app_slug}"
+            detail=f"App not found: {app_slug}"
         )
     
     # 查找文件夹
@@ -911,7 +865,7 @@ def get_document_by_path_detail(
     ).first()
     
     if not folder:
-        # 尝试使用父文件夹路径
+        # Try parent folder path
         folder = db.query(Folder).filter(
             Folder.app_id == app.id,
             Folder.parent_folder_path == folder_path
@@ -920,10 +874,10 @@ def get_document_by_path_detail(
         if not folder:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"文件夹不存在: {folder_path}"
+                detail=f"Folder not found: {folder_path}"
             )
     
-    # 安全化文件名比较
+    # Sanitize filename comparison
     from ..core.path_utils import make_filename_safe
     from pathlib import Path as PathLib
     
@@ -933,50 +887,50 @@ def get_document_by_path_detail(
     safe_stem = make_filename_safe(stem)
     safe_filename = f"{safe_stem}{ext}" if ext else safe_stem
     
-    # 查找文档（通过存储文件名）
+    # Find document (by storage filename)
     document = db.query(Document).options(
         joinedload(Document.folder).joinedload(Folder.app)
     ).filter(
-        Document.folder_id == folder.id,
+        Document.folder_path == folder.path,
         Document.stored_filename == safe_filename
     ).first()
     
     if not document:
-        # 尝试通过原始文件名查找
+        # Try matching by original filename
         document = db.query(Document).options(
             joinedload(Document.folder).joinedload(Folder.app)
         ).filter(
-            Document.folder_id == folder.id,
+            Document.folder_path == folder.path,
             Document.original_filename == filename
         ).first()
     
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"文档不存在: {filename} (路径: {path})"
+            detail=f"Document not found: {filename} (path: {path})"
         )
     
-    logger.info(f"通过文件夹和文件名找到文档: {document.id}")
+    logger.info(f"Found document by folder and filename: {document.path}")
     
-    # 检查访问权限
-    return check_document_access(document.id, current_user, db)
+    # Check access permission
+    return check_document_access(document.path, current_user, db)
 
 
 @router.get("/{document_identifier:path}/pages", response_model=List[PageResponse])
 def get_document_pages(
     document_identifier: str,
-    skip: int = Query(0, ge=0, description="跳过记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
+    skip: int = Query(0, ge=0, description="Records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Records to return"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）获取文档的所有页面"""
-    # 先验证文档访问权限并获取文档对象
+    """Get all pages of a document by identifier (UUID or path)"""
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 获取页面列表
+    # Get page list
     pages = db.query(Page).filter(
-        Page.document_id == document.id
+        Page.document_id == document.path
     ).order_by(Page.page_number).offset(skip).limit(limit).all()
     
     return pages
@@ -989,20 +943,20 @@ def get_document_page(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）获取文档的特定页面"""
-    # 先验证文档访问权限并获取文档对象
+    """Get a specific page of a document by identifier (UUID or path)"""
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 获取页面
+    # Get page
     page = db.query(Page).filter(
         Page.id == page_id,
-        Page.document_id == document.id
+        Page.document_id == document.path
     ).first()
     
     if not page:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="页面不存在或不属于此文档"
+            detail="Page not found or does not belong to this document"
         )
     
     return page
@@ -1016,26 +970,26 @@ def update_document_page(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）更新页面信息（主要用于更新索引字段）"""
-    # 先验证文档访问权限并获取文档对象
+    """Update page info by identifier (UUID or path) - mainly for index fields"""
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 获取页面
+    # Get page
     page = db.query(Page).filter(
         Page.id == page_id,
-        Page.document_id == document.id
+        Page.document_id == document.path
     ).first()
     
     if not page:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="页面不存在或不属于此文档"
+            detail="Page not found or does not belong to this document"
         )
     
-    # 如果修改了页码，检查是否与其他页面冲突
+    # If page number changed, check for conflicts
     if page_update.page_number and page_update.page_number != page.page_number:
         existing_page = db.query(Page).filter(
-            Page.document_id == document.id,
+            Page.document_id == document.path,
             Page.page_number == page_update.page_number,
             Page.id != page_id
         ).first()
@@ -1043,15 +997,15 @@ def update_document_page(
         if existing_page:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="此文档中已存在该页码的页面"
+                detail="A page with this number already exists in the document"
             )
     
-    # 更新字段
+    # Update fields
     update_data = page_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(page, field, value)
     
-    # 更新审计字段
+    # Update audit fields
     page.updated_by = page_update.updated_by or current_user.username
     
     db.commit()
@@ -1067,35 +1021,34 @@ def delete_document_page(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）删除页面"""
-    # 先验证文档访问权限并获取文档对象
+    """Delete a page by identifier (UUID or path)"""
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 获取页面
+    # Get page
     page = db.query(Page).filter(
         Page.id == page_id,
-        Page.document_id == document.id
+        Page.document_id == document.path
     ).first()
     
     if not page:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="页面不存在或不属于此文档"
+            detail="Page not found or does not belong to this document"
         )
     
     db.delete(page)
     db.commit()
     
-    return {"message": "页面删除成功"}
+    return {"message": "Page deleted successfully"}
 
 
-# ========== 文件操作路由 ==========
+# ========== File Operation Routes ==========
 
 @router.post("/upload/")
 async def upload_document(
     file: UploadFile = File(...),
-    folder_path: Optional[str] = Form(None, description="文件夹路径，格式: /app_slug/folder/subfolder（推荐）"),
-    folder_id: Optional[uuid.UUID] = Form(None, description="文件夹ID（已弃用，建议使用folder_path）"),
+    folder_path: str = Form(..., description="Folder path, format: /app_slug/folder/subfolder"),
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     document_type: DocumentType = Form(DocumentType.GENERAL),
@@ -1106,64 +1059,40 @@ async def upload_document(
 ):
     """上传文档文件（路径优先，兼容UUID）
     
-    注意：这里只保存文件基本信息，实际的文件处理和转换通过异步任务完成
+    Note: only saves basic file info, actual processing and conversion happens asynchronously
     
-    如果提供了 naming_rule_id，将使用文件命名规则生成文档编号（document_number）
-    文档编号格式：{basename}{序列号}，如"PO-1001"
-    系统存储的文件名使用UUID确保唯一性，用户不关心系统文件名
+    If naming_rule_id is provided, generates document_number using naming rules.
+    Document number format: {basename}{sequence}, e.g. "PO-1001"
+    System filenames use UUID for uniqueness.
     
-    如果命名规则包含 subfolder_name 或提供了 device_id，文件将存储到设备的子文件夹中
-    实现文件按类型分目录存储，避免所有文件堆在同一个目录
-    
-    支持通过文件夹路径（推荐）或文件夹ID（已弃用）指定目标文件夹。
+    If naming rule has subfolder_name or device_id is provided, files are stored in device subfolders.
+    Organizes files by type in subdirectories to avoid dumping all files in one directory.
     """
     logger = logging.getLogger(__name__)
     
-    # 🐛 DEBUG: 打印接收到的参数
+    # 🐛 DEBUG: print received parameters
     print(f"\n{'='*60}")
-    print(f"[DEBUG] upload_document 接收到请求:")
+    print(f"[DEBUG] upload_document received request:")
     print(f"  folder_path={folder_path!r}")
-    print(f"  folder_id={folder_id!r}")
+    # folder_path available as str
     print(f"  title={title!r}")
     print(f"  file.filename={file.filename!r}")
     print(f"  current_user={current_user.id} ({current_user.username})")
     print(f"  is_superuser={current_user.is_superuser}")
     
-    # 检查至少提供了一个文件夹标识符
-    if not folder_path and not folder_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="必须提供folder_path（推荐）或folder_id参数"
-        )
+    # Get folder by path
+    folder = get_folder_by_identifier_or_path(folder_path, current_user, db, create_if_not_exists=True)
+    # 🐛 DEBUG: Show resolved folder info
+    print(f"[DEBUG] Folder resolution: folder_path={folder_path!r} → folder.path={folder.path!r}")
+    # ======================================
+    logger.info(f"✅ upload_document: 通过路径找到文件夹: {folder_path}")
     
-    # 记录警告如果使用folder_id
-    if folder_id:
-        logger.warning(f"⚠️  upload_document: 使用已弃用的folder_id参数: {folder_id}，建议使用folder_path")
-    
-    # 获取文件夹（路径优先）
-    if folder_path:
-        # 使用路径查找文件夹，如果不存在则自动创建
-        folder = get_folder_by_identifier_or_path(folder_path, current_user, db, create_if_not_exists=True)
-        # 🐛 DEBUG: Show resolved folder info
-        print(f"[DEBUG] 文件夹解析结果: folder_path={folder_path!r} → folder.path={folder.path!r} folder.id={folder.id}")
-        # ======================================
-        logger.info(f"✅ upload_document: 通过路径找到文件夹: {folder_path}")
-        # 确保folder_id指向实际文件夹的ID（修复用folder_path时folder_id=None的bug）
-        folder_id = folder.id
-    else:
-        # 使用ID查找文件夹（向后兼容）
-        folder = check_folder_access(folder_id, current_user, db)
-        # 🐛 DEBUG: Show resolved folder info
-        print(f"[DEBUG] 文件夹解析结果: folder_id={folder_id!r} → folder.path={folder.path!r} folder.name={folder.name!r}")
-        # ======================================
-        logger.warning(f"⚠️  upload_document: 通过UUID找到文件夹: {folder_id} (路径: {folder.path})")
-    
-    # 如果提供了命名规则ID，验证规则并获取下一个文档编号
+    # If naming_rule_id provided, validate rule and get next document number
     generated_document_number = None
     naming_rule = None
     
     if naming_rule_id:
-        # 获取命名规则
+        # Get naming rule
         naming_rule = db.query(FileNamingRule).filter(
             FileNamingRule.id == str(naming_rule_id)
         ).first()
@@ -1171,52 +1100,52 @@ async def upload_document(
         if not naming_rule:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="命名规则不存在"
+                detail="Naming rule not found"
             )
         
-        # 验证命名规则属于同一个应用
-        # 通过文件夹→应用链找到应用ID
+        # Validate naming rule belongs to same app
+        # Find app ID via folder->app chain
         app_from_folder = folder.app
         if str(naming_rule.app_id) != str(app_from_folder.id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="命名规则不属于当前应用"
+                detail="Naming rule does not belong to current app"
             )
         
-        # 生成文档编号（如"PO-1001"）
+        # Generate document number (e.g. "PO-1001")
         generated_document_number = f"{naming_rule.basename}{naming_rule.max_number:04d}"
         
-        # 递增序列号
+        # Increment sequence number
         naming_rule.max_number += naming_rule.increment_by
         naming_rule.updated_by = current_user.username
     
-    # 检查文件大小（限制为100MB）
+    # Check file size (100MB limit)
     file_size = 0
     temp_file_path = None
     try:
-        # 保存到临时文件
+        # Save to temp file
         temp_dir = Path("/tmp/filebot/uploads")
         temp_dir.mkdir(parents=True, exist_ok=True)
-        # 🐛 修复: file.filename 可能包含路径分隔符（如 wet-boew/assets/.../file.png），
-        # 使用 Path().name 仅取文件名部分，避免创建不存在的子目录
+        # 🐛 Fix: file.filename may contain path separators (e.g. wet-boew/assets/.../file.png),
+        # Use Path().name to extract just the filename, avoid creating nonexistent subdirectories
         temp_basename = Path(file.filename).name
         temp_file_path = temp_dir / f"{uuid.uuid4()}_{temp_basename}"
         
         with open(temp_file_path, "wb") as buffer:
             while chunk := await file.read(1024 * 1024):  # 1MB chunks
                 file_size += len(chunk)
-                if file_size > 100 * 1024 * 1024:  # 100MB限制
+                if file_size > 100 * 1024 * 1024:  # 100MB limit
                     raise HTTPException(
                         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail="文件大小不能超过100MB"
+                        detail="File size cannot exceed 100MB"
                     )
                 buffer.write(chunk)
         
-        # 确定文件类型和扩展名
+        # Determine file type and extension
         original_uploaded_filename = file.filename
         file_extension = Path(original_uploaded_filename).suffix.lower()
         
-        # 映射扩展名到FileType枚举
+        # Map extension to FileType enum
         extension_to_type = {
             'tiff': FileType.TIFF, 'tif': FileType.TIFF,
             'pdf': FileType.PDF,
@@ -1229,12 +1158,12 @@ async def upload_document(
             'html': FileType.HTML, 'htm': FileType.HTML
         }
         
-        # 去掉扩展名前的点
+        # Remove dot from extension
         ext_without_dot = file_extension.lstrip('.')
         file_type = extension_to_type.get(ext_without_dot, FileType.OTHER)
         
-        # 确定MIME类型
-        # 优先使用上传时声明的 Content-Type；如果为 octet-stream 则根据扩展名推断
+        # Determine MIME type
+        # Prefer upload Content-Type; if octet-stream infer from extension
         from_mime = file.content_type or "application/octet-stream"
         extension_to_mime = {
             'html': 'text/html', 'htm': 'text/html',
@@ -1251,28 +1180,28 @@ async def upload_document(
         else:
             mime_type = from_mime
         
-        # 确定最终显示的文件名
-        # original_filename 保持用户上传的原始文件名
+        # Determine display filename
+        # original_filename preserves user-uploaded filename
         original_filename = original_uploaded_filename
         
-        # 注意：stored_filename将在generate_storage_paths调用后设置为safe_filename
-        # 不再使用UUID作为文件名，采用纯path结构
+        # Note: stored_filename will be set to safe_filename after generate_storage_paths
+        # No longer using UUID as filename, using path structure
         
-        # 如果使用命名规则，生成文档编号（document_number）
+        # If using naming rule, generate document_number
         document_number = None
         if generated_document_number:
-            # 使用命名规则生成文档编号（如"PO-1001"）
+            # Generate document number using naming rule (e.g. "PO-1001")
             document_number = generated_document_number
         
-        # ========== 设备选择和存储路径确定 ==========
+        # ========== Device Selection and Storage Path Determination ==========
         selected_device = None
         storage_subfolder = None
         full_storage_path = None
         
-        # 计算文件大小（MB）
-        file_size_mb = file_size // (1024 * 1024) + 1  # 向上取整
+        # Calculate file size (MB)
+        file_size_mb = file_size // (1024 * 1024) + 1  # Round up
         
-        # 情况1：指定了device_id
+        # Case 1: device_id specified
         if device_id:
             selected_device = db.query(Device).filter(
                 Device.id == str(device_id),
@@ -1282,74 +1211,74 @@ async def upload_document(
             if not selected_device:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="指定的设备不存在或未激活"
+                    detail="Specified device not found or not active"
                 )
             
             if not selected_device.can_store_file(file_size_mb):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"设备 '{selected_device.name}' 空间不足，无法存储文件"
+                    detail=f"Device '{selected_device.name}' out of space, cannot store file"
                 )
         
-        # 情况2：使用命名规则，且规则指定了subfolder_name，自动选择设备
+        # Case 2: using naming rule with subfolder_name, auto-select device
         elif naming_rule and naming_rule.subfolder_name:
-            # 获取所有活跃的存储设备
+            # Get all active storage devices
             storage_devices = db.query(Device).filter(
                 Device.is_active == True,
-                Device.type == DeviceType.STORAGE  # 只使用主存储设备
+                Device.type == DeviceType.STORAGE  # Use only primary storage devices
             ).all()
             
             if not storage_devices:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="没有可用的存储设备，请先创建设备"
+                    detail="No available storage devices, please create one first"
                 )
             
-            # 选择最佳设备
+            # Select best device
             selected_device = Device.find_best_device_for_storage(storage_devices, file_size_mb)
             
             if not selected_device:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="所有存储设备空间不足，无法存储文件"
+                    detail="All storage devices out of space, cannot store file"
                 )
             
-            # 使用命名规则的子文件夹名称
+            # Use naming rule subfolder name
             storage_subfolder = naming_rule.subfolder_name
         
-        # 情况3：使用默认存储（不指定设备）
+        # Case 3: default storage (no device)
         
-        # 如果选择了设备，确定存储路径
+        # If device selected, determine storage path
         if selected_device:
-            # 确保设备路径存在
+            # Ensure device path exists
             if not selected_device.path:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"设备 '{selected_device.name}' 没有配置存储路径"
+                    detail=f"Device '{selected_device.name}' has no configured storage path"
                 )
             
-            # 确定子文件夹路径
+            # Determine subfolder path
             if not storage_subfolder:
-                storage_subfolder = "default"  # 默认子文件夹
+                storage_subfolder = "default"  # Default subfolder
             
-            # 构建完整存储路径
+            # Build full storage path
             full_storage_path = str(Path(selected_device.path) / storage_subfolder)
             
-            # 创建子文件夹（如果不存在）
+            # Create subfolder (if not exists)
             Path(full_storage_path).mkdir(parents=True, exist_ok=True)
         
-        # ========== 设备选择和存储路径确定结束 ==========
+        # ========== End Device Selection and Storage Path Determination ==========
         
-        # ========== 路径系统重构：生成存储路径和URL路径 ==========
-        # 获取应用信息（通过文件夹）
+        # ========== Path System: Generate Storage Path and URL Path ==========
+        # Get app info (via folder)
         app = folder.app
         if not app or not app.slug:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="无法确定应用信息，无法生成存储路径"
+                detail="Cannot determine app info, unable to generate storage path"
             )
         
-        # 生成存储路径和URL路径
+        # Generate storage path and URL path
         data_root = Path(settings.DATA_ROOT)
         storage_path_obj, url_path, safe_filename = generate_storage_paths(
             original_filename=original_filename,
@@ -1358,147 +1287,147 @@ async def upload_document(
             data_root=data_root
         )
         
-        # 确保目录存在
+        # Ensure directory exists
         if not ensure_directory_exists(storage_path_obj.parent):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"无法创建存储目录: {storage_path_obj.parent}"
+                detail=f"Cannot create storage directory: {storage_path_obj.parent}"
             )
         
-        # 计算相对存储路径（相对于DATA_ROOT）
+        # Calculate relative storage path (relative to DATA_ROOT)
         try:
             storage_path = str(storage_path_obj.relative_to(data_root))
         except ValueError:
-            # 如果路径不在data_root下，使用绝对路径
+            # If path outside data_root, use absolute path
             storage_path = str(storage_path_obj)
         
-        # 设置存储文件名为安全文件名（纯path结构，不使用UUID）
+        # Set storage filename to safe filename (path structure, no UUID)
         stored_filename = safe_filename
         
-        print(f"[路径系统] 生成的路径:")
-        print(f"  存储路径: {storage_path}")
-        print(f"  URL路径: {url_path}")
-        print(f"  安全文件名: {safe_filename}")
-        print(f"  存储文件名: {stored_filename}")
+        print(f"[Path System] Generated paths:")
+        print(f"  Storage path: {storage_path}")
+        print(f"  URL path: {url_path}")
+        print(f"  Safe filename: {safe_filename}")
+        print(f"  Stored filename: {stored_filename}")
         
-        # ========== 路径系统重构结束 ==========
+        # ========== End Path System Restructuring ==========
         
-        # 创建文档记录 - 确保所有UUID都转换为字符串
+        # Create document record - ensure all UUIDs converted to strings
         import uuid as uuid_module
         document = Document(
-            id=str(uuid_module.uuid4()),  # 显式设置ID为字符串
-            folder_id=str(folder_id),
+            id=str(uuid_module.uuid4()),  # Explicitly set ID as string
+            folder_path=folder.path,
             uploaded_by=str(current_user.id),
             
-            # 文档信息
+            # Document info
             title=title or Path(original_filename).stem,
             description=description,
-            document_number=document_number,  # 如果使用命名规则，设置文档编号
+            document_number=document_number,  # Set document number if using naming rule
             status=DocumentStatus.ACTIVE,
             type=document_type,
             comments=f"上传文件: {original_uploaded_filename}" + 
                      (f" (使用命名规则: {naming_rule.basename})" if naming_rule else ""),
             
-            # 文件信息
+            # File info
             original_filename=original_filename,
             stored_filename=stored_filename,
             file_size=file_size,
             file_type=file_type,
             mime_type=mime_type,
             
-            # 存储设备信息
+            # Storage device info
             device_id=str(selected_device.id) if selected_device else None,
             storage_subfolder=storage_subfolder,
             full_storage_path=full_storage_path,
             
-            # 路径系统字段
+            # Path system fields
             storage_path=storage_path,
             path=url_path,
             parent_folder_path=folder.path if folder and hasattr(folder, 'path') else None,
             
-            # 转换状态
+            # Conversion status
             conversion_status=ConversionStatus.PENDING,
             
-            # 审计字段
+            # Audit fields
             created_by=current_user.username
         )
         
         db.add(document)
         
-        # 如果使用了命名规则，保存规则更新
+        # Save naming rule update if used
         if naming_rule:
             db.add(naming_rule)
         
         db.commit()
         db.refresh(document)
         
-        # ========== 路径系统重构：文件存储 ==========
-        # 使用新路径系统存储文件
+        # ========== Path System: File Storage ==========
+        # Use new path system to store file
         target_path = storage_path_obj
         
-        # 如果选择了设备，分配存储空间
+        # If device selected, allocate storage space
         if selected_device:
             if not selected_device.allocate_space(file_size_mb):
-                # 回滚事务（删除文档记录）
+                # Rollback transaction (delete document record)
                 db.rollback()
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"设备 '{selected_device.name}' 空间分配失败"
+                    detail=f"Device '{selected_device.name}' space allocation failed"
                 )
             
-            # 保存设备容量更新
+            # Save device capacity update
             db.add(selected_device)
             db.commit()
         
-        # 移动文件到新路径
-        print(f"[路径系统] 移动文件到: {target_path}")
+        # Move file to new path
+        print(f"[Path System] Moving file to: {target_path}")
         shutil.move(str(temp_file_path), str(target_path))
         
-        # 验证文件已移动
+        # Verify file was moved
         if not target_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"文件移动失败: {target_path} 不存在"
+                detail=f"File move failed: {target_path} does not exist"
             )
         
-        print(f"[路径系统] 文件移动成功，大小: {target_path.stat().st_size} 字节")
-        # ========== 路径系统重构结束 ==========
+        print(f"[Path System] File moved successfully, size: {target_path.stat().st_size} bytes")
+        # ========== End Path System Restructuring ==========
         
-        # 定义支持的图像文件类型
+        # Define supported image file types
         image_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF}
         
         conversion_task = None
         
-        # 如果是图像文件，直接生成缩略图并标记为已完成
+        # If image file, generate thumbnail and mark complete
         if document.file_type in image_file_types:
-            print(f"[图像处理] 检测到图像文件: {document.file_type}，生成缩略图")
+            print(f"[Image Processing] Detected image file: {document.file_type}, generating thumbnail")
             success = generate_thumbnail_for_image_document(document, db, settings)
             if success:
-                print(f"[图像处理] 缩略图生成成功，文档 {document.id} 标记为已完成")
-                # 图像文件不需要PDF转换任务
+                print(f"[Image Processing] Thumbnail generated successfully, document {document.path} marked complete")
+                # Image files do not need PDF conversion task
                 conversion_task = None
             else:
-                print(f"[图像处理] 缩略图生成失败，但仍创建PDF转换任务")
-                # 如果缩略图生成失败，仍创建PDF转换任务作为后备
+                print(f"[Image Processing] Thumbnail generation failed, still creating PDF conversion task")
+                # If thumbnail fails, create PDF conversion task as fallback
                 conversion_task = create_conversion_task_for_document(
-                    db, document.id, target_format="pdf"
+                    db, document.path, target_format="pdf"
                 )
         else:
-            # 非图像文件，创建PDF转换任务
+            # Non-image file, create PDF conversion task
             conversion_task = create_conversion_task_for_document(
-                db, document.id, target_format="pdf"
+                db, document.path, target_format="pdf"
             )
         
-        # 准备响应数据
+        # Prepare response data
         response_data = {
-            "message": "文件上传成功，转换任务已创建",
-            "document_id": str(document.id),
+            "message": "File uploaded successfully, conversion task created",
+            "document_path": document.path,
             "conversion_task_id": str(conversion_task.id) if conversion_task else None,
             "original_filename": original_filename,
-            "document_number": document_number,  # 如果使用命名规则生成的文档编号
+            "document_number": document_number,  # Document number generated if using naming rule
             "naming_rule_used": naming_rule.basename if naming_rule else None,
             "next_sequence_number": naming_rule.max_number if naming_rule else None,
-            # 路径系统信息
+            # Path system info
             "storage_path": storage_path,
             "path": url_path,
             "safe_filename": safe_filename
@@ -1511,7 +1440,7 @@ async def upload_document(
             temp_file_path.unlink()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"文件上传失败: {str(e)}"
+            detail=f"File upload failed: {str(e)}"
         )
 
 
@@ -1519,56 +1448,56 @@ async def upload_document(
 def download_document(
     request: Request,
     document_identifier: str,
-    download_type: str = Query("original", description="下载类型: original 或 pdf"),
-    current_user: User = Depends(get_current_active_user),
+    download_type: str = Query("original", description="Download type: original or pdf"),
+    current_user: User = Depends(get_current_active_user_allow_query),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）下载文档文件
+    """Download document file by identifier (UUID or path)
     
-    支持下载原始文件或转换后的PDF
+    Supports downloading original file or converted PDF
     """
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 检查发布状态：只有PUBLISHED状态的文档可以通过URL访问
-    # 如果publish_status为None（旧文档），允许访问以保持向后兼容
+    # Check publish status: only PUBLISHED docs accessible via URL
+    # Allow access if publish_status is None (legacy docs)
     
-    # 检查是否为WebBot请求（特殊权限允许访问未发布文档）
+    # Check for WebBot request (special permission for unpublished docs)
     import logging
     logger = logging.getLogger(__name__)
     is_webbot_request = request.headers.get("X-WebBot-Access") == "true"
     if is_webbot_request:
-        logger.info(f"WebBot请求访问未发布文档 {document.id}，跳过发布状态检查")
+        logger.info(f"WebBot request accessing unpublished doc {document.path}, skipping publish status check")
     elif document.publish_status is not None and document.publish_status != PublishStatus.PUBLISHED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="文档未发布，无法通过URL访问"
+            detail="Document not published, cannot access via URL"
         )
     
-    # TODO: 根据配置的存储路径构建实际文件路径
-    # 这里只是一个示例实现
+    # TODO: Build actual file path based on configured storage path
+    # This is just an example implementation
     
     file_path = None
     filename = document.original_filename
     
     if download_type == "pdf" and document.converted_pdf_path:
-        # 下载PDF版本
+        # Download PDF version
         file_path = document.converted_pdf_path
         filename = f"{Path(document.original_filename).stem}.pdf"
     else:
-        # 下载原始文件
+        # Download original file
         file_path = get_document_file_path(document, settings)
         filename = document.original_filename
     
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
-    # 确定media_type：使用文档的mime_type，如果不存在则根据文件扩展名判断
+    # Determine media_type from document mime_type or file extension
     media_type = document.mime_type if document.mime_type else "application/octet-stream"
     
-    # 如果mime_type为空或未知，根据文件扩展名设置
+    # If mime_type is empty/unknown, infer from extension
     if not media_type or media_type == "application/octet-stream":
         if filename.lower().endswith(('.html', '.htm')):
             media_type = "text/html"
@@ -1595,21 +1524,21 @@ def preview_html_document(
     current_user: User = Depends(get_current_active_user_allow_query),
     db: Session = Depends(get_db)
 ):
-    """HTML预览端点 - 内联显示HTML文件内容，使其引用资源（如/etc/designs/...）可在同源iframe中正常加载"""
+    """HTML preview endpoint - display HTML inline so resources (e.g. /etc/designs/...) load in same-origin iframe"""
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 只允许HTML文件
+    # Only HTML files allowed
     if document.file_type != FileType.HTML:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="仅支持HTML文件的预览"
+            detail="Only HTML files are supported for preview"
         )
     
     file_path = get_document_file_path(document, settings)
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
     return FileResponse(
@@ -1623,69 +1552,69 @@ def preview_html_document(
 @router.post("/{document_identifier:path}/extract-pages")
 async def extract_pages_from_pdf(
     document_identifier: str,
-    page_numbers: List[int] = Query(..., description="要提取的页码列表（从1开始）"),
+    page_numbers: List[int] = Query(..., description="Page numbers to extract (1-based)"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）从PDF文档中提取指定页面，生成新的临时PDF文件
+    """Extract specified page from PDF document by identifier
     
-    注意：生成的PDF是临时文件，不会保存到系统中
+    Note: The generated PDF is a temporary file and will not be saved to the system
     """
-    # 验证文档访问权限并获取文档对象
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 检查文档是否为PDF
+    # Check if document is PDF
     if document.file_type != FileType.PDF:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只能从PDF文件中提取页面"
+            detail="Can only extract pages from PDF files"
         )
     
-    # 获取PDF文件路径
+    # Get PDF file path
     pdf_path = None
     if document.converted_pdf_path and os.path.exists(document.converted_pdf_path):
-        # 使用已转换的PDF版本
+        # Use converted PDF version
         pdf_path = document.converted_pdf_path
     else:
-        # 使用原始文件（假设已经是PDF）
+        # Use original file (assumed to be PDF)
         pdf_path = get_document_file_path(document, settings)
     
     if not pdf_path or not os.path.exists(pdf_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="PDF文件不存在"
+            detail="PDF file not found"
         )
     
-    # 验证页码有效性
+    # Validate page numbers
     try:
         with open(pdf_path, 'rb') as pdf_file:
             pdf_reader = PyPDF2.PdfReader(pdf_file)
             total_pages = len(pdf_reader.pages)
             
-            # 检查页码范围
+            # Check page range
             for page_num in page_numbers:
                 if page_num < 1 or page_num > total_pages:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"页码 {page_num} 超出范围（文档共有 {total_pages} 页）"
+                        detail=f"Page {page_num} out of range (document has {total_pages} pages)"
                     )
             
-            # 创建PDF写入器
+            # Create PDF writer
             pdf_writer = PyPDF2.PdfWriter()
             
-            # 提取指定页面
+            # Extract specified page
             for page_num in page_numbers:
-                page = pdf_reader.pages[page_num - 1]  # 转换为0-based索引
+                page = pdf_reader.pages[page_num - 1]  # Convert to 0-based index
                 pdf_writer.add_page(page)
             
-            # 创建临时文件
+            # Create temporary file
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
                 temp_path = temp_file.name
-                # 写入提取的页面
+                # Write extracted page
                 with open(temp_path, 'wb') as output_file:
                     pdf_writer.write(output_file)
             
-            # 生成下载文件名
+            # Generate download filename
             original_stem = Path(document.original_filename).stem
             if len(page_numbers) == 1:
                 download_filename = f"{original_stem}_page{page_numbers[0]}.pdf"
@@ -1693,90 +1622,90 @@ async def extract_pages_from_pdf(
                 page_range = f"pages_{'-'.join(map(str, page_numbers))}"
                 download_filename = f"{original_stem}_{page_range}.pdf"
             
-            # 返回文件响应（临时文件会在发送后自动清理）
+            # Return file response (temp file auto-cleaned after send)
             return FileResponse(
                 path=temp_path,
                 filename=download_filename,
                 media_type="application/pdf",
-                background=lambda: os.unlink(temp_path)  # 发送后删除临时文件
+                background=lambda: os.unlink(temp_path)  # Delete temp file after sending
             )
     
     except PyPDF2.errors.PdfReadError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="无法读取PDF文件，文件可能已损坏或不是有效的PDF"
+            detail="Cannot read PDF file, may be corrupted or not a valid PDF"
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"提取页面时发生错误: {str(e)}"
+            detail=f"Error extracting page: {str(e)}"
         )
 
 
 @router.post("/{document_identifier:path}/extract-tiff-pages")
 async def extract_pages_from_tiff(
     document_identifier: str,
-    page_numbers: List[int] = Query(..., description="要提取的页码列表（从1开始）"),
-    output_format: str = Query("pdf", description="输出格式: 'pdf' 或 'tiff'"),
+    page_numbers: List[int] = Query(..., description="Page numbers to extract (1-based)"),
+    output_format: str = Query("pdf", description="Output format: 'pdf' or 'tiff'"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）从TIFF文档中提取指定页面，生成新的临时文件
+    """Extract specified page from TIFF document by identifier
     
-    注意：生成的文件是临时文件，不会保存到系统中
+    Note: The generated file is a temporary file and will not be saved to the system
     """
-    # 验证文档访问权限并获取文档对象
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 检查文档是否为TIFF
+    # Check if document is TIFF
     if document.file_type not in [FileType.TIFF, FileType.JPEG, FileType.JPG, FileType.PNG]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只能从图像文件（TIFF/JPEG/PNG）中提取页面"
+            detail="Can only extract pages from image files (TIFF/JPEG/PNG)"
         )
     
-    # 验证输出格式
+    # Validate output format
     if output_format.lower() not in ["pdf", "tiff"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="输出格式必须是 'pdf' 或 'tiff'"
+            detail="Output format must be 'pdf' or 'tiff'"
         )
     
-    # 获取文件路径
+    # Get file path
     file_path = get_document_file_path(document, settings)
     
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
     try:
-        # 打开TIFF文件
+        # Open TIFF file
         with Image.open(file_path) as img:
-            # 获取TIFF页数（如果是多页TIFF）
+            # Get TIFF page count (if multi-page TIFF)
             page_count = 0
             try:
                 while True:
                     img.seek(page_count)
                     page_count += 1
             except EOFError:
-                # 到达文件结尾，page_count现在包含总页数
+                # End of file, page_count now has total pages
                 pass
             
-            # 单页图像的情况
+            # Single-page image case
             if page_count == 0:
                 page_count = 1
             
-            # 检查页码范围
+            # Check page range
             for page_num in page_numbers:
                 if page_num < 1 or page_num > page_count:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"页码 {page_num} 超出范围（文档共有 {page_count} 页）"
+                        detail=f"Page number {page_num} out of range (document has {page_count} pages)"
                     )
             
-            # 根据输出格式处理
+            # Process based on output format
             if output_format.lower() == "pdf":
                 return _extract_tiff_pages_to_pdf(
                     file_path, page_numbers, document.original_filename
@@ -1789,7 +1718,7 @@ async def extract_pages_from_tiff(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"提取页面时发生错误: {str(e)}"
+            detail=f"Error extracting page: {str(e)}"
         )
 
 
@@ -1798,31 +1727,31 @@ def _extract_tiff_pages_to_pdf(
     page_numbers: List[int],
     original_filename: str
 ) -> FileResponse:
-    """从TIFF提取页面并生成PDF"""
+    """Extract pages from TIFF and generate PDF"""
     try:
         images = []
         
-        # 提取指定页面
+        # Extract specified page
         for page_num in page_numbers:
             with Image.open(tiff_path) as img:
-                # 跳转到指定页面（0-based索引）
+                # Jump to specified page (0-based index)
                 img.seek(page_num - 1)
                 
-                # 转换为RGB模式（如果需要）
+                # Convert to RGB mode (if needed)
                 if img.mode not in ["RGB", "L"]:
                     img = img.convert("RGB")
                 
                 images.append(img.copy())
         
-        # 创建临时PDF文件
+        # Create temporary PDF file
         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
             temp_path = temp_file.name
             
-            # 保存第一页
+            # Save first page
             images[0].save(temp_path, "PDF", save_all=True, 
                           append_images=images[1:] if len(images) > 1 else [])
         
-        # 生成下载文件名
+        # Generate download filename
         original_stem = Path(original_filename).stem
         if len(page_numbers) == 1:
             download_filename = f"{original_stem}_page{page_numbers[0]}.pdf"
@@ -1830,16 +1759,16 @@ def _extract_tiff_pages_to_pdf(
             page_range = f"pages_{'-'.join(map(str, page_numbers))}"
             download_filename = f"{original_stem}_{page_range}.pdf"
         
-        # 返回文件响应
+        # Return file response
         return FileResponse(
             path=temp_path,
             filename=download_filename,
             media_type="application/pdf",
-            background=lambda: os.unlink(temp_path)  # 发送后删除临时文件
+            background=lambda: os.unlink(temp_path)  # Delete temp file after sending
         )
     
     except Exception as e:
-        # 清理临时文件（如果存在）
+        # Clean up temp file (if exists)
         if 'temp_path' in locals() and os.path.exists(temp_path):
             os.unlink(temp_path)
         raise e
@@ -1850,27 +1779,27 @@ def _extract_tiff_pages_to_tiff(
     page_numbers: List[int],
     original_filename: str
 ) -> FileResponse:
-    """从TIFF提取页面并生成新的TIFF"""
+    """Extract pages from TIFF and generate new TIFF"""
     try:
         images = []
         
-        # 提取指定页面
+        # Extract specified page
         for page_num in page_numbers:
             with Image.open(tiff_path) as img:
-                # 跳转到指定页面（0-based索引）
+                # Jump to specified page (0-based index)
                 img.seek(page_num - 1)
                 images.append(img.copy())
         
-        # 创建临时TIFF文件
+        # Create temporary TIFF file
         with tempfile.NamedTemporaryFile(suffix='.tiff', delete=False) as temp_file:
             temp_path = temp_file.name
             
-            # 保存第一页
+            # Save first page
             images[0].save(temp_path, "TIFF", save_all=True, 
                           append_images=images[1:] if len(images) > 1 else [],
                           compression="tiff_deflate")
         
-        # 生成下载文件名
+        # Generate download filename
         original_stem = Path(original_filename).stem
         if len(page_numbers) == 1:
             download_filename = f"{original_stem}_page{page_numbers[0]}.tiff"
@@ -1878,16 +1807,16 @@ def _extract_tiff_pages_to_tiff(
             page_range = f"pages_{'-'.join(map(str, page_numbers))}"
             download_filename = f"{original_stem}_{page_range}.tiff"
         
-        # 返回文件响应
+        # Return file response
         return FileResponse(
             path=temp_path,
             filename=download_filename,
             media_type="image/tiff",
-            background=lambda: os.unlink(temp_path)  # 发送后删除临时文件
+            background=lambda: os.unlink(temp_path)  # Delete temp file after sending
         )
     
     except Exception as e:
-        # 清理临时文件（如果存在）
+        # Clean up temp file (if exists)
         if 'temp_path' in locals() and os.path.exists(temp_path):
             os.unlink(temp_path)
         raise e
@@ -1899,16 +1828,16 @@ def retry_document_conversion(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）重新尝试文档转换（针对转换失败的文档）"""
+    """Retry document conversion by identifier (UUID or path)"""
     document = get_document_by_identifier(document_identifier, current_user, db)
     
     if document.conversion_status not in [ConversionStatus.FAILED, ConversionStatus.PENDING]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"文档当前状态为 {document.conversion_status.value}，无法重新转换"
+            detail=f"Document current state is {document.conversion_status.value}, cannot retry conversion"
         )
     
-    # 重置转换状态
+    # Reset conversion status
     document.conversion_status = ConversionStatus.PENDING
     document.conversion_error = None
     document.updated_by = current_user.username
@@ -1916,15 +1845,15 @@ def retry_document_conversion(
     db.commit()
     db.refresh(document)
     
-    # TODO: 触发异步转换任务
+    # TODO: trigger async conversion task
     
     return {
-        "message": "转换任务已重新启动",
-        "document_id": str(document.id),
+        "message": "Conversion task restarted",
+        "document_path": document.path,
         "conversion_status": document.conversion_status.value
     }
 
-# ========== TIFF预览相关路由 ==========
+# ========== TIFF Preview Routes ==========
 
 @router.get("/{document_identifier:path}/tiff-info")
 def get_tiff_info(
@@ -1932,48 +1861,48 @@ def get_tiff_info(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）获取TIFF文件的详细信息（页数、每页尺寸等）"""
-    # 验证文档访问权限并获取文档对象
+    """Get TIFF file details by identifier (UUID or path)"""
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 检查文档是否为TIFF
+    # Check if document is TIFF
     if document.file_type not in [FileType.TIFF, FileType.JPEG, FileType.JPG, FileType.PNG]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只能获取图像文件（TIFF/JPEG/PNG）的信息"
+            detail="Can only get info for image files (TIFF/JPEG/PNG)"
         )
     
-    # 获取文件路径
+    # Get file path
     file_path = get_document_file_path(document, settings)
     
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
     try:
         with Image.open(file_path) as img:
-            # 获取图像信息
+            # Get image info
             width, height = img.size
             mode = img.mode
             format = img.format
             
-            # 获取页数（对于多页TIFF）
+            # Get page count (for multi-page TIFF)
             page_count = 0
             try:
                 while True:
                     img.seek(page_count)
                     page_count += 1
             except EOFError:
-                # 到达文件结尾，page_count现在包含总页数
+                # End of file, page_count now has total pages
                 pass
             
-            # 单页图像的情况
+            # Single-page image case
             if page_count == 0:
                 page_count = 1
             
-            # 获取每页尺寸（假设所有页面尺寸相同）
+            # Get page dimensions (assuming uniform)
             page_dimensions = []
             for i in range(page_count):
                 try:
@@ -1986,7 +1915,7 @@ def get_tiff_info(
                         "mode": img.mode
                     })
                 except Exception as e:
-                    # 如果无法读取某页，跳过
+                    # If page read fails, skip
                     continue
             
             return {
@@ -2003,42 +1932,42 @@ def get_tiff_info(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"读取TIFF文件时发生错误: {str(e)}"
+            detail=f"Error reading TIFF file: {str(e)}"
         )
 
 
 @router.get("/{document_identifier:path}/tiff-thumbnail/{page_number}")
 def get_tiff_thumbnail(
     document_identifier: str,
-    page_number: int = FastaPath(..., ge=1, description="页码（从1开始）"),
-    width: int = Query(200, ge=50, le=800, description="缩略图宽度"),
-    height: int = Query(200, ge=50, le=800, description="缩略图高度"),
+    page_number: int = FastaPath(..., ge=1, description="Page number (1-based)"),
+    width: int = Query(200, ge=50, le=800, description="Thumbnail width"),
+    height: int = Query(200, ge=50, le=800, description="Thumbnail height"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）获取TIFF文件指定页面的缩略图"""
-    # 验证文档访问权限并获取文档对象
+    """Get thumbnail of a TIFF page by identifier (UUID or path)"""
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 检查文档是否为TIFF
+    # Check if document is TIFF
     if document.file_type not in [FileType.TIFF, FileType.JPEG, FileType.JPG, FileType.PNG]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只能获取图像文件（TIFF/JPEG/PNG）的缩略图"
+            detail="Can only get thumbnail for image files (TIFF/JPEG/PNG)"
         )
     
-    # 获取文件路径
+    # Get file path
     file_path = get_document_file_path(document, settings)
     
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
     try:
         with Image.open(file_path) as img:
-            # 获取页数
+            # Get page count
             page_count = 0
             try:
                 while True:
@@ -2050,89 +1979,89 @@ def get_tiff_thumbnail(
             if page_count == 0:
                 page_count = 1
             
-            # 检查页码范围
+            # Check page range
             if page_number < 1 or page_number > page_count:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"页码 {page_number} 超出范围（文档共有 {page_count} 页）"
+                    detail=f"Page {page_number} out of range (document has {page_count} pages)"
                 )
             
-            # 跳转到指定页面
+            # Jump to specified page
             img.seek(page_number - 1)
             
-            # 转换为RGB模式（如果需要）
+            # Convert to RGB mode (if needed)
             if img.mode not in ["RGB", "RGBA", "L"]:
                 img = img.convert("RGB")
             
-            # 生成缩略图
+            # Generate thumbnail
             img.thumbnail((width, height), Image.Resampling.LANCZOS)
             
-            # 保存为JPEG格式（压缩率较高）
+            # Save as JPEG (high compression)
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
                 temp_path = temp_file.name
                 
-                # 如果是RGBA模式，需要添加白色背景
+                # If RGBA mode, add white background
                 if img.mode == "RGBA":
                     background = Image.new("RGB", img.size, (255, 255, 255))
-                    background.paste(img, mask=img.split()[-1])  # 使用alpha通道作为遮罩
+                    background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
                     img = background
                 
                 img.save(temp_path, "JPEG", quality=85, optimize=True)
             
-            # 生成文件名
+            # Generate filename
             original_stem = Path(document.original_filename).stem
             download_filename = f"{original_stem}_page{page_number}_thumbnail.jpg"
             
-            # 返回文件响应
+            # Return file response
             return FileResponse(
                 path=temp_path,
                 filename=download_filename,
                 media_type="image/jpeg",
-                background=lambda: os.unlink(temp_path)  # 发送后删除临时文件
+                background=lambda: os.unlink(temp_path)  # Delete temp file after sending
             )
     
     except Exception as e:
-        # 清理临时文件（如果存在）
+        # Clean up temp file (if exists)
         if 'temp_path' in locals() and os.path.exists(temp_path):
             os.unlink(temp_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"生成缩略图时发生错误: {str(e)}"
+            detail=f"Error generating thumbnail: {str(e)}"
         )
 
 
 @router.get("/{document_identifier:path}/tiff-preview/{page_number}")
 def get_tiff_preview(
     document_identifier: str,
-    page_number: int = FastaPath(..., ge=1, description="页码（从1开始）"),
-    max_width: int = Query(1200, ge=100, le=2500, description="预览图最大宽度"),
-    max_height: int = Query(1600, ge=100, le=2500, description="预览图最大高度"),
+    page_number: int = FastaPath(..., ge=1, description="Page number (1-based)"),
+    max_width: int = Query(1200, ge=100, le=2500, description="Max preview width"),
+    max_height: int = Query(1600, ge=100, le=2500, description="Max preview height"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）获取TIFF文件指定页面的预览图像（质量较高，适合查看）"""
-    # 验证文档访问权限并获取文档对象
+    """Get preview image of a TIFF page by identifier (UUID or path)"""
+    # Verify document access and get document object
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 检查文档是否为TIFF
+    # Check if document is TIFF
     if document.file_type not in [FileType.TIFF, FileType.JPEG, FileType.JPG, FileType.PNG]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只能获取图像文件（TIFF/JPEG/PNG）的预览图"
+            detail="Can only get preview for image files (TIFF/JPEG/PNG)"
         )
     
-    # 获取文件路径
+    # Get file path
     file_path = get_document_file_path(document, settings)
     
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
     try:
         with Image.open(file_path) as img:
-            # 获取页数
+            # Get page count
             page_count = 0
             try:
                 while True:
@@ -2144,34 +2073,34 @@ def get_tiff_preview(
             if page_count == 0:
                 page_count = 1
             
-            # 检查页码范围
+            # Check page range
             if page_number < 1 or page_number > page_count:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"页码 {page_number} 超出范围（文档共有 {page_count} 页）"
+                    detail=f"Page {page_number} out of range (document has {page_count} pages)"
                 )
             
-            # 跳转到指定页面
+            # Jump to specified page
             img.seek(page_number - 1)
             
-            # 转换为RGB模式（如果需要）
+            # Convert to RGB mode (if needed)
             if img.mode not in ["RGB", "RGBA", "L"]:
                 img = img.convert("RGB")
             
-            # 调整大小（保持宽高比）
+            # Resize (maintain aspect ratio)
             original_width, original_height = img.size
             ratio = min(max_width / original_width, max_height / original_height)
             
-            if ratio < 1:  # 只有在需要缩小的情况下才调整大小
+            if ratio < 1:  # Only downscale, never upscale
                 new_width = int(original_width * ratio)
                 new_height = int(original_height * ratio)
                 img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             
-            # 保存为JPEG格式（较高质量）
+            # Save as JPEG (higher quality)
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
                 temp_path = temp_file.name
                 
-                # 如果是RGBA模式，需要添加白色背景
+                # If RGBA mode, add white background
                 if img.mode == "RGBA":
                     background = Image.new("RGB", img.size, (255, 255, 255))
                     background.paste(img, mask=img.split()[-1])
@@ -2179,29 +2108,29 @@ def get_tiff_preview(
                 
                 img.save(temp_path, "JPEG", quality=90, optimize=True)
             
-            # 生成文件名
+            # Generate filename
             original_stem = Path(document.original_filename).stem
             download_filename = f"{original_stem}_page{page_number}_preview.jpg"
             
-            # 返回文件响应
+            # Return file response
             return FileResponse(
                 path=temp_path,
                 filename=download_filename,
                 media_type="image/jpeg",
-                background=lambda: os.unlink(temp_path)  # 发送后删除临时文件
+                background=lambda: os.unlink(temp_path)  # Delete temp file after sending
             )
     
     except Exception as e:
-        # 清理临时文件（如果存在）
+        # Clean up temp file (if exists)
         if 'temp_path' in locals() and os.path.exists(temp_path):
             os.unlink(temp_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"生成预览图时发生错误: {str(e)}"
+            detail=f"Error generating preview: {str(e)}"
         )
 
 
-# ========== 批量操作路由 ==========
+# ========== Batch Operation Routes ==========
 
 @router.post("/batch/archive")
 def batch_archive_documents(
@@ -2209,7 +2138,7 @@ def batch_archive_documents(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）批量归档文档"""
+    """Batch archive documents by identifier (UUID or path)"""
     updated_count = 0
     
     for doc_identifier in document_identifiers:
@@ -2219,14 +2148,14 @@ def batch_archive_documents(
             document.updated_by = current_user.username
             updated_count += 1
         except HTTPException:
-            # 跳过没有权限或找不到的文档
+            # Skip documents without permission or not found
             continue
     
     if updated_count > 0:
         db.commit()
     
     return {
-        "message": f"成功归档 {updated_count}/{len(document_identifiers)} 个文档",
+        "message": f"Successfully archived {updated_count}/{len(document_identifiers)} documents",
         "updated_count": updated_count
     }
 
@@ -2237,7 +2166,7 @@ def batch_delete_documents(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）批量删除文档"""
+    """Batch delete documents by identifier (UUID or path)"""
     deleted_count = 0
     
     for doc_identifier in document_identifiers:
@@ -2246,14 +2175,14 @@ def batch_delete_documents(
             db.delete(document)
             deleted_count += 1
         except HTTPException:
-            # 跳过没有权限或找不到的文档
+            # Skip documents without permission or not found
             continue
     
     if deleted_count > 0:
         db.commit()
     
     return {
-        "message": f"成功删除 {deleted_count}/{len(document_identifiers)} 个文档",
+        "message": f"Successfully deleted {deleted_count}/{len(document_identifiers)} documents",
         "deleted_count": deleted_count
     }
 
@@ -2262,49 +2191,49 @@ def batch_delete_documents(
 def download_document_by_path(
     request: Request,
     path: str,
-    download_type: str = Query("original", description="下载类型: original 或 pdf"),
+    download_type: str = Query("original", description="Download type: original or pdf"),
     db: Session = Depends(get_db)
 ):
     """
-    根据原始URL路径下载文档
+    Download document by original URL path
     
-    路径格式: /content/dam/cra-arc/camp-promo/features/cvtp_bnnr_360x203.jpg
-    会匹配 document_metadata.url 中包含该路径的文档
+    Path format: /content/dam/cra-arc/camp-promo/features/cvtp_bnnr_360x203.jpg
+    Matches documents whose document_metadata.url contains this path
     """
     import json
     
-    # 清理路径，确保以斜杠开头
+    # Clean path, ensure starts with slash
     if not path.startswith('/'):
         path = '/' + path
     
     logger = logging.getLogger(__name__)
-    logger.info(f"尝试通过路径查找文档: {path}")
+    logger.info(f"Trying path lookup: {path}")
     
-    # 存储最终匹配的路径
+    # Store final matched path
     final_path = path
     
-    # 如果路径以/content开头，也尝试不带/content的版本（为了前端预览）
-    # 例如：/content/dam/... 也尝试 /dam/...
+    # If path starts with /content, also try without /content (for preview)
+    # e.g., /content/dam/... also try /dam/...
     alternative_paths = []
     if path.startswith('/content/'):
-        alternative_paths.append(path[len('/content'):])  # 移除开头的/content
+        alternative_paths.append(path[len('/content'):])  # Remove leading /content
     elif not path.startswith('/content/') and path != '/content':
-        # 如果路径不以/content开头，尝试添加/content前缀
+        # If path does not start with /content, try adding /content prefix
         alternative_paths.append('/content' + path)
     
-    # 手动处理用户认证（支持匿名访问图片文件）
+    # Manual user authentication (supports anonymous image file access)
     current_user = None
     if request:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # 移除"Bearer "前缀
+            token = auth_header[7:]  # Remove "Bearer " prefix
             from app.core.security import get_current_user
             user = get_current_user(db, token)
             if user and user.is_active:
                 current_user = user
-                logger.info(f"通过token认证用户: {current_user.username}")
+                logger.info(f"Authenticated user via token: {current_user.username}")
     
-    # 如果没有认证用户，创建public用户
+    # No authenticated user, create public user
     if not current_user:
         from app.models.user import User
         current_user = User(
@@ -2316,32 +2245,32 @@ def download_document_by_path(
             is_active=True,
             role="public"
         )
-        logger.info("使用public用户（匿名访问）")
+        logger.info("Using public user (anonymous access)")
     
-    # 查询所有文档，查找匹配的URL
+    # Query all documents for matching URL
     all_documents = db.query(Document).all()
     matched_documents = []
     
-    # 尝试的路径列表：原始路径 + 替代路径
+    # Paths to try: original + alternatives
     paths_to_try = [path] + alternative_paths
-    logger.info(f"尝试匹配的路径列表: {paths_to_try}")
+    logger.info(f"Trying path list: {paths_to_try}")
     
     for doc in all_documents:
         matched = False
         
-        # 方法1：首先检查新的path字段（如果有）
+        # Method 1: check new path field first
         if doc.path:
             url_path = doc.path
-            # 检查是否匹配任何一个路径
+            # Check if any path matches
             for try_path in paths_to_try:
-                # 如果路径完全匹配或以路径开头
+                # If path fully matches or starts with path
                 if url_path == try_path or url_path.endswith(try_path):
                     matched_documents.append((doc, url_path, try_path))
-                    logger.info(f"文档 {doc.id} 通过path字段匹配路径 {try_path} (url_path: {url_path})")
+                    logger.info(f"Document {doc.id} matches path {try_path} via path field (url_path: {url_path})")
                     matched = True
-                    break  # 找到一个匹配就停止检查其他路径
+                    break  # Stop checking other paths on first match
         
-        # 方法2：如果没有匹配，回退到检查document_metadata.url
+        # Method 2: fallback to document_metadata.url
         if not matched and doc.document_metadata:
             try:
                 metadata = json.loads(doc.document_metadata) if isinstance(doc.document_metadata, str) else doc.document_metadata
@@ -2350,92 +2279,92 @@ def download_document_by_path(
                     parsed = urlparse(url)
                     url_path = parsed.path
                     
-                    # 检查是否匹配任何一个路径
+                    # Check if any path matches
                     for try_path in paths_to_try:
-                        # 如果路径完全匹配或以路径开头
+                        # If path fully matches or starts with path
                         if url_path == try_path or url_path.endswith(try_path):
                             matched_documents.append((doc, url, try_path))
-                            logger.info(f"文档 {doc.id} 匹配路径 {try_path} (原始URL: {url})")
+                            logger.info(f"Document {doc.id} matches path {try_path} (original URL: {url})")
                             matched = True
-                            break  # 找到一个匹配就停止检查其他路径
+                            break  # Stop checking other paths on first match
             except (json.JSONDecodeError, TypeError):
                 continue
     
     if not matched_documents:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"未找到路径匹配的文档。尝试的路径: {paths_to_try}"
+            detail=f"No document found matching the path. Tried: {paths_to_try}"
         )
     
-    # 如果有多个匹配，选择第一个（TODO: 可能需要更精确的匹配）
+    # If multiple matches, use first (TODO: more precise matching)
     if len(matched_documents) > 1:
-        logger.warning(f"找到 {len(matched_documents)} 个匹配文档，使用第一个")
+        logger.warning(f"Found {len(matched_documents)} matching documents, using first")
     
     document, matched_url, matched_path = matched_documents[0]
-    logger.info(f"使用匹配的文档: {document.id}, 路径: {matched_path}")
+    logger.info(f"Using matched document: {document.path}, path: {matched_path}")
     
-    # 检查是否是图片文件类型（允许公开访问）
+    # Check if image file type (public access allowed)
     is_image_file = document.file_type in [
         FileType.JPG, FileType.JPEG, FileType.PNG, FileType.TIFF
     ]
     
-    # 对于所有通过URL路径访问的文档，都必须已发布
-    # 首先获取完整的文档信息
-    document_id_str = str(document.id)
+    # All documents accessed via URL path must be published
+    # First get full document info
+    
     document = db.query(Document).options(
         joinedload(Document.folder).joinedload(Folder.app)
-    ).filter(Document.id == document_id_str).first()
+    ).filter(Document.path == document.path).first()
     
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文档不存在"
+            detail="Document not found"
         )
     
-    # 检查发布状态：只有PUBLISHED状态的文档可以通过URL访问
-    # 如果publish_status为None（旧文档），允许访问以保持向后兼容
+    # Check publish status: only PUBLISHED docs accessible via URL
+    # Allow access if publish_status is None (legacy docs)
     
-    # 检查是否为WebBot请求（特殊权限允许访问未发布文档）
+    # Check for WebBot request (special permission for unpublished docs)
     is_webbot_request = request.headers.get("X-WebBot-Access") == "true"
     if is_webbot_request:
-        logger.info(f"WebBot请求访问未发布文档 {document.id}，跳过发布状态检查")
+        logger.info(f"WebBot request accessing unpublished doc {document.path}, skipping publish status check")
     elif document.publish_status is not None and document.publish_status != PublishStatus.PUBLISHED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="文档未发布，无法通过URL访问"
+            detail="Document not published, cannot access via URL"
         )
     
     if is_image_file:
-        # 对于图片文件，跳过进一步的权限检查
-        logger.info(f"图片文件 {document.original_filename} 跳过权限检查，允许公开访问")
+        # Skip further permission check for image files
+        logger.info(f"Image file {document.original_filename} skipping permission check, public access allowed")
     else:
-        # 对于非图片文件，进行完整的权限检查
-        document = check_document_access(document.id, current_user, db)
+        # Full permission check for non-image files
+        document = check_document_access(document.path, current_user, db)
     
-    # 直接提供文件下载，复用 download_document 的逻辑
-    # 确定文件路径和文件名
+    # Direct file download, reuse download_document logic
+    # Determine file path and filename
     file_path = None
     filename = document.original_filename
     
     if download_type == "pdf" and document.converted_pdf_path:
-        # 下载PDF版本
+        # Download PDF version
         file_path = document.converted_pdf_path
         filename = f"{Path(document.original_filename).stem}.pdf"
     else:
-        # 下载原始文件
+        # Download original file
         file_path = get_document_file_path(document, settings)
         filename = document.original_filename
     
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
-    # 确定media_type：使用文档的mime_type，如果不存在则根据文件扩展名判断
+    # Determine media_type from document mime_type or file extension
     media_type = document.mime_type if document.mime_type else "application/octet-stream"
     
-    # 如果mime_type为空或未知，根据文件扩展名设置
+    # If mime_type is empty/unknown, infer from extension
     if not media_type or media_type == "application/octet-stream":
         if filename.lower().endswith(('.html', '.htm')):
             media_type = "text/html"
@@ -2448,7 +2377,7 @@ def download_document_by_path(
         elif filename.lower().endswith('.tiff') or filename.lower().endswith('.tif'):
             media_type = "image/tiff"
     
-    logger.info(f"通过路径找到文档: {document.id}, 文件: {filename}, 类型: {media_type}")
+    logger.info(f"Found document by path: {document.path}, file: {filename}, type: {media_type}")
     
     return FileResponse(
         path=file_path,
@@ -2463,127 +2392,127 @@ async def serve_file_by_hierarchical_path(
     app_slug: str,
     folder_path: str,
     filename: str,
-    download_type: str = Query("original", description="下载类型: original 或 pdf"),
+    download_type: str = Query("original", description="Download type: original or pdf"),
     db: Session = Depends(get_db)
 ):
     """使用层次化路径格式直接访问文件
     
-    路径格式: /files/app-name/folder/subfolder/filename.jpg
-    对应存储: data/{app_slug}/{folder_path}/{safe_filename}
+    Path format: /files/app-name/folder/subfolder/filename.jpg
+    Corresponding storage: data/{app_slug}/{folder_path}/{safe_filename}
     
-    支持新旧文档系统：
-    1. 新文档：使用storage_path和path字段
-    2. 旧文档：通过应用、文件夹和文件名查找
+    Supports both new and legacy document systems:
+    1. New documents: uses storage_path and path fields
+    2. Legacy documents: lookup by app, folder and filename
     """
     import logging
     logger = logging.getLogger(__name__)
     
-    # 规范化路径：移除首尾斜杠
+    # Normalize path: remove leading/trailing slashes
     if folder_path.startswith('/'):
         folder_path = folder_path[1:]
     if folder_path.endswith('/'):
         folder_path = folder_path[:-1]
     
-    # 安全化文件名，同时保留扩展名
+    # Sanitize filename while preserving extension
     from pathlib import Path as PathLib
     path_obj = PathLib(filename)
     stem = path_obj.stem
     ext = path_obj.suffix.lower()
     
-    # 安全化文件名主干
+    # Sanitize filename stem
     safe_stem = make_filename_safe(stem)
     safe_filename = f"{safe_stem}{ext}" if ext else safe_stem
     
-    # 构建存储路径和URL路径
+    # Build storage path and URL path
     storage_path = f"{app_slug}/{folder_path}/{safe_filename}"
     url_path = f"/content/dam/{app_slug}/{folder_path}/{safe_filename}"
     
-    logger.info(f"尝试通过层次化路径访问文件: app={app_slug}, folder={folder_path}, filename={filename}")
-    logger.info(f"规范化路径: folder_path={folder_path}, safe_filename={safe_filename}")
-    logger.info(f"生成的存储路径: {storage_path}, URL路径: {url_path}")
+    logger.info(f"Accessing file via hierarchical path: app={app_slug}, folder={folder_path}, filename={filename}")
+    logger.info(f"Normalized path: folder_path={folder_path}, safe_filename={safe_filename}")
+    logger.info(f"Generated storage path: {storage_path}, URL path: {url_path}")
     
-    # 查询文档：多策略查找
+    # Query document: multi-strategy lookup
     document = None
     
-    # 策略1：精确匹配storage_path或url_path（新系统）
+    # Strategy 1: exact storage_path or url_path match (new system)
     document = db.query(Document).filter(
         (Document.storage_path == storage_path) | 
         (Document.path == url_path)
     ).first()
     
     if not document:
-        # 策略2：查找应用和文件夹，然后匹配文件名（旧系统）
-        logger.warning(f"未找到精确匹配的文档，尝试通过应用和文件夹查找")
+        # Strategy 2: find app and folder, match filename (legacy)
+        logger.warning(f"No exact match found, trying app and folder lookup")
         
-        # 获取应用
+        # Get app
         app = db.query(App).filter(App.slug == app_slug).first()
         if not app:
-            raise HTTPException(status_code=404, detail=f"应用不存在: {app_slug}")
+            raise HTTPException(status_code=404, detail=f"App not found: {app_slug}")
         
-        # 查找文件夹（精确匹配路径）
+        # Find folder (exact path match)
         folder = db.query(Folder).filter(
             Folder.app_id == app.id, 
             Folder.path == folder_path
         ).first()
         
         if not folder:
-            # 尝试查找路径相似的文件夹（大小写不敏感）
+            # Try similar path folder (case-insensitive)
             folder = db.query(Folder).filter(
                 Folder.app_id == app.id,
                 Folder.path.ilike(f"%{folder_path}%")
             ).first()
             
         if not folder:
-            raise HTTPException(status_code=404, detail=f"文件夹不存在: {folder_path} (应用: {app_slug})")
+            raise HTTPException(status_code=404, detail=f"Folder not found: {folder_path} (app: {app_slug})")
         
-        # 在指定文件夹中查找文档
-        # 先尝试精确匹配original_filename
+        # Find document in specified folder
+        # First try exact original_filename match
         document = db.query(Document).filter(
-            Document.folder_id == folder.id,
+            Document.folder_path == folder.path,
             Document.original_filename == filename
         ).first()
         
         if not document:
-            # 尝试安全化文件名匹配
+            # Try sanitized filename match
             document = db.query(Document).filter(
-                Document.folder_id == folder.id,
+                Document.folder_path == folder.path,
                 Document.original_filename.ilike(f"%{safe_stem}%")
             ).first()
         
         if not document:
-            # 最后尝试任何包含文件名的文档
+            # Finally try any document containing filename
             document = db.query(Document).filter(
-                Document.folder_id == folder.id,
+                Document.folder_path == folder.path,
                 Document.original_filename.ilike(f"%{filename}%")
             ).first()
         
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"在文件夹中未找到匹配的文档: {folder_path}/{filename}"
+                detail=f"No matching document found in folder: {folder_path}/{filename}"
             )
     
-    # 检查是否为图片文件类型（允许公开访问）
-    # 基于文件类型和MIME类型判断
+    # Check if image file type (public access allowed)
+    # Based on file type and MIME type
     image_file_types = [FileType.JPG, FileType.JPEG, FileType.PNG, FileType.TIFF]
     is_image_file = (
         document.file_type in image_file_types or
         (document.mime_type and document.mime_type.startswith("image/"))
     )
     
-    # 手动处理用户认证
+    # Manual user authentication
     current_user = None
     if request:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # 移除"Bearer "前缀
+            token = auth_header[7:]  # Remove "Bearer " prefix
             from app.core.security import get_current_user
             user = get_current_user(db, token)
             if user and user.is_active:
                 current_user = user
-                logger.info(f"通过token认证用户: {current_user.username}")
+                logger.info(f"Authenticated user via token: {current_user.username}")
     
-    # 如果没有认证用户，创建public用户
+    # No authenticated user, create public user
     if not current_user:
         from app.models.user import User
         current_user = User(
@@ -2595,52 +2524,52 @@ async def serve_file_by_hierarchical_path(
             is_active=True,
             role="public"
         )
-        logger.info("使用public用户（匿名访问）")
+        logger.info("Using public user (anonymous access)")
     
-    # 检查发布状态：只有PUBLISHED状态的文档可以通过URL访问
-    # 如果publish_status为None（旧文档），允许访问以保持向后兼容
+    # Check publish status: only PUBLISHED docs accessible via URL
+    # Allow access if publish_status is None (legacy docs)
     
-    # 检查是否为WebBot请求（特殊权限允许访问未发布文档）
+    # Check for WebBot request (special permission for unpublished docs)
     is_webbot_request = request.headers.get("X-WebBot-Access") == "true"
     if is_webbot_request:
-        logger.info(f"WebBot请求访问未发布文档 {document.id}，跳过发布状态检查")
+        logger.info(f"WebBot request accessing unpublished doc {document.path}, skipping publish status check")
     elif document.publish_status is not None and document.publish_status != PublishStatus.PUBLISHED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="文档未发布，无法通过URL访问"
+            detail="Document not published, cannot access via URL"
         )
     
     if is_image_file:
-        # 对于图片文件，跳过进一步的权限检查
-        logger.info(f"图片文件 {document.original_filename} 跳过权限检查，允许公开访问")
+        # Skip further permission check for image files
+        logger.info(f"Image file {document.original_filename} skipping permission check, public access allowed")
     else:
-        # 对于非图片文件，进行完整的权限检查
+        # Full permission check for non-image files
         from app.routers.documents import check_document_access
-        document = check_document_access(document.id, current_user, db)
+        document = check_document_access(document.path, current_user, db)
     
-    # 确定文件路径和文件名
+    # Determine file path and filename
     file_path = None
     output_filename = document.original_filename
     
     if download_type == "pdf" and document.converted_pdf_path:
-        # 下载PDF版本
+        # Download PDF version
         file_path = document.converted_pdf_path
         output_filename = f"{Path(document.original_filename).stem}.pdf"
     else:
-        # 下载原始文件
+        # Download original file
         file_path = get_document_file_path(document, settings)
         output_filename = document.original_filename
     
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="文件不存在"
+            detail="File not found"
         )
     
-    # 确定media_type：使用文档的mime_type，如果不存在则根据文件扩展名判断
+    # Determine media_type from document mime_type or file extension
     media_type = document.mime_type if document.mime_type else "application/octet-stream"
     
-    # 如果mime_type为空或未知，根据文件扩展名设置
+    # If mime_type is empty/unknown, infer from extension
     if not media_type or media_type == "application/octet-stream":
         if output_filename.lower().endswith(('.html', '.htm')):
             media_type = "text/html"
@@ -2655,7 +2584,7 @@ async def serve_file_by_hierarchical_path(
         elif output_filename.lower().endswith('.svg'):
             media_type = "image/svg+xml"
     
-    logger.info(f"通过层次化路径找到文档: {document.id}, 文件: {output_filename}, 类型: {media_type}")
+    logger.info(f"Found document via hierarchical path: {document.path}, file: {output_filename}, type: {media_type}")
     
     return FileResponse(
         path=file_path,
@@ -2670,7 +2599,7 @@ def get_document(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）获取文档详情"""
+    """Get document details by identifier (UUID or path)"""
     document = get_document_by_identifier(document_identifier, current_user, db)
     return document
 
@@ -2682,26 +2611,26 @@ def update_document(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）更新文档信息"""
+    """Update document info by identifier (UUID or path)"""
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 如果修改了文档编号，检查是否与现有文档冲突
+    # If document number changed, check for conflicts
     if document_update.document_number and document_update.document_number != document.document_number:
         existing_doc = db.query(Document).filter(
             Document.document_number == document_update.document_number,
-            Document.id != document.id
+            Document.path != document.path
         ).first()
         
         if existing_doc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="文档编号已存在"
+                detail="Document number already exists"
             )
     
-    # 更新字段
+    # Update fields
     update_data = document_update.dict(exclude_unset=True)
     
-    # 检查发布状态是否在更新数据中
+    # Check if publish status is in update data
     publish_status_changed = False
     old_publish_status = document.publish_status
     new_publish_status = None
@@ -2713,37 +2642,37 @@ def update_document(
     for field, value in update_data.items():
         setattr(document, field, value)
     
-    # 更新审计字段
+    # Update audit fields
     document.updated_by = document_update.updated_by or current_user.username
     
     db.commit()
     db.refresh(document)
     
-    # 处理发布状态变化
+    # Handle publish status changes
     if publish_status_changed:
         try:
             if new_publish_status == PublishStatus.PUBLISHED:
-                # 文档被发布：复制到静态目录
+                # Document published: copy to static directory
                 result = copy_to_static_directory(document, settings)
                 if not result.get('success'):
-                    logger.warning(f"发布文档时复制到静态目录失败: {result.get('error')}")
+                    logger.warning(f"Failed to copy published document to static dir: {result.get('error')}")
                 else:
-                    logger.info(f"文档发布成功，已复制到静态目录: {document.id}")
-                    # 静态URL可以通过get_static_file_url函数动态生成
-                    # 不需要存储在数据库中
+                    logger.info(f"Document published, copied to static directory: {document.path}")
+                    # Static URL generated dynamically via get_static_file_url
+                    # No need to store in database
                         
             elif old_publish_status == PublishStatus.PUBLISHED:
-                # 文档被取消发布：从静态目录删除
+                # Document unpublished: delete from static directory
                 result = remove_from_static_directory(document, settings)
                 if not result.get('success'):
-                    logger.warning(f"取消发布文档时从静态目录删除失败: {result.get('error')}")
+                    logger.warning(f"Failed to remove unpublished document from static dir: {result.get('error')}")
                 else:
-                    logger.info(f"文档取消发布成功，已从静态目录删除: {document.id}")
-                    # 不需要清除静态URL，因为它是动态生成的
+                    logger.info(f"Document unpublished, removed from static directory: {document.path}")
+                    # No need to clear static URL, it is dynamically generated
                     
         except Exception as e:
-            logger.error(f"处理发布状态变化时出错: {e}", exc_info=True)
-            # 不返回错误，仅记录日志，避免影响主要更新操作
+            logger.error(f"Error handling publish status change: {e}", exc_info=True)
+            # Do not return error, just log to avoid affecting main operation
     
     return document
 
@@ -2754,20 +2683,20 @@ def delete_document(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """通过标识符（UUID 或路径）删除文档
+    """Delete document by identifier (UUID or path)
     
-    注意：会同时删除关联的页面和转换任务
+    Note: also deletes associated pages and conversion tasks
     """
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # 删除物理文件（TODO: 需要配置存储路径）
-    # 这里暂时只删除数据库记录
+    # Delete physical file (TODO: configure storage path)
+    # Only delete database record for now
     
     db.delete(document)
     db.commit()
     
-    return {"message": "文档删除成功"}
+    return {"message": "Document deleted successfully"}
 
 
-# ========== Page (页面) 路由 ==========
+# ========== Page Routes ==========
 
