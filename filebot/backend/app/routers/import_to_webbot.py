@@ -81,18 +81,31 @@ def ensure_page_exists(cursor, path, parent_path, title, content, language,
     cursor.execute('SELECT id FROM webbot_page WHERE path = ?', (path,))
     existing = cursor.fetchone()
     if existing:
-        # Update existing page
+        # Update existing page — only update other_language_path if provided
         try:
-            cursor.execute("""
-                UPDATE webbot_page SET
-                    title = ?, description = ?, keywords = ?, content = ?,
-                    language = ?, parent_path = ?, other_language_path = ?,
-                    status = ?, metadata = ?, hide_in_navigation = ?,
-                    last_modified = ?
-                WHERE path = ?
-            """, (title, description, keywords, content, language, parent_path,
-                  other_language_path, status, meta, 1 if hide_in_nav else 0,
-                  now, path))
+            if other_language_path is not None:
+                cursor.execute("""
+                    UPDATE webbot_page SET
+                        title = ?, description = ?, keywords = ?, content = ?,
+                        language = ?, parent_path = ?, other_language_path = ?,
+                        status = ?, metadata = ?, hide_in_navigation = ?,
+                        last_modified = ?
+                    WHERE path = ?
+                """, (title, description, keywords, content, language, parent_path,
+                      other_language_path, status, meta, 1 if hide_in_nav else 0,
+                      now, path))
+            else:
+                # Don't overwrite other_language_path
+                cursor.execute("""
+                    UPDATE webbot_page SET
+                        title = ?, description = ?, keywords = ?, content = ?,
+                        language = ?, parent_path = ?,
+                        status = ?, metadata = ?, hide_in_navigation = ?,
+                        last_modified = ?
+                    WHERE path = ?
+                """, (title, description, keywords, content, language, parent_path,
+                      status, meta, 1 if hide_in_nav else 0,
+                      now, path))
             return 'updated'
         except Exception as e:
             logger.error(f"UPDATE failed for path={path}: {e}")
@@ -266,8 +279,12 @@ def import_to_webbot(
         if wb_path not in existing_paths:
             other_lang_path = None
             if isinstance(meta, dict):
-                alt_field = 'alternate_fr_url' if lang == 'en' else 'alternate_en_url'
-                alt_url = meta.get(alt_field)
+                alt_fields = ['alternate_fr_url', 'fr_alternate_url'] if lang == 'en' else ['alternate_en_url', 'en_alternate_url']
+                alt_url = None
+                for f in alt_fields:
+                    alt_url = meta.get(f)
+                    if alt_url and isinstance(alt_url, str):
+                        break
                 if alt_url and isinstance(alt_url, str) and alt_url.startswith('http'):
                     parsed = urlparse(alt_url)
                     alt_p = parsed.path.rstrip('/')
@@ -291,8 +308,12 @@ def import_to_webbot(
             # Path already known to exist — still update content
             other_lang_path = None
             if isinstance(meta, dict):
-                alt_field = 'alternate_fr_url' if lang == 'en' else 'alternate_en_url'
-                alt_url = meta.get(alt_field)
+                alt_fields = ['alternate_fr_url', 'fr_alternate_url'] if lang == 'en' else ['alternate_en_url', 'en_alternate_url']
+                alt_url = None
+                for f in alt_fields:
+                    alt_url = meta.get(f)
+                    if alt_url and isinstance(alt_url, str):
+                        break
                 if alt_url and isinstance(alt_url, str) and alt_url.startswith('http'):
                     parsed = urlparse(alt_url)
                     alt_p = parsed.path.rstrip('/')
