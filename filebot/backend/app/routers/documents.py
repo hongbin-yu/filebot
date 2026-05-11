@@ -1312,10 +1312,8 @@ async def upload_document(
         
         # ========== End Path System Restructuring ==========
         
-        # Create document record - ensure all UUIDs converted to strings
-        import uuid as uuid_module
+        # Create document record
         document = Document(
-            id=str(uuid_module.uuid4()),  # Explicitly set ID as string
             folder_path=folder.path,
             uploaded_by=str(current_user.id),
             

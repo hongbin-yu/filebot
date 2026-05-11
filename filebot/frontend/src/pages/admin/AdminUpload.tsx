@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import appService, { App } from '../../services/app.service';
 import folderService, { Folder } from '../../services/folder.service';
 import documentService from '../../services/document.service';
+import { showToast } from '../../components/common/ToastNotification';
 
 const AdminUpload: React.FC = () => {
   const { appSlug, folderId } = useParams<{ appSlug: string; folderId: string }>();
@@ -112,7 +113,7 @@ const AdminUpload: React.FC = () => {
       // 验证文件夹结构
       const hasRelativePaths = files.some(file => 'webkitRelativePath' in file);
       if (!hasRelativePaths) {
-        window.showWetAlert('Please select a folder, not individual files. Use the folder selector.');
+        showToast('Please select a folder, not individual files. Use the folder selector.', 'warning');
         e.target.value = ''; // 重置input
         return;
       }
@@ -128,12 +129,12 @@ const AdminUpload: React.FC = () => {
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      window.showWetAlert('Please select files first');
+      showToast('Please select files first', 'warning');
       return;
     }
 
-    if (!folder || !folder.id) {
-      window.showWetAlert('Folder information incomplete, cannot upload');
+    if (!folder || !folder.path) {
+      showToast('Folder information incomplete, cannot upload', 'error');
       return;
     }
 
@@ -154,8 +155,7 @@ const AdminUpload: React.FC = () => {
           uploadRequest.folder_path = folder.path;
           console.log('🔍 [DEBUG] AdminUpload upload: using folder_path:', folder.path);
         } else {
-          uploadRequest.folder_id = folder!.id;
-          console.warn('⚠️ AdminUpload upload: using deprecated folder_id:', folder!.id);
+          console.error('⚠️ AdminUpload upload: no folder path available');
         }
 
         // 模拟进度更新（实际API调用没有进度事件）
@@ -179,9 +179,9 @@ const AdminUpload: React.FC = () => {
         
         // 显示成功消息并导航回文档列表
         const pathInfo_ = folder?.path ? `\nTarget path: ${folder.path}` : "";
-        window.showWetAlert(`Successfully uploaded ${uploadedDocuments.length} documents!${pathInfo_}`);
-        if (appSlug && (folder?.path || folder?.id)) {
-          const navPath = encodeURIComponent(folder?.path || folder?.id || '');
+        showToast(`Successfully uploaded ${uploadedDocuments.length} documents!${pathInfo_}`, 'success');
+        if (appSlug && folder?.path) {
+          const navPath = encodeURIComponent(folder.path);
           navigate(`/admin/apps/${appSlug}?folder=${navPath}`);
         } else {
           console.error('导航参数缺失:', { appSlug, folder });
@@ -194,19 +194,19 @@ const AdminUpload: React.FC = () => {
       setUploading(false);
       setProgress(0);
       const errPathInfo = folder?.path ? ` (Target path: ${folder.path})` : '';
-      window.showWetAlert(`Upload failed: ${error.response?.data?.detail || error.message || 'Unknown error'}${errPathInfo}`);
+      showToast(`Upload failed: ${error.response?.data?.detail || error.message || 'Unknown error'}${errPathInfo}`, 'error');
     }
   };
 
   // 导入整个文件夹（包括子文件夹结构）
   const handleImportFolder = async () => {
     if (selectedFiles.length === 0) {
-      window.showWetAlert('Please select a folder to import first');
+      showToast('Please select a folder to import first', 'warning');
       return;
     }
 
-    if (!folder || !folder.id || !app || !app.id) {
-      window.showWetAlert('App or folder information incomplete, cannot import');
+    if (!folder || !folder.path || !app || !app.id) {
+      showToast('App or folder information incomplete, cannot import', 'error');
       return;
     }
 
@@ -214,7 +214,7 @@ const AdminUpload: React.FC = () => {
     const hasRelativePaths = selectedFiles.some(file => 'webkitRelativePath' in file);
     if (!hasRelativePaths) {
       const pathInfoMsg = folder.path ? `\nTarget path: ${folder.path}` : '';
-      const confirmImport = await window.wetYesOrNo(
+      const confirmImport = window.confirm(
         `The selected files don't contain folder structure info. Continue as regular file upload?${pathInfoMsg}\n\nTo preserve folder structure, use the "Import Folder" option.`
       );
       if (confirmImport) {
@@ -234,7 +234,7 @@ const AdminUpload: React.FC = () => {
       // 使用Map来存储文件夹路径到文件夹ID的映射
       const folderMap = new Map<string, string>();
       // 根文件夹就是当前目标文件夹
-      folderMap.set('', folder.id);
+      folderMap.set('', folder.path);
       
       // 分析所有文件的路径，提取所有文件夹
       const folderPaths = new Set<string>();
@@ -347,7 +347,6 @@ const AdminUpload: React.FC = () => {
       });
       console.log('🔍 [DEBUG] === Root folder info ===');
       console.log(`  folder.path = ${folder.path}`);
-      console.log(`  folder.id   = ${folder.id}`);
       console.log(`  app.id      = ${app.id}`);
       console.log(`  app.slug    = ${app.slug}`);
       // ======================================
@@ -384,8 +383,8 @@ const AdminUpload: React.FC = () => {
             uploadRequest.folder_path = targetFolderIdentifier;
             console.log('🔍 [DEBUG] AdminUpload batch import: using folder_path:', targetFolderIdentifier);
           } else {
-            uploadRequest.folder_id = targetFolderIdentifier;
-            console.warn('⚠️ AdminUpload batch import: using deprecated folder_id:', targetFolderIdentifier);
+            uploadRequest.folder_path = targetFolderIdentifier;
+            console.warn('⚠️ AdminUpload batch import: treating non-path as folder_path:', targetFolderIdentifier);
           }
 
           await documentService.uploadDocument(uploadRequest);
@@ -412,9 +411,9 @@ const AdminUpload: React.FC = () => {
         
         // 显示成功消息并导航回文档列表
         const folderPathInfo = folder.path ? `\nTarget path: ${folder.path}` : '';
-        window.showWetAlert(`Folder import complete!${folderPathInfo}\n• Created ${foldersCreated} sub-folders\n• Uploaded ${successfulUploads}/${fileList.length} files`);
-        if (appSlug && (folder?.path || folder?.id)) {
-          const navPath = encodeURIComponent(folder?.path || folder?.id || '');
+        showToast(`Folder import complete!${folderPathInfo}\n• Created ${foldersCreated} sub-folders\n• Uploaded ${successfulUploads}/${fileList.length} files`, 'success');
+        if (appSlug && folder?.path) {
+          const navPath = encodeURIComponent(folder.path);
           navigate(`/admin/apps/${appSlug}?folder=${navPath}`);
         } else {
           navigate('/admin/apps');
@@ -425,15 +424,15 @@ const AdminUpload: React.FC = () => {
       console.error('文件夹导入失败:', error);
       setImporting(false);
       setImportProgress(0);
-      window.showWetAlert(`Folder import failed: ${error.response?.data?.detail || error.message || 'Unknown error'}`);
+      showToast(`Folder import failed: ${error.response?.data?.detail || error.message || 'Unknown error'}`, 'error');
     }
   };
 
   // 导入整个website（网站）
   const handleImportWebsite = async () => {
     // 验证文件夹和应用信息
-    if (!folder || !folder.id || !app || !app.id) {
-      window.showWetAlert('App or folder information incomplete, cannot import website');
+    if (!folder || !folder.path || !app || !app.id) {
+      showToast('App or folder information incomplete, cannot import website', 'error');
       return;
     }
 
@@ -447,7 +446,7 @@ const AdminUpload: React.FC = () => {
     try {
       new URL(url);
     } catch (error) {
-      window.showWetAlert('Please enter a valid URL (e.g. https://example.com)');
+      showToast('Please enter a valid URL (e.g. https://example.com)', 'warning');
       return;
     }
 
@@ -459,7 +458,7 @@ const AdminUpload: React.FC = () => {
     try {
       // 显示导入确认信息
       const websitePathInfo = folder.path ? `\n目标路径: ${folder.path}` : '';
-      const confirmImport = await window.wetYesOrNo(
+      const confirmImport = window.confirm(
         `将要导入整个website:\n\nURL: ${url}\n\n目标文件夹: ${folder.name}${websitePathInfo}\n\n说明：\n• 这是一个后台处理任务，可能需要较长时间\n• 系统将自动抓取网页内容和相关资源\n• 导入过程可以在后台慢慢完成\n• 您可以在任务管理中查看进度\n\n确认开始导入？`
       );
       
@@ -475,7 +474,7 @@ const AdminUpload: React.FC = () => {
 
       // 这里应该调用后端API来启动website导入任务
       // 由于后端API尚未实现，暂时显示模拟进度
-      window.showWetAlert(`Website import triggered!\n\nURL: ${url}\n\nNote: Backend website import API not yet implemented. This will be available in a future version.\n\nCurrently a demo feature.`);
+      showToast(`Website import triggered!\n\nURL: ${url}\n\nNote: Backend website import API not yet implemented. This will be available in a future version.\n\nCurrently a demo feature.`, 'info');
       
       // 模拟进度更新（实际应用中应通过WebSocket或轮询获取真实进度）
       const simulateProgress = () => {
@@ -490,7 +489,7 @@ const AdminUpload: React.FC = () => {
           // 显示成功消息
           setTimeout(() => {
             const wsPathInfo = folder.path ? `\n目标路径: ${folder.path}` : '';
-            window.showWetAlert(`Website import task submitted successfully!${wsPathInfo}\n\nURL: ${url}\n\nTask added to background processing queue.\n\nCheck task manager for progress.`);
+            showToast(`Website import task submitted successfully!${wsPathInfo}\n\nURL: ${url}\n\nTask added to background processing queue.\n\nCheck task manager for progress.`, 'success');
             setImportingWebsite(false);
             setWebsiteImportStatus('');
             setWebsiteUrl('');
@@ -505,7 +504,7 @@ const AdminUpload: React.FC = () => {
       console.error('website导入失败:', error);
       setImportingWebsite(false);
       setWebsiteImportStatus('');
-      window.showWetAlert(`Website import failed: ${error.message || 'Unknown error'}`);
+      showToast(`Website import failed: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -878,8 +877,8 @@ const AdminUpload: React.FC = () => {
                 )}
               </div>
               <div>
-                <div className="text-sm text-gray-500">Folder ID</div>
-                <div className="font-mono text-sm bg-gray-50 p-2 rounded mt-1">{folder.id}</div>
+                <div className="text-sm text-gray-500">Folder Path</div>
+                <div className="font-mono text-sm bg-gray-50 p-2 rounded mt-1">{folder.path}</div>
               </div>
               <div>
                 <div className="text-sm text-gray-500">Created</div>

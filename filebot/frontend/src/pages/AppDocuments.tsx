@@ -322,7 +322,7 @@ const AppDocuments: React.FC = () => {
       console.log('📋 调用documentService.getDocuments({ folder_id:', folderId, '})');
       const folderDocuments = await documentService.getDocuments(folderId);
       console.log('✅ 获取到文档数量:', folderDocuments.length);
-      console.log('📄 文档列表:', folderDocuments.map(doc => ({ id: doc.id, title: doc.title, folder_id: doc.folder_id })));
+      console.log('✅ 文档列表:', folderDocuments.map(doc => ({ path: doc.path, title: doc.title, folder_path: doc.folder_path })));
       setDocuments(folderDocuments);
       
       // 检查AI状态
@@ -341,8 +341,8 @@ const AppDocuments: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const targetDoc = documents.find(d => d.id === id);
+  const handleDelete = async (docPath: string) => {
+    const targetDoc = documents.find(d => d.path === docPath);
     const docName = targetDoc?.original_filename || targetDoc?.title || 'this document';
     const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
     const docPathInfo = docPathStr ? `\n存储路径: ${docPathStr}` : '';
@@ -352,8 +352,8 @@ const AppDocuments: React.FC = () => {
     }
     
     try {
-      await documentService.deleteDocument(id);
-      setDocuments(documents.filter(doc => doc.id !== id));
+      await documentService.deleteDocument(docPath);
+      setDocuments(documents.filter(doc => doc.path !== docPath));
     } catch (error) {
       console.error('Failed to delete document:', error);
       window.showWetAlert('Failed to delete document. Please try again.');
@@ -717,7 +717,7 @@ const AppDocuments: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredDocuments.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-gray-50">
+                    <tr key={doc.path || doc.storage_path || doc.title} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="text-2xl mr-4">
@@ -752,9 +752,9 @@ const AppDocuments: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          doc.folder_id ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          doc.folder_path ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {doc.folder_id ? 'In Folder' : 'Uncategorized'}
+                          {doc.folder_path ? 'In Folder' : 'Uncategorized'}
                         </span>
                         {getClassificationStatusBadge(doc.classification_status, doc.ai_confidence)}
                       </td>
@@ -768,7 +768,7 @@ const AppDocuments: React.FC = () => {
                             View
                           </Link>
                           <button
-                            onClick={() => handleDelete(doc.id)}
+                            onClick={() => handleDelete(doc.path)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete"
                           >

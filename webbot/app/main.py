@@ -3,7 +3,7 @@ WebBot - AI增强的网站内容管理系统
 基于FileBot基础设施，提供AI辅助创页、修正、删页、审查功能
 """
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -12,10 +12,10 @@ import os
 
 # 导入路由
 try:
-    from .routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED
+    from .routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
 except ImportError:
     # 备用导入方式
-    from routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED
+    from routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
 
 # 数据库路径
 WEBBOT_DB_PATH = os.environ.get(
@@ -271,6 +271,9 @@ if MUSTACHE_ENABLED and mustache_router:
 
 if AUTH_ENABLED and auth_router:
     app.include_router(auth_router)
+
+if SEARCH_ENABLED and search_router:
+    app.include_router(search_router)
 else:
     print("⚠️  Mustache渲染路由未加载")
 
@@ -305,9 +308,11 @@ async def proxy_filebot_document(path: str):
         
         # 尝试路径模式列表
         filebot_urls = [
-            # 1. 原始路径
+            # 1. Direct DAM mount (for images, binary files)
+            f"http://localhost:8001/content/dam{path}",
+            # 2. 原始路径 (document API)
             f"http://localhost:8001/api/v1/documents/by-path{path}",
-            # 2. 带/boarding/canadasite前缀（AEM导入数据的路径）
+            # 3. 带/boarding/canadasite前缀（AEM导入数据的路径）
             f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite{path}",
         ]
         
@@ -364,6 +369,52 @@ async def proxy_filebot_document(path: str):
         raise HTTPException(status_code=503, detail="无法连接到FileBot服务")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"代理文档请求失败: {str(e)}")
+
+
+# ==================== FileBot上传代理路由 ====================
+# 提供/content/upload/路径上传文件到FileBot
+# 隐藏FileBot端口8001，统一通过webbot代理上传
+
+import aiohttp
+
+@app.post("/content/upload/")
+async def proxy_filebot_upload(request: Request):
+    """
+    代理上传文件到FileBot
+    前端POST multipart/form-data → /content/upload/ → 转发到 → FileBot /documents/upload/
+    """
+    body = await request.body()
+    content_type = request.headers.get("content-type", "")
+    auth_header = request.headers.get("authorization", "")
+    
+    fb_headers = {
+        "Content-Type": content_type,
+        "X-WebBot-Access": "true",
+    }
+    if auth_header:
+        fb_headers["Authorization"] = auth_header
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "http://localhost:8001/api/v1/documents/upload/",
+                data=body,
+                headers=fb_headers
+            ) as resp:
+                resp_body = await resp.read()
+                resp_headers = {k: v for k, v in resp.headers.items() 
+                              if k.lower() not in ("transfer-encoding", "content-encoding", "content-length")}
+                return Response(
+                    content=resp_body,
+                    status_code=resp.status,
+                    media_type=resp.content_type,
+                    headers=resp_headers
+                )
+    except aiohttp.ClientConnectorError:
+        raise HTTPException(status_code=503, detail="无法连接到FileBot服务")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"上传代理失败: {str(e)}")
+
 
 # 添加静态文件服务（前端界面）
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")

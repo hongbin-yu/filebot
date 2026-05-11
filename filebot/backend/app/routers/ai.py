@@ -417,7 +417,7 @@ def crawl_website_background(
             task_id=task_id,
             url=url,
             depth=depth,
-            folder_path=folder.path,
+            folder_path=folder_path,
             include_images=include_images,
             follow_external_links=follow_external_links,
             respect_robots_txt=respect_robots_txt,

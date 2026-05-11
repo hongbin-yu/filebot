@@ -206,11 +206,12 @@ const AppFolders: React.FC = () => {
   };
 
   const handleFolderSelect = (folder: Folder) => {
-    // 生成文件夹slug：小写，空格替换为'-'，法语重音字符替换为英文
-    const folderSlug = generateFolderSlug(folder.name, folder.id);
-    // 导航到该文件夹的文档页面，URL中包含slug
-    // 传递appId作为状态，以便后端API调用
-    navigate(`/${appSlug}/folders/${folder.id}-${folderSlug}/documents`, { 
+    // 使用folder.path作为标识（Folder主键是path）
+    const folderPath = folder.path || folder.name;
+    // 生成文件夹slug用于URL
+    const folderSlug = generateFolderSlug(folder.name, folderPath);
+    // 导航到该文件夹的文档页面，URL中包含slug和编码的路径
+    navigate(`/${appSlug}/folders/${encodeURIComponent(folderPath)}-${folderSlug}/documents`, { 
       state: { appId: appId } 
     });
   };
@@ -589,11 +590,11 @@ const AppFolders: React.FC = () => {
       
       // 准备移动请求
       const moveRequest = {
-        target_parent_folder_id: targetParentId || undefined
+        target_parent_folder_path: targetParentId || undefined
       };
       
       // 调用移动API
-      const updatedFolder = await folderService.moveFolder(movingFolder.id, moveRequest.target_parent_folder_id);
+      const updatedFolder = await folderService.moveFolder(movingFolder.path, moveRequest.target_parent_folder_path);
       
       // 刷新文件夹列表
       await fetchFolders(appId, selectedDrawer.id);
@@ -1196,7 +1197,7 @@ const AppFolders: React.FC = () => {
                     </div>
                   ) : (
                     folders.map((folder) => (
-                      <div key={folder.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                      <div key={folder.path || folder.name} className="px-6 py-4 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
                             <div className="text-2xl mr-4">📁</div>
@@ -1206,7 +1207,7 @@ const AppFolders: React.FC = () => {
                                 <p className="text-sm text-gray-600 mt-1">{folder.description}</p>
                               )}
                               <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                                <span>ID: {folder.id.substring(0, 8)}...</span>
+                                <span>路径: {(folder.path || folder.name).substring(0, 40)}...</span>
                                 <span>Created by: {folder.created_by}</span>
                                 <span>Created: {new Date(folder.created_at).toLocaleDateString()}</span>
                               </div>
@@ -1294,7 +1295,7 @@ const AppFolders: React.FC = () => {
                           >
                             <option value="">No parent (root folder)</option>
                             {folders.map((folder) => (
-                              <option key={folder.id} value={folder.id}>
+                              <option key={folder.path || folder.name} value={folder.path}>
                                 {folder.name}
                               </option>
                             ))}

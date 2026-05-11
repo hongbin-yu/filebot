@@ -6,6 +6,7 @@ import ClientLogin from './pages/ClientLogin';
 import CopilotSidebar from './components/copilot/CopilotSidebar';
 import { CopilotProvider, useCopilot } from './contexts/CopilotContext';
 import authService from './services/auth.service';
+import ToastNotification from './components/common/ToastNotification';
 import './App.css';
 
 // 导入Admin组件
@@ -94,6 +95,7 @@ const MainAppContent: React.FC = () => {
 function App() {
   return (
     <CopilotProvider>
+      <ToastNotification />
       <Router>
         <Routes>
           {/* ==================== 公共路由 ==================== */}

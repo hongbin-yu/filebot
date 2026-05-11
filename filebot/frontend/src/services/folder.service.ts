@@ -62,6 +62,8 @@ class FolderService {
     appSlug: string, 
     params?: {
       parent_folder_path?: string;
+      list_all?: boolean;
+      app_id?: string;
       skip?: number;
       limit?: number;
     }

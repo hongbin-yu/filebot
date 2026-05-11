@@ -156,11 +156,18 @@ function initConfirmDialog() {
     document.body.appendChild(_confirmDialogEl);
 }
 
-function showConfirmDialog(message, yesText, noText) {
+function showConfirmDialog(message, yesText, noText, asHtml) {
     return new Promise(function(resolve) {
         initConfirmDialog();
 
-        document.getElementById('confirm-dialog-body').textContent = message;
+        var bodyEl = document.getElementById('confirm-dialog-body');
+        if (asHtml) {
+            bodyEl.innerHTML = message;
+            bodyEl.style.whiteSpace = 'normal';
+        } else {
+            bodyEl.textContent = message;
+            bodyEl.style.whiteSpace = 'pre-wrap';
+        }
         document.getElementById('confirm-dialog-yes').textContent = yesText || 'Yes';
         document.getElementById('confirm-dialog-no').textContent = noText || 'No';
 
@@ -243,15 +250,34 @@ async function fetchChildren(parentPath) {
 // 5b. DELETE PAGE (fix #2)
 // ============================================================================
 async function performDelete(pagePath, pageTitle) {
-    var confirmed = await showConfirmDialog(
-        'Delete page "' + pageTitle + '"?\nPath: ' + pagePath + '\n\nThis action cannot be undone.\nAll child pages will also be deleted.',
-        'Delete',
-        'Cancel'
-    );
+    // Get other language path from selected page data
+    var otherLang = selectedPageData && selectedPageData.other_language_path;
+
+    var message = 'Delete page "' + pageTitle + '"?<br>Path: ' + pagePath + '<br><br>This action cannot be undone. All child pages will also be deleted.';
+    if (otherLang) {
+        message += '<br><br><label style="font-weight:normal;cursor:pointer">' +
+            '<input type="checkbox" id="delete-other-lang" checked style="margin-right:6px">' +
+            'Delete other language page: <code>' + otherLang + '</code>' +
+            '</label>';
+    }
+
+    var confirmed = await showConfirmDialog(message, 'Delete', 'Cancel', true);
     if (!confirmed) return;
 
+    // Read checkbox state (if it exists)
+    var delOther = true; // default
+    var cb = document.getElementById('delete-other-lang');
+    if (cb) {
+        delOther = cb.checked;
+    }
+
     try {
-        var resp = await fetch('/api/v1/pages/' + encodeURIComponent(pagePath), {
+        var url = '/api/v1/pages/' + encodeURIComponent(pagePath);
+        if (delOther && otherLang) {
+            url += '?delete_other_language=true&other_language_path=' + encodeURIComponent(otherLang);
+        }
+
+        var resp = await fetch(url, {
             method: 'DELETE'
         });
         if (!resp.ok) {
@@ -260,11 +286,17 @@ async function performDelete(pagePath, pageTitle) {
             throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
         }
 
+        var result = await resp.json();
+
         // Clear cache
         loadedPaths = {};
         columnsCache = [];
 
-        showToast('Page "' + pageTitle + '" deleted successfully', 'success');
+        var toastMsg = 'Page "' + pageTitle + '" deleted successfully';
+        if (result.other_deleted) {
+            toastMsg += ' (other language page also deleted)';
+        }
+        showToast(toastMsg, 'success');
 
         // Go back to parent if we have one
         if (currentPath.length > 1) {

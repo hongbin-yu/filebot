@@ -211,7 +211,7 @@ const Dashboard: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {stats.recentDocuments.map((doc: any) => (
-                  <tr key={doc.id}>
+                  <tr key={doc.path || doc.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">

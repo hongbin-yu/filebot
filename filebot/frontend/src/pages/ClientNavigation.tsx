@@ -75,7 +75,7 @@ const ClientNavigation: React.FC = () => {
       setFolders(foldersData);
       
       // Select first folder by default, or root folder if exists
-      const rootFolder = foldersData.find((folder: Folder) => !folder.parent_folder_id);
+      const rootFolder = foldersData.find((folder: Folder) => !folder.parent_folder_path);
       if (rootFolder) {
         setSelectedFolder(rootFolder);
       } else if (foldersData.length > 0) {
@@ -103,7 +103,7 @@ const ClientNavigation: React.FC = () => {
         const docIdent = doc.path || doc.storage_path || doc.id;
         const encodedDoc = encodeURIComponent(docIdent);
         return {
-          id: doc.id,
+          id: docIdent,
           documentId: docIdent,
           title: doc.title || doc.original_filename || 'Untitled',
           thumbnailUrl: `/api/v1/documents/${encodedDoc}/thumbnail`,
@@ -143,7 +143,7 @@ const ClientNavigation: React.FC = () => {
   
   // When selected folder changes, load its documents
   useEffect(() => {
-    if (selectedFolder?.id) {
+    if (selectedFolder?.path) {
       // Prefer path, fall back to ID if not available
       const folderIdentifier = selectedFolder.path || selectedFolder.id;
       loadDocuments(folderIdentifier);
@@ -283,8 +283,8 @@ const ClientNavigation: React.FC = () => {
                 <div className="list-group">
                   {folders.map(folder => (
                     <button
-                      key={folder.id}
-                      className={`list-group-item list-group-item-action ${selectedFolder?.id === folder.id ? 'active' : ''}`}
+                      key={folder.path}
+                      className={`list-group-item list-group-item-action ${selectedFolder?.path === folder.path ? 'active' : ''}`}
                       onClick={() => handleFolderSelect(folder)}
                       style={{ textAlign: 'left', fontSize: '0.9rem' }}
                     >

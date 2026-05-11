@@ -60,8 +60,8 @@ const Documents: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const targetDoc = documents.find(d => d.id === id);
+  const handleDelete = async (docPath: string) => {
+    const targetDoc = documents.find(d => d.path === docPath);
     const docName = targetDoc?.original_filename || targetDoc?.title || 'this document';
     const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
     const docPathInfo = docPathStr ? `\n存储路径: ${docPathStr}` : '';
@@ -71,8 +71,8 @@ const Documents: React.FC = () => {
     }
     
     try {
-      await documentService.deleteDocument(id);
-      setDocuments(documents.filter(doc => doc.id !== id));
+      await documentService.deleteDocument(docPath);
+      setDocuments(documents.filter(doc => doc.path !== docPath));
     } catch (error) {
       console.error('Failed to delete document:', error);
       window.showWetAlert('Failed to delete document. Please try again.');
@@ -84,8 +84,8 @@ const Documents: React.FC = () => {
     const matchesSearch = docTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          doc.file_type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFolder = selectedFolder === 'all' || 
-                         (selectedFolder === 'uncategorized' && !doc.folder_id) ||
-                         doc.folder_id === selectedFolder;
+                         (selectedFolder === 'uncategorized' && !doc.folder_path) ||
+                         doc.folder_path === selectedFolder;
     return matchesSearch && matchesFolder;
   });
 
@@ -325,7 +325,7 @@ const Documents: React.FC = () => {
       {filteredDocuments.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredDocuments.map((doc) => (
-            <div key={doc.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300">
+            <div key={doc.path || doc.storage_path || doc.name} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300">
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div className="text-3xl">{getFileIcon(doc.file_type)}</div>
@@ -341,7 +341,7 @@ const Documents: React.FC = () => {
                       </svg>
                     </Link>
                     <button
-                      onClick={() => handleDelete(doc.id)}
+                      onClick={() => handleDelete(doc.path)}
                       className="text-red-600 hover:text-red-800"
                       title="Delete"
                     >
@@ -411,9 +411,9 @@ const Documents: React.FC = () => {
                       View Details →
                     </Link>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      doc.folder_id ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      doc.folder_path ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {doc.folder_id ? 'In Folder' : 'Uncategorized'}
+                      {doc.folder_path ? 'In Folder' : 'Uncategorized'}
                     </span>
                   </div>
                 </div>

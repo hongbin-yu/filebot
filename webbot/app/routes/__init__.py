@@ -37,4 +37,12 @@ except ImportError:
     AUTH_ENABLED = False
     auth_router = None
 
-__all__ = ["pages_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED"]
+try:
+    from .search import router as search_router
+    SEARCH_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Search route import failed: {e}")
+    SEARCH_ENABLED = False
+    search_router = None
+
+__all__ = ["pages_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED"]

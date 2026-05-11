@@ -81,7 +81,7 @@ const DocumentDetail: React.FC = () => {
         setLoading(true);
         const data = await documentService.getDocumentByIdentifier(urlDocIdentifier);
         console.log('DocumentDetail: 获取文档成功:', { 
-          id: data.id, 
+          path: data.path, 
           filename: data.original_filename,
           type: data.file_type,
           size: data.file_size,
@@ -102,7 +102,7 @@ const DocumentDetail: React.FC = () => {
           if (folderIdentifier) {
             console.log('DocumentDetail: 获取文件夹信息，使用:', folderIdentifier);
             const folderData = await folderService.getFolder(folderIdentifier);
-            console.log('DocumentDetail: 获取文件夹成功:', { id: folderData.id, name: folderData.name, app_id: folderData.app_id });
+            console.log('DocumentDetail: 获取文件夹成功:', { path: folderData.path, name: folderData.name, app_id: folderData.app_id });
             setFolder(folderData);
             
             // 获取应用信息
@@ -151,7 +151,7 @@ const DocumentDetail: React.FC = () => {
       const newStatus = currentStatus === 'PUBLISHED' ? 'UNPUBLISHED' : 'PUBLISHED';
       
       console.log('切换发布状态:', {
-        documentId: document.id,
+        documentPath: document.path,
         currentStatus,
         newStatus
       });
@@ -222,7 +222,7 @@ const DocumentDetail: React.FC = () => {
       return;
     }
 
-    console.log('DocumentDetail: 设置HTML预览加载，文档ID:', document.id);
+    console.log('DocumentDetail: 设置HTML预览加载，文档路径:', document.path);
     setPreviewLoading(true);
     
     // 使用后端预览API URL（inline content-disposition，同源iframe可正常加载/etc/designs/canada/wet-boew/等资源）
@@ -242,12 +242,12 @@ const DocumentDetail: React.FC = () => {
     return () => {
       clearTimeout(timer);
     };
-  }, [document?.id, activeTab]);
+  }, [document?.path, activeTab]);
 
   // Handle image preview content loading
   useEffect(() => {
     console.log('DocumentDetail: Image preview useEffect triggered', {
-      documentId: document?.id,
+      documentPath: document?.path,
       documentFileType: document?.file_type,
       isImageFile,
       isTiffFile,
@@ -260,7 +260,7 @@ const DocumentDetail: React.FC = () => {
     
     const loadImageContent = async () => {
       console.log('DocumentDetail: loadImageContent调用', {
-        documentId: document?.id,
+        documentPath: document?.path,
         isImageFile,
         isTiffFile,
         activeTab,
@@ -276,7 +276,7 @@ const DocumentDetail: React.FC = () => {
         return;
       }
 
-      console.log('DocumentDetail: Starting to load image preview content, document ID:', document.id);
+      console.log('DocumentDetail: Starting to load image preview content, document path:', document.path);
       
       // 如果已经有内容URL，先释放
       if (currentBlobUrl) {

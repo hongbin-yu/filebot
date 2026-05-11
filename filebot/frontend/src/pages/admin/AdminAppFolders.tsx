@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'reac
 import appService, { App } from '../../services/app.service';
 import folderService, { Folder, FolderCreateRequest } from '../../services/folder.service';
 import documentService, { Document } from '../../services/document.service';
+import { showToast } from '../../components/common/ToastNotification';
 import aiService, { WebsiteCrawlRequest, SitemapImportRequest, SitemapImportResponse } from '../../services/ai.service';
 
 import CreateFolderModal from '../../components/folders/CreateFolderModal';
@@ -41,6 +42,7 @@ const AdminAppFolders: React.FC = () => {
   const [crawlDepth, setCrawlDepth] = useState(1);
   const [importingWebsite, setImportingWebsite] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
   
   // Sitemap import state
   const [sitemapUrl, setSitemapUrl] = useState('');
@@ -68,7 +70,7 @@ const AdminAppFolders: React.FC = () => {
         
         // Load all folders
         if (appData) {
-          await loadFolders(appSlug || appData.id);
+          await loadFolders(appSlug || appData.id, appData.id);
         }
       } catch (error: any) {
         console.error('Failed to load app info:', error);
@@ -90,10 +92,11 @@ const AdminAppFolders: React.FC = () => {
   }, [appSlug]);
   
   // Load folders
-  const loadFolders = async (appIdentifier: string) => {
+  const loadFolders = async (appIdentifier: string, appId?: string) => {
     try {
       const foldersData = await folderService.getFolders(appIdentifier, {
-        parent_folder_path: '/' + appIdentifier,
+        app_id: appId,
+        list_all: true,
         limit: 1000
       });
       setFolders(foldersData);
@@ -223,13 +226,13 @@ const AdminAppFolders: React.FC = () => {
       
       // Reload folders
       if (app) {
-        await loadFolders(appSlug || app.id);
+        await loadFolders(appSlug || app.id, app.id);
       }
       
       setShowCreateModal(false);
     } catch (error) {
       console.error('Failed to create folder:', error);
-      window.showWetAlert('Failed to create folder. Check network or permissions.');
+      showToast('Failed to create folder. Check network or permissions.', 'error');
     }
   };
   
@@ -270,7 +273,7 @@ const AdminAppFolders: React.FC = () => {
       
       // Reload folders
       if (app) {
-        await loadFolders(appSlug || app.id);
+        await loadFolders(appSlug || app.id, app.id);
       }
     } catch (error: any) {
       console.error('Delete Folder Failed:', error);
@@ -278,9 +281,9 @@ const AdminAppFolders: React.FC = () => {
       // Provide detailed error message
       if (error.response?.status === 400) {
         const errorDetail = error.response?.data?.detail || 'Folder is not empty';
-        window.showWetAlert(`Delete failed: ${errorDetail}\n\nPlease use the recursive delete option.`);
+        showToast(`Delete failed: ${errorDetail}\n\nPlease use the recursive delete option.`, 'error');
       } else {
-        window.showWetAlert('Failed to delete folder. It may not be empty or you may not have permission.');
+        showToast('Failed to delete folder. It may not be empty or you may not have permission.', 'error');
       }
     }
   };
@@ -296,7 +299,7 @@ const AdminAppFolders: React.FC = () => {
   // Handle edit document
   const handleEditDocument = (document: Document) => {
     console.log('Edit document:', document);
-    window.showWetAlert(`Edit document: ${document.title || document.original_filename} (not yet implemented)`);
+    showToast(`Edit document: ${document.title || document.original_filename} (not yet implemented)`, 'info');
   };
   
   // Handle delete document
@@ -306,15 +309,15 @@ const AdminAppFolders: React.FC = () => {
     }
     
     try {
-      await documentService.deleteDocument(document.id);
+      await documentService.deleteDocument(document.path);
       // Reload documents
       if (currentFolderPath) {
         await loadDocuments(currentFolderPath);
       }
-      window.showWetAlert('Document deleted successfully');
+      showToast('Document deleted successfully', 'success');
     } catch (error) {
       console.error('Failed to delete document:', error);
-      window.showWetAlert('Failed to delete document. Check network or permissions.');
+      showToast('Failed to delete document. Check network or permissions.', 'error');
     }
   };
   
@@ -340,7 +343,7 @@ const AdminAppFolders: React.FC = () => {
       await folderService.updateFolder(editingFolder.path, data);
       
       // Reload folders
-      await loadFolders(appSlug || app?.id || '');
+      await loadFolders(appSlug || app?.id || '', app?.id);
       
       // Update current folder state if editing current folder
       if (currentFolderPath === editingFolder.path) {
@@ -357,7 +360,7 @@ const AdminAppFolders: React.FC = () => {
       console.log('Folder updated successfully');
     } catch (error) {
       console.error('Failed to update folder:', error);
-      window.showWetAlert('Failed to update folder: ' + (error as any).response?.data?.detail || 'Unknown error');
+      showToast('Failed to update folder: ' + ((error as any).response?.data?.detail || 'Unknown error'), 'error');
       throw error;
     }
   };
@@ -370,7 +373,7 @@ const AdminAppFolders: React.FC = () => {
       
       // Reload folders to update tree
       if (app) {
-        await loadFolders(appSlug || app.id);
+        await loadFolders(appSlug || app.id, app.id);
       }
       
       // Update current folder path if moving it
@@ -381,14 +384,13 @@ const AdminAppFolders: React.FC = () => {
       console.log('Folder moved successfully');
     } catch (error) {
       console.error('Failed to move folder:', error);
-      window.showWetAlert('Failed to move folder: ' + (error as any).response?.data?.detail || 'Unknown error');
+      showToast('Failed to move folder: ' + ((error as any).response?.data?.detail || 'Unknown error'), 'error');
       throw error;
     }
   };
   
   // Build breadcrumb path
   const buildBreadcrumbs = () => {
-    console.log('🍞 buildBreadcrumbs:', { currentFolderPath, foldersCount: folders.length });
     if (!folders.length && !currentFolderPath && !app) return [];
     
     const breadcrumbs = [];
@@ -469,7 +471,7 @@ const AdminAppFolders: React.FC = () => {
 
   // Handle website crawl submission
   const handleSubmitImportWebsite = async () => {
-    if (!websiteUrl.trim() || !currentFolder?.id || !app) {
+    if (!websiteUrl.trim() || !currentFolderPath || !currentFolder || !app) {
       setImportError('Please fill in the URL and ensure a folder is selected');
       return;
     }
@@ -499,13 +501,16 @@ const AdminAppFolders: React.FC = () => {
       // Call backend API
       const response = await aiService.crawlWebsite(request);
       
-      // Show success message
-      window.showWetAlert(`Website crawl started!\nTask ID: ${response.task_id}\nURL: ${response.url}\nDepth: ${response.depth}\nStatus: ${response.status}\n\nThe task will run in the background.`);
+      // Close import modal and show inline success notification
+      setImportError(null);
+      setImportSuccess(`Website crawl started! Task: ${response.task_id}`);
       
       // Close modal
       setShowImportWebsiteModal(false);
       setWebsiteUrl('');
       setCrawlDepth(1);
+      // Auto-clear success message
+      setTimeout(() => setImportSuccess(null), 8000);
     } catch (error: any) {
       console.error('Website import failed:', error);
       const detail = error.response?.data?.detail;
@@ -613,7 +618,8 @@ const AdminAppFolders: React.FC = () => {
         depth: sitemapDepth
       };
       const response: SitemapImportResponse = await aiService.importFromSitemap(request);
-      window.showWetAlert(`Sitemap import started!\nTask ID: ${response.task_id}\nURLs: ${response.total_urls || 'Unknown'}\nDepth: ${response.depth}`);
+      setImportError(null);
+      setImportSuccess(`Sitemap import started! Task: ${response.task_id}`);
       setShowImportWebsiteModal(false);
       setSitemapUrl('');
       setSitemapDepth(0);
@@ -691,7 +697,26 @@ const AdminAppFolders: React.FC = () => {
   const breadcrumbs = buildBreadcrumbs();
   
   return (
-    <div className="p-6">
+    <div className="p-6 relative">
+      {/* Inline success notification */}
+      {importSuccess && (
+        <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-300 rounded-lg p-4 shadow-lg max-w-md animate-slide-in">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-green-800">{importSuccess}</p>
+              <p className="text-xs text-green-600 mt-1">Check the Tasks page for progress.</p>
+            </div>
+            <button onClick={() => setImportSuccess(null)} className="ml-auto pl-3 text-green-400 hover:text-green-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       {/* Breadcrumb Navigation */}
       <div className="mb-6">
         <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
@@ -831,7 +856,7 @@ const AdminAppFolders: React.FC = () => {
                 <button
                   className="p-3 border rounded-lg hover:bg-gray-50 text-left"
                   onClick={() => {
-                    setParentFolderPath(currentFolder.path || '');
+                    setParentFolderPath(currentFolder?.path || currentFolderPath || '');
                     setShowCreateModal(true);
                   }}
                 >
@@ -840,42 +865,42 @@ const AdminAppFolders: React.FC = () => {
                 </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-gray-50 text-left"
-                  onClick={() => handleNavigateToUpload(currentFolder.path || currentFolder.id)}
+                  onClick={() => handleNavigateToUpload(currentFolder?.path || currentFolderPath || '')}
                 >
                   <div className="font-medium">Upload</div>
                   <div className="text-sm text-gray-500">Upload files to this folder</div>
                 </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-gray-50 text-left"
-                  onClick={() => handleNavigateToDocuments(currentFolder.path || currentFolder.id)}
+                  onClick={() => handleNavigateToDocuments(currentFolder?.path || currentFolderPath || '')}
                 >
                   <div className="font-medium">Documents</div>
                   <div className="text-sm text-gray-500">Browse documents in this folder</div>
                 </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-blue-50 text-left border-blue-200"
-                  onClick={() => handleEditFolder(currentFolder.path || '')}
+                  onClick={() => handleEditFolder(currentFolder?.path || currentFolderPath || '')}
                 >
                   <div className="font-medium text-blue-600">Edit Folder</div>
                   <div className="text-sm text-blue-500">Edit folder name and description</div>
                 </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
-                  onClick={() => handleDeleteFolder(currentFolder.path || '')}
+                  onClick={() => handleDeleteFolder(currentFolder?.path || currentFolderPath || '')}
                 >
                   <div className="font-medium text-red-600">Delete Folder</div>
                   <div className="text-sm text-red-500">Delete this folder and all its contents</div>
                 </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-green-50 text-left border-green-200"
-                  onClick={() => handleImportFolder(currentFolder.path || currentFolder.id)}
+                  onClick={() => handleImportFolder(currentFolder?.path || currentFolderPath || '')}
                 >
                   <div className="font-medium text-green-600">Import Folder</div>
                   <div className="text-sm text-green-500">Import an entire folder from local drive</div>
                 </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-purple-50 text-left border-purple-200"
-                  onClick={() => handleImportWebsite(currentFolder.path || '')}
+                  onClick={() => handleImportWebsite(currentFolder?.path || currentFolderPath || '')}
                 >
                   <div className="font-medium text-purple-600">Import Website</div>
                   <div className="text-sm text-purple-500">Crawl web pages and images from a URL</div>
@@ -884,7 +909,7 @@ const AdminAppFolders: React.FC = () => {
                   className="p-3 border rounded-lg hover:bg-indigo-50 text-left border-indigo-200"
                   onClick={() => {
                     if (!currentFolderPath) {
-                      window.showWetAlert('Please select a folder first');
+                      showToast('Please select a folder first', 'warning');
                       return;
                     }
                     setExportDepth(1);
@@ -953,7 +978,7 @@ const AdminAppFolders: React.FC = () => {
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {documents.map(doc => (
-                              <tr key={doc.id} className="hover:bg-gray-50">
+                              <tr key={doc.path || doc.storage_path || doc.name} className="hover:bg-gray-50">
                                 <td className="px-6 py-4">
                                   <div>
                                     <div className="font-medium text-gray-900">{doc.title || doc.original_filename || 'Untitled'}</div>
@@ -1021,7 +1046,7 @@ const AdminAppFolders: React.FC = () => {
                         <p>No documents in this folder</p>
                         <button 
                           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                          onClick={() => handleNavigateToUpload(currentFolder.path || currentFolder.id)}
+                          onClick={() => handleNavigateToUpload(currentFolder?.path || currentFolderPath || '')}
                         >
                           Upload First Document
                         </button>

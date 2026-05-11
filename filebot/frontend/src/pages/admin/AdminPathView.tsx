@@ -4,6 +4,7 @@ import appService, { App } from '../../services/app.service';
 import folderService, { Folder } from '../../services/folder.service';
 import documentService, { Document } from '../../services/document.service';
 import CreateFolderModal from '../../components/folders/CreateFolderModal';
+import { showToast } from '../../components/common/ToastNotification';
 
 const AdminPathView: React.FC = () => {
   // 获取URL参数：appSlug和路径通配符
@@ -200,7 +201,7 @@ const AdminPathView: React.FC = () => {
   }) => {
     try {
       // 使用路径作为父文件夹标识符
-      const parentFolderPath = data.parent_folder_id || getFullPath();
+      const parentFolderPath = data.parent_folder_path || getFullPath();
       
       // 调用folderService创建文件夹
       // 注意：FolderCreateRequest接口期望parent_folder_id和app_id
@@ -219,10 +220,10 @@ const AdminPathView: React.FC = () => {
       await loadPathContents();
       
       // 显示成功消息（可以添加toast通知）
-      window.showWetAlert(`Folder "${data.name}" created successfully!`);
+      showToast(`Folder "${data.name}" created successfully!`, 'success');
     } catch (err: any) {
       console.error('创建文件夹失败:', err);
-      window.showWetAlert(`Create folder failed: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
+      showToast(`Create folder failed: ${err.response?.data?.detail || err.message || 'Unknown error'}`, 'error');
       throw err; // 重新抛出错误，让模态框处理
     }
   };
@@ -465,7 +466,7 @@ const AdminPathView: React.FC = () => {
                       })
                       .catch(err => {
                         console.error('下载失败:', err);
-                        window.showWetAlert('Download failed: ' + (err.response?.data?.detail || err.message || 'Unknown error'));
+                        showToast('Download failed: ' + (err.response?.data?.detail || err.message || 'Unknown error'), 'error');
                       });
                   }
                 }}
@@ -586,7 +587,7 @@ const AdminPathView: React.FC = () => {
               <div className="divide-y divide-gray-200">
                 {subfolders.map(folder => (
                   <div 
-                    key={folder.id} 
+                    key={folder.path || folder.name} 
                     className="p-4 hover:bg-gray-50 cursor-pointer"
                     onClick={() => handleFolderClick(folder.path || `/${appSlug}/${folder.name}`)}
                   >
@@ -632,7 +633,7 @@ const AdminPathView: React.FC = () => {
               <div className="divide-y divide-gray-200">
                 {documents.slice(0, 10).map(doc => (
                   <div 
-                    key={doc.id} 
+                    key={doc.path || doc.storage_path || doc.name} 
                     className="p-4 hover:bg-gray-50 cursor-pointer"
                     onClick={() => handleDocumentClick(doc)}
                   >

@@ -50,102 +50,50 @@
             </div>
         </div>
 
-        <!-- FileBot Sidebar (left sidebar) -->
-        <div id="filebot-sidebar" class="filebot-sidebar hidden">
-            <div class="filebot-sidebar-header">
-                <h3>📁 FileBot</h3>
-                <button class="filebot-sidebar-close" id="filebot-sidebar-close">×</button>
+        <!-- Resource Sidebar (left) -->
+        <div id="resource-sidebar" class="resource-sidebar hidden">
+            <div class="resource-sidebar-header">
+                <h3>📁 Resources</h3>
+                <button class="resource-sidebar-close" id="resource-sidebar-close">×</button>
             </div>
-            <div class="filebot-sidebar-body">
-				<details>
-					<summary>Files uploaded to FileBot</summary>
-					<div class="filebot-sidebar-actions">
-						<!-- File Upload Area -->
-						<div id="sidebar-file-upload-area" class="well" style="border: 2px dashed #4CAF50; padding: 15px; text-align: center; cursor: pointer; background-color: #f8fff8; margin-bottom: 15px;">
-							<p style="font-size: 16px; margin-bottom: 8px;">
-								<span class="glyphicon glyphicon-cloud-upload" style="font-size: 36px; color: #4CAF50;"></span>
-							</p>
-							<p style="font-size: 16px; font-weight: bold; color: #2E7D32;">↗️ Drag & Drop files here (Recommended)</p>
-							<p style="color: #666; margin-bottom: 10px; font-size: 13px;">or click "Browse Files" to select files (Max: 100MB)</p>
-							<input type="file" id="sidebar-file-input" multiple style="display: none;">
-							<button type="button" class="btn btn-success btn-sm" id="sidebar-browse-files-btn" style="margin-bottom: 10px;">
-								<span class="glyphicon glyphicon-folder-open"></span> Browse Files
-							</button>
-							<!--div style="margin-top: 10px; font-size: 11px; color: #777;">
-								<span class="glyphicon glyphicon-info-sign"></span> Files uploaded to FileBot
-							</div-->
-
-							<!-- Sidebar Upload Progress -->
-							<div id="sidebar-upload-progress" style="display: none; margin-top: 15px;">
-								<div class="progress" style="height: 6px; margin-bottom: 8px; background-color: #eee;">
-									<div id="sidebar-upload-progress-bar" class="progress-bar progress-bar-striped active"
-										 role="progressbar" style="width: 0%; background-color: #4CAF50;">
-									</div>
-								</div>
-								<p id="sidebar-upload-status" style="font-size: 12px; text-align: center; margin: 0; color: #555;">
-									Preparing upload...
-								</p>
-							</div>
-						</div>
-
-
-					</div>
-				</details>
-                <div class="filebot-target-folder">
-                    <div class="target-folder-label">
-                        <small>📂 Target folder:</small>
-                    </div>
-                    <div id="filebot-target-folder-path" class="target-folder-path">
-                        <em>No page selected</em>
-                    </div>
-                    <div id="filebot-folder-source" class="target-folder-source" style="font-size: 11px; color: #666; margin-top: 3px;">
-                        <span class="folder-source-icon">↳</span>
-                        <span id="folder-source-text">Inheritance: Current page</span>
-                    </div>
+            <div class="resource-sidebar-body">
+                <!-- Resource type selector -->
+                <div class="resource-selector-row">
+                    <select id="resource-type-select" class="form-control">
+                        <option value="images">🖼️ Images</option>
+                        <option value="documents">📄 Documents</option>
+                        <option value="components">🧩 Components</option>
+                        <option value="templates">📋 Templates</option>
+                        <option value="pages">📑 Pages</option>
+                    </select>
                 </div>
 
-                <div class="filebot-sidebar-documents">
-                    <details>
-					<summary><h4>Images</h4></summary>
-                    <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/images.html">
-                            Loading images...
+                <!-- Search bar: path (fixed) + title (free search) -->
+                <div class="resource-search-row">
+                    <div class="resource-path-field">
+                        <span class="resource-path-label">📁 Path</span>
+                        <input type="text" id="resource-path-input" class="form-control" placeholder="Folder path..." readonly>
+                        <button id="resource-upload-btn" class="resource-upload-btn" title="Upload files">📤</button>
+                        <input type="file" id="resource-upload-input" accept="image/*" multiple hidden>
                     </div>
-					</details>				
-                    <details>
-					<summary><h4>Documents</h4></summary>
-                    <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/document-list.html">
-                            Loading documents...
+                    <div id="resource-upload-info" class="resource-upload-info hidden">
+                        <div class="resource-upload-progress hidden">
+                            <div class="resource-upload-progress-bar" id="resource-upload-progress-bar"></div>
+                        </div>
+                        <span id="resource-upload-msg" class="resource-upload-msg"></span>
                     </div>
-					</details>
-                    <details>
-                        <summary><h4>Components</h4></summary>
-                        <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/components.html">
-						     Loading components...
-						</div>
-                    </details>
-                    <details>
-                        <summary><h4>Template</h4></summary>
-                        <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/templates.html">
-						     Loading templates...
-						</div>
-                    </details>					
-                    <details>
-                        <summary><h4>Pages</h4></summary>
-                        <div class="filebot-documents-sidebar wb-filter" data-filebot-url="/mustache/en/mustache-templates/templates.html">
-						     Loading pages...
-						</div>
-                    </details>
                 </div>
-                <!--div class="filebot-sidebar-components">
-                    <details>
-                        <summary>Components</summary>
-                        <ul id="filebot-components-sidebar" class="filebot-documents-sidebar wb-filter">
-						     Loading components...
-						</ul>
-                    </details>
-                </div-->
-                <div class="filebot-sidebar-info">
-                    <p><strong>FileBot</strong> integrated for file management.</p>
+                <div class="resource-search-row">
+                    <div class="resource-title-field">
+                        <span class="resource-path-label">🔍 Title</span>
+                        <input type="text" id="resource-search-input" class="form-control" placeholder="Search by title...">
+                    </div>
+                    <button id="resource-search-btn" class="btn btn-primary btn-sm">🔍</button>
+                </div>
+
+                <!-- Results area -->
+                <div id="resource-results" class="resource-results">
+                    <div class="resource-placeholder">Select a resource type and search.</div>
                 </div>
             </div>
         </div>

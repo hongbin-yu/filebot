@@ -74,20 +74,21 @@ const FolderTree: React.FC<FolderTreeProps> = ({
     
     // 初始化所有节点
     folders.forEach(folder => {
-      nodeMap.set(folder.id, {
+      nodeMap.set(folder.path, {
         ...folder,
+        id: folder.path,
         children: [],
         expanded: false,
         level: 0
       });
     });
     
-    // 构建树
+    // 构建树（使用path作为key匹配父子关系）
     const tree: FolderTreeNode[] = [];
     
     nodeMap.forEach(node => {
-      if (node.parent_folder_id) {
-        const parent = nodeMap.get(node.parent_folder_id);
+      if (node.parent_folder_path) {
+        const parent = nodeMap.get(node.parent_folder_path);
         if (parent) {
           parent.children.push(node);
           // 设置子节点的层级
@@ -138,7 +139,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   const findNode = (nodes: FolderTreeNode[], folderIdentifier: string): FolderTreeNode | null => {
     for (const node of nodes) {
       // 支持UUID或path作为标识符
-      if (node.id === folderIdentifier || node.path === folderIdentifier) return node;
+      if (node.path === folderIdentifier || node.path === folderIdentifier) return node;
       if (node.children.length > 0) {
         const found = findNode(node.children, folderIdentifier);
         if (found) return found;
@@ -152,16 +153,16 @@ const FolderTree: React.FC<FolderTreeProps> = ({
     if (!draggedNode || !targetNode) return false;
     
     // 不能拖拽到自己
-    if (draggedNode.id === targetNode.id) return false;
+    if (draggedNode.path === targetNode.path) return false;
     
     // 不能拖拽到自己的子文件夹中（防止循环）
-    const isDescendant = (parentId: string, nodeId: string, nodes: FolderTreeNode[]): boolean => {
+    const isDescendant = (parentPath: string, nodePath: string, nodes: FolderTreeNode[]): boolean => {
       const node = findNode(nodes, parentId);
       if (!node) return false;
       
       const checkChildren = (children: FolderTreeNode[]): boolean => {
         for (const child of children) {
-          if (child.id === nodeId) return true;
+          if (child.path === nodePath) return true;
           if (child.children.length > 0 && checkChildren(child.children)) {
             return true;
           }
@@ -186,10 +187,10 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   };
   
   // 展开/收起节点
-  const toggleExpand = (folderId: string) => {
+  const toggleExpand = (folderPath: string) => {
     const updateNode = (nodes: FolderTreeNode[]): FolderTreeNode[] => {
       return nodes.map(node => {
-        if (node.id === folderId) {
+        if (node.path === folderPath) {
           return { ...node, expanded: !node.expanded };
         }
         
@@ -249,7 +250,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   }, [folders, currentFolderId]);
   
   // 拖拽开始事件
-  const handleDragStart = (e: React.DragEvent, folderId: string) => {
+  const handleDragStart = (e: React.DragEvent, folderPath: string) => {
     const draggedNode = findNode(treeNodes, folderId);
     if (!draggedNode || draggedNode.is_system_folder) {
       e.preventDefault();
@@ -286,7 +287,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   };
   
   // 拖拽经过事件
-  const handleDragOver = (e: React.DragEvent, folderId: string) => {
+  const handleDragOver = (e: React.DragEvent, folderPath: string) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -346,7 +347,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   };
   
   // 放置事件
-  const handleDrop = async (e: React.DragEvent, folderId: string) => {
+  const handleDrop = async (e: React.DragEvent, folderPath: string) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -368,7 +369,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
         targetParentFolderId = folderId;
       } else {
         // 放置为兄弟文件夹（前或后），保持相同的父文件夹
-        targetParentFolderId = targetNode.parent_folder_id;
+        targetParentFolderId = targetNode.parent_folder_path;
       }
       
       // 调用移动文件夹的API
@@ -406,13 +407,13 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   const renderTreeNode = (node: FolderTreeNode): React.ReactNode => {
     // 支持UUID或path作为标识符
     // 支持UUID或path作为标识符
-    const isCurrent = node.id === currentFolderId || node.path === currentFolderId;
+    const isCurrent = node.path === currentFolderId || node.path === currentFolderId;
     const hasChildren = node.children.length > 0;
-    const isDragged = dragState.draggedFolderId === node.id || dragState.draggedFolderId === node.path;
-    const isDropTarget = dropTarget.targetFolderId === node.id || dropTarget.targetFolderId === node.path;
+    const isDragged = dragState.draggedFolderId === node.path || dragState.draggedFolderId === node.path;
+    const isDropTarget = dropTarget.targetFolderId === node.path || dropTarget.targetFolderId === node.path;
     
     return (
-      <div key={node.id} className="relative">
+      <div key={node.path} className="relative">
         {/* 放置前的指示线 */}
         {isDropTarget && dropTarget.position === 'before' && dropTarget.isValid && (
           <div className="absolute left-0 right-0 top-0 h-0.5 bg-blue-500 z-10"></div>
@@ -428,12 +429,12 @@ const FolderTree: React.FC<FolderTreeProps> = ({
             hover:bg-gray-100
           `}
           style={{ marginLeft: `${node.level * 16}px` }}
-          onClick={() => onFolderSelect(node.id)}
+          onClick={() => onFolderSelect(node.path)}
           draggable={!node.is_system_folder}
-          onDragStart={(e) => handleDragStart(e, node.id)}
-          onDragOver={(e) => handleDragOver(e, node.id)}
+          onDragStart={(e) => handleDragStart(e, node.path)}
+          onDragOver={(e) => handleDragOver(e, node.path)}
           onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, node.id)}
+          onDrop={(e) => handleDrop(e, node.path)}
         >
           {/* 展开/收起按钮 */}
           {hasChildren ? (
@@ -441,7 +442,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
               className="w-4 h-4 mr-1 flex-shrink-0 text-gray-500 hover:text-gray-700"
               onClick={(e) => {
                 e.stopPropagation();
-                toggleExpand(node.id);
+                toggleExpand(node.path);
               }}
             >
               {node.expanded ? (
@@ -467,7 +468,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
           <div className="flex-1 min-w-0">
             <div className={`font-medium truncate ${isCurrent ? 'text-blue-600' : 'text-gray-800'}`}>
               {node.name}
-              {dragState.isDragging && dragState.draggedFolderId === node.id && (
+              {dragState.isDragging && dragState.draggedFolderId === node.path && (
                 <span className="ml-2 text-xs text-gray-500">{t('folderTree.dragging')}</span>
               )}
             </div>
@@ -501,7 +502,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
                   `${t('folderTree.confirmDelete', { name: node.name })}${nodePathInfo}`
                 );
                 if (confirmed) {
-                  onDeleteFolder(node.id);
+                  onDeleteFolder(node.path);
                 }
               }}
               title={t('folderTree.deleteFolder')}

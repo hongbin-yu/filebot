@@ -7,6 +7,7 @@ const DataTable = RDT.default || RDT;
 import appService, { App } from '../../services/app.service';
 import folderService, { Folder } from '../../services/folder.service';
 import documentService, { Document } from '../../services/document.service';
+import { showToast } from '../../components/common/ToastNotification';
 
 const AdminDocuments: React.FC = () => {
   const { appSlug, folderId } = useParams<{ appSlug: string; folderId: string }>();
@@ -93,7 +94,7 @@ const AdminDocuments: React.FC = () => {
       });
       
       setDocuments(docs => docs.map(doc => 
-        doc.id === updatedDoc.id ? updatedDoc : doc
+        doc.path === updatedDoc.path ? updatedDoc : doc
       ));
       
       setEditingDoc(null);
@@ -101,7 +102,7 @@ const AdminDocuments: React.FC = () => {
       setEditDescription('');
     } catch (err: any) {
       console.error('更新文档失败:', err);
-      window.showWetAlert(`Update failed: ${err.message || 'Unknown error'}`);
+      showToast(`Update failed: ${err.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -114,34 +115,34 @@ const AdminDocuments: React.FC = () => {
 
   // Delete document
   const handleDelete = async (documentId: string) => {
-    const targetDoc = documents.find(d => d.id === documentId);
+    const targetDoc = documents.find(d => d.path === documentId);
     const docName = targetDoc?.original_filename || targetDoc?.title || 'this document';
     const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
     const docPathInfo = docPathStr ? `\nPath: ${docPathStr}` : '';
-    const confirmedDel = await window.wetYesOrNo(`Are you sure you want to delete "${docName}"? This cannot be undone.${docPathInfo}`);
+    const confirmedDel = window.confirm(`Are you sure you want to delete "${docName}"? This cannot be undone.${docPathInfo}`);
     if (!confirmedDel) return;
     
     try {
       const deleteIdentifier = targetDoc?.path || targetDoc?.storage_path || documentId;
       await documentService.deleteDocument(deleteIdentifier);
-      setDocuments(docs => docs.filter(doc => doc.id !== documentId));
-      window.showWetAlert('Document deleted successfully');
+      setDocuments(docs => docs.filter(doc => doc.path !== documentId));
+      showToast('Document deleted successfully', 'success');
     } catch (err: any) {
       console.error('删除文档失败:', err);
-      window.showWetAlert(`Delete failed: ${err.message || 'Unknown error'}`);
+      showToast(`Delete failed: ${err.message || 'Unknown error'}`, 'error');
     }
   };
 
   // Delete all documents
   const handleDeleteAllDocuments = async () => {
     if (documents.length === 0) {
-      window.showWetAlert('No documents to delete in current folder');
+      showToast('No documents to delete in current folder', 'info');
       return;
     }
     
     const folderName = folder?.name || 'current folder';
     const folderPathStr = folder?.path ? `\nTarget path: ${folder.path}` : '';
-    const confirmedAll = await window.wetYesOrNo(`Are you sure you want to delete all ${documents.length} documents in ${folderName}? This cannot be undone and will delete all files.${folderPathStr}`);
+    const confirmedAll = window.confirm(`Are you sure you want to delete all ${documents.length} documents in ${folderName}? This cannot be undone and will delete all files.${folderPathStr}`);
     if (!confirmedAll) return;
     
     try {
@@ -163,13 +164,13 @@ const AdminDocuments: React.FC = () => {
       setDocuments([]);
       
       if (failedCount === 0) {
-        window.showWetAlert(`Successfully deleted all ${deletedCount} documents`);
+        showToast(`Successfully deleted all ${deletedCount} documents`, 'success');
       } else {
-        window.showWetAlert(`Done: ${deletedCount} deleted, ${failedCount} failed`);
+        showToast(`Done: ${deletedCount} deleted, ${failedCount} failed`, 'info');
       }
     } catch (err: any) {
       console.error('批量删除文档失败:', err);
-      window.showWetAlert(`Batch delete failed: ${err.message || 'Unknown error'}`);
+      showToast(`Batch delete failed: ${err.message || 'Unknown error'}`, 'error');
     } finally {
       setDeletingAll(false);
     }
@@ -247,7 +248,7 @@ const AdminDocuments: React.FC = () => {
             Edit
           </button>
           <button 
-            onClick={() => handleDelete(row.id)}
+            onClick={() => handleDelete(row.path)}
             className="text-red-600 hover:text-red-800 text-sm"
           >
             Delete

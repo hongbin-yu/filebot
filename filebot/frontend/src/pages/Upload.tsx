@@ -75,7 +75,7 @@ const Upload: React.FC = () => {
       drawerSlug: effectiveDrawerSlug, 
       selectedFolder, 
       foldersCount: folders.length, 
-      folders: folders.map(f => ({ id: f.id, name: f.name })),
+      folders: folders.map(f => ({ id:  f.path, name: f.name })),
       hasDrawer: !!effectiveDrawerSlug
     });
     
@@ -87,19 +87,19 @@ const Upload: React.FC = () => {
       const currentSelectionValid = selectedFolder && 
                                    selectedFolder !== '' && 
                                    selectedFolder !== '0' && 
-                                   folders.some(f => f.id === selectedFolder);
+                                   folders.some(f => f.path === selectedFolder);
       
       // 如果当前选择无效或为空，且文件夹列表不为空，则自动选择第一个文件夹
       if (!currentSelectionValid && folders.length > 0) {
         const firstFolder = folders[0];
-        console.log(`🔧 自动选择文件夹: "${firstFolder.name}" (ID: ${firstFolder.id})，原因:`, 
+        console.log(`🔧 自动选择文件夹: "${firstFolder.name}" (ID: ${firstFolder.path})，原因:`, 
           !selectedFolder ? 'selectedFolder为空' : 
           selectedFolder === '' ? 'selectedFolder为空字符串' :
           selectedFolder === '0' ? 'selectedFolder为"0"' :
           '选中的文件夹不在列表中');
         
         // 确保ID转为字符串
-        const folderIdStr = firstFolder.id.toString();
+        folderIdStr = firstFolder.path.toString();
         setSelectedFolder(folderIdStr);
         console.log(`✅ 已设置selectedFolder为: "${folderIdStr}"`);
       } else if (currentSelectionValid) {
@@ -138,7 +138,7 @@ const Upload: React.FC = () => {
           try {
             const currentFolder = await folderService.getFolder(folderId);
             if (currentFolder) {
-              parentFolderPath = currentFolder.path || currentFolder.id;
+              parentFolderPath = currentFolder.path || currentFolder.path;
               console.log(`📂 找到当前文件夹路径: ${parentFolderPath}`);
             }
           } catch (e) {
@@ -150,7 +150,6 @@ const Upload: React.FC = () => {
         console.log(`📂 调用 folderService.getFolders(appSlug="${effectiveAppId}", parentFolderPath=${parentFolderPath})`);
         data = await folderService.getFolders(effectiveAppId, parentFolderPath ? { parent_folder_path: parentFolderPath } : undefined);
         console.log(`📊 获取到文件夹 (${data.length} 个):`, data.map(f => ({ 
-          id: f.id, 
           name: f.name, 
           path: f.path,
           description: f.description 
@@ -162,13 +161,13 @@ const Upload: React.FC = () => {
         }
         
         // 确保当前选中的文件夹在列表中
-        if (folderId && !data.some(f => f.id === folderId)) {
+        if (folderId && !data.some(f => f.path === folderId)) {
           try {
             console.log(`🔍 当前folderId "${folderId}" 不在文件夹列表中，尝试获取文件夹详情`);
             // 如果当前文件夹不在列表中，尝试获取该文件夹详情
             const currentFolder = await folderService.getFolder(folderId);
             if (currentFolder) {
-              console.log(`✅ 找到文件夹详情:`, { id: currentFolder.id, name: currentFolder.name });
+              console.log(`✅ 找到文件夹详情:`, { id: currentFolder.path, name: currentFolder.name });
               data.unshift(currentFolder);
             }
           } catch (e) {
@@ -180,7 +179,7 @@ const Upload: React.FC = () => {
         setErrors(['Cannot upload: Missing application information. Please select an application first.']);
       }
       
-      console.log(`📦 最终文件夹数据: ${data.length} 个文件夹`, data.map(f => ({ id: f.id, name: f.name })));
+      console.log(`📦 最终文件夹数据: ${data.length} 个文件夹`, data.map(f => ({ id:  f.path, name: f.name })));
       setFolders(data || []);
       
       // 抽屉上传模式：记录状态
@@ -256,7 +255,7 @@ const Upload: React.FC = () => {
       folderId,
       selectedFolder,
       foldersCount: folders.length,
-      foldersList: folders.map(f => ({ id: f.id, name: f.name })),
+      foldersList: folders.map(f => ({ id:  f.path, name: f.name })),
       filesCount: files.length,
       firstFileName: files[0]?.name
     });
@@ -274,12 +273,12 @@ const Upload: React.FC = () => {
       // 抽屉上传模式：必须选择文件夹
       if (!actualFolderId || actualFolderId === '' || actualFolderId === '0') {
         console.warn(`⚠️ 抽屉上传模式验证: drawerSlug="${effectiveDrawerSlug}", selectedFolder为空或无效`);
-        console.log(`📁 可用文件夹列表:`, folders.map(f => ({ id: f.id, name: f.name })));
+        console.log(`📁 可用文件夹列表:`, folders.map(f => ({ id:  f.path, name: f.name })));
         
         // 尝试自动选择第一个文件夹（如果可用）
         if (folders.length > 0) {
           const firstFolder = folders[0];
-          actualFolderId = firstFolder.id;
+          actualFolderId = firstFolder.path;
           console.log(`🔄 自动选择第一个文件夹: "${firstFolder.name}" (ID: ${actualFolderId})`);
           
           // 同时更新状态，以便UI反映这个选择
@@ -292,14 +291,14 @@ const Upload: React.FC = () => {
         }
       } else {
         // 检查选中的文件夹是否在列表中
-        const folderExists = folders.some(f => f.id === actualFolderId);
+        const folderExists = folders.some(f => f.path === actualFolderId);
         if (!folderExists) {
           console.warn(`⚠️ 选中的文件夹不在列表中: "${actualFolderId}"`);
           
           // 如果文件夹不在列表中但列表不为空，自动选择第一个
           if (folders.length > 0) {
             const firstFolder = folders[0];
-            actualFolderId = firstFolder.id;
+            actualFolderId = firstFolder.path;
             console.log(`🔄 重新选择第一个文件夹: "${firstFolder.name}" (ID: ${actualFolderId})`);
             setSelectedFolder(actualFolderId);
           } else {
@@ -620,7 +619,7 @@ const Upload: React.FC = () => {
                   </svg>
                   <span className="text-green-800">
                     Auto-selected folder for drawer upload: <span className="font-medium">
-                      {folders.find(f => f.id === selectedFolder)?.name || 'Unknown folder'}
+                      {folders.find(f => f.path === selectedFolder)?.name || 'Unknown folder'}
                     </span>
                   </span>
                 </div>
@@ -635,7 +634,7 @@ const Upload: React.FC = () => {
             >
               <option value="">No Folder (Uncategorized)</option>
               {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
+                <option key={folder.path || folder.name} value={folder.path}>
                   {folder.name}
                 </option>
               ))}

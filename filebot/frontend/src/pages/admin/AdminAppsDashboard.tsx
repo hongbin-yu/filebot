@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import appService, { App, CreateAppRequest } from '../../services/app.service';
 import CreateAppModal from '../../components/apps/CreateAppModal';
 import EditAppModal from '../../components/apps/EditAppModal';
+import { showToast } from '../../components/common/ToastNotification';
 
 const AdminAppsDashboard: React.FC = () => {
   const [apps, setApps] = useState<App[]>([]);
@@ -65,7 +66,7 @@ const AdminAppsDashboard: React.FC = () => {
 
   // Handle delete application
   const handleDeleteApp = async (appId: string, appName: string) => {
-    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete the application "${appName}"? This action will delete all associated folders and documents and cannot be undone.`);
+    const confirmed = window.confirm(`Are you sure you want to delete the application "${appName}"? This action will delete all associated folders and documents and cannot be undone.`);
     if (!confirmed) {
       return;
     }
@@ -76,7 +77,7 @@ const AdminAppsDashboard: React.FC = () => {
       setApps(prevApps => prevApps.filter(app => app.id !== appId));
     } catch (err) {
       console.error('Failed to delete application:', err);
-      window.showWetAlert('Failed to delete application. Please try again later.');
+      showToast('Failed to delete application. Please try again later.', 'error');
     }
   };
 
@@ -87,7 +88,7 @@ const AdminAppsDashboard: React.FC = () => {
       setEditingApp(appToEdit);
       setIsEditModalOpen(true);
     } else {
-      window.showWetAlert('Application to edit not found');
+      showToast('Application to edit not found', 'error');
     }
   };
 

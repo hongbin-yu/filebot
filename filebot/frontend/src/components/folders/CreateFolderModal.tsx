@@ -50,7 +50,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     if (isUUID) {
       console.warn(`⚠️ CreateFolderModal收到UUID格式的parentFolderPath: ${parentFolderPath}，尝试转换为路径`);
       // 在folders中查找对应UUID的文件夹
-      const foundFolder = folders.find(f => f.id === parentFolderPath);
+      const foundFolder = folders.find(f => f.path === parentFolderPath);
       if (foundFolder?.path) {
         console.log(`✅ 找到对应路径: ${foundFolder.path}`);
         finalPath = foundFolder.path;
@@ -72,13 +72,13 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       // 确定父文件夹路径：优先使用parent_folder_path，否则尝试转换parent_folder_id
       let parentPath = folderToEdit.parent_folder_path || '';
       
-      if (!parentPath && folderToEdit.parent_folder_id) {
-        const parentId = folderToEdit.parent_folder_id;
+      if (!parentPath && folderToEdit.parent_folder_path) {
+        const parentPath2 = folderToEdit.parent_folder_path;
         // 检查是否为UUID
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId);
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentPath2);
         if (isUUID) {
           // 尝试在folders中查找对应UUID的文件夹
-          const foundFolder = folders.find(f => f.id === parentId);
+          const foundFolder = folders.find(f => f.path === parentPath2);
           if (foundFolder?.path) {
             console.log(`✅ 编辑模式：找到父文件夹路径: ${foundFolder.path}`);
             parentPath = foundFolder.path;
@@ -112,15 +112,15 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       folderList.forEach(folder => {
         const indent = '  '.repeat(level);
         // 使用folder.path作为value，如果path不存在则使用一个基于id的占位符
-        const folderPath = folder.path || `/unknown/${folder.id}`;
+        const folderPath = folder.path || `/unknown/${folder.name}`;
         options.push({
           value: folderPath,
           label: `${indent}${folder.name}`,
           path: folderPath
         });
         
-        // 查找子文件夹
-        const children = folders.filter(f => f.parent_folder_id === folder.id);
+        // 查找子文件夹（使用 path 而非 id，Folder 主键是 path）
+        const children = folders.filter(f => f.parent_folder_path === folder.path);
         if (children.length > 0) {
           buildOptions(children, level + 1);
         }
@@ -128,7 +128,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     };
     
     // 从根文件夹开始
-    const rootFolders = folders.filter(f => !f.parent_folder_id);
+    const rootFolders = folders.filter(f => !f.parent_folder_path);
     buildOptions(rootFolders);
     
     return options;
@@ -148,17 +148,16 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       return { name: folder.name, path: folder.path || folder.name };
     }
     
-    // 如果找不到，可能是UUID格式或无效路径
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedParentFolderPath);
-    if (isUUID) {
-      // UUID格式，尝试通过id查找
-      const folderById = folders.find(f => f.id === selectedParentFolderPath);
-      if (folderById) {
-        return { name: folderById.name, path: folderById.path || folderById.name };
-      }
-    }
+    // 如果不在已加载的文件夹列表中，从路径中提取名字
+    // （防止 loadFolders 只取了顶层文件夹导致深层目录匹配不到）
+    const pathParts = selectedParentFolderPath.split('/').filter(Boolean);
+    const nameFromPath = pathParts[pathParts.length - 1] || selectedParentFolderPath;
+    // 将下划线/中划线转为空格，首字母大写作为 fallback 显示名
+    const displayName = nameFromPath
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
     
-    return { name: t('folderModal.unknownFolder'), path: selectedParentFolderPath };
+    return { name: displayName, path: selectedParentFolderPath };
   };
   
   const selectedParentInfo = getSelectedParentInfo();
@@ -184,13 +183,12 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     const existingFolder = folders.find(f => 
       f.name === name.trim() && 
       f.app_id === appSlug && // 使用appSlug
-      (f.parent_folder_path === selectedParentFolderPath || 
-       f.parent_folder_id === selectedParentFolderPath) // 支持路径或UUID
+      (f.parent_folder_path === selectedParentFolderPath)
     );
     
     if (existingFolder) {
       // 在编辑模式下，如果找到的文件夹就是正在编辑的文件夹，那么是允许的（名称未改变）
-      if (mode === 'edit' && folderToEdit && existingFolder.id === folderToEdit.id) {
+      if (mode === 'edit' && folderToEdit && existingFolder.path === folderToEdit.path) {
         // 名称未改变，允许通过
       } else {
         setError(t('folderModal.duplicateFolderName'));

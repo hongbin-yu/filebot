@@ -99,9 +99,9 @@ const Folders: React.FC = () => {
     const folderMap = new Map<string, FolderTreeItem>();
     const rootFolders: FolderTreeItem[] = [];
 
-    // 创建所有文件夹的映射
+    // 创建所有文件夹的映射（使用path作为key，Folder主键是path）
     folders.forEach(folder => {
-      folderMap.set(folder.id, {
+      folderMap.set(folder.path, {
         ...folder,
         children: [],
         level: 0,
@@ -111,9 +111,9 @@ const Folders: React.FC = () => {
 
     // 构建树形结构
     folders.forEach(folder => {
-      const treeItem = folderMap.get(folder.id)!;
-      if (folder.parent_folder_id && folderMap.has(folder.parent_folder_id)) {
-        const parent = folderMap.get(folder.parent_folder_id)!;
+      const treeItem = folderMap.get(folder.path)!;
+      if (folder.parent_folder_path && folderMap.has(folder.parent_folder_path)) {
+        const parent = folderMap.get(folder.parent_folder_path)!;
         if (!parent.children) {
           parent.children = [];
         }
@@ -121,8 +121,7 @@ const Folders: React.FC = () => {
         parent.children.push(treeItem);
       } else {
         rootFolders.push(treeItem);
-      }
-    });
+      }    });
 
     return rootFolders;
   };
@@ -174,9 +173,9 @@ const Folders: React.FC = () => {
     }
   };
 
-  const handleDeleteFolder = async (folderId: string) => {
+  const handleDeleteFolder = async (folderPath: string) => {
     // 先查找文件夹信息，以便显示路径
-    const folderToDelete = folders.find(f => f.id === folderId);
+    const folderToDelete = folders.find(f => f.path === folderPath);
     const folderPathStr = folderToDelete?.path ? `\n目标路径: ${folderToDelete.path}` : '';
     const confirmed = await window.wetYesOrNo(`Are you sure you want to delete this folder? All subfolders and documents will be deleted.${folderPathStr}`);
     if (!confirmed) {
@@ -190,8 +189,6 @@ const Folders: React.FC = () => {
         throw new Error('找不到要删除的文件夹');
       }
       
-      // 使用文件夹路径进行删除（如果存在路径，否则使用ID）
-      const folderPath = folderToDelete.path || folderToDelete.id;
       await folderService.deleteFolder(folderPath, true);
       
       // 刷新文件夹列表
@@ -211,14 +208,14 @@ const Folders: React.FC = () => {
     return (
       <div className="ml-4">
         {folders.map(folder => (
-          <div key={folder.id} className="mb-2">
+          <div key={folder.path} className="mb-2">
             <div className="flex items-center p-2 bg-gray-50 rounded hover:bg-gray-100">
               <button
-                onClick={() => toggleFolderExpansion(folder.id)}
+                onClick={() => toggleFolderExpansion(folder.path)}
                 className="mr-2 text-gray-500 hover:text-gray-700"
               >
                 {folder.children && folder.children.length > 0 ? (
-                  expandedFolders.has(folder.id) ? '▼' : '▶'
+                  expandedFolders.has(folder.path) ? '▼' : '▶'
                 ) : (
                   <span className="w-4 inline-block">•</span>
                 )}
@@ -239,21 +236,21 @@ const Folders: React.FC = () => {
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => setParentFolderId(folder.id)}
+                  onClick={() => setParentFolderId(folder.path)}
                   className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                   title="Create subfolder here"
                 >
                   Add Subfolder
                 </button>
                 <button
-                  onClick={() => handleDeleteFolder(folder.id)}
+                  onClick={() => handleDeleteFolder(folder.path)}
                   className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
                 >
                   Delete
                 </button>
               </div>
             </div>
-            {folder.children && folder.children.length > 0 && expandedFolders.has(folder.id) && (
+            {folder.children && folder.children.length > 0 && expandedFolders.has(folder.path) && (
               <div className="mt-1">
                 {renderFolderTree(folder.children, level + 1)}
               </div>
@@ -386,7 +383,7 @@ const Folders: React.FC = () => {
                   >
                     <option value="">Root Level (No Parent)</option>
                     {folders.map(folder => (
-                      <option key={folder.id} value={folder.id}>
+                      <option key={folder.path} value={folder.path}>
                         {folder.name}
                       </option>
                     ))}

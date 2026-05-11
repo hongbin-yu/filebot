@@ -34,10 +34,10 @@ const FolderTree: React.FC<FolderTreeProps> = ({
 }) => {
   const renderTree = (nodes: FolderTreeNode[], level: number = 0) => {
     return nodes.map(node => (
-      <div key={node.id} className="select-none">
+      <div key={node.path} className="select-none">
         <div
           className={`flex items-center py-2 px-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-            (currentFolderId === node.id || currentFolderId === node.path) ? 'bg-blue-50 border border-blue-200' : ''
+            currentFolderId === node.path ? 'bg-blue-50 border border-blue-200' : ''
           }`}
           style={{ paddingLeft: `${level * 20 + 12}px` }}
           onClick={() => onFolderClick(node.path || node.id)}
@@ -47,7 +47,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleExpand(node.id);
+                onToggleExpand(node.path);
               }}
               className="mr-2 w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-700"
             >
@@ -227,7 +227,7 @@ const ClientDocuments: React.FC = () => {
         const targetFolderIdentifier = folderId || (folder ? getFolderIdentifier(folder) : '');
         if (targetFolderIdentifier) {
           // Check folder depth - if >=3 (department level), fetch all descendant docs
-          const folderNode = findFolderInTree(folderTree, currentFolderData?.id || '');
+          const folderNode = findFolderInTree(folderTree, currentFolderData?.path || '');
           if (folderNode && folderNode.level !== undefined && folderNode.level >= 3) {
             console.log(`📁 Folder depth ${folderNode.level} >= 3 (department level), fetching all descendant docs`);
             await fetchAllDescendantDocuments(folderNode);
@@ -284,7 +284,7 @@ const ClientDocuments: React.FC = () => {
   // Recursively find folder node
   const findFolderInTree = (nodes: FolderTreeNode[], folderId: string): FolderTreeNode | null => {
     for (const node of nodes) {
-      if (node.id === folderId) {
+      if (node.path === folderId) {
         return node;
       }
       if (node.children) {
@@ -335,7 +335,7 @@ const ClientDocuments: React.FC = () => {
       
       // Deduplicate by ID
       const uniqueDocuments = allDocuments.filter((doc, index, self) => 
-        index === self.findIndex(d => d.id === doc.id)
+        index === self.findIndex(d => d.path === doc.path)
       );
       
       console.log(`✅ Got ${uniqueDocuments.length} unique docs total`);
@@ -351,13 +351,13 @@ const ClientDocuments: React.FC = () => {
   };
 
   // Toggle tree node expand state
-  const updateTreeExpansion = (nodes: FolderTreeNode[], folderId: string): FolderTreeNode[] => {
+  const updateTreeExpansion = (nodes: FolderTreeNode[], folderPath: string): FolderTreeNode[] => {
     return nodes.map(node => {
-      if (node.id === folderId) {
+      if (node.path === folderPath) {
         return { ...node, expanded: !node.expanded };
       }
       if (node.children) {
-        return { ...node, children: updateTreeExpansion(node.children, folderId) };
+        return { ...node, children: updateTreeExpansion(node.children, folderPath) };
       }
       return node;
     });
@@ -422,7 +422,7 @@ const ClientDocuments: React.FC = () => {
 
   // Handle file upload
   const handleFileUpload = async (files: FileList) => {
-    if (!folderId && !folder?.id) {
+    if (!folderId && !folder?.path) {
       window.showWetAlert('Please select a folder first');
       return;
     }
@@ -1006,7 +1006,7 @@ const ClientDocuments: React.FC = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {getDisplayDocuments().map(doc => (
-                          <tr key={doc.id} className="hover:bg-gray-50">
+                          <tr key={doc.path || doc.storage_path || doc.name} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="font-medium text-gray-900">{doc.title}</div>

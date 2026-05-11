@@ -74,6 +74,7 @@ class PageResponse(BaseModel):
     path: Optional[str] = None
     parent_path: Optional[str] = None
     other_language_path: Optional[str] = None
+    file_path: Optional[str] = Field(None, description="FileBot image storage path. If empty, inherits from ancestor pages.")
     status: str = "draft"
     metadata: Optional[Dict[str, Any]] = None
     hide_in_navigation: bool = False

@@ -941,6 +941,12 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
         elif page_dict.get("metadata") is None:
             page_dict["metadata"] = {}
 
+        # Populate file_path from ancestor inheritance if not directly set
+        if not page_dict.get('file_path'):
+            inherited_fp = get_ancestor_file_path(normalized_path, conn)
+            if inherited_fp:
+                page_dict['file_path'] = inherited_fp
+
         print(f"DEBUG: Returning page with id={page_dict.get('id')}, path={page_dict.get('path')}", file=sys.stderr)
         sys.stderr.flush()
         return PageResponse(**page_dict)
@@ -1109,6 +1115,12 @@ async def get_page_by_path_param(full_path: str):
         elif page_dict.get("metadata") is None:
             page_dict["metadata"] = {}
 
+        # Populate file_path from ancestor inheritance if not directly set
+        if not page_dict.get('file_path'):
+            inherited_fp = get_ancestor_file_path(normalized_path, conn)
+            if inherited_fp:
+                page_dict['file_path'] = inherited_fp
+
         print(f"DEBUG: Returning page with id={page_dict.get('id')}, path={page_dict.get('path')}", file=sys.stderr)
         sys.stderr.flush()
         return PageResponse(**page_dict)
@@ -1119,6 +1131,7 @@ async def get_page_by_path_param(full_path: str):
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
     finally:
         conn.close()
+
 
 @router.get("/metadata", response_model=PageMetadataResponse)
 async def get_page_metadata(path: str = Query(..., description="Full page path, e.g. /canadasite/en/government")):
@@ -1857,7 +1870,11 @@ async def update_page(page_id: str, page_update: PageUpdate,
         conn.close()
 
 @router.delete("/{page_id:path}")
-async def delete_page(page_id: str):
+async def delete_page(
+    page_id: str,
+    delete_other_language: bool = Query(False, description="Also delete the other language page"),
+    other_language_path: Optional[str] = Query(None, description="Explicit other language path to delete")
+):
     """Delete page
 
     page_id is now the full path (e.g. /canadasite/en/contact), queried directly by path.
@@ -1867,15 +1884,31 @@ async def delete_page(page_id: str):
 
     try:
         # Look up page directly by path
-        cursor.execute("SELECT id FROM webbot_page WHERE path = ?", (page_id,))
-        if not cursor.fetchone():
+        cursor.execute("SELECT id, other_language_path FROM webbot_page WHERE path = ?", (page_id,))
+        page_row = cursor.fetchone()
+        if not page_row:
             raise HTTPException(status_code=404, detail="Page not found")
 
-        # Delete page
+        # Determine the other language path to also delete
+        target_other_path = other_language_path or page_row['other_language_path']
+
+        # Delete main page
         cursor.execute("DELETE FROM webbot_page WHERE path = ?", (page_id,))
+
+        # Delete other language page if requested
+        deleted_other = None
+        if delete_other_language and target_other_path:
+            cursor.execute("SELECT id FROM webbot_page WHERE path = ?", (target_other_path,))
+            if cursor.fetchone():
+                cursor.execute("DELETE FROM webbot_page WHERE path = ?", (target_other_path,))
+                deleted_other = target_other_path
+
         conn.commit()
 
-        return {"message": "Page deleted successfully", "page_id": page_id}
+        result = {"message": "Page deleted successfully", "page_id": page_id}
+        if deleted_other:
+            result["other_deleted"] = deleted_other
+        return result
 
     except sqlite3.Error as e:
         conn.rollback()

@@ -188,28 +188,28 @@
             // Home link - removed click override to allow natural navigation to navigation.html
 
             // FileBot toggle button - controls left sidebar
-            const filebotToggleBtn = document.getElementById('filebot-toggle-btn');
-            const filebotSidebar = document.getElementById('filebot-sidebar');
-            const filebotSidebarClose = document.getElementById('filebot-sidebar-close');
+            const resourceToggleBtn = document.getElementById('filebot-toggle-btn');
+            const resourceSidebar = document.getElementById('resource-sidebar');
+            const resourceSidebarClose = document.getElementById('resource-sidebar-close');
 
             // Set initial state based on sidebar visibility
-            if (filebotToggleBtn && filebotSidebar) {
-                if (!filebotSidebar.classList.contains('hidden')) {
-                    filebotToggleBtn.classList.add('active');
+            if (resourceToggleBtn && resourceSidebar) {
+                if (!resourceSidebar.classList.contains('hidden')) {
+                    resourceToggleBtn.classList.add('active');
                 }
 
-                filebotToggleBtn.addEventListener('click', function() {
-                    filebotSidebar.classList.toggle('hidden');
-                    filebotToggleBtn.classList.toggle('active');
-                    console.log('FileBot sidebar toggled');
+                resourceToggleBtn.addEventListener('click', function() {
+                    resourceSidebar.classList.toggle('hidden');
+                    resourceToggleBtn.classList.toggle('active');
+                    console.log('Resource sidebar toggled');
                 });
             }
 
-            if (filebotSidebarClose) {
-                filebotSidebarClose.addEventListener('click', function() {
-                    filebotSidebar.classList.add('hidden');
-                    filebotToggleBtn.classList.remove('active');
-                    console.log('FileBot sidebar closed via close button');
+            if (resourceSidebarClose) {
+                resourceSidebarClose.addEventListener('click', function() {
+                    resourceSidebar.classList.add('hidden');
+                    resourceToggleBtn.classList.remove('active');
+                    console.log('Resource sidebar closed via close button');
                 });
             }
 
@@ -7556,7 +7556,7 @@
         console.log('[URL Config] 配置已加载');
 
 
-        const FILEBOT_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZGFkNmZhMS1kNTIxLTQxN2YtODg3Ny1lZmU5NWZjZjFmMDQiLCJleHAiOjE3NzYyODc0MDV9.GGl4E96cOF2MuKN34qTSc-KZOsvXHS5RWfoRxRQQORw';
+        const FILEBOT_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZGFkNmZhMS1kNTIxLTQxN2YtODg3Ny1lZmU5NWZjZjFmMDQiLCJleHAiOjE4MTAwNjQzMDR9.0CI5rjrAcsJUkL5LSrWWBmc2paDNVeOwJxnN4gk9txA';
 
         // Convert FileBot document to file manager format
         function convertDocumentToFile(doc) {
@@ -8430,6 +8430,54 @@
             return processedHtml;
         }
 
+        /** Show a floating toast notification for upload status */
+        function showUploadToast(message, type) {
+            // Remove existing toast if any
+            const existing = document.getElementById('upload-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'upload-toast';
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 99999;
+                padding: 14px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                color: #fff;
+                background: ${type === 'success' ? '#28a745' : '#d9534f'};
+                box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+                animation: fadeInDown 0.3s ease;
+                max-width: 400px;
+                word-wrap: break-word;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // Auto-dismiss after 4s
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        // Add animation keyframes if not already present
+        if (!document.getElementById('upload-toast-style')) {
+            const style = document.createElement('style');
+            style.id = 'upload-toast-style';
+            style.textContent = `
+                @keyframes fadeInDown {
+                    from { opacity: 0; transform: translateY(-20px); }
+                    to   { opacity: 1; transform: translateY(0); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
         async function uploadFiles(files) {
             const uploadProgress = document.getElementById('upload-progress');
             const progressBar = uploadProgress?.querySelector('.progress-bar');
@@ -8440,9 +8488,15 @@
             const sidebarProgressBar = document.getElementById('sidebar-upload-progress-bar');
             const sidebarUploadStatus = document.getElementById('sidebar-upload-status');
 
-            // Show progress in both locations
+            // Resource sidebar upload info (under upload button)
+            const resourceUploadInfo = document.getElementById('resource-upload-info');
+            const resourceUploadProgress = document.getElementById('resource-upload-progress-bar');
+            const resourceUploadMsg = document.getElementById('resource-upload-msg');
+
+            // Show progress in all locations
             if (uploadProgress) uploadProgress.style.display = 'block';
             if (sidebarUploadProgress) sidebarUploadProgress.style.display = 'block';
+            if (resourceUploadInfo) resourceUploadInfo.classList.remove('hidden');
 
             if (progressBar) {
                 progressBar.style.width = '0%';
@@ -8451,9 +8505,14 @@
             if (sidebarProgressBar) {
                 sidebarProgressBar.style.width = '0%';
             }
+            if (resourceUploadProgress) {
+                resourceUploadProgress.style.width = '0%';
+            }
 
             if (uploadStatus) uploadStatus.textContent = 'Preparing upload to FileBot...';
             if (sidebarUploadStatus) sidebarUploadStatus.textContent = 'Preparing upload...';
+            if (resourceUploadMsg) resourceUploadMsg.textContent = '⌛ Preparing...';
+            if (resourceUploadMsg) resourceUploadMsg.className = 'resource-upload-msg';
 
             // Use folder path directly - FileBot will handle folder creation if needed
             const folderPath = window.currentFileBotFolder;
@@ -8473,9 +8532,14 @@
                 formData.append('title', file.name.split('.')[0]); // Use filename without extension as title
 
                 // Add folder_path if available - FileBot will create folder if needed
+                // Note: FileBot expects the path to include the app slug as first segment
+                // (e.g. '/boarding/canadasite/content/dam/...'), but window.currentFileBotFolder
+                // stores the path WITHOUT the app slug (e.g. '/canadasite/content/dam/...')
                 if (folderPath) {
-                    console.log('Uploading to folder path:', folderPath);
-                    formData.append('folder_path', folderPath);
+                    // Prepend '/boarding' app slug if not already present
+                    const uploadPath = folderPath.startsWith('/boarding') ? folderPath : '/boarding' + folderPath;
+                    console.log('Uploading to folder path:', uploadPath);
+                    formData.append('folder_path', uploadPath);
                 }
 
                 if (uploadStatus) {
@@ -8531,12 +8595,19 @@
 
                     if (index === files.length - 1) {
                         // All files uploaded
+                        showUploadToast('✅ Upload complete', 'success');
+
                         if (uploadStatus) {
                             uploadStatus.textContent = 'Upload complete! Files saved to FileBot.';
                             uploadStatus.style.color = '';
                         }
                         if (sidebarUploadStatus) {
                             sidebarUploadStatus.textContent = 'Upload complete! Files saved to FileBot.';
+                        }
+                        if (resourceUploadMsg) {
+                            const count = files.length;
+                            resourceUploadMsg.textContent = `✅ ${count} file${count > 1 ? 's' : ''} uploaded successfully`;
+                            resourceUploadMsg.className = 'resource-upload-msg success';
                         }
 
                         // Hide progress after delay
@@ -8545,23 +8616,31 @@
                             if (sidebarUploadProgress) sidebarUploadProgress.style.display = 'none';
                         }, 2000);
 
-                        // Reload file list from FileBot
-                        loadFiles();
-
-                        // Also reload the sidebar recent documents
-                        if (typeof loadRecentDocumentsFromTargetFolder === 'function') {
-                            loadRecentDocumentsFromTargetFolder(window.currentFileBotFolder || null);
+                        // Reload the resource sidebar for current mode
+                        if (typeof window.refreshResourceSidebar === 'function') {
+                            const resourceTypeSelect = document.getElementById('resource-type-select');
+                            const pathInput = document.getElementById('resource-path-input');
+                            const titleInput = document.getElementById('resource-search-input');
+                            const mode = resourceTypeSelect ? resourceTypeSelect.value : 'images';
+                            const pathVal = pathInput ? pathInput.value.trim() : '';
+                            const titleVal = titleInput ? titleInput.value.trim() : '';
+                            window.refreshResourceSidebar(mode, pathVal, titleVal);
                         }
                     }
                 } catch (error) {
                     console.error('FileBot upload error:', error);
+                    showUploadToast('❌ ' + error.message.substring(0, 120), 'error');
                     if (uploadStatus) {
-                        uploadStatus.textContent = `Error uploading to FileBot: ${file.name} - ${error.message}`;
+                        uploadStatus.textContent = `Error: ${file.name} - ${error.message}`;
                         uploadStatus.style.color = '#d9534f';
                     }
                     if (sidebarUploadStatus) {
-                        sidebarUploadStatus.textContent = `Error uploading: ${file.name} - ${error.message}`;
+                        sidebarUploadStatus.textContent = `Error: ${file.name} - ${error.message}`;
                         sidebarUploadStatus.style.color = '#d9534f';
+                    }
+                    if (resourceUploadMsg) {
+                        resourceUploadMsg.textContent = `❌ ${file.name} - ${error.message.substring(0, 80)}`;
+                        resourceUploadMsg.className = 'resource-upload-msg error';
                     }
 
                     // If this is the last file, keep progress bar visible to show error
@@ -11917,4 +11996,777 @@
             };
             console.log('🎨 Color command added to AI assistant');
         }
+
+        // ============================================================
+        // Resource Sidebar Module — Images, Documents, Components, etc.
+        // ============================================================
+
+        (function initResourceSidebar() {
+            const resourceTypeSelect = document.getElementById('resource-type-select');
+            const pathInput = document.getElementById('resource-path-input');
+            const searchInput = document.getElementById('resource-search-input');
+            const searchBtn = document.getElementById('resource-search-btn');
+            const resultsEl = document.getElementById('resource-results');
+
+            if (!resourceTypeSelect || !resultsEl) return;
+
+            // Get current page path for default search
+            function getCurrentPathPrefix() {
+                // Priority 1: Already resolved file_path from getEffectiveFilePath
+                if (window.currentFileBotFolder) {
+                    return window.currentFileBotFolder;
+                }
+                // Priority 2: currentPageData (from API)
+                if (currentPageData) {
+                    if (currentPageData.metadata && currentPageData.metadata.file_path) return currentPageData.metadata.file_path;
+                    if (currentPageData.file_path) return currentPageData.file_path;
+                }
+                // Priority 3: the left path label element
+                const pathDisplay = document.getElementById('file-path-display');
+                if (pathDisplay && pathDisplay.textContent && pathDisplay.textContent !== 'No page selected') {
+                    return pathDisplay.textContent.trim();
+                }
+                return '';
+            }
+
+            // Set default path from current page
+            function updateDefaultPath() {
+                var path = getCurrentPathPrefix();
+                if (path) {
+                    pathInput.value = path;
+                }
+            }
+
+            // Trigger search
+            function doSearch() {
+                var type = resourceTypeSelect.value;
+                var pathVal = pathInput.value.trim();
+                var titleVal = searchInput.value.trim();
+
+                resultsEl.innerHTML = '<div class="resource-loading">⏳ Searching...</div>';
+
+                switch (type) {
+                    case 'images':
+                        searchImages(pathVal, titleVal);
+                        break;
+                    case 'documents':
+                        searchDocuments(pathVal, titleVal);
+                        break;
+                    case 'components':
+                        searchComponents(pathVal, titleVal);
+                        break;
+                    case 'templates':
+                        searchTemplates(pathVal, titleVal);
+                        break;
+                    case 'pages':
+                        searchPages(pathVal, titleVal);
+                        break;
+                }
+            }
+
+            // -------- Images --------
+            async function searchImages(pathVal, titleVal) {
+                try {
+                    var url = '/api/v1/search/documents?limit=200&mime_type=image%';
+                    if (pathVal) {
+                        // DB paths need /boarding prefix (e.g. /boarding/canadasite/content/dam/...)
+                        // metadata.file_path is stored as /canadasite/content/dam/canada
+                        var cleanPath = pathVal;
+                        if (cleanPath.indexOf('/') !== 0) {
+                            cleanPath = '/' + cleanPath;
+                        }
+                        if (cleanPath.indexOf('/boarding') !== 0) {
+                            // Prepend /boarding for DB path matching
+                            if (cleanPath.indexOf('/canadasite') === 0) {
+                                cleanPath = '/boarding' + cleanPath;
+                            } else {
+                                cleanPath = '/boarding/canadasite' + cleanPath;
+                            }
+                        }
+                        url += '&path=' + encodeURIComponent(cleanPath);
+                    }
+                    if (titleVal) {
+                        url += '&title=' + encodeURIComponent(titleVal);
+                    }
+
+                    var resp = await fetch(url);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var data = await resp.json();
+                    renderImageResults(data.documents || []);
+                } catch (e) {
+                    resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
+                }
+            }
+
+            function renderImageResults(docs) {
+                if (!docs || docs.length === 0) {
+                    resultsEl.innerHTML = '<div class="resource-empty">🔍 No images found.</div>';
+                    return;
+                }
+
+                // Filter to only image-like mime types (extra safety)
+                docs = docs.filter(function(d) {
+                    var mt = (d.mime_type || '').toLowerCase();
+                    return mt.indexOf('image') >= 0;
+                });
+
+                if (docs.length === 0) {
+                    resultsEl.innerHTML = '<div class="resource-empty">🔍 No images found.</div>';
+                    return;
+                }
+
+                // Helper: convert storage_path to DAM proxy URL
+                function pathToDamUrl(storagePath) {
+                    // storage_path: 'boarding/canadasite/content/dam/canada/...'
+                    // DAM proxy URL: '/content/dam/canada/...'
+                    // Strip 'boarding/canadasite' or just 'boarding/' prefix
+                    if (!storagePath) return '';
+                    // Find 'canada/' or 'content/dam/canada/' in path
+                    var idx = storagePath.indexOf('canada/');
+                    if (idx >= 0) {
+                        return '/content/dam/' + storagePath.substring(idx);
+                    }
+                    // Fallback: strip leading boarding/canadasite/
+                    return '/content/dam/' + storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
+                }
+
+                let html = '<div class="image-grid">';
+                docs.forEach(function(doc) {
+                    var storagePath = doc.storage_path || doc.path || '';
+                    var damUrl = pathToDamUrl(storagePath);
+                    var filename = doc.original_filename || doc.title || 'image';
+                    var fileSize = doc.file_size;
+                    html += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
+                    html += '<div class="image-card-thumb">';
+                    html += '<img src="' + damUrl + '" alt="' + filename + '" loading="lazy">';
+                    html += '</div>';
+                    html += '<div class="image-card-info">';
+                    html += '<span class="image-card-name" title="' + filename + '">' + filename + '</span>';
+                    html += '<span class="image-card-size">' + formatFileSize(fileSize) + '</span>';
+                    html += '</div>';
+                    html += '<button class="image-insert-btn" title="Insert into editor">➕</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                resultsEl.innerHTML = html;
+
+                // Bind click events for insert buttons
+                resultsEl.querySelectorAll('.image-insert-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = btn.closest('.image-card');
+                        var url = card.dataset.url;
+                        var filename = card.dataset.filename;
+                        insertImageToEditor(url, filename);
+                    });
+                });
+
+                // Click full card = insert
+                resultsEl.querySelectorAll('.image-card').forEach(function(card) {
+                    card.addEventListener('click', function() {
+                        var url = card.dataset.url;
+                        var filename = card.dataset.filename;
+                        insertImageToEditor(url, filename);
+                    });
+                });
+            }
+
+            function insertImageToEditor(url, filename) {
+                var editor = window.tinyMceEditor;
+                if (editor) {
+                    editor.insertContent('<img src="' + url + '" alt="' + filename + '">');
+                    // Show brief flash feedback
+                    var btn = resultsEl.querySelector('.image-card[data-url="' + url + '"] .image-insert-btn');
+                    if (btn) {
+                        btn.textContent = '✅';
+                        btn.classList.add('inserted');
+                        setTimeout(function() {
+                            if (btn) {
+                                btn.textContent = '➕';
+                                btn.classList.remove('inserted');
+                            }
+                        }, 1500);
+                    }
+                } else {
+                    alert('Editor not initialized. Please wait and try again.');
+                }
+            }
+
+            // -------- Documents (PDF, Word, Excel, etc.) --------
+            async function searchDocuments(pathVal, titleVal) {
+                try {
+                    // Filter common document types: PDF, Word, Excel, PowerPoint, text
+                    var mimeFilter = 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain';
+                    var url = '/api/v1/search/documents?limit=200&mime_type=' + encodeURIComponent(mimeFilter);
+                    if (pathVal) {
+                        var cleanPath = pathVal;
+                        if (cleanPath.indexOf('/') !== 0) {
+                            cleanPath = '/' + cleanPath;
+                        }
+                        if (cleanPath.indexOf('/boarding') !== 0) {
+                            if (cleanPath.indexOf('/canadasite') === 0) {
+                                cleanPath = '/boarding' + cleanPath;
+                            } else {
+                                cleanPath = '/boarding/canadasite' + cleanPath;
+                            }
+                        }
+                        url += '&path=' + encodeURIComponent(cleanPath);
+                    }
+                    if (titleVal) {
+                        url += '&title=' + encodeURIComponent(titleVal);
+                    }
+
+                    var resp = await fetch(url);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var data = await resp.json();
+                    renderDocumentResults(data.documents || []);
+                } catch (e) {
+                    resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
+                }
+            }
+
+            function renderDocumentResults(docs) {
+                if (!docs || docs.length === 0) {
+                    resultsEl.innerHTML = '<div class="resource-empty">📄 No documents found. Try a different path or title.</div>';
+                    return;
+                }
+
+                // Filter to only document-like mime types
+                var docMimes = ['pdf','msword','openxmlformats','ms-excel','ms-powerpoint','spreadsheetml','presentationml','text/plain','application/octet-stream'];
+                docs = docs.filter(function(d) {
+                    var mt = (d.mime_type || '').toLowerCase();
+                    return docMimes.some(function(m) { return mt.indexOf(m) >= 0; });
+                });
+
+                if (docs.length === 0) {
+                    resultsEl.innerHTML = '<div class="resource-empty">📄 No documents found. Try a different path or title.</div>';
+                    return;
+                }
+
+                function pathToDamUrl(storagePath) {
+                    if (!storagePath) return '';
+                    var idx = storagePath.indexOf('canada/');
+                    if (idx >= 0) {
+                        return '/content/dam/' + storagePath.substring(idx);
+                    }
+                    return '/content/dam/' + storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
+                }
+
+                function getFileIcon(mimeType) {
+                    var mt = (mimeType || '').toLowerCase();
+                    if (mt.indexOf('pdf') >= 0) return '📕';
+                    if (mt.indexOf('word') >= 0 || mt.indexOf('document') >= 0) return '📘';
+                    if (mt.indexOf('excel') >= 0 || mt.indexOf('spreadsheet') >= 0) return '📗';
+                    if (mt.indexOf('powerpoint') >= 0 || mt.indexOf('presentation') >= 0) return '📙';
+                    return '📄';
+                }
+
+                var html = '<div class="doc-list">';
+                docs.forEach(function(doc) {
+                    var storagePath = doc.storage_path || doc.path || '';
+                    var damUrl = pathToDamUrl(storagePath);
+                    var filename = doc.original_filename || doc.title || 'document';
+                    var fileSize = doc.file_size;
+                    var icon = getFileIcon(doc.mime_type);
+
+                    html += '<div class="doc-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
+                    html += '<div class="doc-card-icon">' + icon + '</div>';
+                    html += '<div class="doc-card-info">';
+                    html += '<span class="doc-card-name" title="' + filename + '">' + filename + '</span>';
+                    html += '<span class="doc-card-size">' + formatFileSize(fileSize) + '</span>';
+                    html += '</div>';
+                    html += '<button class="doc-insert-btn" title="Insert document link into editor">🔗</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                resultsEl.innerHTML = html;
+
+                // Bind insert buttons
+                resultsEl.querySelectorAll('.doc-insert-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = btn.closest('.doc-card');
+                        var url = card.dataset.url;
+                        var filename = card.dataset.filename;
+                        insertDocumentLink(url, filename);
+                    });
+                });
+
+                // Click full card = insert
+                resultsEl.querySelectorAll('.doc-card').forEach(function(card) {
+                    card.addEventListener('click', function() {
+                        var url = card.dataset.url;
+                        var filename = card.dataset.filename;
+                        insertDocumentLink(url, filename);
+                    });
+                });
+            }
+
+            function insertDocumentLink(url, filename) {
+                var editor = window.tinyMceEditor;
+                if (editor) {
+                    editor.insertContent('<a href="' + url + '" target="_blank">' + filename + '</a>');
+                    // Flash feedback
+                    var btn = resultsEl.querySelector('.doc-card[data-url="' + url + '"] .doc-insert-btn');
+                    if (btn) {
+                        btn.textContent = '✅';
+                        setTimeout(function() {
+                            if (btn) btn.textContent = '🔗';
+                        }, 1500);
+                    }
+                } else {
+                    alert('Editor not initialized. Please wait and try again.');
+                }
+            }
+
+            // -------- Components (pages under /canadasite/{lang}/components) --------
+            async function searchComponents(pathVal, titleVal) {
+                try {
+                    var compPath = getComponentsPath();
+                    if (!compPath) {
+                        resultsEl.innerHTML = '<div class="resource-empty">Could not determine components path.</div>';
+                        return;
+                    }
+
+                    // Override path input to show the system-determined path
+                    pathInput.value = compPath;
+
+                    var url = '/api/v1/pages/by-path/' + encodeURIComponent(compPath) + '/children';
+                    if (titleVal) {
+                        url += '?title=' + encodeURIComponent(titleVal);
+                    }
+
+                    var resp = await fetch(url);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var data = await resp.json();
+                    renderComponentResults(data, compPath);
+                } catch (e) {
+                    resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
+                }
+            }
+
+            function getComponentsPath() {
+                // Derive from current page path: /canadasite/{lang}/... → /canadasite/{lang}/components
+                if (currentPageData && currentPageData.path) {
+                    var parts = currentPageData.path.split('/').filter(Boolean);
+                    if (parts.length >= 2) {
+                        return '/' + parts[0] + '/' + parts[1] + '/components';
+                    }
+                }
+                // Fallback to English
+                return '/canadasite/en/components';
+            }
+
+            function renderComponentResults(data, basePath) {
+                if (!data || data.length === 0) {
+                    resultsEl.innerHTML = '<div class="resource-empty">🧩 No components found under ' + basePath + '</div>';
+                    return;
+                }
+
+                var html = '<div class="resource-info">🧩 ' + basePath + '</div>';
+                html += '<div class="page-list">';
+                data.forEach(function(page) {
+                    var title = page.title || page.name || '(untitled)';
+                    var pagePath = page.path || '';
+                    html += '<div class="comp-card" data-path="' + pagePath + '">';
+                    html += '<div class="comp-card-icon">🧩</div>';
+                    html += '<div class="comp-card-info">';
+                    html += '<div class="comp-card-title" title="' + title + '">' + title + '</div>';
+                    html += '<div class="comp-card-path">' + pagePath + '</div>';
+                    html += '</div>';
+                    html += '<button class="comp-insert-btn" title="Insert component content into editor">➕</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                resultsEl.innerHTML = html;
+
+                // Bind insert buttons
+                resultsEl.querySelectorAll('.comp-insert-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = btn.closest('.comp-card');
+                        var path = card.dataset.path;
+                        insertComponentContent(path, card);
+                    });
+                });
+
+                // Click full card = insert
+                resultsEl.querySelectorAll('.comp-card').forEach(function(card) {
+                    card.addEventListener('click', function() {
+                        var path = card.dataset.path;
+                        insertComponentContent(path, card);
+                    });
+                });
+            }
+
+            async function insertComponentContent(pagePath, cardEl) {
+                try {
+                    // Flash loading state
+                    if (cardEl) {
+                        var btn = cardEl.querySelector('.comp-insert-btn');
+                        if (btn) btn.textContent = '⏳';
+                    }
+
+                    var resp = await fetch('/api/v1/pages/by-path/' + encodeURIComponent(pagePath));
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var page = await resp.json();
+
+                    var content = page.content || '';
+                    if (!content) {
+                        if (cardEl) {
+                            var btn = cardEl.querySelector('.comp-insert-btn');
+                            if (btn) btn.textContent = '❌';
+                        }
+                        return;
+                    }
+
+                    var editor = window.tinyMceEditor;
+                    if (editor) {
+                        editor.insertContent(content);
+                        // Flash success
+                        if (cardEl) {
+                            var btn = cardEl.querySelector('.comp-insert-btn');
+                            if (btn) {
+                                btn.textContent = '✅';
+                                setTimeout(function() {
+                                    if (btn) btn.textContent = '➕';
+                                }, 1500);
+                            }
+                        }
+                    } else {
+                        alert('Editor not initialized.');
+                    }
+                } catch (e) {
+                    console.error('Insert component failed:', e);
+                    if (cardEl) {
+                        var btn = cardEl.querySelector('.comp-insert-btn');
+                        if (btn) btn.textContent = '❌';
+                    }
+                }
+            }
+
+            // -------- Templates (pages under /canadasite/{lang}/templates) --------
+            async function searchTemplates(pathVal, titleVal) {
+                try {
+                    var templPath = getTemplatesPath();
+                    if (!templPath) {
+                        resultsEl.innerHTML = '<div class="resource-empty">Could not determine templates path.</div>';
+                        return;
+                    }
+
+                    // Override path input to show system-determined path
+                    pathInput.value = templPath;
+
+                    var url = '/api/v1/pages/by-path/' + encodeURIComponent(templPath) + '/children';
+                    if (titleVal) {
+                        url += '?title=' + encodeURIComponent(titleVal);
+                    }
+
+                    var resp = await fetch(url);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var data = await resp.json();
+                    renderTemplateResults(data, templPath);
+                } catch (e) {
+                    resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
+                }
+            }
+
+            function getTemplatesPath() {
+                // Derive from current page path: /canadasite/{lang}/... → /canadasite/{lang}/templates
+                if (currentPageData && currentPageData.path) {
+                    var parts = currentPageData.path.split('/').filter(Boolean);
+                    if (parts.length >= 2) {
+                        return '/' + parts[0] + '/' + parts[1] + '/templates';
+                    }
+                }
+                return '/canadasite/en/templates';
+            }
+
+            function renderTemplateResults(data, basePath) {
+                if (!data || data.length === 0) {
+                    resultsEl.innerHTML = '<div class="resource-empty">📋 No templates found under ' + basePath + '</div>';
+                    return;
+                }
+
+                var html = '<div class="resource-info">📋 ' + basePath + '</div>';
+                html += '<div class="page-list">';
+                data.forEach(function(page) {
+                    var title = page.title || page.name || '(untitled)';
+                    var pagePath = page.path || '';
+                    html += '<div class="templ-card" data-path="' + pagePath + '">';
+                    html += '<div class="templ-card-icon">📋</div>';
+                    html += '<div class="templ-card-info">';
+                    html += '<div class="templ-card-title" title="' + title + '">' + title + '</div>';
+                    html += '<div class="templ-card-path">' + pagePath + '</div>';
+                    html += '</div>';
+                    html += '<button class="templ-insert-btn" title="Insert template content into editor">➕</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                resultsEl.innerHTML = html;
+
+                resultsEl.querySelectorAll('.templ-insert-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = btn.closest('.templ-card');
+                        var path = card.dataset.path;
+                        insertTemplateContent(path, card);
+                    });
+                });
+
+                resultsEl.querySelectorAll('.templ-card').forEach(function(card) {
+                    card.addEventListener('click', function() {
+                        var path = card.dataset.path;
+                        insertTemplateContent(path, card);
+                    });
+                });
+            }
+
+            async function insertTemplateContent(pagePath, cardEl) {
+                try {
+                    if (cardEl) {
+                        var btn = cardEl.querySelector('.templ-insert-btn');
+                        if (btn) btn.textContent = '⏳';
+                    }
+
+                    var resp = await fetch('/api/v1/pages/by-path/' + encodeURIComponent(pagePath));
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var page = await resp.json();
+
+                    var content = page.content || '';
+                    if (!content) {
+                        if (cardEl) {
+                            var btn = cardEl.querySelector('.templ-insert-btn');
+                            if (btn) btn.textContent = '❌';
+                        }
+                        return;
+                    }
+
+                    var editor = window.tinyMceEditor;
+                    if (editor) {
+                        editor.insertContent(content);
+                        if (cardEl) {
+                            var btn = cardEl.querySelector('.templ-insert-btn');
+                            if (btn) {
+                                btn.textContent = '✅';
+                                setTimeout(function() {
+                                    if (btn) btn.textContent = '➕';
+                                }, 1500);
+                            }
+                        }
+                    } else {
+                        alert('Editor not initialized.');
+                    }
+                } catch (e) {
+                    console.error('Insert template failed:', e);
+                    if (cardEl) {
+                        var btn = cardEl.querySelector('.templ-insert-btn');
+                        if (btn) btn.textContent = '❌';
+                    }
+                }
+            }
+
+            // -------- Pages (department-level) --------
+            async function searchPages(pathVal, titleVal) {
+                try {
+                    // Extract department-level path (3rd level)
+                    // e.g. /canadasite/en/employment-social-development/... → /canadasite/en/employment-social-development
+                    var deptPath = getDepartmentLevelPath(pathVal);
+                    if (!deptPath) {
+                        resultsEl.innerHTML = '<div class="resource-empty">Select a page first to see department pages.</div>';
+                        return;
+                    }
+
+                    var url = '/api/v1/pages/by-path/' + encodeURIComponent(deptPath) + '/children';
+                    if (titleVal) {
+                        url += '?title=' + encodeURIComponent(titleVal);
+                    }
+
+                    var resp = await fetch(url);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var data = await resp.json();
+                    renderPageResults(data, deptPath);
+                } catch (e) {
+                    resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
+                }
+            }
+
+            function getDepartmentLevelPath(fullPath) {
+                // Extract 3rd level from path: /canadasite/en/department/...
+                // Splits by '/', takes first 3 non-empty segments
+                if (!fullPath) return '';
+                var parts = fullPath.split('/').filter(Boolean);
+                if (parts.length < 3) return '';
+                return '/' + parts.slice(0, 3).join('/');
+            }
+
+            function renderPageResults(data, deptPath) {
+                if (!data || data.length === 0) {
+                    resultsEl.innerHTML = '<div class="resource-empty">📑 No pages found under ' + deptPath + '</div>';
+                    return;
+                }
+
+                function addHtmlExt(p) { return p ? p + '.html' : p; }
+
+                var html = '<div class="resource-info">📁 ' + deptPath + '</div>';
+                html += '<div class="page-list">';
+                data.forEach(function(page) {
+                    var title = page.title || page.name || '(untitled)';
+                    var pagePath = page.path || '';
+                    var pagePathHtml = addHtmlExt(pagePath);
+                    html += '<div class="page-card" data-path="' + pagePathHtml + '">';
+                    html += '<div class="page-card-icon">📄</div>';
+                    html += '<div class="page-card-info">';
+                    html += '<div class="page-card-title" title="' + title + '">' + title + '</div>';
+                    html += '<div class="page-card-path">' + pagePathHtml + '</div>';
+                    html += '</div>';
+                    html += '<button class="page-insert-btn" title="Insert page link into editor">🔗</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                resultsEl.innerHTML = html;
+
+                // Bind insert buttons
+                resultsEl.querySelectorAll('.page-insert-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = btn.closest('.page-card');
+                        var path = card.dataset.path;
+                        var title = card.querySelector('.page-card-title').textContent;
+                        insertPageLink(path, title);
+                    });
+                });
+
+                resultsEl.querySelectorAll('.page-card').forEach(function(card) {
+                    card.addEventListener('click', function() {
+                        var path = card.dataset.path;
+                        var title = card.querySelector('.page-card-title').textContent;
+                        insertPageLink(path, title);
+                    });
+                });
+            }
+
+            function insertPageLink(path, title) {
+                var editor = window.tinyMceEditor;
+                if (editor) {
+                    editor.insertContent('<a href="' + path + '">' + title + '</a>');
+                } else {
+                    alert('Editor not initialized.');
+                }
+            }
+
+            // Utility: format file size
+            function formatFileSize(bytes) {
+                if (!bytes) return '';
+                const n = parseInt(bytes);
+                if (n < 1024) return n + ' B';
+                if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+                return (n / 1048576).toFixed(1) + ' MB';
+            }
+
+            // -------- Events --------
+            resourceTypeSelect.addEventListener('change', function() {
+                // Update path based on mode
+                var type = resourceTypeSelect.value;
+                if (type === 'components' || type === 'templates') {
+                    // System-determined path - override input
+                    if (type === 'components') {
+                        pathInput.value = getComponentsPath();
+                    } else if (type === 'templates') {
+                        pathInput.value = getTemplatesPath();
+                    }
+                } else if (type === 'images' || type === 'documents') {
+                    // DAM-based path
+                    updateDefaultPath();
+                } else if (type === 'pages') {
+                    // Use CMS page path (not DAM path) to derive department level
+                    if (currentPageData && currentPageData.path) {
+                        pathInput.value = currentPageData.path;
+                    } else {
+                        updateDefaultPath();
+                    }
+                }
+
+                // Clear title filter and search
+                searchInput.value = '';
+                doSearch();
+            });
+
+            searchBtn.addEventListener('click', doSearch);
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') doSearch();
+            });
+
+            // Auto-search on sidebar open (when filebot-toggle-btn is clicked)
+            const toggleBtn = document.getElementById('filebot-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    setTimeout(function() {
+                        updateDefaultPath();
+                        setTimeout(doSearch, 50);
+                    }, 200);
+                });
+            }
+
+            // If sidebar is already visible on load, auto-search
+            var rs = document.getElementById('resource-sidebar');
+            if (rs && !rs.classList.contains('hidden')) {
+                setTimeout(doSearch, 100);
+            }
+
+            // -------- Upload button (Images mode) --------
+            var uploadBtn = document.getElementById('resource-upload-btn');
+            var uploadInput = document.getElementById('resource-upload-input');
+
+            if (uploadBtn && uploadInput) {
+                uploadBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    uploadInput.click();
+                });
+
+                uploadInput.addEventListener('change', function(e) {
+                    if (e.target.files.length > 0) {
+                        uploadFiles(e.target.files);
+                    }
+                });
+
+                // Show/hide upload button based on mode
+                resourceTypeSelect.addEventListener('change', function() {
+                    uploadBtn.style.display = (resourceTypeSelect.value === 'images') ? '' : 'none';
+                });
+
+                // Initial state
+                uploadBtn.style.display = (resourceTypeSelect.value === 'images') ? '' : 'none';
+            }
+
+            // Initial setup
+            updateDefaultPath();
+            console.log('🔧 Resource sidebar module initialized');
+
+            // Expose a global refresh function for uploadFiles() to call after upload
+            window.refreshResourceSidebar = function(mode, pathVal, titleVal) {
+                switch (mode) {
+                    case 'images':
+                        searchImages(pathVal, titleVal);
+                        break;
+                    case 'documents':
+                        searchDocuments(pathVal, titleVal);
+                        break;
+                    case 'components':
+                        searchComponents(pathVal, titleVal);
+                        break;
+                    case 'templates':
+                        searchTemplates(pathVal, titleVal);
+                        break;
+                    case 'pages':
+                        searchPages(pathVal, titleVal);
+                        break;
+                }
+            };
+        })();
     

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import aiService, { WebsiteCrawlStatus } from '../../services/ai.service';
+import { showToast } from '../../components/common/ToastNotification';
 
 const AdminTasks: React.FC = () => {
   const [tasks, setTasks] = useState<WebsiteCrawlStatus[]>([]);
@@ -65,7 +66,7 @@ const AdminTasks: React.FC = () => {
 
   const handleAddTask = async () => {
     if (!manualTaskId.trim()) {
-      window.showWetAlert('Please enter a task ID');
+      showToast('Please enter a task ID', 'warning');
       return;
     }
 
@@ -83,7 +84,7 @@ const AdminTasks: React.FC = () => {
       setManualTaskId('');
     } catch (err) {
       console.error('Failed to get task status:', err);
-      window.showWetAlert(`Cannot get status for task ${manualTaskId}: ${err}`);
+      showToast(`Cannot get status for task ${manualTaskId}: ${err}`, 'error');
     }
   };
 

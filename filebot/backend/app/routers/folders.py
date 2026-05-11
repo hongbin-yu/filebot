@@ -64,6 +64,7 @@ def check_folder_permission(folder: Folder, current_user: User, db: Session):
 def get_folders(
     app_id: Optional[str] = Query(None, description="Filter by app ID"),
     parent_folder_path: Optional[str] = Query(None, description="Filter by parent folder path"),
+    list_all: bool = Query(False, description="Return all folders for the app (ignores parent_folder_path default)"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_active_user),
@@ -80,7 +81,10 @@ def get_folders(
             user_app_ids = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
             query = query.filter(Folder.app_id.in_(user_app_ids))
 
-    if parent_folder_path:
+    if list_all:
+        # 返回应用下所有文件夹，不做 parent_folder_path 过滤
+        pass
+    elif parent_folder_path:
         query = query.filter(Folder.parent_folder_path == parent_folder_path)
     else:
         # 默认只返回顶层文件夹
