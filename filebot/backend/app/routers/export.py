@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
 from app.db.database import get_db
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user, get_current_active_user_allow_query
 from app.models.app import App
 from app.models.folder import Folder
 from app.models.document import Document
@@ -123,7 +123,7 @@ def export_folder(
     include_documents: bool = Query(True, description="Whether to include documents"),
     recursive: bool = Query(False, description="Whether to recursively include subfolders"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user_allow_query)
 ):
     """
     Export a single folder's data by path
@@ -187,15 +187,19 @@ def export_folder(
     if recursive:
         subfolders = db.query(Folder).filter(Folder.parent_folder_path == folder.path).all()
         for subfolder in subfolders:
-            # Recursively export subfolder
-            subfolder_data = export_folder(
-                subfolder.path,
-                include_documents=include_documents,
-                recursive=True,
-                db=db,
-                current_user=current_user
-            )
-            export_data["subfolders"].append(subfolder_data)
+            try:
+                # Recursively export subfolder
+                subfolder_data = export_folder(
+                    subfolder.path,
+                    include_documents=include_documents,
+                    recursive=True,
+                    db=db,
+                    current_user=current_user
+                )
+                export_data["subfolders"].append(subfolder_data)
+            except HTTPException:
+                # Skip subfolders with issues (orphan app_id, etc.)
+                continue
 
     return export_data
 

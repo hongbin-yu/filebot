@@ -535,9 +535,8 @@ const AdminAppFolders: React.FC = () => {
     setExportResult(null);
     
     try {
-      // Strip app slug from path for webbot export
-      const webbotPath = currentFolderPath.replace(new RegExp(`^/${appSlug}`), '') || '/';
-      const response = await fetch(`/api/v1/export/folder/${encodeURIComponent(webbotPath)}?include_documents=true&recursive=${exportDepth > 0}`);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/v1/export/folder/${encodeURIComponent(currentFolderPath)}?include_documents=true&recursive=${exportDepth > 1}&token=${token}`);
       if (!response.ok) {
         throw new Error(`Export failed: ${response.status} ${response.statusText}`);
       }
@@ -548,6 +547,47 @@ const AdminAppFolders: React.FC = () => {
       setExportError(error.message || 'Export failed. Check backend service.');
     } finally {
       setExportingToWebBot(false);
+    }
+  };
+
+  // Handle actual import to WebBot (sends data to webbot_page table)
+  const [importingToWebBot, setImportingToWebBot] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const handleImportToWebBot = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      if (!currentFolderPath) {
+        setExportError('Please select a folder first');
+        return;
+      }
+      
+      setImportingToWebBot(true);
+      setExportError(null);
+      setImportResult(null);
+      
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/v1/import-to-webbot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (token || '')
+        },
+        body: JSON.stringify({
+          folder_path: currentFolderPath,
+          recursive: exportDepth > 1
+        })
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Import failed: ' + response.status);
+      }
+      const data = await response.json();
+      setImportResult(data);
+    } catch (error: any) {
+      console.error('Import to WebBot failed:', error);
+      setExportError(error && error.message ? error.message : 'Import failed. Check backend service.');
+    } finally {
+      setImportingToWebBot(false);
     }
   };
 
@@ -1028,8 +1068,8 @@ const AdminAppFolders: React.FC = () => {
       
       {/* Export to WebBot Modal */}
       {showExportWebBotModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 overflow-y-auto py-8">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 my-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-indigo-800">Export to WebBot</h3>
@@ -1094,31 +1134,63 @@ const AdminAppFolders: React.FC = () => {
                 
                 {exportResult && (
                   <div className="mt-4 border-t pt-4">
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-md p-3 mb-3">
-                      <p className="text-sm text-indigo-800">
-                        <strong>Total:</strong> {exportResult.total} pages exported
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3">
+                      <p className="text-sm text-green-800">
+                        📄 <strong>Documents:</strong> {exportResult.documents ? exportResult.documents.length : (exportResult.document_count || 0)}
+                        {(exportResult.subfolder_count > 0 || (exportResult.subfolders || []).length > 0) && (
+                          <> &nbsp;|&nbsp; 📁 <strong>Subfolders:</strong> {(exportResult.subfolders || []).length}</>
+                        )}
                       </p>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">
-                        Exported Pages Preview ({Math.min(10, (exportResult.pages || []).length)} of {exportResult.total})
-                      </h4>
-                      <div className="bg-gray-50 border border-gray-200 rounded-md p-3 max-h-80 overflow-y-auto">
-                        <pre className="text-xs text-gray-700 whitespace-pre-wrap break-all">
-                          {JSON.stringify({
-                            path: exportResult.path,
-                            depth: exportResult.depth,
-                            total: exportResult.total,
-                            pages: (exportResult.pages || []).slice(0, 10).map((p: any) => ({
-                              id: p.id,
-                              parent_path: p.parent_path,
-                              path: p.path,
-                              language: p.language
-                            }))
-                          }, null, 2)}
-                        </pre>
+
+                    {/* Preview of exported documents */}
+                    {(exportResult.documents || []).length > 0 && (
+                      <div className="mb-3">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">
+                          Documents ({exportResult.documents.length})
+                        </h4>
+                        <div className="bg-gray-50 border border-gray-200 rounded-md p-3 max-h-60 overflow-y-auto">
+                          {(exportResult.documents.slice(0, 10) || []).map((doc: any, i: number) => (
+                            <div key={doc.path || i} className="text-xs text-gray-600 py-1 border-b border-gray-100 last:border-0">
+                              <span className="font-medium">{doc.title || doc.path}</span>
+                              <span className="text-gray-400 ml-2">{doc.mime_type || ''}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Import to WebBot button */}
+                    <button
+                      onClick={handleImportToWebBot}
+                      disabled={importingToWebBot || !exportResult}
+                      className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {importingToWebBot ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                          </svg>
+                          Importing...
+                        </span>
+                      ) : (
+                        '📥 Import to WebBot'
+                      )}
+                    </button>
+
+                    {/* Import result display */}
+                    {importResult && (
+                      <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
+                        <p className="text-sm text-blue-800">
+                          ✅ <strong>Import complete:</strong>{' '}
+                          {importResult.inserted} new pages{' '}
+                          {importResult.updated > 0 && <>+ {importResult.updated} updated{' '}</>}
+                          in WebBot{' '}
+                          {importResult.skipped > 0 && <span className="text-gray-500">({importResult.skipped} skipped)</span>}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -50,6 +50,16 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/search/, '/api/v1/search')
       },
+      // Export 相关 API 代理到 FileBot 后端（端口8001）
+      '/api/v1/import-to-webbot': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/api/v1/export': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+      },
       // Export-folder 专用代理（不做路径重写，webbot 后端直接用 /api/v1/export-folder）
       '/api/v1/export-folder': {
         target: 'http://localhost:8000',

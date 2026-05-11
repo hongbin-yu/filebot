@@ -158,7 +158,7 @@ async def health_check(db: Session = Depends(get_db)):
 
 
 # 导入路由
-from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export, pages
+from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export, pages, import_to_webbot
 
 # 注册路由
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
@@ -174,6 +174,7 @@ app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["AI Feat
 app.include_router(features.router, prefix=f"{settings.API_V1_STR}/features", tags=["Feature Management"])
 app.include_router(folders.router, prefix=f"{settings.API_V1_STR}/folders", tags=["Folders"])
 app.include_router(export.router, prefix=f"{settings.API_V1_STR}/export", tags=["Export"])
+app.include_router(import_to_webbot.router, prefix=f"{settings.API_V1_STR}", tags=["WebBot"])
 
 # 静态文件服务 - 用于已发布的文档
 # 确保静态目录存在
