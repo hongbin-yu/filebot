@@ -245,7 +245,8 @@ def import_to_webbot(
                                             hide_in_nav=True)
                     if ok != 'failed':
                         existing_paths.add(cum)
-                parent_path = cum
+                if i < len(path_parts) - 1:
+                    parent_path = cum  # only for intermediate lang roots, not leaf
                 continue
 
             cum += '/' + seg
