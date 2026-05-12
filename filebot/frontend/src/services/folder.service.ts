@@ -31,18 +31,19 @@ export interface Folder {
 export interface FolderCreateRequest {
   name: string;
   description?: string;
-  parent_folder_id?: string;
+  parent_folder_path?: string;
+  path?: string;
   app_id: string; // 应用slug，不是UUID
 }
 
 export interface FolderUpdateRequest {
   name?: string;
   description?: string;
-  parent_folder_id?: string;
+  parent_folder_path?: string;
 }
 
 export interface MoveFolderRequest {
-  target_parent_folder_id?: string;  // 同应用内改变父文件夹
+  target_parent_folder_path?: string;  // 同应用内改变父文件夹
 }
 
 export interface FolderTreeItem extends Folder {
@@ -59,18 +60,19 @@ class FolderService {
    * @returns 文件夹列表
    */
   async getFolders(
-    appSlug: string, 
+    appIdentifier: string, 
     params?: {
       parent_folder_path?: string;
-      list_all?: boolean;
+      app_slug?: string;
+      path_starts_with?: string;
       app_id?: string;
       skip?: number;
       limit?: number;
     }
   ): Promise<Folder[]> {
     // 验证appSlug
-    if (!appSlug || appSlug.trim() === '') {
-      console.error('❌ [ERROR] folderService.getFolders: appSlug is empty');
+    if (!appIdentifier || appIdentifier.trim() === '') {
+      console.error('❌ [ERROR] folderService.getFolders: appIdentifier is empty');
       throw new Error('应用标识符不能为空');
     }
 
@@ -81,7 +83,7 @@ class FolderService {
       )
     };
 
-    console.log('🔍 [DEBUG] folderService.getFolders:', { appSlug, requestParams });
+    console.log('🔍 [DEBUG] folderService.getFolders:', { appIdentifier, requestParams });
 
     const response = await api.get('/folders/', { 
       params: requestParams
@@ -173,9 +175,8 @@ class FolderService {
    */
   async deleteFolder(folderPath: string, recursive: boolean = false): Promise<void> {
     console.log('🔍 [DEBUG] folderService.deleteFolder:', { folderPath, recursive });
-    // 使用 by-path 端点以支持含斜杠的路径
-    const encodedPath = encodeURIComponent(folderPath);
-    await api.delete(`/folders/by-path/${encodedPath}`, {
+    const cleanPath = folderPath.startsWith('/') ? folderPath.slice(1) : folderPath;
+    await api.delete(`/folders/${cleanPath}`, {
       params: { recursive }
     });
   }

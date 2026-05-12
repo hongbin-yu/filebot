@@ -376,6 +376,102 @@ class ScraplingCrawler:
                 logger.info(f"Updated document by path: ID={existing_by_path.path}, path={url_path}")
                 return existing_by_path
             
+            # ====== URL-BASED DEDUP (check before filesystem numbering) ======
+            # Search across ALL folders for existing doc with the same URL
+            # This prevents generating -N suffix duplicates when re-crawling
+            existing_by_url = None
+            normalized_url = None
+            if document_data.document_metadata:
+                normalized_url = document_data.document_metadata.get('url')
+            
+            if normalized_url:
+                existing_by_url = self.db.query(Document).filter(
+                    Document.document_metadata.op('->>')('url') == normalized_url
+                ).first()
+                
+                if existing_by_url:
+                    logger.info(f"Found existing document by URL, updating instead of creating numbered file: URL={normalized_url}, existing_path={existing_by_url.path}, target_path={expected_url_path}")
+                    
+                    # Determine storage info - reuse existing or use the correct path
+                    final_filename = existing_by_url.stored_filename or safe_filename
+                    
+                    if existing_by_url.storage_path:
+                        storage_path = data_root / existing_by_url.storage_path
+                    else:
+                        storage_path = data_root / f"{app_slug}{clean_folder}/{final_filename}"
+                    
+                    # If path has changed, clean up old file
+                    old_storage = data_root / existing_by_url.storage_path if existing_by_url.storage_path else None
+                    
+                    # Use expected (correct) URL path
+                    url_path = expected_url_path
+                    
+                    # Ensure target directory exists
+                    storage_path.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    # Determine content to write
+                    content_to_write = content
+                    if content_to_write is None:
+                        content_to_write = "" if not is_binary else b""
+                    if not content_to_write and not is_binary and document_data.document_metadata:
+                        if document_data.file_type == FileType.HTML:
+                            content_to_write = document_data.document_metadata.get('original_html') or \
+                                             document_data.document_metadata.get('html_content') or \
+                                             document_data.document_metadata.get('extracted_text', '') or ""
+                    
+                    # Write content to storage file
+                    if is_binary:
+                        with open(storage_path, 'wb') as f:
+                            f.write(content_to_write)
+                    else:
+                        with open(storage_path, 'w', encoding='utf-8') as f:
+                            f.write(content_to_write)
+                    
+                    file_size = storage_path.stat().st_size
+                    
+                    # Clean up old storage file if different from new
+                    if old_storage and old_storage.exists() and old_storage != storage_path:
+                        try:
+                            old_storage.unlink()
+                            logger.info(f"Cleaned up old storage file: {old_storage}")
+                        except Exception as e:
+                            logger.warning(f"Could not clean up old storage file {old_storage}: {e}")
+                    
+                    # Remove old numbered duplicate files if the path changed
+                    if existing_by_url.path != url_path:
+                        # Clean up old file on filesystem with the old filename stem pattern
+                        old_dir = (data_root / existing_by_url.storage_path).parent if existing_by_url.storage_path else storage_path.parent
+                        old_stem = Path(existing_by_url.stored_filename or '').stem
+                        for old_file in old_dir.glob(f"{old_stem}-[0-9]*.html"):
+                            try:
+                                old_file.unlink()
+                                logger.info(f"Cleaned up old numbered file: {old_file}")
+                            except Exception as e:
+                                logger.warning(f"Could not clean up {old_file}: {e}")
+                    
+                    # Update existing document record
+                    existing_by_url.title = document_data.title
+                    existing_by_url.description = document_data.description
+                    existing_by_url.original_filename = original_filename
+                    existing_by_url.stored_filename = final_filename
+                    existing_by_url.storage_path = str(storage_path.relative_to(data_root))
+                    existing_by_url.path = url_path
+                    existing_by_url.parent_folder_path = folder_path
+                    existing_by_url.file_type = FileType(document_data.file_type.value)
+                    existing_by_url.file_size = file_size
+                    existing_by_url.mime_type = document_data.mime_type
+                    existing_by_url.document_metadata = document_data.document_metadata or {}
+                    existing_by_url.updated_at = func.now()
+                    existing_by_url.updated_by = str(document_data.uploaded_by)
+                    
+                    if existing_by_url.conversion_status == ConversionStatus.FAILED:
+                        existing_by_url.conversion_status = ConversionStatus.PENDING
+                    
+                    self.db.commit()
+                    self.db.refresh(existing_by_url)
+                    logger.info(f"Updated document by URL: ID={existing_by_url.path}, path={url_path}")
+                    return existing_by_url
+            
             # ====== Check for orphaned files on filesystem (no DB record but file exists) ======
             expected_storage_path = data_root / f"{app_slug}{clean_folder}" / safe_filename
             if expected_storage_path.exists():
@@ -384,13 +480,12 @@ class ScraplingCrawler:
                 url_path = expected_url_path
                 final_filename = safe_filename
             else:
-                # ====== No collision: create with normal filesystem dedup ======
-                storage_path, url_path, final_filename = generate_storage_paths(
-                    original_filename=original_filename,
-                    app_slug=app_slug,
-                    folder_path=folder_path,
-                    data_root=data_root
-                )
+                # ====== No collision: create document (without numbered suffix) ======
+                # Use deterministic path (same as expected_url_path)
+                storage_path = data_root / f"{app_slug}{clean_folder}" / safe_filename
+                url_path = expected_url_path
+                final_filename = safe_filename
+                storage_path.parent.mkdir(parents=True, exist_ok=True)
             
             # Ensure directory exists
             storage_path.parent.mkdir(parents=True, exist_ok=True)
@@ -416,69 +511,31 @@ class ScraplingCrawler:
             
             file_size = storage_path.stat().st_size
             
-            # URL-based dedup (fallback check for same URL in same folder)
-            existing_document = None
-            normalized_url = None
-            if document_data.document_metadata:
-                normalized_url = document_data.document_metadata.get('url')
+            # Create new document record (pure path-based PK)
+            document = Document(
+                title=document_data.title,
+                description=document_data.description,
+                original_filename=original_filename,
+                stored_filename=final_filename,  # 只存储文件名，不包含路径
+                storage_path=str(storage_path.relative_to(data_root)),  # 相对路径
+                path=url_path,
+                parent_folder_path=folder_path,  # 父文件夹路径
+                file_type=FileType(document_data.file_type.value),
+                file_size=file_size,
+                mime_type=document_data.mime_type,
+                folder_path=folder_path,
+                document_metadata=document_data.document_metadata or {},
+                status=DocumentStatus.ACTIVE,
+                uploaded_by=str(document_data.uploaded_by),
+                conversion_status=ConversionStatus.PENDING
+            )
             
-            if normalized_url:
-                existing_document = self.db.query(Document).filter(
-                    Document.folder_path == folder_path,
-                    Document.document_metadata.op('->>')('url') == normalized_url
-                ).first()
-                
-                if existing_document:
-                    logger.info(f"Found duplicate by URL, updating: URL={normalized_url}, doc_id={existing_document.path}")
+            self.db.add(document)
+            self.db.commit()
+            self.db.refresh(document)
             
-            if existing_document:
-                existing_document.title = document_data.title
-                existing_document.description = document_data.description
-                existing_document.original_filename = original_filename
-                existing_document.stored_filename = final_filename
-                existing_document.storage_path = str(storage_path.relative_to(data_root))
-                existing_document.path = url_path
-                existing_document.parent_folder_path = folder_path
-                existing_document.file_type = FileType(document_data.file_type.value)
-                existing_document.file_size = file_size
-                existing_document.mime_type = document_data.mime_type
-                existing_document.document_metadata = document_data.document_metadata or {}
-                existing_document.updated_at = func.now()
-                existing_document.updated_by = str(document_data.uploaded_by)
-                
-                if existing_document.conversion_status == ConversionStatus.FAILED:
-                    existing_document.conversion_status = ConversionStatus.PENDING
-                
-                self.db.commit()
-                self.db.refresh(existing_document)
-                logger.info(f"Updated document by URL: ID={existing_document.path}, path={storage_path}")
-                return existing_document
-            else:
-                # Create new document record (pure path-based PK)
-                document = Document(
-                    title=document_data.title,
-                    description=document_data.description,
-                    original_filename=original_filename,
-                    stored_filename=final_filename,  # 只存储文件名，不包含路径
-                    storage_path=str(storage_path.relative_to(data_root)),  # 相对路径
-                    path=url_path,
-                    parent_folder_path=folder_path,  # 父文件夹路径
-                    file_type=FileType(document_data.file_type.value),
-                    file_size=file_size,
-                    mime_type=document_data.mime_type,
-                    folder_path=folder_path,
-                    document_metadata=document_data.document_metadata or {},
-                    status=DocumentStatus.ACTIVE,
-                    uploaded_by=str(document_data.uploaded_by),
-                    conversion_status=ConversionStatus.PENDING
-                )
-                
-                self.db.add(document)
-                self.db.commit()
-                self.db.refresh(document)
-                
-                logger.info(f"创建文档成功（纯path架构）: ID={document.path}, 路径={storage_path}")
-                return document
+            logger.info(f"创建文档成功（纯path架构）: ID={document.path}, 路径={storage_path}")
+            return document
             
         except Exception as e:
             logger.error(f"创建文档失败: {str(e)}", exc_info=True)

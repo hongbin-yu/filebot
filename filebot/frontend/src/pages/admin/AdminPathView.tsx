@@ -196,20 +196,17 @@ const AdminPathView: React.FC = () => {
   const handleCreateFolder = async (data: {
     name: string;
     description?: string;
-    parent_folder_id?: string;
+    parent_folder_path?: string;
     app_id: string;
   }) => {
     try {
-      // 使用路径作为父文件夹标识符
       const parentFolderPath = data.parent_folder_path || getFullPath();
       
-      // 调用folderService创建文件夹
-      // 注意：FolderCreateRequest接口期望parent_folder_id和app_id
-      // 但后端API可能支持parent_folder_path参数
       await folderService.createFolder({
         name: data.name,
         description: data.description,
-        parent_folder_id: parentFolderPath, // 使用路径作为parent_folder_id
+        parent_folder_path: parentFolderPath,
+        path: parentFolderPath ? `${parentFolderPath.replace(/\/+$/, '')}/${data.name.trim().replace(/\s+/g, '-').toLowerCase()}` : '',
         app_id: data.app_id
       });
       

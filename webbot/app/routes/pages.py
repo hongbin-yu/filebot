@@ -2,7 +2,8 @@
 Page management routes
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Body
+from fastapi.responses import HTMLResponse
 import sqlite3
 import json
 import uuid
@@ -12,8 +13,9 @@ import re
 import traceback
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from fastapi import Request as FastAPIRequest
 
-from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, PagePropertiesResponse, PageMetadataResponse, PageStatus
+from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, PreviewRequest, PagePropertiesResponse, PageMetadataResponse, PageStatus
 
 router = APIRouter(prefix="/api/v1/pages", tags=["pages"])
 
@@ -43,6 +45,60 @@ def generate_page_id(title: str) -> str:
     if not page_id:
         page_id = f"page-{uuid.uuid4().hex[:8]}"
     return page_id
+
+def remove_pagedetails_sections(html: str) -> str:
+    """
+    Remove any HTML element whose class contains 'pagedetails', handling nested elements
+    by tracking tag depth. Removes footer/section/div elements with pagedetails in attributes.
+    """
+    # Pattern: opening tag with pagedetails in attributes
+    import re
+    tag_pat = re.compile(r'<(footer|section|div)(\s[^>]*)?\bpagedetails\b[^>]*>', re.IGNORECASE)
+    close_pat_cache = {}
+
+    def get_close_pat(tag: str) -> re.Pattern:
+        if tag not in close_pat_cache:
+            close_pat_cache[tag] = re.compile(r'</' + tag + r'\s*>', re.IGNORECASE)
+        return close_pat_cache[tag]
+
+    def get_open_pat(tag: str) -> re.Pattern:
+        return re.compile(r'<' + tag + r'[^>]*>', re.IGNORECASE)
+
+    result = []
+    i = 0
+    while i < len(html):
+        match = tag_pat.search(html, i)
+        if match and match.start() == i:
+            tag_name = match.group(1).lower()
+            depth = 1
+            j = match.end()
+            open_pat = get_open_pat(tag_name)
+            close_pat = get_close_pat(tag_name)
+            while j < len(html) and depth > 0:
+                closer = close_pat.search(html, j)
+                opener = open_pat.search(html, j)
+                # Take whichever comes first
+                if closer is not None and (opener is None or closer.start() < opener.start()):
+                    depth -= 1
+                    j = closer.end()
+                elif opener is not None:
+                    depth += 1
+                    j = opener.end()
+                else:
+                    # No more tags found, move to end
+                    j = len(html)
+                    break
+            i = j
+        else:
+            # No match at this position, advance
+            if match:
+                result.append(html[i:match.start()])
+                i = match.start()
+            else:
+                result.append(html[i:])
+                break
+    return ''.join(result)
+
 
 def extract_language_from_path(path: str) -> str:
     """
@@ -1234,7 +1290,10 @@ async def get_parent_pages(path: str = Query(..., description="Full page path. R
                 if depth == len(path_parts):
                     page = item
                 else:
-                    parents.append(item)
+                    # Always include root (Home), but skip other pages with hide_in_navigation
+                    is_root = depth == 2
+                    if is_root or not item.hide_in_navigation:
+                        parents.append(item)
         
         return {"parents": parents, "page": page}
     except Exception as e:
@@ -1448,6 +1507,234 @@ async def get_page_properties(page_id: str,
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
     finally:
         conn.close()
+
+
+# ============================================================================
+# Preview endpoint — render page using publish_template (registered before
+# catch-all to ensure priority over /{page_id:path})
+# ============================================================================
+@router.get("/preview", response_model=None)
+async def preview_page_get(
+    request: FastAPIRequest,
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact")
+):
+    """
+    Get preview of a page using the publish_template (GET version — uses DB content).
+    Called from navigation tree Preview button which opens a new window.
+    """
+    return await _render_preview(request, path, content_override=None)
+
+
+@router.post("/preview", response_model=None)
+async def preview_page_post(
+    request: FastAPIRequest,
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact"),
+    body: Optional[PreviewRequest] = Body(None, description="Optional JSON body with content override")
+):
+    """
+    Preview a page: same as publish but returns rendered HTML directly instead of writing to file.
+    POST version — accepts unsaved editor content via JSON body.
+    """
+    content_override = body.content if body and body.content else None
+    return await _render_preview(request, path, content_override=content_override)
+
+
+async def _render_preview(
+    request: FastAPIRequest,
+    path: str,
+    content_override: Optional[str] = None
+) -> HTMLResponse:
+    import chevron
+    import aiohttp
+
+    now = datetime.now()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Load the page
+        cursor.execute("SELECT * FROM webbot_page WHERE path = ?", (path,))
+        page = cursor.fetchone()
+        if not page:
+            raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+        page = dict(page)
+        page_content = content_override if content_override is not None else page.get("content", "")
+        page_title = page.get("title", "Untitled")
+        page_language = page.get("language", "en")
+        page_publish_template = page.get("publish_template", None)
+        page_last_modified = page.get("last_modified", now.isoformat())
+        if page_last_modified:
+            if isinstance(page_last_modified, str):
+                try:
+                    dt = datetime.fromisoformat(page_last_modified.replace("Z", "+00:00"))
+                    date_modified_str = dt.strftime("%Y-%m-%d")
+                except:
+                    date_modified_str = page_last_modified[:10] if len(page_last_modified) >= 10 else now.strftime("%Y-%m-%d")
+            else:
+                date_modified_str = now.strftime("%Y-%m-%d")
+        else:
+            date_modified_str = now.strftime("%Y-%m-%d")
+
+        base_url = str(request.base_url).rstrip("/")
+
+        # Helper: render a mustache template config from DB
+        async def render_mustache_template(template_path: str, data_source_path: str) -> str:
+            # Substitute {path} placeholder with the current page path for dynamic datasources
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
+            row = cursor.fetchone()
+            if not row:
+                return f"<!-- Template not found: {template_path} -->"
+            try:
+                config = json.loads(row[0])
+            except json.JSONDecodeError:
+                raw = row[0]
+                if "{" in raw and "}" in raw:
+                    start = raw.find("{")
+                    end = raw.rfind("}") + 1
+                    try:
+                        config = json.loads(raw[start:end], strict=False)
+                    except:
+                        return f"<!-- Invalid JSON in template: {template_path} -->"
+                else:
+                    return f"<!-- No JSON config in template: {template_path} -->"
+
+            template = config.get("template", "")
+            data = config.get("data", {})
+            datasource = config.get("datasource", config.get("dataresource"))
+
+            if datasource:
+                # Replace {path} placeholder with the actual page being rendered
+                url = datasource.replace("{path}", data_source_path)
+                if not url.startswith("http"):
+                    url = f"{base_url}{url}"
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, timeout=10) as resp:
+                            if resp.status == 200:
+                                ds_data = await resp.json()
+                                data["datasource_loaded"] = True
+                                if isinstance(ds_data, dict):
+                                    data = {**data, **ds_data}
+                                elif isinstance(ds_data, list):
+                                    data = ds_data
+                                else:
+                                    data["items"] = ds_data
+                except Exception as e:
+                    data["datasource_loaded"] = False
+                    data["datasource_error"] = str(e)
+
+            try:
+                return chevron.render(template, data)
+            except Exception as e:
+                return f"<!-- Mustache render error: {e} -->"
+
+        # 2. Render head, header, footer
+        gethead_path = f"/canadasite/{page_language}/mustache-templates/gethead"
+        head_html = await render_mustache_template(gethead_path, path)
+
+        getheader_path = f"/canadasite/{page_language}/mustache-templates/getheader"
+        header_html = await render_mustache_template(getheader_path, path)
+
+        # Get footer — try DB page first, fallback to extracting from raw content
+        footer_path = f"/canadasite/{page_language}/footer"
+        cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (footer_path,))
+        footer_row = cursor.fetchone()
+        footer_html = ""
+        if footer_row:
+            footer_html = footer_row[0]
+        else:
+            footer_match = re.search(r'<footer[^>]*id=[\"\']wb-info[\"\'][^>]*>.*?</footer>', page.get("content", ""), re.DOTALL | re.IGNORECASE)
+            if footer_match:
+                footer_html = footer_match.group(0)
+
+        # 3. Clean content
+        def extract_content(raw_content: str) -> str:
+            main_match = re.search(r'<main[^>]*>(.*)</main>', raw_content, re.DOTALL | re.IGNORECASE)
+            if main_match:
+                raw_content = main_match.group(1)
+            else:
+                body_match = re.search(r'<body[^>]*>(.*)</body>', raw_content, re.DOTALL | re.IGNORECASE)
+                if body_match:
+                    raw_content = body_match.group(1)
+            raw_content = remove_pagedetails_sections(raw_content)
+            return raw_content.strip()
+
+        cleaned_content = extract_content(page_content)
+
+        # 4. Date modified
+        date_modified_html = (
+            '<footer class="pagedetails container">\n'
+            '    <h2 class="wb-inv">Page details</h2>\n'
+            '    <div class="row">\n'
+            '        <div class="col-sm-8 col-md-9 col-lg-9">\n'
+            f'            <p>Date modified: {date_modified_str}</p>\n'
+            '        </div>\n'
+            '    </div>\n'
+            '</footer>'
+        )
+
+        # 5. Render with template or default
+        if page_publish_template:
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (page_publish_template,))
+            tmpl_row = cursor.fetchone()
+            if tmpl_row:
+                try:
+                    tmpl_config = json.loads(tmpl_row[0])
+                    tmpl = tmpl_config.get("template", tmpl_row[0])
+                except json.JSONDecodeError:
+                    tmpl = tmpl_row[0]
+                render_data = {
+                    "content": cleaned_content,
+                    "head": head_html,
+                    "header": header_html,
+                    "footer": footer_html,
+                    "date_modified": date_modified_str,
+                    "language": page_language,
+                    "title": page_title,
+                    "path": path,
+                }
+                rendered = chevron.render(tmpl, render_data)
+            else:
+                rendered = (
+                    "<!DOCTYPE html>\n"
+                    f"<html lang=\"{page_language}\">\n"
+                    f"{head_html}\n"
+                    f"{header_html}\n"
+                    "<body>\n"
+                    '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">\n'
+                    f"{cleaned_content}\n"
+                    f"{date_modified_html}\n"
+                    "</main>\n"
+                    f"{footer_html}\n"
+                    "</body>\n"
+                    "</html>"
+                )
+        else:
+            rendered = (
+                "<!DOCTYPE html>\n"
+                f"<html lang=\"{page_language}\">\n"
+                f"{head_html}\n"
+                f"{header_html}\n"
+                "<body>\n"
+                '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">\n'
+                f"{cleaned_content}\n"
+                f"{date_modified_html}\n"
+                "</main>\n"
+                f"{footer_html}\n"
+                "</body>\n"
+                "</html>"
+            )
+
+        conn.close()
+        return HTMLResponse(content=rendered, status_code=200)
+
+    except HTTPException:
+        conn.close()
+        raise
+    except Exception as e:
+        conn.close()
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Preview failed: {str(e)}")
 
 
 @router.get("/{page_id:path}", response_model=PageResponse)
@@ -1728,6 +2015,10 @@ async def update_page(page_id: str, page_update: PageUpdate,
         if page_update.hide_in_navigation is not None:
             update_fields.append("hide_in_navigation = ?")
             update_values.append(1 if page_update.hide_in_navigation else 0)
+
+        if page_update.publish_template is not None:
+            update_fields.append("publish_template = ?")
+            update_values.append(page_update.publish_template)
 
         # IfNo update fields,直接返回原page
         if not update_fields:
@@ -2329,5 +2620,261 @@ async def test_path_param(path: str = Query(..., description="Test path paramete
     print(f"DEBUG: test_path_param called with path={path}", file=sys.stderr)
     sys.stderr.flush()
     return {"received_path": path, "status": "success"}
+
+
+@router.post("/publish")
+async def publish_page(
+    request: FastAPIRequest,
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact"),
+    output_dir: Optional[str] = Query(None, description="Output directory for static HTML")
+):
+    """
+    Publish a page: generate complete HTML with head, header, content, date-modified, and footer.
+    """
+    import chevron
+    import asyncio
+    import aiohttp
+
+    now = datetime.now()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Load the page content
+        cursor.execute("SELECT * FROM webbot_page WHERE path = ?", (path,))
+        page = cursor.fetchone()
+        if not page:
+            raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+        page = dict(page)
+        page_content = page.get("content", "")
+        page_title = page.get("title", "Untitled")
+        page_language = page.get("language", "en")
+        page_publish_template = page.get("publish_template", None)
+        page_last_modified = page.get("last_modified", now.isoformat())
+        if page_last_modified:
+            if isinstance(page_last_modified, str):
+                try:
+                    dt = datetime.fromisoformat(page_last_modified.replace("Z", "+00:00"))
+                    date_modified_str = dt.strftime("%Y-%m-%d")
+                except:
+                    date_modified_str = page_last_modified[:10] if len(page_last_modified) >= 10 else now.strftime("%Y-%m-%d")
+            else:
+                date_modified_str = now.strftime("%Y-%m-%d")
+        else:
+            date_modified_str = now.strftime("%Y-%m-%d")
+
+        # 2. Build the internal API base URL
+        base_url = str(request.base_url).rstrip("/")
+
+        # Helper: render a mustache template config from DB
+        async def render_mustache_template(template_path: str, data_source_path: str) -> str:
+            # Substitute {path} placeholder with the current page path
+            # Load config from DB
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
+            row = cursor.fetchone()
+            if not row:
+                return f"<!-- Template not found: {template_path} -->"
+            try:
+                config = json.loads(row[0])
+            except json.JSONDecodeError:
+                # Try extracting JSON from HTML content
+                raw = row[0]
+                if "{" in raw and "}" in raw:
+                    start = raw.find("{")
+                    end = raw.rfind("}") + 1
+                    try:
+                        config = json.loads(raw[start:end], strict=False)
+                    except:
+                        return f"<!-- Invalid JSON in template: {template_path} -->"
+                else:
+                    return f"<!-- No JSON config in template: {template_path} -->"
+
+            template = config.get("template", "")
+            data = config.get("data", {})
+            datasource = config.get("datasource", config.get("dataresource"))
+
+            if datasource:
+                # Replace {path} placeholder with the actual page being rendered
+                url = datasource.replace("{path}", data_source_path)
+                if not url.startswith("http"):
+                    url = f"{base_url}{url}"
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, timeout=10) as resp:
+                            if resp.status == 200:
+                                ds_data = await resp.json()
+                                data["datasource_loaded"] = True
+                                if isinstance(ds_data, dict):
+                                    data = {**data, **ds_data}
+                                elif isinstance(ds_data, list):
+                                    data = ds_data
+                                else:
+                                    data["items"] = ds_data
+                except Exception as e:
+                    data["datasource_loaded"] = False
+                    data["datasource_error"] = str(e)
+
+            try:
+                return chevron.render(template, data)
+            except Exception as e:
+                return f"<!-- Mustache render error: {e} -->"
+
+        # 3. Render head via gethead template
+        gethead_path = f"/canadasite/{page_language}/mustache-templates/gethead"
+        head_html = await render_mustache_template(gethead_path, path)
+
+        # 4. Render header via getheader template
+        getheader_path = f"/canadasite/{page_language}/mustache-templates/getheader"
+        header_html = await render_mustache_template(getheader_path, path)
+
+        # 5. Get footer — try DB page first, fallback to extracting from raw content
+        footer_path = f"/canadasite/{page_language}/footer"
+        cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (footer_path,))
+        footer_row = cursor.fetchone()
+        footer_html = ""
+        if footer_row:
+            footer_html = footer_row[0]
+        else:
+            footer_match = re.search(r'<footer[^>]*id=[\"\']wb-info[\"\'][^>]*>.*?</footer>', page_content or "", re.DOTALL | re.IGNORECASE)
+            if footer_match:
+                footer_html = footer_match.group(0)
+
+        # 6. Clean page content: extract meaningful body/main content from the raw content
+        #    (AEM imported pages contain full HTML documents with their own <html>, <head>, <body>)
+        def extract_content(raw_content: str) -> str:
+            # Extract inner content of <main> tag from AEM-imported pages
+            main_match = re.search(r'<main[^>]*>(.*)</main>', raw_content, re.DOTALL | re.IGNORECASE)
+            if main_match:
+                raw_content = main_match.group(1)
+            else:
+                # Fallback: extract <body> inner content
+                body_match = re.search(r'<body[^>]*>(.*)</body>', raw_content, re.DOTALL | re.IGNORECASE)
+                if body_match:
+                    raw_content = body_match.group(1)
+            # Remove any pagedetails sections (we'll add our own)
+            raw_content = remove_pagedetails_sections(raw_content)
+            return raw_content.strip()
+
+        cleaned_content = extract_content(page_content)
+
+        # 7. Build pagedetails (date-modified) section
+        date_modified_html = (
+            '<footer class="pagedetails container">\n'
+            '    <h2 class="wb-inv">Page details</h2>\n'
+            '    <div class="row">\n'
+            '        <div class="col-sm-8 col-md-9 col-lg-9">\n'
+            f'            <p>Date modified: {date_modified_str}</p>\n'
+            '        </div>\n'
+            '    </div>\n'
+            '</footer>'
+        )
+
+        # 8. Assemble full HTML
+        #    If page has a publish_template set, use it as a single Mustache template
+        #    Otherwise, use the default hardcoded assembly
+
+        if page_publish_template:
+            # Load single-page Mustache template from DB and render with all data
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (page_publish_template,))
+            tmpl_row = cursor.fetchone()
+            if tmpl_row:
+                try:
+                    tmpl_config = json.loads(tmpl_row[0])
+                    tmpl = tmpl_config.get("template", tmpl_row[0])
+                except json.JSONDecodeError:
+                    tmpl = tmpl_row[0]
+                render_data = {
+                    "content": cleaned_content,
+                    "head": head_html,
+                    "header": header_html,
+                    "footer": footer_html,
+                    "date_modified": date_modified_str,
+                    "language": page_language,
+                    "title": page_title,
+                    "path": path,
+                }
+                full_html = chevron.render(tmpl, render_data)
+            else:
+                # Fallback to default if template not found
+                full_html = (
+                    "<!DOCTYPE html>\n"
+                    f"<html lang=\"{page_language}\">\n"
+                    f"{head_html}\n"
+                    f"{header_html}\n"
+                    "<body>\n"
+                    '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">\n'
+                    f"{cleaned_content}\n"
+                    f"{date_modified_html}\n"
+                    "</main>\n"
+                    f"{footer_html}\n"
+                    "</body>\n"
+                    "</html>"
+                )
+        else:
+            # Default hardcoded assembly
+            full_html = (
+                "<!DOCTYPE html>\n"
+                f"<html lang=\"{page_language}\">\n"
+                f"{head_html}\n"
+                f"{header_html}\n"
+                "<body>\n"
+                '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">\n'
+                f"{cleaned_content}\n"
+                f"{date_modified_html}\n"
+                "</main>\n"
+                f"{footer_html}\n"
+                "</body>\n"
+                "</html>"
+            )
+
+        # 9. Save to FileBot publish directory
+        # FileBot serves published files at /publish/
+        FILEBOT_PUBLISH_DIR = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "..",
+            "..",
+            "filebot",
+            "backend",
+            "data",
+            "publish"
+        )
+        
+        site_root = output_dir or FILEBOT_PUBLISH_DIR
+        
+        # Determine relative path from the page path
+        # Path like /canadasite/en/contact → output canadasite/en/contact.html
+        rel_path = path.lstrip("/")
+        
+        output_file = os.path.join(site_root, rel_path + ".html")
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(full_html)
+
+        # 10. Update page status to "published"
+        cursor.execute(
+            "UPDATE webbot_page SET status = 'published', last_published = ? WHERE path = ?",
+            (now.isoformat(), path)
+        )
+        conn.commit()
+
+        return {
+            "success": True,
+            "path": path,
+            "output_file": output_file,
+            "date_modified": date_modified_str,
+            "published_at": now.isoformat(),
+            "html_length": len(full_html)
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")
+    finally:
+        conn.close()
 
 

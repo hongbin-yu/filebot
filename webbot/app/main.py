@@ -458,6 +458,19 @@ if os.path.exists(etc_designs_dir):
 else:
     print(f"⚠️ /etc/designs 目录不存在: {etc_designs_dir}")
 
+# 添加site/目录静态文件服务 (指向FileBot publish目录)
+FILEBOT_PUBLISH_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "filebot",
+    "backend",
+    "data",
+    "publish"
+)
+os.makedirs(FILEBOT_PUBLISH_DIR, exist_ok=True)
+app.mount("/site", StaticFiles(directory=FILEBOT_PUBLISH_DIR, html=True), name="site")
+app.mount("/publish", StaticFiles(directory=FILEBOT_PUBLISH_DIR, html=True), name="publish")
+print(f"📁 发布站点目录 (FileBot): {FILEBOT_PUBLISH_DIR}")
+
 @app.get("/")
 async def root():
     """根端点，重定向到前端界面或返回API信息"""

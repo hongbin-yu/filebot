@@ -23,7 +23,9 @@
         // const editorLanguageEl = document.getElementById('editor-language'); // Removed from UI
         // const editorStatusEl = document.getElementById('editor-status'); // Removed from UI
         const previewPageBtn = document.getElementById('preview-page');
+        const topPreviewBtn = document.getElementById('btn-top-preview');
         const savePageBtn = document.getElementById('save-page');
+        const publishPageBtn = document.getElementById('publish-page');
         const cancelEditBtn = document.getElementById('cancel-edit');
         // File manager buttons removed per user request - dummy variables to prevent reference errors
         const fileManagerBtn = null;
@@ -181,7 +183,9 @@
 
             // Event listeners
             previewPageBtn.addEventListener('click', previewPage);
+            if (topPreviewBtn) topPreviewBtn.addEventListener('click', previewPage);
             savePageBtn.addEventListener('click', savePage);
+            publishPageBtn.addEventListener('click', publishPage);
             cancelEditBtn.addEventListener('click', cancelEdit);
             // File manager buttons removed per user request - event listeners removed
 
@@ -3362,20 +3366,19 @@
             }
         }
 
-        // Preview page content
+        // Preview page content using the backend template renderer
         async function previewPage() {
             if (!currentPageId || !currentPageData) {
                 showError('No page selected to preview.');
                 return;
             }
 
-            // Synchronize editor content before preview (ensure TinyMCE content is used)
+            // Synchronize editor content before preview
             syncEditorContent();
 
-            // Get current content from editor (based on active mode)
-            let content = getCurrentContent();
+            // Get current content from editor
+            const content = getCurrentContent();
             console.log('previewPage: content length from getCurrentContent:', content?.length);
-            const title = currentPageData?.title || 'Untitled Page';
 
             if (!content) {
                 console.log('previewPage: content is empty, showing error');
@@ -3383,100 +3386,156 @@
                 return;
             }
 
-            console.log('Generating preview for:', currentPageId, 'content first 100 chars:', content.substring(0, 100).replace(/\n/g, ' '));
+            console.log('Previewing page:', currentPageId);
+            showLoading(true);
+
+            try {
+                // Call backend preview endpoint which uses the page-template
+                const response = await fetch(`/api/v1/pages/preview?path=${encodeURIComponent(currentPageId)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error('Preview API error:', response.status, errText);
+                    showError(`Preview failed (${response.status}). Falling back to local rendering.`);
+                    // Fallback to local preview
+                    previewPageLocal();
+                    return;
+                }
+
+                const renderedHtml = await response.text();
+
+                // Wrap in preview container with actions
+                const previewHtml = `
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Preview: ${currentPageData.title || 'Untitled Page'}</title>
+                        <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
+                        <style>
+                            .preview-actions {
+                                position: fixed;
+                                bottom: 0;
+                                left: 0;
+                                right: 0;
+                                padding: 12px 20px;
+                                background: #f8f9fa;
+                                border-top: 2px solid #ddd;
+                                text-align: center;
+                                z-index: 9999;
+                                box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+                            }
+                            .preview-actions .btn {
+                                padding: 8px 20px;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-size: 14px;
+                                margin: 0 5px;
+                            }
+                            .btn-primary { background: #007bff; color: white; }
+                            body { padding-bottom: 60px; }
+                        </style>
+                    </head>
+                    <body>
+                        ${renderedHtml}
+                        <div class="preview-actions">
+                            <button class="btn btn-primary" onclick="window.print()">Print Preview</button>
+                            <button class="btn" onclick="window.close()">Close Preview</button>
+                        </div>
+                        <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"><\/script>
+                        <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js" defer><\/script>
+                        <script src="/etc/designs/canada/wet-boew/js/theme.min.js" defer><\/script>
+                    </body>
+                    </html>
+                `;
+
+                const previewWindow = window.open('', '_blank');
+                if (!previewWindow) {
+                    showError('Preview window was blocked by browser. Please allow popups for this site.');
+                    return;
+                }
+                previewWindow.document.write(previewHtml);
+                previewWindow.document.close();
+                previewWindow.focus();
+
+            } catch (error) {
+                console.error('previewPage error:', error);
+                showError('Preview failed. Falling back to local rendering.');
+                previewPageLocal();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fallback: local preview without template (original logic kept for robustness)
+        async function previewPageLocal() {
+            if (!currentPageId || !currentPageData) return;
+
+            let content = getCurrentContent();
+            const title = currentPageData?.title || 'Untitled Page';
+
+            if (!content) {
+                showError('No content to preview.');
+                return;
+            }
 
             // Clean the content
             const cleanedContent = cleanContent(content, currentPageId);
-            console.log('previewPage: cleanedContent length:', cleanedContent?.length);
-
-            // Fallback: if cleaned content is empty or too short, use original content with warning
             let finalContent = cleanedContent;
             const cleanedLength = finalContent ? finalContent.trim().length : 0;
             const originalLength = content ? content.trim().length : 0;
-
-            // Use cleaned content only if:
-            // 1. It's not empty
-            // 2. It's at least 500 characters OR at least 30% of original content (whichever is smaller)
             const minLength = Math.min(500, originalLength * 0.3);
 
             if (!finalContent || cleanedLength < minLength) {
-                console.warn('cleanContent returned insufficient content. Cleaned:', cleanedLength, 'Original:', originalLength, 'Min required:', minLength, 'Using original content instead.');
                 finalContent = content;
-                // Try basic cleaning on original content (remove common footers)
                 const basicCleaned = content.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
                 if (basicCleaned.length > cleanedLength && basicCleaned.length >= minLength) {
                     finalContent = basicCleaned;
-                    console.log('Using basic cleaned content instead, length:', basicCleaned.length);
                 }
             }
 
-            // Try to get header and footer from {rootpath}/header and {rootpath}/footer
+            // Try to get header and footer
             let headerContent = '';
             let footerContent = '';
             try {
-                // Get the language from current page data
                 const language = currentPageData?.language || 'en';
-
-                // For now, use /{language}/header and /{language}/footer as rootpath
-                // In the future, we could calculate the actual root path from page hierarchy
                 const rootPath = `/${language}`;
 
-                console.log('Fetching header and footer from root path:', rootPath);
-
-                // Fetch header
                 const headerResponse = await fetch(`/api/v1/pages/by-path?path=${encodeURIComponent(rootPath + '/header')}`);
                 if (headerResponse.ok) {
                     const headerData = await headerResponse.json();
                     headerContent = headerData.content || '';
-                    console.log('Header fetched, content length:', headerContent?.length);
-                } else {
-                    console.warn('Could not fetch header, using default WebBot header');
                 }
 
-                // Fetch footer
                 const footerResponse = await fetch(`/api/v1/pages/by-path?path=${encodeURIComponent(rootPath + '/footer')}`);
                 if (footerResponse.ok) {
                     const footerData = await footerResponse.json();
                     footerContent = footerData.content || '';
-                    console.log('Footer fetched, content length:', footerContent?.length);
-                } else {
-                    console.warn('Could not fetch footer, using default WebBot footer');
                 }
             } catch (error) {
                 console.error('Error fetching header/footer:', error);
-                // Continue with default WebBot header/footer
             }
 
-            // Generate breadcrumb HTML and replace {breadcrumb} placeholder in header
+            // Generate breadcrumb
             if (headerContent && currentPageData) {
                 try {
-                    console.log('Generating breadcrumb for preview...');
                     const breadcrumbHtml = await generateBreadcrumbHTML(currentPageData);
-
                     if (breadcrumbHtml) {
-                        // Replace {breadcrumb} placeholder in header content
-                        if (headerContent.includes('{breadcrumb}')) {
-                            console.log('Replacing {breadcrumb} placeholder in header');
-                            headerContent = headerContent.replace(/{breadcrumb}/g, breadcrumbHtml);
-                        } else if (headerContent.includes('{ breadcrumb }')) {
-                            // Also check for space around placeholder
-                            console.log('Replacing { breadcrumb } placeholder in header');
-                            headerContent = headerContent.replace(/{ breadcrumb }/g, breadcrumbHtml);
-                        } else {
-                            console.log('No {breadcrumb} placeholder found in header content');
-                            // Optional: insert breadcrumb at a specific location if no placeholder
-                            // For now, we'll just log it
-                        }
-                    } else {
-                        console.log('No breadcrumb HTML generated, placeholder will remain');
+                        headerContent = headerContent.replace(/{breadcrumb}/g, breadcrumbHtml);
+                        headerContent = headerContent.replace(/{ breadcrumb }/g, breadcrumbHtml);
                     }
-                } catch (breadcrumbError) {
-                    console.error('Error generating breadcrumb for preview:', breadcrumbError);
-                    // Continue without breadcrumb replacement
+                } catch (e) {
+                    console.error('Error generating breadcrumb:', e);
                 }
             }
 
-            // Create preview HTML
+            // Create preview HTML using createWebBotPage
             const previewHtml = `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -3486,38 +3545,11 @@
                     <title>Preview: ${title}</title>
                     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
                     <style>
-                        body {
-                            padding: 20px;
-                            background: #f8f9fa;
-                        }
-                        .preview-container {
-                            max-width: 1200px;
-                            margin: 0 auto;
-                            background: white;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                            padding: 20px;
-                        }
-                        .preview-actions {
-                            margin-top: 20px;
-                            padding: 15px;
-                            background: #f8f9fa;
-                            border-radius: 6px;
-                            border: 1px solid #ddd;
-                            text-align: center;
-                        }
-                        .btn {
-                            padding: 8px 16px;
-                            border: none;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            margin: 0 5px;
-                        }
-                        .btn-primary {
-                            background: #007bff;
-                            color: white;
-                        }
+                        body { padding: 20px; background: #f8f9fa; }
+                        .preview-container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; }
+                        .preview-actions { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #ddd; text-align: center; }
+                        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 0 5px; }
+                        .btn-primary { background: #007bff; color: white; }
                     </style>
                 </head>
                 <body>
@@ -3528,28 +3560,20 @@
                             <button class="btn" onclick="window.close()">Close Preview</button>
                         </div>
                     </div>
-
-                    <!-- jQuery (required by WET-BOEW) -->
                     <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"><\/script>
-                    <!-- Canada.ca WET-BOEW JavaScript (deferred) -->
                     <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js" defer><\/script>
                     <script src="/etc/designs/canada/wet-boew/js/theme.min.js" defer><\/script>
                 </body>
                 </html>
             `;
 
-            // Open preview in new window
             const previewWindow = window.open('', '_blank');
-            console.log('previewPage: previewWindow created:', previewWindow ? 'valid' : 'null/blocked');
             if (!previewWindow) {
-                console.error('previewPage: window.open was blocked by browser');
                 showError('Preview window was blocked by browser. Please allow popups for this site.');
                 return;
             }
             previewWindow.document.write(previewHtml);
             previewWindow.document.close();
-
-            // Focus the new window
             previewWindow.focus();
         }
 
@@ -3844,6 +3868,56 @@
                 setTimeout(() => {
                     successMessageEl.style.display = 'none';
                 }, 3000);
+            }
+        }
+
+        async function publishPage() {
+            if (!currentPageId || !currentPageData) {
+                showError('No page selected to publish.');
+                return;
+            }
+
+            // First save current content
+            const content = getCurrentContent();
+            if (!content || !content.trim()) {
+                showError('Page has no content to publish.');
+                return;
+            }
+
+            // Save before publishing
+            await savePage();
+
+            const path = currentPageData.path || currentPageId;
+            const originalText = publishPageBtn.textContent;
+            publishPageBtn.disabled = true;
+            publishPageBtn.innerHTML = '<span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span> Publishing...';
+
+            try {
+                const response = await fetch('/api/v1/pages/publish?path=' + encodeURIComponent(path), {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.detail || 'Publish failed (HTTP ' + response.status + ')');
+                }
+
+                const result = await response.json();
+
+                showSuccess('Page published successfully!');
+                console.log('Published page:', result);
+
+                // Open the published page in a new tab
+                // Page is saved to FileBot publish directory, served at /publish/
+                const pageUrl = '/publish/' + path.replace(/^\//, '') + '.html';
+                window.open(pageUrl, '_blank');
+
+            } catch (error) {
+                showError('Publish failed: ' + error.message);
+                console.error('Publish error:', error);
+            } finally {
+                publishPageBtn.disabled = false;
+                publishPageBtn.innerHTML = originalText;
             }
         }
 
@@ -11720,13 +11794,13 @@
                     menubar: 'edit view insert format table help',
                     base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
                     plugins: [
-                        'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview',
+                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                         'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
                         'insertdatetime', 'media', 'table', 'help', 'wordcount'
                     ],
                     toolbar: 'undo redo | styleselect | bold italic underline | ' +
                              'alignleft aligncenter alignright alignjustify | ' +
-                             'bullist numlist outdent indent | link table | ' +
+                             'bullist numlist outdent indent | link image table | ' +
                              'blockquote | code fullscreen | help',
                     content_style: 'body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333; padding: 16px; margin: 0; background: #fff; } ' +
                         'p { margin: 0 0 1em; } ' +
@@ -11746,6 +11820,8 @@
                     allow_html_in_named_anchor: true,
                     image_advtab: true,
                     image_dimensions: true,
+                    image_title: true,
+                    image_caption: true,
                     object_resizing: 'img',
                     setup: function(editor) {
                         _wysiwygEditor = editor;

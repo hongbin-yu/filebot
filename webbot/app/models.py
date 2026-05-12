@@ -61,6 +61,7 @@ class PageUpdate(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     file_path: Optional[str] = Field(None, description="FileBot image storage path. If empty, inherits from ancestor pages.")
     hide_in_navigation: Optional[bool] = None
+    publish_template: Optional[str] = Field(None, description="Page-level Mustache template path. If set, publish uses this single template instead of the default hardcoded assembly.")
     tags: Optional[List[str]] = None
 
 class PageResponse(BaseModel):
@@ -78,6 +79,7 @@ class PageResponse(BaseModel):
     status: str = "draft"
     metadata: Optional[Dict[str, Any]] = None
     hide_in_navigation: bool = False
+    publish_template: Optional[str] = Field(None, description="Page-level Mustache template path for publish")
     tags: List[str] = []
     created_by: Optional[str] = None
     created_at: datetime
@@ -85,6 +87,11 @@ class PageResponse(BaseModel):
     last_published: Optional[datetime] = None
     class Config:
         from_attributes = True
+
+
+class PreviewRequest(BaseModel):
+    """Page preview request - sends editor content for rendering"""
+    content: Optional[str] = Field(None, description="Page content override (unsaved editor content)")
 
 
 class PageListItem(BaseModel):
@@ -100,6 +107,7 @@ class PageListItem(BaseModel):
     status: str = "draft"
     metadata: Optional[Dict[str, Any]] = None
     hide_in_navigation: bool = False
+    publish_template: Optional[str] = Field(None, description="Page-level Mustache template path for publish")
     tags: List[str] = []
     created_by: Optional[str] = None
     created_at: datetime

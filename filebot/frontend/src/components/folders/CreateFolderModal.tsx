@@ -4,14 +4,15 @@ import { Folder } from '../../services/folder.service';
 import { XMarkIcon, FolderIcon } from '@heroicons/react/24/outline';
 
 interface CreateFolderModalProps {
-  appSlug: string; // 应用slug（必需）
-  parentFolderPath?: string | null; // 父文件夹路径（可选，路径格式）
+  appSlug: string;
+  parentFolderPath?: string | null;
   onClose: () => void;
   onSubmit: (data: {
     name: string;
     description?: string;
-    parent_folder_id?: string; // 可以接收路径
-    app_id: string; // 应用slug
+    parent_folder_path?: string;
+    path?: string;
+    app_id: string;
   }) => Promise<void>;
   folders: Folder[];
   mode?: 'create' | 'edit';
@@ -212,11 +213,16 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     setError(null);
     
     try {
+            const parentPath = selectedParentFolderPath || undefined;
+      const autoPath = selectedParentFolderPath
+        ? `${selectedParentFolderPath.replace(/\/+$/, '')}/${name.trim().replace(/\s+/g, '-').toLowerCase()}`
+        : '';
       const folderData = {
         name: name.trim(),
         description: description.trim() || undefined,
-        parent_folder_id: selectedParentFolderPath || undefined, // 直接传递路径
-        app_id: appSlug // 使用appSlug
+        parent_folder_path: parentPath,
+        path: autoPath,
+        app_id: appSlug
       };
       
       await onSubmit(folderData);
@@ -360,25 +366,32 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
               </div>
             </div>
             
-            {/* 选择父文件夹 */}
+            {/* 选择父文件夹 - 创建子文件夹时只读显示，创建根文件夹时可选 */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('folderModal.selectParentFolderLabel')}
               </label>
-              <select
-                value={selectedParentFolderPath}
-                onChange={(e) => setSelectedParentFolderPath(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isSubmitting}
-              >
-                {folderOptions.map(option => (
-                  <option key={option.value || 'root'} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              {parentFolderPath ? (
+                <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm text-gray-700">
+                  <span className="font-medium">{getSelectedParentInfo().name}</span>
+                  <span className="text-gray-400 ml-2">{getSelectedParentInfo().path}</span>
+                </div>
+              ) : (
+                <select
+                  value={selectedParentFolderPath}
+                  onChange={(e) => setSelectedParentFolderPath(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isSubmitting}
+                >
+                  {folderOptions.map(option => (
+                    <option key={option.value || 'root'} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
               <div className="text-xs text-gray-500 mt-1">
-                {t('folderModal.selectParentFolderHint')}
+                {parentFolderPath ? t('folderModal.currentFolderAsParent') || '此文件夹为固定的父文件夹' : t('folderModal.selectParentFolderHint')}
               </div>
             </div>
             

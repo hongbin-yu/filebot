@@ -18,17 +18,14 @@ const AdminAppFolders: React.FC = () => {
   
   // State
   const [app, setApp] = useState<App | null>(null);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]); // 顶层文件夹（sidebar）
+  const [allFolders, setAllFolders] = useState<Folder[]>([]); // 全部文件夹（dropdown）
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentFolderPath, _setCurrentFolderPath] = useState<string | null>(null);
   const [forwardStack, setForwardStack] = useState<string[]>([]);
   const setCurrentFolderPath = useCallback((newPath: string | null) => {
-    if (newPath === null) {
-      console.error('🔴 setCurrentFolderPath(null) called! Stack:', new Error().stack);
-    } else {
-      console.log('🟢 setCurrentFolderPath:', newPath);
-    }
+    console.log('🟢 setCurrentFolderPath:', newPath);
     _setCurrentFolderPath(newPath);
   }, []);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -92,21 +89,22 @@ const AdminAppFolders: React.FC = () => {
   }, [appSlug]);
   
   // Load folders
+  // Load top-level folders for sidebar
   const loadFolders = async (appIdentifier: string, appId?: string) => {
     try {
-      const foldersData = await folderService.getFolders(appIdentifier, {
-        app_id: appId,
-        list_all: true,
-        limit: 1000
+      const allFolderData = await folderService.getFolders(appIdentifier, {
+        app_slug: appIdentifier,
+        path_starts_with: '/' + appIdentifier,
+        limit: 10000
       });
-      setFolders(foldersData);
+      // Sort by path depth: top-level folders first for the sidebar
+      const topLevel = allFolderData.filter(f => f.parent_folder_path === '/' + appIdentifier);
+      setFolders(topLevel);
+      setAllFolders(allFolderData);
       
-      // Read folder path from URL params — no auto-select
-      const urlParams = new URLSearchParams(search);
-      const folderPathFromUrl = urlParams.get('folder');
-      if (folderPathFromUrl) {
-        setCurrentFolderPath(folderPathFromUrl);
-      }
+      // URL → state sync is handled by the [search] useEffect below.
+      // Do NOT read folder from URL here — it captures stale `search` in closures,
+      // which causes handleDeleteFolder to re-set currentFolderPath to the deleted folder.
     } catch (error) {
       console.error('Failed to load folders:', error);
     }
@@ -134,13 +132,19 @@ const AdminAppFolders: React.FC = () => {
           // getFolder可能因路径在DB中不存在而失败(如根路径/boarding)
           // 从已加载的folders数组中查找
           console.warn('⚠️ getFolder failed, trying local lookup:', currentFolderPath);
-          folderDetails = folders.find(f => f.path === currentFolderPath) || null;
+          folderDetails = allFolders.find(f => f.path === currentFolderPath) || null;
         }
         
         if (folderDetails) {
           setCurrentFolder(folderDetails);
         } else {
+          console.warn('⚠️ Folder not found via API or local data, clearing current folder:', currentFolderPath);
           setCurrentFolder(null);
+          // Clean up stale URL param
+          setSearchParams(prev => {
+            prev.delete('folder');
+            return prev;
+          });
         }
         
         // Load subfolders using parent_folder_path
@@ -216,17 +220,26 @@ const AdminAppFolders: React.FC = () => {
   // Handle create folder
   const handleCreateFolder = async (data: FolderCreateRequest) => {
     try {
-      // Ensure app ID is correct
+      if (!app || !app.id) {
+        showToast('App info not loaded yet. Please wait and try again.', 'error');
+        return;
+      }
+      
       const folderData: FolderCreateRequest = {
         ...data,
-        app_id: app?.id || appSlug || ''
+        app_id: app.id
       };
       
       await folderService.createFolder(folderData);
       
-      // Reload folders
-      if (app) {
-        await loadFolders(appSlug || app.id, app.id);
+      // Reload folders and current subfolders
+      await loadFolders(appSlug || app.id, app.id);
+      // If user is in a folder, reload its subfolders so the new one appears immediately
+      if (currentFolderPath) {
+        const subfoldersData = await folderService.getFolders(appSlug || app.id || '', {
+          parent_folder_path: currentFolderPath
+        });
+        setSubfolders(subfoldersData);
       }
       
       setShowCreateModal(false);
@@ -238,14 +251,14 @@ const AdminAppFolders: React.FC = () => {
   
   // Handle delete folder
   const handleDeleteFolder = async (folderPath: string) => {
-    // Check if folder has subfolders
-    const subfoldersCount = folders.filter(f => f.parent_folder_path === folderPath).length;
+    // Check if folder has subfolders (use allFolders for deep folder detection)
+    const subfoldersCount = allFolders.filter(f => f.parent_folder_path === folderPath).length;
     
     let recursive = false;
     
     if (subfoldersCount > 0) {
       // Ask user about recursive delete
-      const folderName = folders.find(f => f.path === folderPath)?.name || 'This folder';
+      const folderName = allFolders.find(f => f.path === folderPath)?.name || 'This folder';
       const confirmMessage = `Folder "${folderName}" has ${subfoldersCount} subfolder(s).\n\n` +
                            `Click "OK" to recursively delete all subfolders and documents.\n` +
                            `Click "Cancel" to delete only the empty folder.`;
@@ -267,8 +280,19 @@ const AdminAppFolders: React.FC = () => {
       
       // If deleting current folder, navigate to parent or root
       if (currentFolderPath === folderPath) {
-        const folderToDelete = folders.find(f => f.path === folderPath);
-        setCurrentFolderPath(folderToDelete?.parent_folder_path || null);
+        const folderToDelete = allFolders.find(f => f.path === folderPath);
+        const parentPath = folderToDelete?.parent_folder_path ||
+          // Derive parent from path if not found in allFolders
+          (folderPath.lastIndexOf('/') > 0
+            ? folderPath.substring(0, folderPath.lastIndexOf('/'))
+            : null);
+        setCurrentFolderPath(parentPath);
+        // Also update URL so refresh doesn't hit 404 on deleted folder
+        if (parentPath) {
+          navigate(`?folder=${encodeURIComponent(parentPath)}`, { replace: true });
+        } else {
+          navigate('?', { replace: true });
+        }
       }
       
       // Reload folders
@@ -334,7 +358,7 @@ const AdminAppFolders: React.FC = () => {
   const handleSaveEditFolder = async (data: {
     name: string;
     description?: string;
-    parent_folder_id?: string;
+    parent_folder_path?: string;
   }) => {
     if (!editingFolder || !app || !editingFolder.path) return;
     
@@ -1069,7 +1093,7 @@ const AdminAppFolders: React.FC = () => {
           parentFolderPath={parentFolderPath}
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateFolder}
-          folders={folders}
+          folders={allFolders}
           mode="create"
         />
       )}
@@ -1085,7 +1109,7 @@ const AdminAppFolders: React.FC = () => {
             setEditingFolder(null);
           }}
           onSubmit={handleSaveEditFolder}
-          folders={folders}
+          folders={allFolders}
           mode="edit"
           folderToEdit={editingFolder}
         />

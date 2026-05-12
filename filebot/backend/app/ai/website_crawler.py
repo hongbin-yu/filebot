@@ -106,6 +106,71 @@ def create_document(db: Session, document_data: DocumentCreate, folder_path: str
             logger.info(f"Updated document by path: ID={existing_by_path.id}, path={url_path}")
             return existing_by_path
         
+        # ====== URL-BASED DEDUP (check before filesystem numbering) ======
+        # Search across ALL folders for existing doc with the same URL
+        # This prevents generating -N suffix duplicates when re-crawling
+        normalized_url = None
+        if document_data.document_metadata:
+            normalized_url = document_data.document_metadata.get('url')
+        
+        if normalized_url:
+            existing_by_url = db.query(Document).filter(
+                Document.document_metadata.op('->>')('url') == normalized_url
+            ).first()
+            
+            if existing_by_url:
+                logger.info(f"Found existing document by URL, updating instead of creating numbered file: URL={normalized_url}, existing_path={existing_by_url.path}, target_path={expected_url_path}")
+                
+                final_filename = existing_by_url.stored_filename or safe_filename
+                
+                if existing_by_url.storage_path:
+                    storage_path = data_root / existing_by_url.storage_path
+                else:
+                    storage_path = data_root / f"{app_slug}{clean_folder}/{final_filename}"
+                
+                old_storage = data_root / existing_by_url.storage_path if existing_by_url.storage_path else None
+                url_path = expected_url_path
+                
+                storage_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Update existing document metadata
+                existing_by_url.original_filename = original_filename
+                existing_by_url.stored_filename = final_filename
+                existing_by_url.storage_path = str(storage_path.relative_to(data_root))
+                existing_by_url.path = url_path
+                existing_by_url.parent_folder_path = folder_path
+                existing_by_url.document_metadata = document_data.document_metadata or {}
+                existing_by_url.updated_at = func.now()
+                if document_data.uploaded_by:
+                    existing_by_url.updated_by = str(document_data.uploaded_by)
+                
+                if hasattr(existing_by_url, 'conversion_status') and existing_by_url.conversion_status == ConversionStatus.FAILED:
+                    existing_by_url.conversion_status = ConversionStatus.PENDING
+                
+                # Clean up old storage file if different from new
+                if old_storage and old_storage.exists() and old_storage != storage_path:
+                    try:
+                        old_storage.unlink()
+                        logger.info(f"Cleaned up old storage file: {old_storage}")
+                    except Exception as e:
+                        logger.warning(f"Could not clean up old storage file {old_storage}: {e}")
+                
+                # Remove old numbered duplicate files
+                if existing_by_url.path != url_path:
+                    old_dir = (data_root / existing_by_url.storage_path).parent if existing_by_url.storage_path else storage_path.parent
+                    old_stem = Path(existing_by_url.stored_filename or '').stem
+                    for old_file in old_dir.glob(f"{old_stem}-[0-9]*.html"):
+                        try:
+                            old_file.unlink()
+                            logger.info(f"Cleaned up old numbered file: {old_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not clean up {old_file}: {e}")
+                
+                db.commit()
+                db.refresh(existing_by_url)
+                logger.info(f"Updated document by URL: ID={existing_by_url.path}, path={url_path}")
+                return existing_by_url
+        
         # ====== Check for orphaned files on filesystem (no DB record but file exists) ======
         expected_storage_path = data_root / f"{app_slug}{clean_folder}" / safe_filename
         if expected_storage_path.exists():
@@ -114,13 +179,11 @@ def create_document(db: Session, document_data: DocumentCreate, folder_path: str
             url_path = expected_url_path
             final_filename = safe_filename
         else:
-            # ====== No collision: create with normal filesystem dedup ======
-            storage_path, url_path, final_filename = generate_storage_paths(
-                original_filename=original_filename,
-                app_slug=app_slug,
-                folder_path=folder_path,
-                data_root=data_root
-            )
+            # ====== No collision: create document (without numbered suffix) ======
+            storage_path = data_root / f"{app_slug}{clean_folder}" / safe_filename
+            url_path = expected_url_path
+            final_filename = safe_filename
+            storage_path.parent.mkdir(parents=True, exist_ok=True)
         
         # 确保目录存在
         storage_path.parent.mkdir(parents=True, exist_ok=True)

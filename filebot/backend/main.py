@@ -211,6 +211,12 @@ if _fr_path.exists():
 else:
     logger.warning(f"Boarding 法语页面目录不存在: {_fr_path}")
 
+# Publish 目录 — 从 webbot 发布的静态 HTML 页面
+_publish_path = Path(__file__).resolve().parent / "data" / "publish"
+_publish_path.mkdir(parents=True, exist_ok=True)
+app.mount("/publish", StaticFiles(directory=str(_publish_path), html=True), name="publish")
+logger.info(f"发布目录已挂载: /publish -> {_publish_path}")
+
 _dam_path = _data_base / "content" / "dam"
 _dam_path.mkdir(parents=True, exist_ok=True)
 

@@ -63,28 +63,35 @@ def check_folder_permission(folder: Folder, current_user: User, db: Session):
 @router.get("/", response_model=List[FolderResponse])
 def get_folders(
     app_id: Optional[str] = Query(None, description="Filter by app ID"),
+    app_slug: Optional[str] = Query(None, description="Filter by app slug (path prefix)"),
     parent_folder_path: Optional[str] = Query(None, description="Filter by parent folder path"),
-    list_all: bool = Query(False, description="Return all folders for the app (ignores parent_folder_path default)"),
+    path_starts_with: Optional[str] = Query(None, description="Filter by path prefix (e.g. '/boarding' for all app folders)"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=10000),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取文件夹列表，支持按 app_id 或 parent_folder_path 过滤"""
+    """获取文件夹列表，支持按 app_id / app_slug / parent_folder_path / path_starts_with 过滤"""
     query = db.query(Folder)
 
     if app_id:
         get_app_or_check_permission(app_id, current_user, db)
         query = query.filter(Folder.app_id == app_id)
+    elif app_slug:
+        app = db.query(App).filter(App.slug == app_slug).first()
+        if not app:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"App not found: {app_slug}")
+        if not current_user.is_superuser and app.owner_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No permission to access this app")
+        query = query.filter(Folder.app_id == app.id)
     else:
         if not current_user.is_superuser:
             user_app_ids = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
             query = query.filter(Folder.app_id.in_(user_app_ids))
 
-    if list_all:
-        # 返回应用下所有文件夹，不做 parent_folder_path 过滤
-        pass
-    elif parent_folder_path:
+    if path_starts_with:
+        query = query.filter(Folder.path.startswith(path_starts_with))
+    elif parent_folder_path is not None:
         query = query.filter(Folder.parent_folder_path == parent_folder_path)
     else:
         # 默认只返回顶层文件夹
@@ -287,7 +294,7 @@ def _recursive_delete(folder_path: str, db: Session):
 def get_folder_children(
     folder_path: str,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=10000),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):

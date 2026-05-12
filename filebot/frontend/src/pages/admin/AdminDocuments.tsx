@@ -176,6 +176,35 @@ const AdminDocuments: React.FC = () => {
     }
   };
 
+  // Import single document to WebBot
+  const handleImportToWebBot = async (doc: Document) => {
+    const docPath = doc.path || doc.storage_path || doc.id;
+    const docName = doc.title || doc.original_filename || docPath;
+    try {
+      const response = await fetch('/api/v1/import-to-webbot/single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ document_path: docPath }),
+      });
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.detail || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.inserted > 0) {
+        showToast(`✅ "${docName}" imported to WebBot`, 'success');
+      } else if (result.updated > 0) {
+        showToast(`🔄 "${docName}" updated in WebBot`, 'success');
+      } else {
+        showToast(`⚠️ "${docName}" skipped`, 'info');
+      }
+    } catch (err: any) {
+      console.error('Import to WebBot failed:', err);
+      showToast(`Import failed: ${err.message || 'Unknown error'}`, 'error');
+    }
+  };
+
   // DataTable column definitions
   const columns = useMemo(() => [
     {
@@ -232,7 +261,7 @@ const AdminDocuments: React.FC = () => {
     },
     {
       name: 'Actions',
-      width: '180px',
+      width: '260px',
       cell: (row: Document) => (
         <div className="flex space-x-2">
           <button 
@@ -246,6 +275,13 @@ const AdminDocuments: React.FC = () => {
             className="text-blue-600 hover:text-blue-800 text-sm"
           >
             Edit
+          </button>
+          <button
+            onClick={() => handleImportToWebBot(row)}
+            className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+            title="Import this page to WebBot"
+          >
+            WebBot
           </button>
           <button 
             onClick={() => handleDelete(row.path)}
