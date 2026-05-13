@@ -873,7 +873,13 @@ class WebsiteCrawler:
             # 提取页面标题
             title = soup.title.string if soup.title else url
             # 清理标题
-            title = re.sub(r'\s+', ' ', title).strip()[:200]  # 限制长度
+            title = re.sub(r'\s+', ' ', title).strip()  # 先清理空白
+            # 移除 " - Canada.ca" 后缀（canada.ca SEO 规范）
+            if title.endswith(' - Canada.ca'):
+                title = title[:-12].rstrip()
+            if title.endswith(' - Canada.ca - Gouvernement du Canada'):
+                title = title[:-33].rstrip()
+            title = title[:200]  # 限制长度
             
             # 提取主要内容 - 更智能的内容提取
             # 首先尝试常见的内容区域选择器

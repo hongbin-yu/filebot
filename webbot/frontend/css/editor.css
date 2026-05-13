@@ -11,7 +11,6 @@
             padding: 20px;
             display: flex;
             gap: 20px;
-            height: 90vh;
         }
 
         /* Left sidebar for page tree */
@@ -20,10 +19,9 @@
             background: white;
             border: 1px solid #ddd;
             border-radius: 4px;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
-            max-height: 90vh;
+            max-height: 100vh;
         }
 
         .sidebar-header {
@@ -94,10 +92,8 @@
             background: white;
             border: 1px solid #ddd;
             border-radius: 4px;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
-            max-height: 90vh;
             order: 1; /* Display on the left side */
         }
 
@@ -371,7 +367,7 @@
             display: flex;
             flex-direction: column;
             height: 100%;
-            max-height: 90vh;
+            max-height: 100vh;
             order: 2; /* Display on the right side */
             transition: all 0.3s ease;
         }
@@ -391,7 +387,7 @@
             display: flex;
             flex-direction: column;
             height: 100%;
-            max-height: 90vh;
+            max-height: 100vh;
             order: 0;
             transition: all 0.3s ease;
         }
@@ -1472,7 +1468,6 @@
 
         .components-modal-body {
             flex: 1;
-            overflow: hidden;
             display: flex;
         }
 
@@ -1741,8 +1736,15 @@
             width: 100%;
             height: 100%;
             overflow: auto;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: transparent;
             animation: fadeIn 0.15s ease-out;
+        }
+        .html-edit-modal::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: -1;
         }
 
         .html-edit-modal.show {
@@ -1758,7 +1760,7 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             width: 90%;
             max-width: 900px;
-            max-height: 90vh;
+            max-height: 100vh;
             display: flex;
             flex-direction: column;
             animation: slideUp 0.2s ease-out;
@@ -1831,7 +1833,6 @@
         .html-edit-modal-body {
             padding: 0;
             flex: 1;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
         }
@@ -1947,4 +1948,24 @@
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Ensure TinyMCE dialogs and context menus stack above the HTML edit modal (z-index: 10000) */
+        .tox-dialog-wrap,
+        .tox-menu,
+        .tox-pop__dialog {
+            z-index: 2147483647 !important;
+        }
+
+        /* Quick Edit toolbar buttons */
+        .quick-edit-toolbar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .quick-edit-toolbar .btn {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 3px;
         }

@@ -129,10 +129,7 @@
                     <button id="ai-toggle-btn" class="filebot-toggle-btn" title="AI Assistant">🤖 AI</button>
                     <!-- Language switcher -->
                     <div id="language-switcher" class="language-switcher" style="display: none;">
-                        <span class="language-switcher-label">Language:</span>
-                        <select id="language-select" class="form-control" style="width: auto; display: inline-block; height: 36px; padding: 5px 10px;">
-                            <option value="">Switch...</option>
-                        </select>
+                        <a id="language-link" class="btn btn-default" href="#" target="_blank" style="padding: 5px 10px; font-size: 13px;">Other language</a>
                     </div>
                 </div>
                 <div class="page-info">
@@ -191,7 +188,7 @@
 
                         <!-- HTML Source Container -->
                         <div id="html-source-container" class="html-source-container">
-                            <textarea id="editor-content" class="form-control" rows="50" placeholder="Enter HTML content"></textarea>
+                            <textarea id="editor-content" class="form-control" rows="70" placeholder="Enter HTML content"></textarea>
                         </div>
 
                         <div style="margin-top: 10px; font-size: 13px; color: #666;">
@@ -215,6 +212,8 @@
             </div>
 
             <div class="editor-actions" style="display: none;" id="editor-actions">
+                <button type="button" class="btn btn-default btn-sm" id="quick-edit-component" title="Edit selected element visually (WYSIWYG)">🎨 Edit component</button>
+                <button type="button" class="btn btn-default btn-sm" id="quick-edit-html" title="Edit selected element HTML source code">✏️ Edit HTML</button>
                 <button id="preview-page" class="btn btn-info">
                     <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
                     Preview

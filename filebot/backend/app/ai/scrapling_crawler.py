@@ -1527,10 +1527,12 @@ def process_page_title(title: str, url: str = "") -> str:
     
     processed_title = title.strip()
     
-    # 1. 移除 " - Canada.ca" 后缀（英文标题）- 注意空格
-    # 检查标题是否以 " - Canada.ca" 结尾
-    if processed_title.endswith(" - Canada.ca"):
-        # 移除 " - Canada.ca"（12个字符）
+    # 1. 移除 " - Canada.ca" 后缀（canada.ca SEO 规范）
+    # 检查标题是否以 " - Canada.ca - Gouvernement du Canada" 结尾（法语）
+    if processed_title.endswith(" - Canada.ca - Gouvernement du Canada"):
+        processed_title = processed_title[:-33].rstrip()
+    # 检查标题是否以 " - Canada.ca" 结尾（英文）
+    elif processed_title.endswith(" - Canada.ca"):
         processed_title = processed_title[:-12].rstrip()
     
     # 2. 简单中文检测和处理（基础实现）

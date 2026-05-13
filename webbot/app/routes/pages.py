@@ -11,12 +11,14 @@ import os
 import requests
 import re
 import traceback
+import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from fastapi import Request as FastAPIRequest
 
 from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, PreviewRequest, PagePropertiesResponse, PageMetadataResponse, PageStatus
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/pages", tags=["pages"])
 
 WEBBOT_DB_PATH = os.environ.get(
@@ -2827,29 +2829,28 @@ async def publish_page(
                 "</html>"
             )
 
-        # 9. Save to FileBot publish directory
-        # FileBot serves published files at /publish/
-        FILEBOT_PUBLISH_DIR = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "..",
-            "..",
-            "filebot",
-            "backend",
-            "data",
-            "publish"
-        )
-        
-        site_root = output_dir or FILEBOT_PUBLISH_DIR
-        
-        # Determine relative path from the page path
-        # Path like /canadasite/en/contact → output canadasite/en/contact.html
-        rel_path = path.lstrip("/")
-        
-        output_file = os.path.join(site_root, rel_path + ".html")
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(full_html)
+        # 9. Save to FileBot publish directory via FileBot API
+        # 调用FileBot的publish app接口来写入发布文件
+        filebot_publish_url = "http://localhost:8001/api/v1/pages/publish"
+        fb_params = {"path": path}
+        if output_dir:
+            fb_params["output_dir"] = output_dir
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                filebot_publish_url,
+                params=fb_params,
+                json={"html_content": full_html},
+                headers={"X-WebBot-Access": "true"}
+            ) as fb_resp:
+                if fb_resp.status != 200:
+                    fb_error = await fb_resp.text()
+                    logger.error(f"FileBot publish failed ({fb_resp.status}): {fb_error}")
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"FileBot publish failed: {fb_error}"
+                    )
+                fb_result = await fb_resp.json()
+                output_file = fb_result.get("output_file", "")
 
         # 10. Update page status to "published"
         cursor.execute(

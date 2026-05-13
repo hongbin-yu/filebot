@@ -1199,9 +1199,9 @@ function setupButtons() {
             loadedPaths = {};
             columnsCache = [];
 
-            // Navigate to English page editor
+            // Open English page editor in new tab
             var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
-            window.location.href = editorUrl;
+            window.open(editorUrl, '_blank');
 
         } catch (err) {
             showToast('Failed to create page: ' + err.message, 'danger');

@@ -416,6 +416,20 @@
 
             // Initialize language switcher
             initLanguageSwitcher();
+
+            // Quick Edit buttons wiring
+            var quickEditComponent = document.getElementById('quick-edit-component');
+            var quickEditHTML = document.getElementById('quick-edit-html');
+            if (quickEditComponent) {
+                quickEditComponent.addEventListener('click', function() {
+                    showCurrentElementWYSIWYGEdit();
+                });
+            }
+            if (quickEditHTML) {
+                quickEditHTML.addEventListener('click', function() {
+                    showCurrentElementHTMLEdit('code');
+                });
+            }
         });
 
         /**
@@ -615,7 +629,7 @@
             // Configure TinyMCE
             tinymce.init({
                 selector: '#wysiwyg-editor-container',
-                height: 600,
+                height: 1500,
                 menubar: 'file edit view insert format tools table help',
                 base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
                 plugins: [
@@ -662,6 +676,7 @@
                             insertComponent('button');
                         }
                     });
+
 
                     editor.ui.registry.addButton('insertByPath', {
                         text: '📄 Insert by Path',
@@ -1670,202 +1685,41 @@
 
         function populateLanguageSwitcher() {
             const languageSwitcher = document.getElementById('language-switcher');
-            const languageSelect = document.getElementById('language-select');
+            const languageLink = document.getElementById('language-link');
 
-            if (!languageSwitcher || !languageSelect) {
+            if (!languageSwitcher || !languageLink) {
                 console.warn('Language switcher elements not found');
                 return;
             }
 
-            // Only show language switcher if we have a current page
-            if (!currentPageId) {
+            // Only show if we have a current page with other_language_path
+            if (!currentPageData || !currentPageData.other_language_path) {
                 languageSwitcher.style.display = 'none';
                 return;
             }
 
-            const currentLang = detectCurrentLanguage();
-            let availableLangs = getAvailableLanguages();
+            const otherPath = currentPageData.other_language_path;
+            const currentLang = (currentPageData.language || 'en').toLowerCase();
 
-            // Also include languages from extracted alternate language links
-            const metadata = metadataManager.getMetadata();
-            if (metadata.alternateLanguages) {
-                console.log('Found alternate languages in metadata:', metadata.alternateLanguages);
-
-                // Extract language codes from alternate language links
-                const alternateLangCodes = metadata.alternateLanguages
-                    .map(lang => lang.hreflang)
-                    .filter(lang => lang && typeof lang === 'string');
-
-                // Merge with existing available languages (remove duplicates)
-                const allLangs = [...new Set([...availableLangs, ...alternateLangCodes])];
-                availableLangs = allLangs;
-                console.log('Merged available languages:', availableLangs);
-            }
-
-            if (availableLangs.length < 2) {
-                // Only one language available, hide the switcher
-                languageSwitcher.style.display = 'none';
-                return;
-            }
-
-            // Show the switcher
-            languageSwitcher.style.display = 'flex';
-
-            // Clear existing options except the first one
-            while (languageSelect.options.length > 1) {
-                languageSelect.remove(1);
-            }
-
-            // Add available languages
-            availableLangs.forEach(lang => {
-                const option = document.createElement('option');
-                option.value = lang;
-                option.textContent = lang.toUpperCase();
-                if (lang === currentLang) {
-                    option.selected = true;
-                    option.textContent = `🌐 ${lang.toUpperCase()}`;
-                }
-                languageSelect.appendChild(option);
-            });
-
-            // Update the first option text
-            if (languageSelect.options.length > 0) {
-                languageSelect.options[0].textContent = `🌐 ${currentLang.toUpperCase()}`;
-            }
-        }
-
-        function switchToLanguage(lang) {
-            if (!currentPageId || !lang) return;
-
-            const currentLang = detectCurrentLanguage();
-            if (lang === currentLang) {
-                return; // Already in this language
-            }
-
-            console.log('switchToLanguage called with:', lang, 'currentPageId:', currentPageId);
-
-            // Helper function to remove .html suffix if present
-            function removeHtmlSuffix(path) {
-                return path.replace(/\.html$/i, '');
-            }
-
-            // First check if we have alternate language links in metadata
-            const metadata = metadataManager.getMetadata();
-            if (metadata.alternateLanguages && Array.isArray(metadata.alternateLanguages)) {
-                console.log('Checking alternate languages:', metadata.alternateLanguages);
-
-                // Find the alternate language link for the requested language
-                const altLang = metadata.alternateLanguages.find(
-                    alt => alt.hreflang && alt.hreflang.toLowerCase() === lang.toLowerCase()
-                );
-
-                if (altLang && altLang.href) {
-                    console.log('Found alternate language URL:', altLang.href);
-
-                    // Extract the path from the URL if it's a full URL
-                    let targetPath = altLang.href;
-
-                    // If it's a full URL, try to extract the path
-                    if (targetPath.startsWith('http')) {
-                        try {
-                            const url = new URL(targetPath);
-                            targetPath = url.pathname;
-                            console.log('Extracted path from URL:', targetPath);
-                        } catch (e) {
-                            console.warn('Could not parse URL, using as-is:', targetPath);
-                        }
-                    }
-
-                    // Remove .html suffix if present
-                    targetPath = removeHtmlSuffix(targetPath);
-
-                    // Remove any leading slash for consistency
-                    while (targetPath.startsWith('/')) {
-                        targetPath = targetPath.substring(1);
-                    }
-
-                    // Navigate to the page using the alternate language URL
-                    console.log('Navigating to path from alternate link:', targetPath);
-
-                    // Determine current editor page base URL
-                    let baseUrl = '/editor.html';
-                    if (window.location.pathname.includes('/static/editor.html')) {
-                        baseUrl = '/static/editor.html';
-                    }
-
-                    // Use query parameter format as requested: editor.html?path={other_language_path}
-                    const newUrl = `${baseUrl}?path=/${targetPath}`;
-                    console.log(`Switching language using alternate link: ${newUrl}`);
-                    window.location.href = newUrl;
-                    return;
-                }
-            }
-
-            console.log('No alternate language link found, using path replacement method');
-
-            // Fallback: Get current path and replace language part
-            let currentPath = currentPageId;
-            // Remove .html suffix if present
-            currentPath = removeHtmlSuffix(currentPath);
-
-            if (!currentPath.startsWith('/')) {
-                currentPath = `/${currentPath}`;
-            }
-
-            // Replace language code in the path
-            let newPath = currentPath;
-
-            // Try to find and replace the language code in the path
-            // Look for a pattern like /en/ or /fr/ in the path
-            const langRegex = /\/([a-z]{2,3})\//gi;
-            let match;
-            let replaced = false;
-
-            // Find the first language code match in the path
-            while ((match = langRegex.exec(currentPath)) !== null) {
-                const matchedLang = match[1].toLowerCase();
-                // Replace this occurrence with the new language
-                newPath = currentPath.substring(0, match.index + 1) + lang + currentPath.substring(match.index + 1 + matchedLang.length);
-                replaced = true;
-                break; // Only replace the first language code found
-            }
-
-            // If no language code found, prepend the language
-            if (!replaced) {
-                // Add language as the first segment after root
-                if (currentPath.startsWith('/')) {
-                    newPath = `/${lang}${currentPath === '/' ? '' : currentPath}`;
-                } else {
-                    newPath = `/${lang}/${currentPath}`;
-                }
-            }
-
-            // Navigate to the new URL
-            // Determine current editor page base URL
+            // Determine correct editor URL base
             let baseUrl = '/editor.html';
             if (window.location.pathname.includes('/static/editor.html')) {
                 baseUrl = '/static/editor.html';
             }
 
-            // Use query parameter format as requested: editor.html?path={other_language_path}
-            const newUrl = `${baseUrl}?path=${encodeURIComponent(newPath)}`;
-            console.log(`Switching language using path replacement: ${newUrl}`);
-            window.location.href = newUrl;
+            languageLink.href = baseUrl + '?path=' + encodeURIComponent(otherPath);
+            languageLink.textContent = currentLang === 'en' ? 'Français' : 'English';
+            languageSwitcher.style.display = 'inline-block';
         }
 
-        // Initialize language switcher event listener
+        function switchToLanguage(lang) {
+            if (!currentPageId || !lang) return;
+            console.warn('switchToLanguage is deprecated, using language link instead');
+        }
+
+        // Initialize language switcher (now handled by populateLanguageSwitcher)
         function initLanguageSwitcher() {
-            const languageSelect = document.getElementById('language-select');
-            if (languageSelect) {
-                languageSelect.addEventListener('change', function(e) {
-                    const selectedLang = e.target.value;
-                    if (selectedLang && selectedLang !== '') {
-                        switchToLanguage(selectedLang);
-                        // Reset to placeholder after selection
-                        e.target.value = '';
-                    }
-                });
-            }
+            // No-op: language switcher driven by populateLanguageSwitcher() on page load
         }
 
         // Load a specific page
@@ -1914,7 +1768,6 @@
 
                 // Update display
                 pageTitleDisplayEl.textContent = page.title || 'Untitled';
-                pageIdDisplayEl.textContent = ` | ID: ${page.id}`;
                 pageLanguageDisplayEl.textContent = ` | Language: ${page.language ? page.language.toUpperCase() : 'EN'}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${page.status || 'draft'}`;
 
@@ -1930,23 +1783,18 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const filePathFromUrl = urlParams.get('file_path');
 
-                // Update file path display (priority: URL parameter > database)
+                // Update path display (priority: URL parameter > page.path > page id)
                 if (filePathFromUrl) {
-                    // Display URL parameter with different styling
-                    filePathDisplayEl.textContent = ` | File Path (URL): ${filePathFromUrl}`;
-                    filePathDisplayEl.style.color = '#28a745'; // Green for URL parameter
-                    filePathDisplayEl.style.fontWeight = 'bold';
-                    filePathDisplayEl.title = 'File path from URL parameter (not saved to database)';
-                } else if (page.metadata && page.metadata.file_path) {
-                    // Display database file path
-                    filePathDisplayEl.textContent = ` | File Path: ${page.metadata.file_path}`;
-                    filePathDisplayEl.style.color = '#007bff'; // Blue for database
-                    filePathDisplayEl.style.fontWeight = 'normal';
-                    filePathDisplayEl.title = 'File path saved in database';
+                    pageIdDisplayEl.textContent = ` | Path: ${filePathFromUrl}`;
+                } else if (page.path) {
+                    pageIdDisplayEl.textContent = ` | Path: ${page.path}`;
                 } else {
-                    filePathDisplayEl.textContent = '';
-                    filePathDisplayEl.title = '';
+                    pageIdDisplayEl.textContent = ` | ID: ${page.id}`;
                 }
+                filePathDisplayEl.textContent = '';
+                filePathDisplayEl.style.color = '';
+                filePathDisplayEl.style.fontWeight = '';
+                filePathDisplayEl.title = '';
 
                 // Update FileBot target folder display
                 try {
@@ -3656,7 +3504,7 @@
 
                 // Update display
                 pageTitleDisplayEl.textContent = createdPage.title || title;
-                pageIdDisplayEl.textContent = ' | ID: ' + (createdPage.id || '');
+                pageIdDisplayEl.textContent = ' | Path: ' + (createdPage.metadata?.file_path || createdPage.id || '');
                 pageLanguageDisplayEl.textContent = ' | Language: ' + (createdPage.language || language).toUpperCase();
                 pageStatusDisplayEl.textContent = ' | Status: ' + (createdPage.status || 'draft');
                 if (createdPage.metadata && createdPage.metadata.file_path) {
@@ -11776,6 +11624,7 @@
             // Show modal
             modal.classList.add('show');
             modal.style.display = 'flex';
+            document.body.classList.add('html-edit-modal-open');
 
             if (mode === 'code') {
                 setTimeout(() => { textarea.focus(); textarea.select(); }, 100);
@@ -11788,11 +11637,25 @@
                 wysiwygContainer.appendChild(editorDiv);
                 void wysiwygContainer.offsetHeight;
 
+                // Force TinyMCE floating elements above modal backdrop
+                if (!document.getElementById('tox-zindex-fix')) {
+                    var s = document.createElement('style');
+                    s.id = 'tox-zindex-fix';
+                    s.textContent = '.html-edit-modal-open .tox-dialog-wrap,' +
+                        '.html-edit-modal-open .tox-menu,' +
+                        '.html-edit-modal-open .tox-pop,' +
+                        '.html-edit-modal-open .tox-pop__dialog,' +
+                        '.html-edit-modal-open .tox-notifications-container{z-index:2147483647!important}' +
+                        '.html-edit-modal-open #wysiwyg-editor-container .tox-tinymce{display:none!important}';                    document.head.appendChild(s);
+                }
+
                 tinymce.init({
                     selector: '#wysiwyg-editor-inline',
                     height: 450,
                     menubar: 'edit view insert format table help',
                     base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
+                    zIndex: 100000,
+                    contextmenu: 'link image table',
                     plugins: [
                         'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                         'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
@@ -11830,6 +11693,26 @@
                         editor.on('init', function() {
                             setTimeout(function() { editor.focus(); }, 200);
                         });
+                        // MutationObserver: catch TinyMCE dialog elements and force z-index
+                        if (!window._toxZobserver) {
+                            window._toxZobserver = new MutationObserver(function(muts) {
+                                muts.forEach(function(m) {
+                                    m.addedNodes.forEach(function(n) {
+                                        if (n.nodeType === 1) {
+                                            if (n.matches && n.matches('.tox-dialog-wrap,.tox-menu,.tox-pop,.tox-pop__dialog,.tox-notifications-container')) {
+                                                n.style.setProperty('z-index', '2147483647', 'important');
+                                            }
+                                            if (n.querySelectorAll) {
+                                                n.querySelectorAll('.tox-dialog-wrap,.tox-menu,.tox-pop,.tox-pop__dialog,.tox-notifications-container').forEach(function(el) {
+                                                    el.style.setProperty('z-index', '2147483647', 'important');
+                                                });
+                                            }
+                                        }
+                                    });
+                                });
+                            });
+                            window._toxZobserver.observe(document.body, { childList: true, subtree: true });
+                        }
                     }
                 });
             }
@@ -11926,6 +11809,7 @@
             if (modal) {
                 modal.classList.remove('show');
                 modal.style.display = 'none';
+            document.body.classList.remove('html-edit-modal-open');
             }
             _editingHTMLTarget = null;
             _editMode = 'code';
