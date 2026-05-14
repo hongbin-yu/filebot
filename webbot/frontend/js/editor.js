@@ -2920,6 +2920,8 @@
                     });
 
                     // Try to find main content area - prioritize Canada.ca main element
+                    // NOTE: keep only specific selectors; avoid generic ones (like .container, #wb-cont)
+                    // that match non-main sections (e.g., banner containers) and cause content loss on save
                     const mainSelectors = [
                         'main[property="mainContentOfPage"]',
                         'main',
@@ -2927,11 +2929,7 @@
                         '.row.profile',               // Canada.ca profile/content container
                         '#main-content',
                         'article',
-                        '.container.main',
-                        '.col-md-9',
-                        '.col-md-8',
-                        '.container',
-                        '#wb-cont'                    // Title element (last resort)
+                        '.container.main'
                     ];
 
                     let mainElement = null;
@@ -2941,33 +2939,6 @@
                         if (mainElement) {
                             matchedSelector = selector;
                             break;
-                        }
-                    }
-
-                    // Special handling for #wb-cont if it's just a heading
-                    if (mainElement && matchedSelector === '#wb-cont' &&
-                        mainElement.tagName && mainElement.tagName.match(/^H[1-6]$/i)) {
-                        console.log('cleanContent: #wb-cont is a heading element, looking for content container...');
-                        // Try to find parent or sibling with actual content
-                        const parent = mainElement.parentElement;
-                        if (parent) {
-                            const parentText = parent.textContent || '';
-                            const headingText = mainElement.textContent || '';
-                            if (parentText.length > headingText.length + 100) {
-                                // Parent has additional content beyond heading
-                                console.log('cleanContent: using parent container instead of heading');
-                                mainElement = parent;
-                            } else {
-                                // Look for next sibling with substantial content
-                                let nextSib = mainElement.nextElementSibling;
-                                while (nextSib && (nextSib.textContent || '').length < 100) {
-                                    nextSib = nextSib.nextElementSibling;
-                                }
-                                if (nextSib && (nextSib.textContent || '').length >= 100) {
-                                    console.log('cleanContent: using next sibling with content');
-                                    mainElement = nextSib;
-                                }
-                            }
                         }
                     }
 
@@ -3361,10 +3332,30 @@
                     headerContent = headerData.content || '';
                 }
 
-                const footerResponse = await fetch(`/api/v1/pages/by-path?path=${encodeURIComponent(rootPath + '/footer')}`);
-                if (footerResponse.ok) {
-                    const footerData = await footerResponse.json();
-                    footerContent = footerData.content || '';
+                // Use new getfooter API that returns institution + language level
+                const pathForFooter = currentPageData?.path || rootPath;
+                const lang = currentPageData?.language || 'en';
+                // Use server-side mustache rendering: loads template config & datasource in one call
+                try {
+                    const dsUrl = `/api/v1/getfooter?path=${encodeURIComponent(pathForFooter)}`;
+                    const mustacheResp = await fetch(`/mustache/${lang}/mustache-templates/getfooter?datasource=${encodeURIComponent(dsUrl)}`);
+                    if (mustacheResp.ok) {
+                        footerContent = await mustacheResp.text();
+                    }
+                } catch (e) {
+                    console.error('Error rendering footer via mustache:', e);
+                }
+                // Fallback: direct call if mustache rendering failed
+                if (!footerContent) {
+                    try {
+                        const fallbackResp = await fetch(`/api/v1/getfooter?path=${encodeURIComponent(pathForFooter)}`);
+                        if (fallbackResp.ok) {
+                            const fd = await fallbackResp.json();
+                            footerContent = (fd.institution_level?.content || '') + (fd.language_level?.content || '');
+                        }
+                    } catch (e2) {
+                        console.error('Fallback footer fetch failed:', e2);
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching header/footer:', error);
@@ -3841,6 +3832,7 @@
 
         // Simple Component Selector Functions
         let allComponents = [];
+        let componentChildrenMap = {};  // parent_path → [child pages]
         let currentCategory = 'all';
         let currentSearch = '';
 
@@ -3868,21 +3860,39 @@
                         pageData: page
                     }));
 
-                    // 也尝试加载 template-container 的模板页(补充,不移除已存在的)
-                    fetch('/api/v1/pages/?limit=500')
-                        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-                        .then(allPages => {
-                            const extraPages = allPages.filter(p =>
-                                p.metadata && (p.metadata.is_template === true || p.metadata.component_template === true)
-                            );
-                            if (extraPages.length > 0) {
-                                const existingPaths = new Set(allComponents.map(c => c.path));
-                                extraPages.forEach(page => {
+                    // 使用 backend prefix 参数拉取 components 路径下所有页面
+                    fetch('/api/v1/pages/?prefix=/canadasite/en/components/&limit=5000')
+                        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                        .then(function(allCompPages) {
+                            // Build children map: group by parent_path
+                            componentChildrenMap = {};
+                            allCompPages.forEach(function(p) {
+                                if (p && p.parent_path) {
+                                    if (!componentChildrenMap[p.parent_path]) {
+                                        componentChildrenMap[p.parent_path] = [];
+                                    }
+                                    componentChildrenMap[p.parent_path].push(p);
+                                }
+                            });
+                            console.log('Component children map built:', Object.keys(componentChildrenMap).length, 'groups');
+
+                            // Also fetch template pages (metadata marked)
+                            return fetch('/api/v1/pages/?limit=100')
+                                .then(function(r) { if (!r.ok) return []; return r.json(); })
+                                .then(function(allPages) {
+                                    var extraPages = allPages.filter(function(p) {
+                                        return p.metadata && (p.metadata.is_template === true || p.metadata.component_template === true);
+                                    });
+                                    return extraPages;
+                                });
+                        })
+                        .then(function(extraPages) {
+                            // Supplement template pages to allComponents
+                            if (extraPages && extraPages.length > 0) {
+                                var existingPaths = new Set(allComponents.map(function(c) { return c.path; }));
+                                extraPages.forEach(function(page) {
                                     if (!existingPaths.has(page.path)) {
-                                        let cat = 'gcweb';
-                                        if (page.metadata && page.metadata.category) {
-                                            cat = page.metadata.category;
-                                        }
+                                        var cat = (page.metadata && page.metadata.category) || 'gcweb';
                                         allComponents.push({
                                             id: page.id || page.path,
                                             name: page.title || page.path.split('/').pop(),
@@ -3893,14 +3903,17 @@
                                             url: '',
                                             pageData: page
                                         });
+                                        existingPaths.add(page.path);
                                     }
                                 });
-                                console.log(`Supplemented with ${allComponents.length - childPages.length} template pages`);
                             }
-                            // Final render
                             finishLoad();
                         })
-                        .catch(() => finishLoad());
+                        .catch(function(err) {
+                            console.error('Error building component children map:', err);
+                            componentChildrenMap = {};
+                            finishLoad();
+                        });
 
                     // 补充加载JSON定义的组件(确保wet-*组件不丢失)
                     function finishLoad() {
@@ -3918,8 +3931,8 @@
 
             // 回退: 使用全部页面API
             function fetchPageAPI() {
-                console.log('Falling back to /api/v1/pages/?limit=1000...');
-                fetch('/api/v1/pages/?limit=1000')
+                console.log('Falling back to /api/v1/pages/?limit=5000...');
+                fetch('/api/v1/pages/?limit=5000')
                     .then(response => {
                         if (!response.ok) throw new Error(`HTTP ${response.status}`);
                         return response.json();
@@ -4184,7 +4197,7 @@
             helpLi.style.color = '#666';
             helpLi.style.borderBottom = '1px solid #eee';
             helpLi.style.fontStyle = 'italic';
-            helpLi.innerHTML = '⚙️ = needs config params | Other components: direct insert';
+            helpLi.innerHTML = '📁 = click to expand | Click component to insert';
             sidebarEl.appendChild(helpLi);
 
             // Group components by category for better organization
@@ -4196,6 +4209,9 @@
                 }
                 componentsByCategory[category].push(component);
             });
+
+            // Keep track of which parents we've already rendered children for
+            const renderedParentPaths = new Set();
 
             // Render categories and components
             Object.keys(componentsByCategory).sort().forEach(category => {
@@ -4209,8 +4225,18 @@
 
                 // Add components in this category
                 components.forEach(component => {
+                    const parentPath = component.path.replace(/\/+$/, '');
+                    const children = componentChildrenMap[parentPath];
+                    const hasChildren = children && children.length > 0;
+
+                    if (hasChildren) {
+                        // Skip if we already rendered this parent's children
+                        if (renderedParentPaths.has(parentPath)) return;
+                        renderedParentPaths.add(parentPath);
+                    }
+
                     const li = document.createElement('li');
-                    li.className = 'filebot-component-item';
+                    li.className = 'filebot-component-item' + (hasChildren ? ' component-parent' : '');
                     li.dataset.componentId = component.id;
 
                     // Check if this component requires parameter dialog
@@ -4219,14 +4245,16 @@
 
                     // Build title with explanation
                     let titleText = component.description || component.name;
-                    if (needsDialog) {
+                    if (hasChildren) {
+                        titleText += ' (click to expand/collapse variants)';
+                    } else if (needsDialog) {
                         titleText += ' (needs config params)';
                     } else {
                         titleText += ' (direct insert)';
                     }
                     li.title = titleText;
 
-                    // Create content with optional gear icon
+                    // Create content with optional gear icon and expand arrow
                     const contentSpan = document.createElement('span');
                     contentSpan.style.display = 'flex';
                     contentSpan.style.justifyContent = 'space-between';
@@ -4234,10 +4262,15 @@
                     contentSpan.style.width = '100%';
 
                     const nameSpan = document.createElement('span');
-                    nameSpan.textContent = component.name;
+                    if (hasChildren) {
+                        // Parent: show ▶ / 📁 icon, not insertable directly
+                        nameSpan.innerHTML = `<span class="component-arrow">▶</span> 📁 ${component.name}`;
+                    } else {
+                        nameSpan.textContent = component.name;
+                    }
 
                     const iconSpan = document.createElement('span');
-                    if (needsDialog) {
+                    if (needsDialog && !hasChildren) {
                         iconSpan.textContent = '⚙️';
                         iconSpan.title = 'Click to configure parameters';
                         iconSpan.style.marginLeft = '8px';
@@ -4249,21 +4282,70 @@
                     contentSpan.appendChild(iconSpan);
                     li.appendChild(contentSpan);
 
-                    li.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (component.path) {
-                            insertPath(component.path);
-                        } else {
-                            insertComponent(component.id);
-                        }
-                    });
+                    // Click behavior: expand/collapse for parents, insert for children/leaf
+                    if (hasChildren) {
+                        // Parent: create a nested list for children
+                        const childUl = document.createElement('ul');
+                        childUl.className = 'component-children';
+                        childUl.style.display = 'none';  // collapsed by default
+                        childUl.style.paddingLeft = '16px';
+                        childUl.style.listStyle = 'none';
+                        childUl.style.margin = '0';
+
+                        children.forEach(child => {
+                            const childLi = document.createElement('li');
+                            // Use child's actual path - display its title or last segment
+                            const childName = child.title || child.path.split('/').pop();
+                            childLi.className = 'filebot-component-item component-child';
+                            childLi.textContent = childName;
+                            childLi.title = (child.description || childName) + ' (click to insert)';
+                            childLi.style.paddingLeft = '8px';
+                            childLi.style.fontSize = '12px';
+                            childLi.style.cursor = 'pointer';
+                            childLi.style.borderLeft = '2px solid #ddd';
+                            childLi.style.margin = '2px 0';
+
+                            childLi.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                insertPath(child.path);
+                            });
+
+                            childUl.appendChild(childLi);
+                        });
+
+                        li.appendChild(childUl);
+
+                        // Toggle expand/collapse on click
+                        let expanded = false;
+                        li.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            expanded = !expanded;
+                            childUl.style.display = expanded ? 'block' : 'none';
+                            const arrow = li.querySelector('.component-arrow');
+                            if (arrow) {
+                                arrow.textContent = expanded ? '▼' : '▶';
+                            }
+                        });
+                    } else {
+                        // Leaf component: insert on click
+                        li.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (component.path) {
+                                insertPath(component.path);
+                            } else {
+                                insertComponent(component.id);
+                            }
+                        });
+                    }
 
                     sidebarEl.appendChild(li);
                 });
             });
 
-            console.log(`Rendered ${allComponents.length} components in sidebar`);
+            console.log(`Rendered ${allComponents.length} components in sidebar with grouping`);
         }
 
         function updateComponentCategories() {
@@ -12327,23 +12409,74 @@
 
                 var html = '<div class="resource-info">🧩 ' + basePath + '</div>';
                 html += '<div class="page-list">';
+
+                var childrenMap = (typeof componentChildrenMap !== 'undefined') ? componentChildrenMap : {};
+
                 data.forEach(function(page) {
                     var title = page.title || page.name || '(untitled)';
                     var pagePath = page.path || '';
-                    html += '<div class="comp-card" data-path="' + pagePath + '">';
-                    html += '<div class="comp-card-icon">🧩</div>';
-                    html += '<div class="comp-card-info">';
-                    html += '<div class="comp-card-title" title="' + title + '">' + title + '</div>';
-                    html += '<div class="comp-card-path">' + pagePath + '</div>';
-                    html += '</div>';
-                    html += '<button class="comp-insert-btn" title="Insert component content into editor">➕</button>';
-                    html += '</div>';
-                });
-                html += '</div>';
+                    var children = childrenMap[pagePath];
+                    var hasChildren = children && children.length > 0;
 
+                    if (hasChildren) {
+                        // Parent component: render as expandable group (NOT insertable)
+                        html += '<div class="comp-group" data-path="' + pagePath + '">';
+                        html += '<div class="comp-group-header" title="Click to expand/collapse">';
+                        html += '<span class="comp-group-arrow">▶</span>';
+                        html += '<span class="comp-group-icon">📁</span>';
+                        html += '<span class="comp-group-title">' + title + '</span>';
+                        html += '</div>';
+                        html += '<div class="comp-group-children" style="display:none">';
+
+                        children.forEach(function(child) {
+                            var childTitle = child.title || child.path.split('/').pop() || '(untitled)';
+                            var childPath = child.path || '';
+                            html += '<div class="comp-card" data-path="' + childPath + '">';
+                            html += '<div class="comp-card-icon">🧩</div>';
+                            html += '<div class="comp-card-info">';
+                            html += '<div class="comp-card-title" title="' + childTitle + '">' + childTitle + '</div>';
+                            html += '<div class="comp-card-path">' + childPath + '</div>';
+                            html += '</div>';
+                            html += '<button class="comp-insert-btn" title="Insert component content into editor">➕</button>';
+                            html += '</div>';
+                        });
+
+                        html += '</div>'; // comp-group-children
+                        html += '</div>'; // comp-group
+                    } else {
+                        // Leaf component: render as normal insertable card
+                        html += '<div class="comp-card" data-path="' + pagePath + '">';
+                        html += '<div class="comp-card-icon">🧩</div>';
+                        html += '<div class="comp-card-info">';
+                        html += '<div class="comp-card-title" title="' + title + '">' + title + '</div>';
+                        html += '<div class="comp-card-path">' + pagePath + '</div>';
+                        html += '</div>';
+                        html += '<button class="comp-insert-btn" title="Insert component content into editor">➕</button>';
+                        html += '</div>';
+                    }
+                });
+
+                html += '</div>';
                 resultsEl.innerHTML = html;
 
-                // Bind insert buttons
+                // Bind expand/collapse for group headers
+                resultsEl.querySelectorAll('.comp-group-header').forEach(function(header) {
+                    header.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var group = header.closest('.comp-group');
+                        var childrenEl = group.querySelector('.comp-group-children');
+                        var arrow = header.querySelector('.comp-group-arrow');
+                        if (childrenEl.style.display === 'none') {
+                            childrenEl.style.display = 'block';
+                            arrow.textContent = '▼';
+                        } else {
+                            childrenEl.style.display = 'none';
+                            arrow.textContent = '▶';
+                        }
+                    });
+                });
+
+                // Bind insert buttons (only on leaf comp-cards, not group headers)
                 resultsEl.querySelectorAll('.comp-insert-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.stopPropagation();
@@ -12353,7 +12486,7 @@
                     });
                 });
 
-                // Click full card = insert
+                // Click full card = insert (only on leaf comp-cards, not group headers)
                 resultsEl.querySelectorAll('.comp-card').forEach(function(card) {
                     card.addEventListener('click', function() {
                         var path = card.dataset.path;

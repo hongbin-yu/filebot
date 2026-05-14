@@ -12,10 +12,10 @@ import os
 
 # 导入路由
 try:
-    from .routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
+    from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
 except ImportError:
     # 备用导入方式
-    from routes import pages_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
+    from routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
 
 # 数据库路径
 WEBBOT_DB_PATH = os.environ.get(
@@ -249,6 +249,7 @@ def init_database():
 
 # 包含路由
 app.include_router(pages_router)
+app.include_router(pages_v1_router)
 app.include_router(ai_router)
 
 # 包含文件路由（如果可用）

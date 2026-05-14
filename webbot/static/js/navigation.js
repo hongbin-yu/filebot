@@ -317,6 +317,38 @@ async function performDelete(pagePath, pageTitle) {
 }
 
 // ============================================================================
+// Publish page — POST to backend, open result in new tab
+// ============================================================================
+async function performPublish(pageData) {
+    var pagePath = pageData.path;
+    var pageTitle = pageTitle ? pageTitle : pageData.name;
+
+    showToast('Publishing "' + (pageTitle || pageData.name) + '"...', 'info');
+
+    try {
+        var resp = await fetch('/api/v1/pages/publish?path=' + encodeURIComponent(pagePath), {
+            method: 'POST'
+        });
+
+        if (!resp.ok) {
+            var errData = null;
+            try { errData = await resp.json(); } catch(e) {}
+            throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+        }
+
+        var result = await resp.json();
+
+        showToast('"' + (pageTitle || pageData.name) + '" published successfully!', 'success');
+
+        // Open published page in new tab
+        const pageUrl = '/publish/' + pagePath.replace(/^\//, '') + '.html';
+        window.open(pageUrl, '_blank');
+    } catch (err) {
+        showToast('Failed to publish: ' + err.message, 'danger');
+    }
+}
+
+// ============================================================================
 // 6. RENDERING
 // ============================================================================
 function renderColumn(columnIndex, title, pages, parentPath) {
@@ -658,7 +690,7 @@ function setupButtons() {
     // ============================================================================
     btnPublish.addEventListener('click', function() {
         if (selectedPageData) {
-            showToast('Publish feature: under development.', 'warning');
+            performPublish(selectedPageData);
         }
     });
 
@@ -1167,9 +1199,9 @@ function setupButtons() {
             loadedPaths = {};
             columnsCache = [];
 
-            // Navigate to English page editor
+            // Open English page editor in new tab
             var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
-            window.location.href = editorUrl;
+            window.open(editorUrl, '_blank');
 
         } catch (err) {
             showToast('Failed to create page: ' + err.message, 'danger');

@@ -21,6 +21,9 @@ from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, Previ
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/pages", tags=["pages"])
 
+# Separate router for top-level /api/v1 endpoints (no /pages/ segment)
+router_v1 = APIRouter(prefix="/api/v1", tags=["pages_v1"])
+
 WEBBOT_DB_PATH = os.environ.get(
     "WEBBOT_DB_PATH",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
@@ -594,7 +597,7 @@ async def get_pages_by_path(path: str = Query(..., description="Parent page path
         conn.close()
 
 @router.get("/", response_model=List[PageListItem])
-async def list_pages(skip: int = 0, limit: int = 100, path: Optional[str] = Query(None, description="Parent page path, returns all direct children under this path. e.g. path=/en returns pages with parent_path=/en. If omitted, returns all pagese。")):
+async def list_pages(skip: int = 0, limit: int = 100, path: Optional[str] = Query(None, description="Parent page path, returns all direct children under this path. e.g. path=/en returns pages with parent_path=/en. If omitted, returns all pagese。"), prefix: Optional[str] = Query(None, description="Path prefix filter, returns all pages whose path starts with this prefix. e.g. prefix=/canadasite/en/components/ returns all component pages recursively.\nWhen both prefix and path are provided, prefix takes precedence.")):
     """Get page list
 
     Supports filtering by parent path, returns all pages under a specific path (direct children).
@@ -602,11 +605,13 @@ async def list_pages(skip: int = 0, limit: int = 100, path: Optional[str] = Quer
     - GET /api/v1/pages?path=/en → returns pages with parent_path=/en
     - GET /api/v1/pages?path=/ → returns root pages (parent_path IS NULL)
     - GET /api/v1/pages?path= → returns all pages
+    - GET /api/v1/pages?prefix=/canadasite/en/components/ → recursive path prefix match
 
     Parameters:
     - skip: Records to skip (pagination)
     - limit: Records to return (pagination)
     - path: Parent page path, e.g. /en or /en/contact. If provided, filters by parent_path field.
+    - prefix: Path prefix for recursive match. Overrides path if both provided.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -615,14 +620,16 @@ async def list_pages(skip: int = 0, limit: int = 100, path: Optional[str] = Quer
         query = "SELECT * FROM webbot_page"
         params = []
 
-        # If提供了pathParameter,Add过滤条件
-        if path is not None:
+        if prefix is not None:
+            # Prefix filter: recursive path match (LIKE 'prefix%')
+            normalized_prefix = prefix.rstrip('/') + '/'
+            query += " WHERE path LIKE ?"
+            params.append(normalized_prefix + '%')
+        elif path is not None:
             normalized_path = path.rstrip('/')
             if normalized_path == '':
-                # Root path:查找所有parent_path为NULL的page
                 query += " WHERE parent_path IS NULL"
             else:
-                # 查找parent_path等于指定路径的page
                 query += " WHERE parent_path = ?"
                 params.append(normalized_path)
 
@@ -1676,60 +1683,69 @@ async def _render_preview(
         )
 
         # 5. Render with template or default
-        if page_publish_template:
-            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (page_publish_template,))
+        # Helper: try to render a page template from DB, returns None if not found
+        async def render_page_template(template_path, head, header, footer, content, date_modified, lang, title, page_path):
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
-            if tmpl_row:
-                try:
-                    tmpl_config = json.loads(tmpl_row[0])
-                    tmpl = tmpl_config.get("template", tmpl_row[0])
-                except json.JSONDecodeError:
-                    tmpl = tmpl_row[0]
-                render_data = {
-                    "content": cleaned_content,
-                    "head": head_html,
-                    "header": header_html,
-                    "footer": footer_html,
-                    "date_modified": date_modified_str,
-                    "language": page_language,
-                    "title": page_title,
-                    "path": path,
-                }
-                rendered = chevron.render(tmpl, render_data)
-            else:
-                rendered = (
-                    "<!DOCTYPE html>\n"
-                    f"<html lang=\"{page_language}\">\n"
-                    f"{head_html}\n"
-                    f"{header_html}\n"
-                    "<body>\n"
-                    '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">\n'
-                    f"{cleaned_content}\n"
-                    f"{date_modified_html}\n"
-                    "</main>\n"
-                    f"{footer_html}\n"
-                    "</body>\n"
-                    "</html>"
-                )
-        else:
-            rendered = (
+            if not tmpl_row:
+                return None
+            try:
+                tmpl_config = json.loads(tmpl_row[0])
+                tmpl = tmpl_config.get("template", tmpl_row[0])
+            except json.JSONDecodeError:
+                tmpl = tmpl_row[0]
+            render_data = {
+                "content": content,
+                "head": head,
+                "header": header,
+                "footer": footer,
+                "date_modified": date_modified,
+                "language": lang,
+                "title": title,
+                "path": page_path,
+            }
+            return chevron.render(tmpl, render_data)
+
+        def default_rendered(lang, head, header, footer, content, date_modified):
+            return (
                 "<!DOCTYPE html>\n"
-                f"<html lang=\"{page_language}\">\n"
-                f"{head_html}\n"
-                f"{header_html}\n"
+                f"<html lang=\"{lang}\">\n"
+                f"{head}\n"
+                f"{header}\n"
                 "<body>\n"
                 '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">\n'
-                f"{cleaned_content}\n"
-                f"{date_modified_html}\n"
+                f"{content}\n"
+                f"{date_modified}\n"
                 "</main>\n"
-                f"{footer_html}\n"
+                f"{footer}\n"
                 "</body>\n"
                 "</html>"
             )
 
+        # Try per-page template first, then default DB template, then hardcoded fallback
+        if page_publish_template:
+            rendered = await render_page_template(
+                page_publish_template, head_html, header_html, footer_html,
+                cleaned_content, date_modified_str, page_language, page_title, path
+            )
+
+        if not rendered:
+            # Try default language-specific template from DB
+            default_template = f"/canadasite/{page_language}/mustache-templates/page-template"
+            rendered = await render_page_template(
+                default_template, head_html, header_html, footer_html,
+                cleaned_content, date_modified_str, page_language, page_title, path
+            )
+
+        if not rendered:
+            # Ultimate hardcoded fallback
+            rendered = default_rendered(
+                page_language, head_html, header_html, footer_html,
+                cleaned_content, date_modified_str
+            )
+
         conn.close()
         return HTMLResponse(content=rendered, status_code=200)
-
     except HTTPException:
         conn.close()
         raise
@@ -2773,47 +2789,50 @@ async def publish_page(
 
         # 8. Assemble full HTML
         #    If page has a publish_template set, use it as a single Mustache template
-        #    Otherwise, use the default hardcoded assembly
+        #    Otherwise, try default DB template, then hardcoded fallback
 
-        if page_publish_template:
-            # Load single-page Mustache template from DB and render with all data
-            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (page_publish_template,))
+        # Helper: try to render a page template from DB
+        def render_page_template_fb(template_path, head, header, footer, content, date_modified, lang, title, page_path):
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
-            if tmpl_row:
-                try:
-                    tmpl_config = json.loads(tmpl_row[0])
-                    tmpl = tmpl_config.get("template", tmpl_row[0])
-                except json.JSONDecodeError:
-                    tmpl = tmpl_row[0]
-                render_data = {
-                    "content": cleaned_content,
-                    "head": head_html,
-                    "header": header_html,
-                    "footer": footer_html,
-                    "date_modified": date_modified_str,
-                    "language": page_language,
-                    "title": page_title,
-                    "path": path,
-                }
-                full_html = chevron.render(tmpl, render_data)
-            else:
-                # Fallback to default if template not found
-                full_html = (
-                    "<!DOCTYPE html>\n"
-                    f"<html lang=\"{page_language}\">\n"
-                    f"{head_html}\n"
-                    f"{header_html}\n"
-                    "<body>\n"
-                    '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">\n'
-                    f"{cleaned_content}\n"
-                    f"{date_modified_html}\n"
-                    "</main>\n"
-                    f"{footer_html}\n"
-                    "</body>\n"
-                    "</html>"
-                )
-        else:
-            # Default hardcoded assembly
+            if not tmpl_row:
+                return None
+            try:
+                tmpl_config = json.loads(tmpl_row[0])
+                tmpl = tmpl_config.get("template", tmpl_row[0])
+            except json.JSONDecodeError:
+                tmpl = tmpl_row[0]
+            render_data = {
+                "content": content,
+                "head": head,
+                "header": header,
+                "footer": footer,
+                "date_modified": date_modified,
+                "language": lang,
+                "title": title,
+                "path": page_path,
+            }
+            return chevron.render(tmpl, render_data)
+
+        full_html = None
+
+        # 1) Try per-page publish_template
+        if page_publish_template:
+            full_html = render_page_template_fb(
+                page_publish_template, head_html, header_html, footer_html,
+                cleaned_content, date_modified_str, page_language, page_title, path
+            )
+
+        # 2) Try default language-specific template from DB
+        if not full_html:
+            default_template = f"/canadasite/{page_language}/mustache-templates/page-template"
+            full_html = render_page_template_fb(
+                default_template, head_html, header_html, footer_html,
+                cleaned_content, date_modified_str, page_language, page_title, path
+            )
+
+        # 3) Ultimate hardcoded fallback
+        if not full_html:
             full_html = (
                 "<!DOCTYPE html>\n"
                 f"<html lang=\"{page_language}\">\n"
@@ -2829,7 +2848,7 @@ async def publish_page(
                 "</html>"
             )
 
-        # 9. Save to FileBot publish directory via FileBot API
+                # 9. Save to FileBot publish directory via FileBot API
         # 调用FileBot的publish app接口来写入发布文件
         filebot_publish_url = "http://localhost:8001/api/v1/pages/publish"
         fb_params = {"path": path}
@@ -2879,3 +2898,88 @@ async def publish_page(
         conn.close()
 
 
+@router_v1.get("/getfooter")
+async def get_footer_v2(path: str = ""):
+    """
+    Get footer content split into institution-level and language-level pages.
+
+    Query pattern:
+      - language_level:  /{site}/{language}/footer     (e.g. /canadasite/en/footer)
+      - institution_level: /{site}/footer               (e.g. /canadasite/footer)
+
+    Returns:
+    ```json
+    {
+      "institution_level": { "content": "...", "path": "/canadasite/en/revenue-agency/footer" },
+      "language_level":   { "content": "...", "path": "/canadasite/en/footer" }
+    }
+    ```
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        normalized_path = normalize_path(path) if path else ""
+        language = extract_language_from_path(normalized_path)
+        parts = normalized_path.strip('/').split('/') if normalized_path else []
+        # First part is always the site name
+        site_name = parts[0] if parts else ""
+
+        # Language-level footer: always /{site}/{language}/footer
+        language_path = f"/{site_name}/{language}/footer" if site_name and language else ""
+
+        def clean_footer_content(raw_content: str) -> str:
+            """Strip <html><head><body> wrapper AND the outer <footer> tag.
+            The Mustache template provides the <footer id="wb-info"> wrapper,
+            so we only return the inner div sections."""
+            m = re.search(r'<footer[^>]*id=[\"\']wb-info[\"\'][^>]*>(.*?)</footer>', raw_content, re.DOTALL | re.IGNORECASE)
+            if m:
+                return m.group(1).strip()
+            m = re.search(r'<body[^>]*>(.*)</body>', raw_content, re.DOTALL | re.IGNORECASE)
+            if m:
+                return m.group(1).strip()
+            return raw_content
+
+        def fetch_footer(search_path: str):
+            cursor.execute("SELECT path, content FROM webbot_page WHERE path = ?", (search_path,))
+            row = cursor.fetchone()
+            if row:
+                return {"path": row["path"], "content": clean_footer_content(row["content"])}
+            return None
+
+        # Institution-level footer: walk up from {path}/footer, excluding the language-level path
+        # For /canadasite/en/revenue-agency:
+        #   try /canadasite/en/revenue-agency/footer -> FOUND (institution)
+        #   skip /canadasite/en/footer (language level)
+        # For /canadasite/en:
+        #   skip /canadasite/en/footer (language level)
+        #   try /canadasite/footer -> EMPTY
+        institution_level = {"path": "", "content": ""}
+        if normalized_path:
+            # Walk up the path building candidate footer paths
+            current = normalized_path.strip('/')
+            segments = current.split('/')  # e.g. ['canadasite', 'en', 'revenue-agency']
+            for i in range(len(segments), 0, -1):
+                candidate = '/' + '/'.join(segments[:i]) + '/footer'
+                if candidate == language_path:
+                    continue  # skip — this is the language level
+                result = fetch_footer(candidate)
+                if result:
+                    institution_level = result
+                    break
+
+        language_level = {"path": "", "content": ""}
+        if language_path:
+            result = fetch_footer(language_path)
+            if result:
+                language_level = result
+
+        return {
+            "institution_level": institution_level,
+            "language_level": language_level
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {e}")
+    finally:
+        conn.close()

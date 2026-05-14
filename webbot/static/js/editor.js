@@ -23,7 +23,9 @@
         // const editorLanguageEl = document.getElementById('editor-language'); // Removed from UI
         // const editorStatusEl = document.getElementById('editor-status'); // Removed from UI
         const previewPageBtn = document.getElementById('preview-page');
+        const topPreviewBtn = document.getElementById('btn-top-preview');
         const savePageBtn = document.getElementById('save-page');
+        const publishPageBtn = document.getElementById('publish-page');
         const cancelEditBtn = document.getElementById('cancel-edit');
         // File manager buttons removed per user request - dummy variables to prevent reference errors
         const fileManagerBtn = null;
@@ -181,7 +183,9 @@
 
             // Event listeners
             previewPageBtn.addEventListener('click', previewPage);
+            if (topPreviewBtn) topPreviewBtn.addEventListener('click', previewPage);
             savePageBtn.addEventListener('click', savePage);
+            publishPageBtn.addEventListener('click', publishPage);
             cancelEditBtn.addEventListener('click', cancelEdit);
             // File manager buttons removed per user request - event listeners removed
 
@@ -412,6 +416,20 @@
 
             // Initialize language switcher
             initLanguageSwitcher();
+
+            // Quick Edit buttons wiring
+            var quickEditComponent = document.getElementById('quick-edit-component');
+            var quickEditHTML = document.getElementById('quick-edit-html');
+            if (quickEditComponent) {
+                quickEditComponent.addEventListener('click', function() {
+                    showCurrentElementWYSIWYGEdit();
+                });
+            }
+            if (quickEditHTML) {
+                quickEditHTML.addEventListener('click', function() {
+                    showCurrentElementHTMLEdit('code');
+                });
+            }
         });
 
         /**
@@ -611,7 +629,7 @@
             // Configure TinyMCE
             tinymce.init({
                 selector: '#wysiwyg-editor-container',
-                height: 600,
+                height: 1500,
                 menubar: 'file edit view insert format tools table help',
                 base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
                 plugins: [
@@ -658,6 +676,7 @@
                             insertComponent('button');
                         }
                     });
+
 
                     editor.ui.registry.addButton('insertByPath', {
                         text: '📄 Insert by Path',
@@ -1666,202 +1685,41 @@
 
         function populateLanguageSwitcher() {
             const languageSwitcher = document.getElementById('language-switcher');
-            const languageSelect = document.getElementById('language-select');
+            const languageLink = document.getElementById('language-link');
 
-            if (!languageSwitcher || !languageSelect) {
+            if (!languageSwitcher || !languageLink) {
                 console.warn('Language switcher elements not found');
                 return;
             }
 
-            // Only show language switcher if we have a current page
-            if (!currentPageId) {
+            // Only show if we have a current page with other_language_path
+            if (!currentPageData || !currentPageData.other_language_path) {
                 languageSwitcher.style.display = 'none';
                 return;
             }
 
-            const currentLang = detectCurrentLanguage();
-            let availableLangs = getAvailableLanguages();
+            const otherPath = currentPageData.other_language_path;
+            const currentLang = (currentPageData.language || 'en').toLowerCase();
 
-            // Also include languages from extracted alternate language links
-            const metadata = metadataManager.getMetadata();
-            if (metadata.alternateLanguages) {
-                console.log('Found alternate languages in metadata:', metadata.alternateLanguages);
-
-                // Extract language codes from alternate language links
-                const alternateLangCodes = metadata.alternateLanguages
-                    .map(lang => lang.hreflang)
-                    .filter(lang => lang && typeof lang === 'string');
-
-                // Merge with existing available languages (remove duplicates)
-                const allLangs = [...new Set([...availableLangs, ...alternateLangCodes])];
-                availableLangs = allLangs;
-                console.log('Merged available languages:', availableLangs);
-            }
-
-            if (availableLangs.length < 2) {
-                // Only one language available, hide the switcher
-                languageSwitcher.style.display = 'none';
-                return;
-            }
-
-            // Show the switcher
-            languageSwitcher.style.display = 'flex';
-
-            // Clear existing options except the first one
-            while (languageSelect.options.length > 1) {
-                languageSelect.remove(1);
-            }
-
-            // Add available languages
-            availableLangs.forEach(lang => {
-                const option = document.createElement('option');
-                option.value = lang;
-                option.textContent = lang.toUpperCase();
-                if (lang === currentLang) {
-                    option.selected = true;
-                    option.textContent = `🌐 ${lang.toUpperCase()}`;
-                }
-                languageSelect.appendChild(option);
-            });
-
-            // Update the first option text
-            if (languageSelect.options.length > 0) {
-                languageSelect.options[0].textContent = `🌐 ${currentLang.toUpperCase()}`;
-            }
-        }
-
-        function switchToLanguage(lang) {
-            if (!currentPageId || !lang) return;
-
-            const currentLang = detectCurrentLanguage();
-            if (lang === currentLang) {
-                return; // Already in this language
-            }
-
-            console.log('switchToLanguage called with:', lang, 'currentPageId:', currentPageId);
-
-            // Helper function to remove .html suffix if present
-            function removeHtmlSuffix(path) {
-                return path.replace(/\.html$/i, '');
-            }
-
-            // First check if we have alternate language links in metadata
-            const metadata = metadataManager.getMetadata();
-            if (metadata.alternateLanguages && Array.isArray(metadata.alternateLanguages)) {
-                console.log('Checking alternate languages:', metadata.alternateLanguages);
-
-                // Find the alternate language link for the requested language
-                const altLang = metadata.alternateLanguages.find(
-                    alt => alt.hreflang && alt.hreflang.toLowerCase() === lang.toLowerCase()
-                );
-
-                if (altLang && altLang.href) {
-                    console.log('Found alternate language URL:', altLang.href);
-
-                    // Extract the path from the URL if it's a full URL
-                    let targetPath = altLang.href;
-
-                    // If it's a full URL, try to extract the path
-                    if (targetPath.startsWith('http')) {
-                        try {
-                            const url = new URL(targetPath);
-                            targetPath = url.pathname;
-                            console.log('Extracted path from URL:', targetPath);
-                        } catch (e) {
-                            console.warn('Could not parse URL, using as-is:', targetPath);
-                        }
-                    }
-
-                    // Remove .html suffix if present
-                    targetPath = removeHtmlSuffix(targetPath);
-
-                    // Remove any leading slash for consistency
-                    while (targetPath.startsWith('/')) {
-                        targetPath = targetPath.substring(1);
-                    }
-
-                    // Navigate to the page using the alternate language URL
-                    console.log('Navigating to path from alternate link:', targetPath);
-
-                    // Determine current editor page base URL
-                    let baseUrl = '/editor.html';
-                    if (window.location.pathname.includes('/static/editor.html')) {
-                        baseUrl = '/static/editor.html';
-                    }
-
-                    // Use query parameter format as requested: editor.html?path={other_language_path}
-                    const newUrl = `${baseUrl}?path=/${targetPath}`;
-                    console.log(`Switching language using alternate link: ${newUrl}`);
-                    window.location.href = newUrl;
-                    return;
-                }
-            }
-
-            console.log('No alternate language link found, using path replacement method');
-
-            // Fallback: Get current path and replace language part
-            let currentPath = currentPageId;
-            // Remove .html suffix if present
-            currentPath = removeHtmlSuffix(currentPath);
-
-            if (!currentPath.startsWith('/')) {
-                currentPath = `/${currentPath}`;
-            }
-
-            // Replace language code in the path
-            let newPath = currentPath;
-
-            // Try to find and replace the language code in the path
-            // Look for a pattern like /en/ or /fr/ in the path
-            const langRegex = /\/([a-z]{2,3})\//gi;
-            let match;
-            let replaced = false;
-
-            // Find the first language code match in the path
-            while ((match = langRegex.exec(currentPath)) !== null) {
-                const matchedLang = match[1].toLowerCase();
-                // Replace this occurrence with the new language
-                newPath = currentPath.substring(0, match.index + 1) + lang + currentPath.substring(match.index + 1 + matchedLang.length);
-                replaced = true;
-                break; // Only replace the first language code found
-            }
-
-            // If no language code found, prepend the language
-            if (!replaced) {
-                // Add language as the first segment after root
-                if (currentPath.startsWith('/')) {
-                    newPath = `/${lang}${currentPath === '/' ? '' : currentPath}`;
-                } else {
-                    newPath = `/${lang}/${currentPath}`;
-                }
-            }
-
-            // Navigate to the new URL
-            // Determine current editor page base URL
+            // Determine correct editor URL base
             let baseUrl = '/editor.html';
             if (window.location.pathname.includes('/static/editor.html')) {
                 baseUrl = '/static/editor.html';
             }
 
-            // Use query parameter format as requested: editor.html?path={other_language_path}
-            const newUrl = `${baseUrl}?path=${encodeURIComponent(newPath)}`;
-            console.log(`Switching language using path replacement: ${newUrl}`);
-            window.location.href = newUrl;
+            languageLink.href = baseUrl + '?path=' + encodeURIComponent(otherPath);
+            languageLink.textContent = currentLang === 'en' ? 'Français' : 'English';
+            languageSwitcher.style.display = 'inline-block';
         }
 
-        // Initialize language switcher event listener
+        function switchToLanguage(lang) {
+            if (!currentPageId || !lang) return;
+            console.warn('switchToLanguage is deprecated, using language link instead');
+        }
+
+        // Initialize language switcher (now handled by populateLanguageSwitcher)
         function initLanguageSwitcher() {
-            const languageSelect = document.getElementById('language-select');
-            if (languageSelect) {
-                languageSelect.addEventListener('change', function(e) {
-                    const selectedLang = e.target.value;
-                    if (selectedLang && selectedLang !== '') {
-                        switchToLanguage(selectedLang);
-                        // Reset to placeholder after selection
-                        e.target.value = '';
-                    }
-                });
-            }
+            // No-op: language switcher driven by populateLanguageSwitcher() on page load
         }
 
         // Load a specific page
@@ -1910,7 +1768,6 @@
 
                 // Update display
                 pageTitleDisplayEl.textContent = page.title || 'Untitled';
-                pageIdDisplayEl.textContent = ` | ID: ${page.id}`;
                 pageLanguageDisplayEl.textContent = ` | Language: ${page.language ? page.language.toUpperCase() : 'EN'}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${page.status || 'draft'}`;
 
@@ -1926,23 +1783,18 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const filePathFromUrl = urlParams.get('file_path');
 
-                // Update file path display (priority: URL parameter > database)
+                // Update path display (priority: URL parameter > page.path > page id)
                 if (filePathFromUrl) {
-                    // Display URL parameter with different styling
-                    filePathDisplayEl.textContent = ` | File Path (URL): ${filePathFromUrl}`;
-                    filePathDisplayEl.style.color = '#28a745'; // Green for URL parameter
-                    filePathDisplayEl.style.fontWeight = 'bold';
-                    filePathDisplayEl.title = 'File path from URL parameter (not saved to database)';
-                } else if (page.metadata && page.metadata.file_path) {
-                    // Display database file path
-                    filePathDisplayEl.textContent = ` | File Path: ${page.metadata.file_path}`;
-                    filePathDisplayEl.style.color = '#007bff'; // Blue for database
-                    filePathDisplayEl.style.fontWeight = 'normal';
-                    filePathDisplayEl.title = 'File path saved in database';
+                    pageIdDisplayEl.textContent = ` | Path: ${filePathFromUrl}`;
+                } else if (page.path) {
+                    pageIdDisplayEl.textContent = ` | Path: ${page.path}`;
                 } else {
-                    filePathDisplayEl.textContent = '';
-                    filePathDisplayEl.title = '';
+                    pageIdDisplayEl.textContent = ` | ID: ${page.id}`;
                 }
+                filePathDisplayEl.textContent = '';
+                filePathDisplayEl.style.color = '';
+                filePathDisplayEl.style.fontWeight = '';
+                filePathDisplayEl.title = '';
 
                 // Update FileBot target folder display
                 try {
@@ -3068,6 +2920,8 @@
                     });
 
                     // Try to find main content area - prioritize Canada.ca main element
+                    // NOTE: keep only specific selectors; avoid generic ones (like .container, #wb-cont)
+                    // that match non-main sections (e.g., banner containers) and cause content loss on save
                     const mainSelectors = [
                         'main[property="mainContentOfPage"]',
                         'main',
@@ -3075,11 +2929,7 @@
                         '.row.profile',               // Canada.ca profile/content container
                         '#main-content',
                         'article',
-                        '.container.main',
-                        '.col-md-9',
-                        '.col-md-8',
-                        '.container',
-                        '#wb-cont'                    // Title element (last resort)
+                        '.container.main'
                     ];
 
                     let mainElement = null;
@@ -3089,33 +2939,6 @@
                         if (mainElement) {
                             matchedSelector = selector;
                             break;
-                        }
-                    }
-
-                    // Special handling for #wb-cont if it's just a heading
-                    if (mainElement && matchedSelector === '#wb-cont' &&
-                        mainElement.tagName && mainElement.tagName.match(/^H[1-6]$/i)) {
-                        console.log('cleanContent: #wb-cont is a heading element, looking for content container...');
-                        // Try to find parent or sibling with actual content
-                        const parent = mainElement.parentElement;
-                        if (parent) {
-                            const parentText = parent.textContent || '';
-                            const headingText = mainElement.textContent || '';
-                            if (parentText.length > headingText.length + 100) {
-                                // Parent has additional content beyond heading
-                                console.log('cleanContent: using parent container instead of heading');
-                                mainElement = parent;
-                            } else {
-                                // Look for next sibling with substantial content
-                                let nextSib = mainElement.nextElementSibling;
-                                while (nextSib && (nextSib.textContent || '').length < 100) {
-                                    nextSib = nextSib.nextElementSibling;
-                                }
-                                if (nextSib && (nextSib.textContent || '').length >= 100) {
-                                    console.log('cleanContent: using next sibling with content');
-                                    mainElement = nextSib;
-                                }
-                            }
                         }
                     }
 
@@ -3362,20 +3185,19 @@
             }
         }
 
-        // Preview page content
+        // Preview page content using the backend template renderer
         async function previewPage() {
             if (!currentPageId || !currentPageData) {
                 showError('No page selected to preview.');
                 return;
             }
 
-            // Synchronize editor content before preview (ensure TinyMCE content is used)
+            // Synchronize editor content before preview
             syncEditorContent();
 
-            // Get current content from editor (based on active mode)
-            let content = getCurrentContent();
+            // Get current content from editor
+            const content = getCurrentContent();
             console.log('previewPage: content length from getCurrentContent:', content?.length);
-            const title = currentPageData?.title || 'Untitled Page';
 
             if (!content) {
                 console.log('previewPage: content is empty, showing error');
@@ -3383,100 +3205,176 @@
                 return;
             }
 
-            console.log('Generating preview for:', currentPageId, 'content first 100 chars:', content.substring(0, 100).replace(/\n/g, ' '));
+            console.log('Previewing page:', currentPageId);
+            showLoading(true);
+
+            try {
+                // Call backend preview endpoint which uses the page-template
+                const response = await fetch(`/api/v1/pages/preview?path=${encodeURIComponent(currentPageId)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error('Preview API error:', response.status, errText);
+                    showError(`Preview failed (${response.status}). Falling back to local rendering.`);
+                    // Fallback to local preview
+                    previewPageLocal();
+                    return;
+                }
+
+                const renderedHtml = await response.text();
+
+                // Wrap in preview container with actions
+                const previewHtml = `
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Preview: ${currentPageData.title || 'Untitled Page'}</title>
+                        <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
+                        <style>
+                            .preview-actions {
+                                position: fixed;
+                                bottom: 0;
+                                left: 0;
+                                right: 0;
+                                padding: 12px 20px;
+                                background: #f8f9fa;
+                                border-top: 2px solid #ddd;
+                                text-align: center;
+                                z-index: 9999;
+                                box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+                            }
+                            .preview-actions .btn {
+                                padding: 8px 20px;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-size: 14px;
+                                margin: 0 5px;
+                            }
+                            .btn-primary { background: #007bff; color: white; }
+                            body { padding-bottom: 60px; }
+                        </style>
+                    </head>
+                    <body>
+                        ${renderedHtml}
+                        <div class="preview-actions">
+                            <button class="btn btn-primary" onclick="window.print()">Print Preview</button>
+                            <button class="btn" onclick="window.close()">Close Preview</button>
+                        </div>
+                        <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"><\/script>
+                        <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js" defer><\/script>
+                        <script src="/etc/designs/canada/wet-boew/js/theme.min.js" defer><\/script>
+                    </body>
+                    </html>
+                `;
+
+                const previewWindow = window.open('', '_blank');
+                if (!previewWindow) {
+                    showError('Preview window was blocked by browser. Please allow popups for this site.');
+                    return;
+                }
+                previewWindow.document.write(previewHtml);
+                previewWindow.document.close();
+                previewWindow.focus();
+
+            } catch (error) {
+                console.error('previewPage error:', error);
+                showError('Preview failed. Falling back to local rendering.');
+                previewPageLocal();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fallback: local preview without template (original logic kept for robustness)
+        async function previewPageLocal() {
+            if (!currentPageId || !currentPageData) return;
+
+            let content = getCurrentContent();
+            const title = currentPageData?.title || 'Untitled Page';
+
+            if (!content) {
+                showError('No content to preview.');
+                return;
+            }
 
             // Clean the content
             const cleanedContent = cleanContent(content, currentPageId);
-            console.log('previewPage: cleanedContent length:', cleanedContent?.length);
-
-            // Fallback: if cleaned content is empty or too short, use original content with warning
             let finalContent = cleanedContent;
             const cleanedLength = finalContent ? finalContent.trim().length : 0;
             const originalLength = content ? content.trim().length : 0;
-
-            // Use cleaned content only if:
-            // 1. It's not empty
-            // 2. It's at least 500 characters OR at least 30% of original content (whichever is smaller)
             const minLength = Math.min(500, originalLength * 0.3);
 
             if (!finalContent || cleanedLength < minLength) {
-                console.warn('cleanContent returned insufficient content. Cleaned:', cleanedLength, 'Original:', originalLength, 'Min required:', minLength, 'Using original content instead.');
                 finalContent = content;
-                // Try basic cleaning on original content (remove common footers)
                 const basicCleaned = content.replace(/Page details \d{4}-\d{2}-\d{2}$/i, '').trim();
                 if (basicCleaned.length > cleanedLength && basicCleaned.length >= minLength) {
                     finalContent = basicCleaned;
-                    console.log('Using basic cleaned content instead, length:', basicCleaned.length);
                 }
             }
 
-            // Try to get header and footer from {rootpath}/header and {rootpath}/footer
+            // Try to get header and footer
             let headerContent = '';
             let footerContent = '';
             try {
-                // Get the language from current page data
                 const language = currentPageData?.language || 'en';
-
-                // For now, use /{language}/header and /{language}/footer as rootpath
-                // In the future, we could calculate the actual root path from page hierarchy
                 const rootPath = `/${language}`;
 
-                console.log('Fetching header and footer from root path:', rootPath);
-
-                // Fetch header
                 const headerResponse = await fetch(`/api/v1/pages/by-path?path=${encodeURIComponent(rootPath + '/header')}`);
                 if (headerResponse.ok) {
                     const headerData = await headerResponse.json();
                     headerContent = headerData.content || '';
-                    console.log('Header fetched, content length:', headerContent?.length);
-                } else {
-                    console.warn('Could not fetch header, using default WebBot header');
                 }
 
-                // Fetch footer
-                const footerResponse = await fetch(`/api/v1/pages/by-path?path=${encodeURIComponent(rootPath + '/footer')}`);
-                if (footerResponse.ok) {
-                    const footerData = await footerResponse.json();
-                    footerContent = footerData.content || '';
-                    console.log('Footer fetched, content length:', footerContent?.length);
-                } else {
-                    console.warn('Could not fetch footer, using default WebBot footer');
+                // Use new getfooter API that returns institution + language level
+                const pathForFooter = currentPageData?.path || rootPath;
+                const lang = currentPageData?.language || 'en';
+                // Use server-side mustache rendering: loads template config & datasource in one call
+                try {
+                    const dsUrl = `/api/v1/getfooter?path=${encodeURIComponent(pathForFooter)}`;
+                    const mustacheResp = await fetch(`/mustache/${lang}/mustache-templates/getfooter?datasource=${encodeURIComponent(dsUrl)}`);
+                    if (mustacheResp.ok) {
+                        footerContent = await mustacheResp.text();
+                    }
+                } catch (e) {
+                    console.error('Error rendering footer via mustache:', e);
+                }
+                // Fallback: direct call if mustache rendering failed
+                if (!footerContent) {
+                    try {
+                        const fallbackResp = await fetch(`/api/v1/getfooter?path=${encodeURIComponent(pathForFooter)}`);
+                        if (fallbackResp.ok) {
+                            const fd = await fallbackResp.json();
+                            footerContent = (fd.institution_level?.content || '') + (fd.language_level?.content || '');
+                        }
+                    } catch (e2) {
+                        console.error('Fallback footer fetch failed:', e2);
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching header/footer:', error);
-                // Continue with default WebBot header/footer
             }
 
-            // Generate breadcrumb HTML and replace {breadcrumb} placeholder in header
+            // Generate breadcrumb
             if (headerContent && currentPageData) {
                 try {
-                    console.log('Generating breadcrumb for preview...');
                     const breadcrumbHtml = await generateBreadcrumbHTML(currentPageData);
-
                     if (breadcrumbHtml) {
-                        // Replace {breadcrumb} placeholder in header content
-                        if (headerContent.includes('{breadcrumb}')) {
-                            console.log('Replacing {breadcrumb} placeholder in header');
-                            headerContent = headerContent.replace(/{breadcrumb}/g, breadcrumbHtml);
-                        } else if (headerContent.includes('{ breadcrumb }')) {
-                            // Also check for space around placeholder
-                            console.log('Replacing { breadcrumb } placeholder in header');
-                            headerContent = headerContent.replace(/{ breadcrumb }/g, breadcrumbHtml);
-                        } else {
-                            console.log('No {breadcrumb} placeholder found in header content');
-                            // Optional: insert breadcrumb at a specific location if no placeholder
-                            // For now, we'll just log it
-                        }
-                    } else {
-                        console.log('No breadcrumb HTML generated, placeholder will remain');
+                        headerContent = headerContent.replace(/{breadcrumb}/g, breadcrumbHtml);
+                        headerContent = headerContent.replace(/{ breadcrumb }/g, breadcrumbHtml);
                     }
-                } catch (breadcrumbError) {
-                    console.error('Error generating breadcrumb for preview:', breadcrumbError);
-                    // Continue without breadcrumb replacement
+                } catch (e) {
+                    console.error('Error generating breadcrumb:', e);
                 }
             }
 
-            // Create preview HTML
+            // Create preview HTML using createWebBotPage
             const previewHtml = `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -3486,38 +3384,11 @@
                     <title>Preview: ${title}</title>
                     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
                     <style>
-                        body {
-                            padding: 20px;
-                            background: #f8f9fa;
-                        }
-                        .preview-container {
-                            max-width: 1200px;
-                            margin: 0 auto;
-                            background: white;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                            padding: 20px;
-                        }
-                        .preview-actions {
-                            margin-top: 20px;
-                            padding: 15px;
-                            background: #f8f9fa;
-                            border-radius: 6px;
-                            border: 1px solid #ddd;
-                            text-align: center;
-                        }
-                        .btn {
-                            padding: 8px 16px;
-                            border: none;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            margin: 0 5px;
-                        }
-                        .btn-primary {
-                            background: #007bff;
-                            color: white;
-                        }
+                        body { padding: 20px; background: #f8f9fa; }
+                        .preview-container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; }
+                        .preview-actions { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #ddd; text-align: center; }
+                        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 0 5px; }
+                        .btn-primary { background: #007bff; color: white; }
                     </style>
                 </head>
                 <body>
@@ -3528,28 +3399,20 @@
                             <button class="btn" onclick="window.close()">Close Preview</button>
                         </div>
                     </div>
-
-                    <!-- jQuery (required by WET-BOEW) -->
                     <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"><\/script>
-                    <!-- Canada.ca WET-BOEW JavaScript (deferred) -->
                     <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js" defer><\/script>
                     <script src="/etc/designs/canada/wet-boew/js/theme.min.js" defer><\/script>
                 </body>
                 </html>
             `;
 
-            // Open preview in new window
             const previewWindow = window.open('', '_blank');
-            console.log('previewPage: previewWindow created:', previewWindow ? 'valid' : 'null/blocked');
             if (!previewWindow) {
-                console.error('previewPage: window.open was blocked by browser');
                 showError('Preview window was blocked by browser. Please allow popups for this site.');
                 return;
             }
             previewWindow.document.write(previewHtml);
             previewWindow.document.close();
-
-            // Focus the new window
             previewWindow.focus();
         }
 
@@ -3632,7 +3495,7 @@
 
                 // Update display
                 pageTitleDisplayEl.textContent = createdPage.title || title;
-                pageIdDisplayEl.textContent = ' | ID: ' + (createdPage.id || '');
+                pageIdDisplayEl.textContent = ' | Path: ' + (createdPage.metadata?.file_path || createdPage.id || '');
                 pageLanguageDisplayEl.textContent = ' | Language: ' + (createdPage.language || language).toUpperCase();
                 pageStatusDisplayEl.textContent = ' | Status: ' + (createdPage.status || 'draft');
                 if (createdPage.metadata && createdPage.metadata.file_path) {
@@ -3847,6 +3710,56 @@
             }
         }
 
+        async function publishPage() {
+            if (!currentPageId || !currentPageData) {
+                showError('No page selected to publish.');
+                return;
+            }
+
+            // First save current content
+            const content = getCurrentContent();
+            if (!content || !content.trim()) {
+                showError('Page has no content to publish.');
+                return;
+            }
+
+            // Save before publishing
+            await savePage();
+
+            const path = currentPageData.path || currentPageId;
+            const originalText = publishPageBtn.textContent;
+            publishPageBtn.disabled = true;
+            publishPageBtn.innerHTML = '<span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span> Publishing...';
+
+            try {
+                const response = await fetch('/api/v1/pages/publish?path=' + encodeURIComponent(path), {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.detail || 'Publish failed (HTTP ' + response.status + ')');
+                }
+
+                const result = await response.json();
+
+                showSuccess('Page published successfully!');
+                console.log('Published page:', result);
+
+                // Open the published page in a new tab
+                // Page is saved to FileBot publish directory, served at /publish/
+                const pageUrl = '/publish/' + path.replace(/^\//, '') + '.html';
+                window.open(pageUrl, '_blank');
+
+            } catch (error) {
+                showError('Publish failed: ' + error.message);
+                console.error('Publish error:', error);
+            } finally {
+                publishPageBtn.disabled = false;
+                publishPageBtn.innerHTML = originalText;
+            }
+        }
+
         // Cancel editing
         function cancelEdit() {
             if (currentPageData) {
@@ -3919,6 +3832,7 @@
 
         // Simple Component Selector Functions
         let allComponents = [];
+        let componentChildrenMap = {};  // parent_path → [child pages]
         let currentCategory = 'all';
         let currentSearch = '';
 
@@ -3946,21 +3860,39 @@
                         pageData: page
                     }));
 
-                    // 也尝试加载 template-container 的模板页(补充,不移除已存在的)
-                    fetch('/api/v1/pages/?limit=500')
-                        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-                        .then(allPages => {
-                            const extraPages = allPages.filter(p =>
-                                p.metadata && (p.metadata.is_template === true || p.metadata.component_template === true)
-                            );
-                            if (extraPages.length > 0) {
-                                const existingPaths = new Set(allComponents.map(c => c.path));
-                                extraPages.forEach(page => {
+                    // 使用 backend prefix 参数拉取 components 路径下所有页面
+                    fetch('/api/v1/pages/?prefix=/canadasite/en/components/&limit=5000')
+                        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                        .then(function(allCompPages) {
+                            // Build children map: group by parent_path
+                            componentChildrenMap = {};
+                            allCompPages.forEach(function(p) {
+                                if (p && p.parent_path) {
+                                    if (!componentChildrenMap[p.parent_path]) {
+                                        componentChildrenMap[p.parent_path] = [];
+                                    }
+                                    componentChildrenMap[p.parent_path].push(p);
+                                }
+                            });
+                            console.log('Component children map built:', Object.keys(componentChildrenMap).length, 'groups');
+
+                            // Also fetch template pages (metadata marked)
+                            return fetch('/api/v1/pages/?limit=100')
+                                .then(function(r) { if (!r.ok) return []; return r.json(); })
+                                .then(function(allPages) {
+                                    var extraPages = allPages.filter(function(p) {
+                                        return p.metadata && (p.metadata.is_template === true || p.metadata.component_template === true);
+                                    });
+                                    return extraPages;
+                                });
+                        })
+                        .then(function(extraPages) {
+                            // Supplement template pages to allComponents
+                            if (extraPages && extraPages.length > 0) {
+                                var existingPaths = new Set(allComponents.map(function(c) { return c.path; }));
+                                extraPages.forEach(function(page) {
                                     if (!existingPaths.has(page.path)) {
-                                        let cat = 'gcweb';
-                                        if (page.metadata && page.metadata.category) {
-                                            cat = page.metadata.category;
-                                        }
+                                        var cat = (page.metadata && page.metadata.category) || 'gcweb';
                                         allComponents.push({
                                             id: page.id || page.path,
                                             name: page.title || page.path.split('/').pop(),
@@ -3971,14 +3903,17 @@
                                             url: '',
                                             pageData: page
                                         });
+                                        existingPaths.add(page.path);
                                     }
                                 });
-                                console.log(`Supplemented with ${allComponents.length - childPages.length} template pages`);
                             }
-                            // Final render
                             finishLoad();
                         })
-                        .catch(() => finishLoad());
+                        .catch(function(err) {
+                            console.error('Error building component children map:', err);
+                            componentChildrenMap = {};
+                            finishLoad();
+                        });
 
                     // 补充加载JSON定义的组件(确保wet-*组件不丢失)
                     function finishLoad() {
@@ -3996,8 +3931,8 @@
 
             // 回退: 使用全部页面API
             function fetchPageAPI() {
-                console.log('Falling back to /api/v1/pages/?limit=1000...');
-                fetch('/api/v1/pages/?limit=1000')
+                console.log('Falling back to /api/v1/pages/?limit=5000...');
+                fetch('/api/v1/pages/?limit=5000')
                     .then(response => {
                         if (!response.ok) throw new Error(`HTTP ${response.status}`);
                         return response.json();
@@ -4262,7 +4197,7 @@
             helpLi.style.color = '#666';
             helpLi.style.borderBottom = '1px solid #eee';
             helpLi.style.fontStyle = 'italic';
-            helpLi.innerHTML = '⚙️ = needs config params | Other components: direct insert';
+            helpLi.innerHTML = '📁 = click to expand | Click component to insert';
             sidebarEl.appendChild(helpLi);
 
             // Group components by category for better organization
@@ -4274,6 +4209,9 @@
                 }
                 componentsByCategory[category].push(component);
             });
+
+            // Keep track of which parents we've already rendered children for
+            const renderedParentPaths = new Set();
 
             // Render categories and components
             Object.keys(componentsByCategory).sort().forEach(category => {
@@ -4287,8 +4225,18 @@
 
                 // Add components in this category
                 components.forEach(component => {
+                    const parentPath = component.path.replace(/\/+$/, '');
+                    const children = componentChildrenMap[parentPath];
+                    const hasChildren = children && children.length > 0;
+
+                    if (hasChildren) {
+                        // Skip if we already rendered this parent's children
+                        if (renderedParentPaths.has(parentPath)) return;
+                        renderedParentPaths.add(parentPath);
+                    }
+
                     const li = document.createElement('li');
-                    li.className = 'filebot-component-item';
+                    li.className = 'filebot-component-item' + (hasChildren ? ' component-parent' : '');
                     li.dataset.componentId = component.id;
 
                     // Check if this component requires parameter dialog
@@ -4297,14 +4245,16 @@
 
                     // Build title with explanation
                     let titleText = component.description || component.name;
-                    if (needsDialog) {
+                    if (hasChildren) {
+                        titleText += ' (click to expand/collapse variants)';
+                    } else if (needsDialog) {
                         titleText += ' (needs config params)';
                     } else {
                         titleText += ' (direct insert)';
                     }
                     li.title = titleText;
 
-                    // Create content with optional gear icon
+                    // Create content with optional gear icon and expand arrow
                     const contentSpan = document.createElement('span');
                     contentSpan.style.display = 'flex';
                     contentSpan.style.justifyContent = 'space-between';
@@ -4312,10 +4262,15 @@
                     contentSpan.style.width = '100%';
 
                     const nameSpan = document.createElement('span');
-                    nameSpan.textContent = component.name;
+                    if (hasChildren) {
+                        // Parent: show ▶ / 📁 icon, not insertable directly
+                        nameSpan.innerHTML = `<span class="component-arrow">▶</span> 📁 ${component.name}`;
+                    } else {
+                        nameSpan.textContent = component.name;
+                    }
 
                     const iconSpan = document.createElement('span');
-                    if (needsDialog) {
+                    if (needsDialog && !hasChildren) {
                         iconSpan.textContent = '⚙️';
                         iconSpan.title = 'Click to configure parameters';
                         iconSpan.style.marginLeft = '8px';
@@ -4327,21 +4282,70 @@
                     contentSpan.appendChild(iconSpan);
                     li.appendChild(contentSpan);
 
-                    li.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (component.path) {
-                            insertPath(component.path);
-                        } else {
-                            insertComponent(component.id);
-                        }
-                    });
+                    // Click behavior: expand/collapse for parents, insert for children/leaf
+                    if (hasChildren) {
+                        // Parent: create a nested list for children
+                        const childUl = document.createElement('ul');
+                        childUl.className = 'component-children';
+                        childUl.style.display = 'none';  // collapsed by default
+                        childUl.style.paddingLeft = '16px';
+                        childUl.style.listStyle = 'none';
+                        childUl.style.margin = '0';
+
+                        children.forEach(child => {
+                            const childLi = document.createElement('li');
+                            // Use child's actual path - display its title or last segment
+                            const childName = child.title || child.path.split('/').pop();
+                            childLi.className = 'filebot-component-item component-child';
+                            childLi.textContent = childName;
+                            childLi.title = (child.description || childName) + ' (click to insert)';
+                            childLi.style.paddingLeft = '8px';
+                            childLi.style.fontSize = '12px';
+                            childLi.style.cursor = 'pointer';
+                            childLi.style.borderLeft = '2px solid #ddd';
+                            childLi.style.margin = '2px 0';
+
+                            childLi.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                insertPath(child.path);
+                            });
+
+                            childUl.appendChild(childLi);
+                        });
+
+                        li.appendChild(childUl);
+
+                        // Toggle expand/collapse on click
+                        let expanded = false;
+                        li.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            expanded = !expanded;
+                            childUl.style.display = expanded ? 'block' : 'none';
+                            const arrow = li.querySelector('.component-arrow');
+                            if (arrow) {
+                                arrow.textContent = expanded ? '▼' : '▶';
+                            }
+                        });
+                    } else {
+                        // Leaf component: insert on click
+                        li.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (component.path) {
+                                insertPath(component.path);
+                            } else {
+                                insertComponent(component.id);
+                            }
+                        });
+                    }
 
                     sidebarEl.appendChild(li);
                 });
             });
 
-            console.log(`Rendered ${allComponents.length} components in sidebar`);
+            console.log(`Rendered ${allComponents.length} components in sidebar with grouping`);
         }
 
         function updateComponentCategories() {
@@ -11702,6 +11706,7 @@
             // Show modal
             modal.classList.add('show');
             modal.style.display = 'flex';
+            document.body.classList.add('html-edit-modal-open');
 
             if (mode === 'code') {
                 setTimeout(() => { textarea.focus(); textarea.select(); }, 100);
@@ -11714,19 +11719,33 @@
                 wysiwygContainer.appendChild(editorDiv);
                 void wysiwygContainer.offsetHeight;
 
+                // Force TinyMCE floating elements above modal backdrop
+                if (!document.getElementById('tox-zindex-fix')) {
+                    var s = document.createElement('style');
+                    s.id = 'tox-zindex-fix';
+                    s.textContent = '.html-edit-modal-open .tox-dialog-wrap,' +
+                        '.html-edit-modal-open .tox-menu,' +
+                        '.html-edit-modal-open .tox-pop,' +
+                        '.html-edit-modal-open .tox-pop__dialog,' +
+                        '.html-edit-modal-open .tox-notifications-container{z-index:2147483647!important}' +
+                        '.html-edit-modal-open #wysiwyg-editor-container .tox-tinymce{display:none!important}';                    document.head.appendChild(s);
+                }
+
                 tinymce.init({
                     selector: '#wysiwyg-editor-inline',
                     height: 450,
                     menubar: 'edit view insert format table help',
                     base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
+                    zIndex: 100000,
+                    contextmenu: 'link image table',
                     plugins: [
-                        'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview',
+                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                         'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
                         'insertdatetime', 'media', 'table', 'help', 'wordcount'
                     ],
                     toolbar: 'undo redo | styleselect | bold italic underline | ' +
                              'alignleft aligncenter alignright alignjustify | ' +
-                             'bullist numlist outdent indent | link table | ' +
+                             'bullist numlist outdent indent | link image table | ' +
                              'blockquote | code fullscreen | help',
                     content_style: 'body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333; padding: 16px; margin: 0; background: #fff; } ' +
                         'p { margin: 0 0 1em; } ' +
@@ -11746,6 +11765,8 @@
                     allow_html_in_named_anchor: true,
                     image_advtab: true,
                     image_dimensions: true,
+                    image_title: true,
+                    image_caption: true,
                     object_resizing: 'img',
                     setup: function(editor) {
                         _wysiwygEditor = editor;
@@ -11754,6 +11775,26 @@
                         editor.on('init', function() {
                             setTimeout(function() { editor.focus(); }, 200);
                         });
+                        // MutationObserver: catch TinyMCE dialog elements and force z-index
+                        if (!window._toxZobserver) {
+                            window._toxZobserver = new MutationObserver(function(muts) {
+                                muts.forEach(function(m) {
+                                    m.addedNodes.forEach(function(n) {
+                                        if (n.nodeType === 1) {
+                                            if (n.matches && n.matches('.tox-dialog-wrap,.tox-menu,.tox-pop,.tox-pop__dialog,.tox-notifications-container')) {
+                                                n.style.setProperty('z-index', '2147483647', 'important');
+                                            }
+                                            if (n.querySelectorAll) {
+                                                n.querySelectorAll('.tox-dialog-wrap,.tox-menu,.tox-pop,.tox-pop__dialog,.tox-notifications-container').forEach(function(el) {
+                                                    el.style.setProperty('z-index', '2147483647', 'important');
+                                                });
+                                            }
+                                        }
+                                    });
+                                });
+                            });
+                            window._toxZobserver.observe(document.body, { childList: true, subtree: true });
+                        }
                     }
                 });
             }
@@ -11850,6 +11891,7 @@
             if (modal) {
                 modal.classList.remove('show');
                 modal.style.display = 'none';
+            document.body.classList.remove('html-edit-modal-open');
             }
             _editingHTMLTarget = null;
             _editMode = 'code';
@@ -12367,23 +12409,74 @@
 
                 var html = '<div class="resource-info">🧩 ' + basePath + '</div>';
                 html += '<div class="page-list">';
+
+                var childrenMap = (typeof componentChildrenMap !== 'undefined') ? componentChildrenMap : {};
+
                 data.forEach(function(page) {
                     var title = page.title || page.name || '(untitled)';
                     var pagePath = page.path || '';
-                    html += '<div class="comp-card" data-path="' + pagePath + '">';
-                    html += '<div class="comp-card-icon">🧩</div>';
-                    html += '<div class="comp-card-info">';
-                    html += '<div class="comp-card-title" title="' + title + '">' + title + '</div>';
-                    html += '<div class="comp-card-path">' + pagePath + '</div>';
-                    html += '</div>';
-                    html += '<button class="comp-insert-btn" title="Insert component content into editor">➕</button>';
-                    html += '</div>';
-                });
-                html += '</div>';
+                    var children = childrenMap[pagePath];
+                    var hasChildren = children && children.length > 0;
 
+                    if (hasChildren) {
+                        // Parent component: render as expandable group (NOT insertable)
+                        html += '<div class="comp-group" data-path="' + pagePath + '">';
+                        html += '<div class="comp-group-header" title="Click to expand/collapse">';
+                        html += '<span class="comp-group-arrow">▶</span>';
+                        html += '<span class="comp-group-icon">📁</span>';
+                        html += '<span class="comp-group-title">' + title + '</span>';
+                        html += '</div>';
+                        html += '<div class="comp-group-children" style="display:none">';
+
+                        children.forEach(function(child) {
+                            var childTitle = child.title || child.path.split('/').pop() || '(untitled)';
+                            var childPath = child.path || '';
+                            html += '<div class="comp-card" data-path="' + childPath + '">';
+                            html += '<div class="comp-card-icon">🧩</div>';
+                            html += '<div class="comp-card-info">';
+                            html += '<div class="comp-card-title" title="' + childTitle + '">' + childTitle + '</div>';
+                            html += '<div class="comp-card-path">' + childPath + '</div>';
+                            html += '</div>';
+                            html += '<button class="comp-insert-btn" title="Insert component content into editor">➕</button>';
+                            html += '</div>';
+                        });
+
+                        html += '</div>'; // comp-group-children
+                        html += '</div>'; // comp-group
+                    } else {
+                        // Leaf component: render as normal insertable card
+                        html += '<div class="comp-card" data-path="' + pagePath + '">';
+                        html += '<div class="comp-card-icon">🧩</div>';
+                        html += '<div class="comp-card-info">';
+                        html += '<div class="comp-card-title" title="' + title + '">' + title + '</div>';
+                        html += '<div class="comp-card-path">' + pagePath + '</div>';
+                        html += '</div>';
+                        html += '<button class="comp-insert-btn" title="Insert component content into editor">➕</button>';
+                        html += '</div>';
+                    }
+                });
+
+                html += '</div>';
                 resultsEl.innerHTML = html;
 
-                // Bind insert buttons
+                // Bind expand/collapse for group headers
+                resultsEl.querySelectorAll('.comp-group-header').forEach(function(header) {
+                    header.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var group = header.closest('.comp-group');
+                        var childrenEl = group.querySelector('.comp-group-children');
+                        var arrow = header.querySelector('.comp-group-arrow');
+                        if (childrenEl.style.display === 'none') {
+                            childrenEl.style.display = 'block';
+                            arrow.textContent = '▼';
+                        } else {
+                            childrenEl.style.display = 'none';
+                            arrow.textContent = '▶';
+                        }
+                    });
+                });
+
+                // Bind insert buttons (only on leaf comp-cards, not group headers)
                 resultsEl.querySelectorAll('.comp-insert-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.stopPropagation();
@@ -12393,7 +12486,7 @@
                     });
                 });
 
-                // Click full card = insert
+                // Click full card = insert (only on leaf comp-cards, not group headers)
                 resultsEl.querySelectorAll('.comp-card').forEach(function(card) {
                     card.addEventListener('click', function() {
                         var path = card.dataset.path;

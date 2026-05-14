@@ -93,6 +93,10 @@ async def render_mustache(path: str, request: Request):
     if not path.startswith("/mustache/"):
         path_variants.append(f"/mustache/{path}")
         path_variants.append(f"/mustache/{path if path.startswith('/') else '/' + path}")
+
+    # Also try with /canadasite/{lang}/mustache-templates/ prefix (DB template convention)
+    if "/" in path and not path.startswith("/"):
+        path_variants.append(f"/canadasite/{path}")
     
     page = None
     for pv in path_variants:

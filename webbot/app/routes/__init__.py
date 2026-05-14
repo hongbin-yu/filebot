@@ -3,6 +3,7 @@ WebBot API路由模块
 """
 
 from .pages import router as pages_router
+from .pages import router_v1 as pages_v1_router
 from .ai import router as ai_router
 
 try:
@@ -45,4 +46,4 @@ except ImportError as e:
     SEARCH_ENABLED = False
     search_router = None
 
-__all__ = ["pages_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED"]
+__all__ = ["pages_router", "pages_v1_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED"]

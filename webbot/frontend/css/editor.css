@@ -715,6 +715,40 @@
             font-family: monospace;
         }
 
+        .comp-group {
+            margin-bottom: 4px;
+        }
+        .comp-group-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            user-select: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+        .comp-group-header:hover {
+            background: #e9ecef;
+        }
+        .comp-group-arrow {
+            font-size: 10px;
+            width: 14px;
+            text-align: center;
+            color: #666;
+        }
+        .comp-group-children {
+            padding-left: 16px !important;
+            margin-top: 2px;
+            border-left: 2px solid #dee2e6;
+        }
+        .comp-group-children .comp-card {
+            margin: 2px 0;
+        }
         .page-list {
             display: flex;
             flex-direction: column;
