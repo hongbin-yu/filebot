@@ -21,7 +21,6 @@ import PathDocumentView from './pages/PathDocumentView';
 
 // 导入Client组件（暂时使用占位符）
 import ClientAppSelection from './pages/ClientAppSelection';
-import ClientDashboard from './pages/ClientDashboard';
 import ClientDocuments from './pages/ClientDocuments';
 import ClientDocumentDetail from './pages/ClientDocumentDetail';
 import ClientNavigation from './pages/ClientNavigation';
@@ -123,15 +122,6 @@ function App() {
             </ClientProtectedRoute>
           } />
           
-          {/* Client应用详情（显示应用下的文件夹） */}
-          <Route path="/apps/:appSlug" element={
-            <ClientProtectedRoute>
-              <ClientLayout>
-                <ClientDashboard />
-              </ClientLayout>
-            </ClientProtectedRoute>
-          } />
-          
           {/* Client导航页面（侧边栏应用列表 + 缩略图网格） */}
           <Route path="/apps/:appSlug/navigation" element={
             <ClientProtectedRoute>
@@ -207,12 +197,8 @@ function App() {
           </Route>
           
           {/* ==================== 旧路由重定向（兼容性） ==================== */}
-          {/* 根路径重定向：如果已登录重定向到Admin，否则重定向到Client */}
-          <Route path="/" element={
-            authService.isAuthenticated() ? 
-              <Navigate to="/admin/apps" /> : 
-              <Navigate to="/apps" />
-          } />
+          {/* 根路径直接跳转到公共Apps页面 */}
+          <Route path="/" element={<Navigate to="/apps" />} />
           
           {/* 旧Admin路由重定向 */}
           <Route path="/dashboard" element={<Navigate to="/admin/apps" />} />

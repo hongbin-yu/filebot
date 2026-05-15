@@ -49,6 +49,8 @@
         const pageLanguageDisplayEl = document.querySelector('#page-language-display');
         const pageStatusDisplayEl = document.querySelector('#page-status-display');
         const filePathDisplayEl = document.querySelector('#file-path-display');
+        const lastModifiedDisplayEl = document.querySelector('#page-lastmodified-display');
+        const savePageTopBtn = document.getElementById('save-page-top');
         const breadcrumbEl = document.getElementById('breadcrumb');
 
         // Load all pages for path resolution
@@ -185,6 +187,9 @@
             previewPageBtn.addEventListener('click', previewPage);
             if (topPreviewBtn) topPreviewBtn.addEventListener('click', previewPage);
             savePageBtn.addEventListener('click', savePage);
+            if (savePageTopBtn) {
+                savePageTopBtn.addEventListener('click', savePage);
+            }
             publishPageBtn.addEventListener('click', publishPage);
             cancelEditBtn.addEventListener('click', cancelEdit);
             // File manager buttons removed per user request - event listeners removed
@@ -984,6 +989,7 @@
             pageLanguageDisplayEl.textContent = ' | Language: ' + language.toUpperCase();
             pageStatusDisplayEl.textContent = ' | Status: DRAFT';
             filePathDisplayEl.textContent = '';
+            lastModifiedDisplayEl.textContent = '';
 
             // Populate editor with empty content
             editorContentEl.value = '';
@@ -997,6 +1003,7 @@
             hideLoading();
             editorFormEl.style.display = 'block';
             editorActionsEl.style.display = 'block';
+            if (savePageTopBtn) savePageTopBtn.style.display = '';
             noPageSelectedEl.style.display = 'none';
             errorAreaEl.style.display = 'none';
             successMessageEl.style.display = 'none';
@@ -1770,6 +1777,7 @@
                 pageTitleDisplayEl.textContent = page.title || 'Untitled';
                 pageLanguageDisplayEl.textContent = ` | Language: ${page.language ? page.language.toUpperCase() : 'EN'}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${page.status || 'draft'}`;
+                lastModifiedDisplayEl.textContent = formatLastModified(page.last_modified);
 
                 // Update language switcher
                 populateLanguageSwitcher();
@@ -1795,6 +1803,7 @@
                 filePathDisplayEl.style.color = '';
                 filePathDisplayEl.style.fontWeight = '';
                 filePathDisplayEl.title = '';
+                lastModifiedDisplayEl.textContent = formatLastModified(page.last_modified);
 
                 // Update FileBot target folder display
                 try {
@@ -1857,6 +1866,7 @@
                 hideLoading();
                 editorFormEl.style.display = 'block';
                 editorActionsEl.style.display = 'block';
+                if (savePageTopBtn) savePageTopBtn.style.display = '';
                 noPageSelectedEl.style.display = 'none';
                 errorAreaEl.style.display = 'none';
                 successMessageEl.style.display = 'none';
@@ -3505,6 +3515,7 @@
                 } else {
                     filePathDisplayEl.textContent = '';
                 }
+                lastModifiedDisplayEl.textContent = formatLastModified(createdPage.last_modified);
 
                 // Update URL
                 const url = new URL(window.location);
@@ -3611,6 +3622,7 @@
                     language: currentPageData?.language || 'en',
                     status: currentPageData?.status || 'draft',
                     hide_in_navigation: currentPageData?.hide_in_navigation ?? false,
+                    navigation_title: currentPageData?.navigation_title || null,
                     metadata: currentPageData?.metadata || undefined
                 };
 
@@ -3671,7 +3683,9 @@
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                // Update current page data
+                // Update last modified and current page data
+                const now = new Date();
+                updatedData.last_modified = now.toISOString();
                 currentPageData = { ...currentPageData, ...updatedData };
 
                 // Show success message
@@ -3683,6 +3697,7 @@
                 pageTitleDisplayEl.textContent = updatedData.title;
                 pageLanguageDisplayEl.textContent = ` | Language: ${updatedData.language.toUpperCase()}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${updatedData.status}`;
+                lastModifiedDisplayEl.textContent = formatLastModified(updatedData.last_modified);
                 // Update file path display
                 if (currentPageData.metadata && currentPageData.metadata.file_path) {
                     filePathDisplayEl.textContent = ` | File Path: ${currentPageData.metadata.file_path}`;
@@ -3691,7 +3706,7 @@
                 } else {
                     filePathDisplayEl.textContent = '';
                 }
-
+                lastModifiedDisplayEl.textContent = formatLastModified(currentPageData.last_modified);
 
 
                 console.log('Page saved successfully');
@@ -3707,6 +3722,7 @@
                 setTimeout(() => {
                     successMessageEl.style.display = 'none';
                 }, 3000);
+
             }
         }
 
@@ -3743,12 +3759,21 @@
 
                 const result = await response.json();
 
+                // Update local page data with publish status
+                currentPageData.status = 'published';
+                currentPageData.last_published = result.published_at;
+                // Refresh display
+                pageStatusDisplayEl.textContent = ' | Status: published';
+                lastModifiedDisplayEl.textContent = formatLastModified(result.published_at);
+
                 showSuccess('Page published successfully!');
                 console.log('Published page:', result);
 
                 // Open the published page in a new tab
                 // Page is saved to FileBot publish directory, served at /publish/
-                const pageUrl = '/publish/' + path.replace(/^\//, '') + '.html';
+                // Strip site prefix (canadasite/site/www) since FileBot strips it during publish
+                const publishPath = path.replace(/^\/(canadasite|site|www)\/?/, '/');
+                const pageUrl = '/publish/' + publishPath.replace(/^\//, '') + '.html';
                 window.open(pageUrl, '_blank');
 
             } catch (error) {
@@ -3788,6 +3813,7 @@
 
             editorFormEl.style.display = 'none';
             editorActionsEl.style.display = 'none';
+            if (savePageTopBtn) savePageTopBtn.style.display = 'none';
             noPageSelectedEl.style.display = 'block';
             errorAreaEl.style.display = 'none';
             successMessageEl.style.display = 'none';
@@ -3797,6 +3823,7 @@
             pageLanguageDisplayEl.textContent = '';
             pageStatusDisplayEl.textContent = '';
             filePathDisplayEl.textContent = '';
+            lastModifiedDisplayEl.textContent = '';
 
             // Clear URL parameter
             const url = new URL(window.location);
@@ -3821,6 +3848,22 @@
 
         function hideLoading() {
             loadingContentEl.style.display = 'none';
+        }
+
+        function formatLastModified(lastModified) {
+            if (!lastModified) return '';
+            try {
+                const d = new Date(lastModified);
+                if (isNaN(d.getTime())) return '';
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                return ` | Last modified: ${year}-${month}-${day} ${hours}:${minutes}`;
+            } catch (e) {
+                return '';
+            }
         }
 
         function showError(message) {
@@ -9355,6 +9398,10 @@
             const hideNavCheckbox = document.getElementById('metadata-hide-nav');
             if (hideNavCheckbox) hideNavCheckbox.checked = currentPageData?.hide_in_navigation === true;
 
+            // Navigation title
+            const navTitleInput = document.getElementById('metadata-nav-title');
+            if (navTitleInput) navTitleInput.value = currentPageData?.navigation_title || '';
+
             // Custom HTML (free text field for author)
             const customHtmlInput = document.getElementById('metadata-custom-html');
             if (customHtmlInput) customHtmlInput.value = metadata.custom_html || '';
@@ -9464,6 +9511,12 @@
             const hideNavCheckbox = document.getElementById('metadata-hide-nav');
             if (hideNavCheckbox) {
                 currentPageData.hide_in_navigation = hideNavCheckbox.checked ? true : false;
+            }
+
+            // Navigation title
+            const navTitleInput = document.getElementById('metadata-nav-title');
+            if (navTitleInput) {
+                currentPageData.navigation_title = navTitleInput.value.trim() || null;
             }
 
             // Custom HTML (free text field for author)

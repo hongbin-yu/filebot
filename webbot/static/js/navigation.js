@@ -31,7 +31,7 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 let columnsContainer, loadingEl, errorContainer, pageStats, breadcrumbNav;
-let btnCreate, btnEdit, btnPreview, btnMove, btnPublish, btnDelete, btnRefresh;
+let btnCreate, btnEdit, btnPreview, btnMove, btnPublish, btnUnpublish, btnDelete, btnRefresh;
 
 function initDom() {
     columnsContainer = $('#columns-container');
@@ -44,6 +44,7 @@ function initDom() {
     btnPreview = $('#btn-top-preview');
     btnMove = $('#btn-top-move');
     btnPublish = $('#btn-top-publish');
+    btnUnpublish = $('#btn-top-unpublish');
     btnDelete = $('#btn-top-delete');
     btnRefresh = $('#btn-top-refresh');
     btnProperties = $('#btn-top-properties');
@@ -341,10 +342,49 @@ async function performPublish(pageData) {
         showToast('"' + (pageTitle || pageData.name) + '" published successfully!', 'success');
 
         // Open published page in new tab
-        const pageUrl = '/publish/' + pagePath.replace(/^\//, '') + '.html';
+        // Strip site prefix (canadasite/site/www) since FileBot strips it during publish
+        const publishPath = pagePath.replace(/^\/(canadasite|site|www)\/?/, '/');
+        const pageUrl = '/publish/' + publishPath.replace(/^\//, '') + '.html';
         window.open(pageUrl, '_blank');
     } catch (err) {
         showToast('Failed to publish: ' + err.message, 'danger');
+    }
+}
+
+// ============================================================================
+async function performUnpublish(pageData) {
+    var pagePath = pageData.path;
+    var pageTitle = pageTitle ? pageTitle : pageData.name;
+
+    if (!confirm('Unpublish "' + (pageTitle || pageData.name) + '"? This will remove the published page from the public site.')) {
+        return;
+    }
+
+    showToast('Unpublishing "' + (pageTitle || pageData.name) + '"...', 'info');
+
+    try {
+        var resp = await fetch('/api/v1/pages/unpublish?path=' + encodeURIComponent(pagePath), {
+            method: 'POST'
+        });
+
+        if (!resp.ok) {
+            var errData = null;
+            try { errData = await resp.json(); } catch(e) {}
+            throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+        }
+
+        var result = await resp.json();
+
+        // Update local data
+        pageData.status = 'draft';
+        pageData.last_published = null;
+
+        showToast('"' + (pageTitle || pageData.name) + '" unpublished!', 'success');
+
+        // Re-render to reflect status change
+        renderColumns();
+    } catch (err) {
+        showToast('Failed to unpublish: ' + err.message, 'danger');
     }
 }
 
@@ -381,6 +421,20 @@ function renderColumn(columnIndex, title, pages, parentPath) {
         var link = document.createElement('a');
         link.href = '#';
         link.className = 'page-link';
+
+        // Publish status icon
+        var statusIcon = document.createElement('span');
+        statusIcon.className = 'publish-status-icon';
+        if (page.status === 'published') {
+            statusIcon.textContent = '●';
+            statusIcon.style.color = '#28a745';
+            statusIcon.title = 'Published';
+        } else {
+            statusIcon.textContent = '○';
+            statusIcon.style.color = '#aaa';
+            statusIcon.title = 'Draft';
+        }
+        link.appendChild(statusIcon);
 
         // Title
         var titleSpan = document.createElement('span');
@@ -575,25 +629,31 @@ function goToPath(index) {
 // ============================================================================
 function updateButtons() {
     var hasSelection = selectedPageId !== null;
+    var isPublished = hasSelection && selectedPageData && selectedPageData.status === 'published';
+    var canMove = hasSelection && !isPublished;
+
     btnEdit.disabled = !hasSelection;
     btnPreview.disabled = !hasSelection;
-    btnMove.disabled = !hasSelection;
+    btnMove.disabled = !hasSelection || isPublished;
     btnPublish.disabled = !hasSelection;
+    btnUnpublish.disabled = !isPublished;
     btnDelete.disabled = !hasSelection;
     btnProperties.disabled = !hasSelection;
 
     btnEdit.className = hasSelection ? 'btn btn-edit' : 'btn btn-edit disabled';
     btnPreview.className = hasSelection ? 'btn btn-info' : 'btn btn-info disabled';
-    btnMove.className = hasSelection ? 'btn btn-move' : 'btn btn-move disabled';
+    btnMove.className = canMove ? 'btn btn-move' : 'btn btn-move disabled';
     btnPublish.className = hasSelection ? 'btn btn-publish' : 'btn btn-publish disabled';
+    btnUnpublish.className = isPublished ? 'btn btn-warning' : 'btn btn-warning disabled';
     btnDelete.className = hasSelection ? 'btn btn-delete' : 'btn btn-delete disabled';
     btnProperties.className = hasSelection ? 'btn btn-primary' : 'btn btn-primary disabled';
 
     // Tooltip messages for disabled state (#8)
     btnEdit.title = hasSelection ? 'Edit selected page' : 'Select a page to edit';
     btnPreview.title = hasSelection ? 'Preview page content' : 'Select a page to preview';
-    btnMove.title = hasSelection ? 'Move selected page' : 'Select a page to move';
+    btnMove.title = canMove ? 'Move selected page' : (isPublished ? 'Cannot move a published page' : 'Select a page to move');
     btnPublish.title = hasSelection ? 'Publish selected page' : 'Select a page to publish';
+    btnUnpublish.title = isPublished ? 'Unpublish selected page' : (hasSelection ? 'Page is not published' : 'Select a published page to unpublish');
     btnDelete.title = hasSelection ? 'Delete selected page' : 'Select a page to delete';
     btnProperties.title = hasSelection ? 'View/edit page properties' : 'Select a page to view properties';
 }
@@ -645,6 +705,27 @@ function setupButtons() {
     });
 
     // ============================================================================
+    // Move modal elements
+    // ============================================================================
+    var moveModal = document.getElementById('moveModal');
+    var movePageForm = document.getElementById('movePageForm');
+    var movePageTitle = document.getElementById('movePageTitle');
+    var movePageLang = document.getElementById('movePageLang');
+    var movePageCurrentPath = document.getElementById('movePageCurrentPath');
+    var moveNewParent = document.getElementById('moveNewParent');
+    var movePathPreview = document.getElementById('movePathPreview');
+    var movePageError = document.getElementById('movePageError');
+    var movePageSuccess = document.getElementById('movePageSuccess');
+    var movePageSaveBtn = document.getElementById('movePageSaveBtn');
+
+    // Close button bindings for move modal
+    if (moveModal) {
+        moveModal.querySelectorAll('[data-dismiss="modal"]').forEach(function(btn) {
+            btn.addEventListener('click', function() { hideModal(moveModal); });
+        });
+    }
+
+    // ============================================================================
     // CREATE button (fix #1 - root node check, fix #9 - state retention)
     // ============================================================================
     btnCreate.addEventListener('click', function() {
@@ -691,6 +772,15 @@ function setupButtons() {
     btnPublish.addEventListener('click', function() {
         if (selectedPageData) {
             performPublish(selectedPageData);
+        }
+    });
+
+    // ============================================================================
+    // UNPUBLISH button
+    // ============================================================================
+    btnUnpublish.addEventListener('click', function() {
+        if (selectedPageData) {
+            performUnpublish(selectedPageData);
         }
     });
 
@@ -882,6 +972,101 @@ function setupButtons() {
     if (propModal) {
         propModal.querySelectorAll('[data-dismiss="modal"]').forEach(function(btn) {
             btn.addEventListener('click', function() { hideModal(propModal); });
+        });
+    }
+
+    // ============================================================================
+    // MOVE PAGE MODAL
+    // ============================================================================
+
+    var moveModalPageData = null;
+
+    function showMoveModal(pageData) {
+        moveModalPageData = pageData;
+        movePageTitle.textContent = pageData.title || '(untitled)';
+        movePageLang.textContent = (pageData.language || 'en').toUpperCase();
+        movePageCurrentPath.textContent = pageData.path;
+        moveNewParent.value = '';
+        movePathPreview.textContent = '(enter parent path to preview)';
+        movePathPreview.style.color = '#888';
+        movePageError.style.display = 'none';
+        movePageSuccess.style.display = 'none';
+        movePageSaveBtn.disabled = true;
+        movePageSaveBtn.textContent = 'Move Page';
+        updateMovePreview();
+        showModal(moveModal);
+        setTimeout(function() { moveNewParent.focus(); }, 300);
+    }
+
+    function updateMovePreview() {
+        var currentPath = moveModalPageData ? moveModalPageData.path : '';
+        var parentPath = moveNewParent.value.trim();
+        var slug = currentPath.split('/').filter(Boolean).pop() || '';
+        if (parentPath && slug) {
+            var newPath = parentPath.replace(/\/+$/, '') + '/' + slug;
+            movePathPreview.textContent = newPath;
+            movePathPreview.style.color = '#333';
+            movePageSaveBtn.disabled = false;
+        } else {
+            movePathPreview.textContent = '(enter parent path to preview)';
+            movePathPreview.style.color = '#888';
+            movePageSaveBtn.disabled = true;
+        }
+    }
+
+    // Live preview as user types parent path
+    if (moveNewParent) {
+        moveNewParent.addEventListener('input', updateMovePreview);
+    }
+
+    // Move form submit
+    if (movePageForm) {
+        movePageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!moveModalPageData) return;
+            performMove(moveModalPageData, moveNewParent.value.trim());
+        });
+    }
+
+    function performMove(pageData, newParentPath) {
+        movePageSaveBtn.disabled = true;
+        movePageSaveBtn.textContent = 'Moving...';
+        movePageError.style.display = 'none';
+        movePageSuccess.style.display = 'none';
+
+        var url = '/api/v1/pages/move';
+        url += '?path=' + encodeURIComponent(pageData.path);
+        url += '&new_parent_path=' + encodeURIComponent(newParentPath);
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(function(resp) {
+            if (!resp.ok) {
+                return resp.json().then(function(err) {
+                    throw new Error(err.detail || 'HTTP ' + resp.status);
+                });
+            }
+            return resp.json();
+        })
+        .then(function(data) {
+            movePageSuccess.textContent = '✅ Page moved successfully!';
+            movePageSuccess.style.display = 'block';
+            movePageSaveBtn.textContent = 'Move Page';
+            movePageSaveBtn.disabled = true;
+            showToast('Page moved: ' + data.old_path + ' → ' + data.new_path, 'success');
+            // Refresh the navigation tree after a short delay
+            setTimeout(function() {
+                hideModal(moveModal);
+                refreshTree();
+            }, 1200);
+        })
+        .catch(function(err) {
+            movePageError.textContent = '❌ ' + err.message;
+            movePageError.style.display = 'block';
+            movePageSaveBtn.disabled = false;
+            movePageSaveBtn.textContent = 'Retry';
         });
     }
 

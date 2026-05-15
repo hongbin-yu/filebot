@@ -611,3 +611,30 @@
     background: #28a745;
     box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
 }
+
+/* Publish status icon in page list */
+.publish-status-icon {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    font-size: 12px;
+    margin-right: 4px;
+}
+
+/* Unpublish button - override WET-BOEW hijacking */
+.btn-warning {
+    background-color: #f0ad4e !important;
+    border-color: #eea236 !important;
+    color: #fff !important;
+}
+.btn-warning:hover {
+    background-color: #ec971f !important;
+    border-color: #d58512 !important;
+    color: #fff !important;
+}
+.btn-warning.disabled,
+.btn-warning:disabled {
+    opacity: 0.5;
+    background-color: #f0ad4e;
+    border-color: #eea236;
+}

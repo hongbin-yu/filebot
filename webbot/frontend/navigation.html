@@ -53,6 +53,9 @@
                 <button id="btn-top-publish" class="btn btn-publish" disabled title="Publish selected page">
                     Publish
                 </button>
+                <button id="btn-top-unpublish" class="btn btn-warning" disabled title="Unpublish selected page">
+                    Unpublish
+                </button>
                 <button id="btn-top-delete" class="btn btn-delete" disabled title="Delete selected page">
                     Delete
                 </button>
@@ -292,6 +295,57 @@
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-success" id="prop-save-btn">Save</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Move Page Modal -->
+    <div class="modal fade" id="moveModal" tabindex="-1" role="dialog" aria-labelledby="moveModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moveModalLabel">Move Page</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="movePageForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label>Title</label>
+                                    <p class="form-control-static" id="movePageTitle" style="font-weight:bold;padding-top:6px;"></p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Language</label>
+                                    <p class="form-control-static" id="movePageLang" style="padding-top:6px;"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Current Path</label>
+                            <p class="form-control-static" id="movePageCurrentPath" style="font-family:monospace;padding-top:6px;word-break:break-all;"></p>
+                        </div>
+                        <div class="form-group">
+                            <label for="moveNewParent">Move to Parent Folder</label>
+                            <input type="text" class="form-control" id="moveNewParent" placeholder="e.g. /canadasite/en/new-parent-folder" required>
+                            <small class="form-text text-muted">Enter the target parent path. The page slug will remain the same.</small>
+                        </div>
+                        <div style="margin:10px 0;padding:10px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;">
+                            <strong>New path preview</strong><br>
+                            <span id="movePathPreview" style="font-family:monospace;color:#888;">(enter parent path to preview)</span>
+                        </div>
+                        <div id="movePageError" class="alert alert-danger" style="display: none;"></div>
+                        <div id="movePageSuccess" class="alert alert-success" style="display: none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning" id="movePageSaveBtn" disabled>Move Page</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

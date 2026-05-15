@@ -42,6 +42,7 @@ class PageBase(BaseModel):
     status: PageStatus = Field(PageStatus.DRAFT, description="页面状态")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="元数据")
     hide_in_navigation: bool = Field(False, description="是否在页面导航中隐藏")
+    navigation_title: Optional[str] = Field(None, description="导航菜单中使用的自定义标题")
     tags: List[str] = Field(default_factory=list, description="页面标签列表")
 
 class PageCreate(PageBase):
@@ -61,6 +62,7 @@ class PageUpdate(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     file_path: Optional[str] = Field(None, description="FileBot image storage path. If empty, inherits from ancestor pages.")
     hide_in_navigation: Optional[bool] = None
+    navigation_title: Optional[str] = None
     publish_template: Optional[str] = Field(None, description="Page-level Mustache template path. If set, publish uses this single template instead of the default hardcoded assembly.")
     tags: Optional[List[str]] = None
 
@@ -79,6 +81,7 @@ class PageResponse(BaseModel):
     status: str = "draft"
     metadata: Optional[Dict[str, Any]] = None
     hide_in_navigation: bool = False
+    navigation_title: Optional[str] = None
     publish_template: Optional[str] = Field(None, description="Page-level Mustache template path for publish")
     tags: List[str] = []
     created_by: Optional[str] = None
@@ -107,6 +110,7 @@ class PageListItem(BaseModel):
     status: str = "draft"
     metadata: Optional[Dict[str, Any]] = None
     hide_in_navigation: bool = False
+    navigation_title: Optional[str] = None
     publish_template: Optional[str] = Field(None, description="Page-level Mustache template path for publish")
     tags: List[str] = []
     created_by: Optional[str] = None

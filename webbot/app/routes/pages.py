@@ -453,8 +453,8 @@ async def create_page(page: PageCreate):
         now = datetime.now().isoformat()
         cursor.execute("""
             INSERT INTO webbot_page
-            (id, title, description, keywords, content, language, parent_path, path, other_language_path, status, metadata, hide_in_navigation, created_at, last_modified)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, title, description, keywords, content, language, parent_path, path, other_language_path, status, metadata, hide_in_navigation, navigation_title, created_at, last_modified)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             page_id,
             page.title,
@@ -468,6 +468,7 @@ async def create_page(page: PageCreate):
             page.status.value if isinstance(page.status, PageStatus) else (page.status or PageStatus.DRAFT.value),
             json.dumps(metadata_dict) if metadata_dict else "{}",
             1 if page.hide_in_navigation else 0,
+            page.navigation_title if page.navigation_title else None,
             now,
             now
         ))
@@ -948,6 +949,7 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
                 status="published",
                 metadata={"hardcoded": True, "path": "/boarding/content/dam", "source": "hardcoded-special-route"},
                 hide_in_navigation=False,
+                navigation_title=None,
                 tags=["boarding", "content", "dam"],
                 created_by="system",
                 created_at=now,
@@ -971,6 +973,7 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
                 status='published',
                 metadata={},
                 hide_in_navigation=False,
+                navigation_title=None,
                 tags=[],
                 created_by='system',
                 created_at=now,
@@ -1122,6 +1125,7 @@ async def get_page_by_path_param(full_path: str):
                 status="published",
                 metadata={"hardcoded": True, "path": "/boarding/content/dam", "source": "hardcoded-special-route"},
                 hide_in_navigation=False,
+                navigation_title=None,
                 tags=["boarding", "content", "dam"],
                 created_by="system",
                 created_at=now,
@@ -1145,6 +1149,7 @@ async def get_page_by_path_param(full_path: str):
                 status='published',
                 metadata={},
                 hide_in_navigation=False,
+                navigation_title=None,
                 tags=[],
                 created_by='system',
                 created_at=now,
@@ -2034,6 +2039,10 @@ async def update_page(page_id: str, page_update: PageUpdate,
             update_fields.append("hide_in_navigation = ?")
             update_values.append(1 if page_update.hide_in_navigation else 0)
 
+        if page_update.navigation_title is not None:
+            update_fields.append("navigation_title = ?")
+            update_values.append(page_update.navigation_title)
+
         if page_update.publish_template is not None:
             update_fields.append("publish_template = ?")
             update_values.append(page_update.publish_template)
@@ -2665,7 +2674,7 @@ async def publish_page(
             raise HTTPException(status_code=404, detail=f"Page not found: {path}")
         page = dict(page)
         page_content = page.get("content", "")
-        page_title = page.get("title", "Untitled")
+        page_title = page.get("navigation_title") or page.get("title", "Untitled")
         page_language = page.get("language", "en")
         page_publish_template = page.get("publish_template", None)
         page_last_modified = page.get("last_modified", now.isoformat())
@@ -2896,6 +2905,205 @@ async def publish_page(
         raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")
     finally:
         conn.close()
+
+
+@router.post("/unpublish")
+async def unpublish_page(
+    request: FastAPIRequest,
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en/canadian-heritage"),
+):
+    """
+    Unpublish a page: forward to FileBot to delete from /publish folder.
+    """
+    import aiohttp
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Forward to FileBot to delete the published file
+        filebot_unpublish_url = "http://localhost:8001/api/v1/pages/unpublish"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                filebot_unpublish_url,
+                params={"path": path},
+                headers={"X-WebBot-Access": "true"},
+                timeout=aiohttp.ClientTimeout(total=10)
+            ) as fb_resp:
+                if fb_resp.status != 200:
+                    fb_error = await fb_resp.text()
+                    logger.error(f"FileBot unpublish failed ({fb_resp.status}): {fb_error}")
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"FileBot unpublish failed: {fb_error}"
+                    )
+                fb_result = await fb_resp.json()
+
+        # 2. Update WebBot page status to draft
+        cursor.execute(
+            "UPDATE webbot_page SET status = 'draft', last_published = NULL WHERE path = ?",
+            (path,)
+        )
+        conn.commit()
+
+        return {
+            "success": True,
+            "path": path,
+            "file_deleted": fb_result.get("file_deleted", False),
+            "db_updated": fb_result.get("db_updated", False),
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Unpublish failed: {str(e)}")
+    finally:
+        conn.close()
+
+
+@router_v1.post("/pages/move")
+async def move_page(
+    request: FastAPIRequest,
+    path: str = Query(..., description="Current full page path, e.g. /canadasite/en/some-page"),
+    new_parent_path: str = Query(None, description="New parent path, e.g. /canadasite/en/new-parent. Use empty or omit for root level."),
+):
+    """
+    Move a page to a new parent. Updates:
+    - Page's own path and parent_path
+    - All descendant pages' path and parent_path
+    - other_language_path references to moved pages
+    - Stores original_path in metadata
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Validate source page exists
+        cursor.execute("SELECT * FROM webbot_page WHERE path = ?", (path,))
+        page = cursor.fetchone()
+        if not page:
+            raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+
+        # 2. Validate new parent exists (unless moving to root)
+        if new_parent_path:
+            new_parent_path = normalize_path(new_parent_path)
+            if new_parent_path == path:
+                raise HTTPException(status_code=400, detail="New parent path cannot be the same as the page path")
+            cursor.execute("SELECT path FROM webbot_page WHERE path = ?", (new_parent_path,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail=f"Parent page not found: {new_parent_path}")
+
+        old_path = normalize_path(path)
+        page_id = old_path.rstrip('/').split('/')[-1]
+
+        # 3. Calculate new path
+        if new_parent_path:
+            new_path = f"{new_parent_path.rstrip('/')}/{page_id}"
+        else:
+            new_path = f"/{page_id}"
+
+        # 4. Validate no page exists at new path
+        cursor.execute("SELECT path FROM webbot_page WHERE path = ?", (new_path,))
+        if cursor.fetchone():
+            raise HTTPException(status_code=409, detail=f"Target path already exists: {new_path}")
+
+        # 5. Don't allow moving a page under itself
+        if new_path.startswith(old_path.rstrip('/') + '/') or new_path == old_path:
+            raise HTTPException(status_code=400, detail="Cannot move a page under itself")
+
+        # 6. Store original path in metadata
+        metadata = {}
+        if page['metadata']:
+            try:
+                metadata = json.loads(page['metadata'])
+            except json.JSONDecodeError:
+                metadata = {}
+
+        # Preserve existing metadata, add/update original_path
+        metadata['original_path'] = old_path
+
+        # 7. Update the page itself: path, parent_path, metadata
+        cursor.execute("""
+            UPDATE webbot_page
+            SET id = ?, path = ?, parent_path = ?, metadata = ?, last_modified = CURRENT_TIMESTAMP
+            WHERE path = ?
+        """, (new_path, new_path, new_parent_path, json.dumps(metadata), old_path))
+
+        # 8. Recursively update all children's paths and parent_paths
+        _rebuild_subtree_paths_and_parents(cursor, old_path, new_path)
+
+        # 9. Update other_language_path references to moved pages
+        _update_other_language_paths(cursor, old_path, new_path)
+
+        conn.commit()
+
+        return {
+            "success": True,
+            "old_path": old_path,
+            "new_path": new_path,
+            "new_parent_path": new_parent_path,
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Move failed: {str(e)}")
+    finally:
+        conn.close()
+
+
+def _rebuild_subtree_paths_and_parents(cursor, old_root: str, new_root: str):
+    """
+    Recursively update child page paths and parent_paths after a move.
+    Processes one level of depth per call.
+    """
+    cursor.execute("""
+        SELECT path, parent_path FROM webbot_page
+        WHERE path LIKE ? || '/%'
+          AND instr(substr(path, length(?) + 2), '/') = 0
+    """, (old_root, old_root))
+    children = cursor.fetchall()
+
+    for child in children:
+        child_path = child['path']
+        suffix = child_path[len(old_root):]
+        new_child_path = new_root + suffix
+
+        cursor.execute("""
+            UPDATE webbot_page
+            SET id = ?, path = ?, parent_path = ?, last_modified = CURRENT_TIMESTAMP
+            WHERE path = ?
+        """, (new_child_path, new_child_path, new_root, child_path))
+
+        # Recurse into grand-children
+        _rebuild_subtree_paths_and_parents(cursor, child_path, new_child_path)
+
+
+def _update_other_language_paths(cursor, old_prefix: str, new_prefix: str):
+    """
+    Update other_language_path references that pointed to any moved page.
+    Handles both exact matches and path prefix matches.
+    """
+    # Exact match: other_language_path == old_prefix
+    cursor.execute("""
+        UPDATE webbot_page
+        SET other_language_path = ?, last_modified = CURRENT_TIMESTAMP
+        WHERE other_language_path = ?
+    """, (new_prefix, old_prefix))
+
+    # Prefix match: other_language_path starts with old_prefix + '/'
+    cursor.execute("""
+        UPDATE webbot_page
+        SET other_language_path = ? || substr(other_language_path, length(?) + 1),
+            last_modified = CURRENT_TIMESTAMP
+        WHERE other_language_path LIKE ? || '/%'
+    """, (new_prefix, old_prefix, old_prefix))
 
 
 @router_v1.get("/getfooter")

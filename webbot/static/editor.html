@@ -138,6 +138,7 @@
                     <span id="page-language-display"></span>
                     <span id="page-status-display"></span>
                     <span id="file-path-display"></span>
+                    <span id="page-lastmodified-display"></span>
                 </div>
                 <div id="breadcrumb" class="breadcrumb">
                     <div class="breadcrumb-item">
@@ -167,8 +168,6 @@
 
 
                     <div class="form-group">
-                        <label for="editor-content">Page Content:</label>
-
                         <!-- Editor mode switcher -->
                         <div class="editor-mode-switcher">
                             <button type="button" class="editor-mode-btn active" data-mode="wysiwyg">
@@ -178,6 +177,10 @@
                             <button type="button" class="editor-mode-btn" data-mode="html">
                                 <span class="glyphicon glyphicon-console" aria-hidden="true"></span>
                                 HTML Source
+                            </button>
+                            <button type="button" id="save-page-top" class="btn btn-success" style="margin-left: auto;">
+                                <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
+                                Save Page
                             </button>
                         </div>
 
@@ -338,6 +341,13 @@
                                     <input type="checkbox" id="metadata-hide-nav"> Hide in navigation
                                 </label>
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-nav-title">Navigation title:</label>
+                            <input type="text" id="metadata-nav-title" class="form-control"
+                                   placeholder="Custom title for navigation menu">
+                            <small class="form-text text-muted">Overrides the page title in navigation menus</small>
                         </div>
 
                         <hr>

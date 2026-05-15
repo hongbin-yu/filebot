@@ -114,10 +114,19 @@ const AdminAppFolders: React.FC = () => {
   useEffect(() => {
     const loadCurrentFolderDetails = async () => {
       if (!currentFolderPath) {
-        console.log('📂 loadCurrentFolderDetails: no path, skipping - clearing old state');
+        console.log('📂 loadCurrentFolderDetails: no path, loading root documents');
         setCurrentFolder(null);
         setSubfolders([]);
-        setDocuments([]);
+        // Load root-level documents
+        const rootPath = '/' + appSlug;
+        try {
+          const docs = await documentService.getDocumentsByFolderPath(rootPath, { limit: 1000 });
+          docs.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+          setDocuments(docs);
+        } catch (err) {
+          console.error('Failed to load root documents:', err);
+          setDocuments([]);
+        }
         return;
       }
       
@@ -973,12 +982,17 @@ const AdminAppFolders: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <h3 className="font-medium">Select a Folder</h3>
+                <h3 className="font-medium">Root — Content</h3>
+              )}
+              {!currentFolder && (
+                <div className="text-sm text-gray-500 shrink-0 pt-0.5">
+                  Documents ({documents.length})
+                </div>
               )}
             </div>
             
             <div className="p-4">
-              {!currentFolder ? (
+              {!currentFolder && documents.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <FolderIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                   <p>Select a folder from the left panel</p>

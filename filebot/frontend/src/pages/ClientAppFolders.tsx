@@ -82,7 +82,10 @@ const ClientAppFolders: React.FC = () => {
     const loadFolders = async () => {
       try {
         setFoldersLoading(true);
-        const data = await folderService.getFolders(appSlug);
+        const data = await folderService.getFolders(appSlug, {
+          path_starts_with: '/' + appSlug,
+          limit: 10000
+        });
         setFolders(data);
       } catch (err) {
         console.error('Failed to load folders:', err);
@@ -165,11 +168,33 @@ const ClientAppFolders: React.FC = () => {
     loadFolderDetails();
   }, [currentFolderPath, appSlug]);
 
-  // Load documents recursively from current folder and all subfolders
-  // (Uses backend recursive endpoint for single API call)
+  // Load documents from current folder (or app root if no folder selected)
   useEffect(() => {
-    if (!currentFolderPath || !appSlug) {
+    if (!appSlug) {
       setDocuments([]);
+      return;
+    }
+    // Root level: load docs from app's root path (e.g. /publish)
+    if (!currentFolderPath) {
+      setDocumentsLoading(true);
+      (async () => {
+        try {
+          const fullPath = '/' + appSlug;
+          const docs = await documentService.getDocumentsByFolderPath(fullPath, { limit: 1000 });
+          docs.sort((a, b) => {
+            const pA = a.parent_folder_path || a.folder_id || '';
+            const pB = b.parent_folder_path || b.folder_id || '';
+            if (pA !== pB) return pA.localeCompare(pB);
+            return (a.title || a.original_filename || '').localeCompare(b.title || b.original_filename || '');
+          });
+          setDocuments(docs);
+        } catch (err) {
+          console.error('Failed to load root documents:', err);
+          setDocuments([]);
+        } finally {
+          setDocumentsLoading(false);
+        }
+      })();
       return;
     }
 
@@ -182,10 +207,8 @@ const ClientAppFolders: React.FC = () => {
         const pathDepth = currentFolderPath.split('/').filter(Boolean).length;
         let docs;
         if (pathDepth >= 3) {
-          // Level 4+ (如 /boarding/canadasite/en/sub) → 递归显示所有子孙文档
           docs = await documentService.getDocumentsByPathPrefix(fullPath, { limit: 1000 });
         } else {
-          // Level 1-3 → 只显示当前文件夹直属文档
           docs = await documentService.getDocumentsByFolderPath(fullPath, { limit: 1000 });
         }
 
@@ -326,6 +349,7 @@ const ClientAppFolders: React.FC = () => {
   }
 
   const breadcrumbs = buildBreadcrumbs();
+  const rootFolders = currentFolderPath ? [] : folders.filter(f => f.parent_folder_path === '/' + appSlug);
 
   // Folder icon SVG component
   const FolderIcon = ({ className }: { className?: string }) => (
@@ -410,7 +434,7 @@ const ClientAppFolders: React.FC = () => {
             <div className="px-4 py-3 border-b flex items-center justify-between">
               <h3 className="font-medium">Folders</h3>
               <span className="text-xs text-gray-400">
-                {currentFolderPath ? subfolders.length : folders.length} folders
+                {currentFolderPath ? subfolders.length : rootFolders.length} folders
               </span>
             </div>
 
@@ -431,7 +455,7 @@ const ClientAppFolders: React.FC = () => {
                 <div className="text-center py-4 text-gray-500 text-sm">Loading...</div>
               ) : (
                 <div className="space-y-2">
-                  {(currentFolderPath ? subfolders : folders).map(folder => (
+                  {(currentFolderPath ? subfolders : rootFolders).map(folder => (
                     <div
                       key={folder.path}
                       className={`p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
@@ -459,7 +483,7 @@ const ClientAppFolders: React.FC = () => {
                     </div>
                   ))}
 
-                  {(currentFolderPath ? subfolders : folders).length === 0 && (
+                  {(currentFolderPath ? subfolders : rootFolders).length === 0 && (
                     <p className="text-gray-500 text-center py-4 text-sm">No folders</p>
                   )}
                 </div>
@@ -475,6 +499,8 @@ const ClientAppFolders: React.FC = () => {
               <h3 className="font-medium">
                 {currentFolder ? (
                   <>{currentFolder.name} — Documents (including subfolders)</>
+                ) : documents.length > 0 ? (
+                  <>Root — Documents</>
                 ) : (
                   'Select a Document'
                 )}
@@ -485,10 +511,10 @@ const ClientAppFolders: React.FC = () => {
               </div>
             </div>
 
-            {!currentFolderPath ? (
+            {!currentFolderPath && documents.length === 0 && !documentsLoading ? (
               <div className="text-center py-8 text-gray-500">
                 <FolderIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                <p>Select a document from the left panel</p>
+                <p>Select a folder from the left panel</p>
               </div>
             ) : documentsLoading ? (
               <div className="text-center py-8 text-gray-500">

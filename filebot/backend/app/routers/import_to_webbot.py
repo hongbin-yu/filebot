@@ -211,16 +211,16 @@ def import_to_webbot(
         storage_path = doc.stored_filename or ''
         doc_meta_raw = doc.document_metadata
 
-        # Compute webbot path: strip FileBot prefix, prepend WebBot path prefix
-        # IMPORTANT: if the prefix ends with a language code (fr/en/cn/zh),
-        # strip one level up so the language component is preserved in wb_path.
-        # E.g. prefix=/boarding/canadasite/fr → effective_prefix=/boarding/canadasite
-        #      rel_path = /fr/services/...
-        #      wb_path  = /canadasite/fr/services/...
+        # Compute webbot path: strip the app's data root (/boarding/{app_slug})
+        # so the full relative path under the app is preserved in wb_path.
+        # E.g. prefix=/boarding/canadasite/en/services
+        #      → effective_prefix=/boarding/canadasite
+        #      → rel_path=/en/services/xxx
+        #      → wb_path=/canadasite/en/services/xxx
         effective_prefix = prefix
         prefix_parts = prefix.strip('/').split('/')
-        if prefix_parts and prefix_parts[-1] in LANG_CODES:
-            effective_prefix = '/' + '/'.join(prefix_parts[:-1]) if len(prefix_parts) > 1 else ''
+        if len(prefix_parts) >= 2 and prefix_parts[0] == 'boarding':
+            effective_prefix = '/boarding/' + prefix_parts[1]
 
         if doc_path.startswith(effective_prefix):
             rel_path = doc_path[len(effective_prefix):]
@@ -412,11 +412,12 @@ def import_single_to_webbot(
     storage_path = doc.stored_filename or ''
     doc_meta_raw = doc.document_metadata
 
-    # Compute webbot path
+    # Compute webbot path: strip the app's data root (/boarding/{app_slug})
+    # so the full relative path under the app is preserved in wb_path
     effective_prefix = prefix
     prefix_parts = prefix.strip('/').split('/')
-    if prefix_parts and prefix_parts[-1] in LANG_CODES:
-        effective_prefix = '/' + '/'.join(prefix_parts[:-1]) if len(prefix_parts) > 1 else ''
+    if len(prefix_parts) >= 2 and prefix_parts[0] == 'boarding':
+        effective_prefix = '/boarding/' + prefix_parts[1]
 
     if not doc.path.startswith(effective_prefix):
         wb_conn.close()
@@ -734,12 +735,11 @@ async def crawl_missing_alternates(
     if current_user.role not in ["admin", "superuser"] and app.created_by != current_user.id:
         raise HTTPException(403, detail="No permission")
 
-    # Compute root path for EN pages
-    # If folder_path ends with a language code, go one level up
+    # Compute root path for EN pages: strip to app data root (/boarding/{app_slug})
     root_path = folder_path
     path_parts = folder_path.strip('/').split('/')
-    if path_parts and path_parts[-1] in LANG_CODES:
-        root_path = '/' + '/'.join(path_parts[:-1]) if len(path_parts) > 1 else ''
+    if len(path_parts) >= 2 and path_parts[0] == 'boarding':
+        root_path = '/boarding/' + path_parts[1]
 
     # Query FR HTML docs
     if req.recursive:

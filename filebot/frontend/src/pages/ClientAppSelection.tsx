@@ -25,7 +25,7 @@ const ClientAppSelection: React.FC = () => {
 
   const handleAppClick = (app: any) => {
     if (app.redirect_url) {
-      window.open(app.redirect_url, '_blank');
+      window.location.href = app.redirect_url;
       return;
     }
     const appSlug = app.slug || app.id;

@@ -428,6 +428,85 @@ def publish_page(
         }
 
 
+@router.post("/unpublish")
+def unpublish_page(
+    path: str = Query(..., description="Page path, e.g. /canadasite/en/canadian-heritage"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Unpublish a page: delete from /publish folder and set publish_status to UNPUBLISHED.
+
+    处理流程：
+    1. 从 publish 目录删除 HTML 文件
+    2. 将 FileBot DB 中的文档 publish_status 设为 UNPUBLISHED
+    """
+    # 安全检查：必须来自WebBot内部
+    if not request or not _is_webbot_request(request):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Only WebBot internal requests are allowed"
+        )
+
+    if not path or not path.startswith("/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Path must start with /")
+
+    # 计算 publish 文件路径（与 publish_page 一致）
+    rel_path = path.lstrip("/")
+    if rel_path.startswith("canadasite/"):
+        rel_path = rel_path[len("canadasite/"):]
+    publish_file = (PUBLISH_DIR / rel_path).resolve()
+
+    # 安全校验：确保路径在 PUBLISH_DIR 内
+    try:
+        publish_file.relative_to(PUBLISH_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
+
+    # 如果没扩展名，补充 .html
+    if not publish_file.suffix:
+        publish_file = publish_file.with_suffix(".html")
+
+    file_deleted = False
+    if publish_file.exists():
+        publish_file.unlink()
+        file_deleted = True
+        logger.info(f"Deleted publish file: {publish_file}")
+    else:
+        logger.warning(f"Publish file not found: {publish_file}")
+
+    # 更新 DB 记录
+    db_updated = False
+    try:
+        publish_app = _get_publish_app(db)
+        if publish_app:
+            # 构建 DB 中的 document path
+            doc_rel_path = rel_path
+            if not doc_rel_path.endswith(".html"):
+                doc_rel_path += ".html"
+            doc_path = f"/{PUBLISH_APP_SLUG}/{doc_rel_path}"
+
+            existing_doc = db.query(Document).filter(Document.path == doc_path).first()
+            if existing_doc:
+                existing_doc.publish_status = PublishStatus.UNPUBLISHED
+                db.commit()
+                db_updated = True
+                logger.info(f"Set publish_status=UNPUBLISHED for document: {doc_path}")
+            else:
+                logger.warning(f"No document found in DB for path: {doc_path}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to update DB for unpublish: {e}")
+
+    return {
+        "success": True,
+        "path": path,
+        "file_deleted": file_deleted,
+        "db_updated": db_updated,
+        "publish_file": str(publish_file),
+    }
+
+
 @router.get("/path", response_model=List[PageResponse])
 def get_pages_by_path(
     path: str = Query(..., description="Folder path, e.g. /boarding/canadasite/fr"),
