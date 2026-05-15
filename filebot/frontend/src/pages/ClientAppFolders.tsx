@@ -305,6 +305,12 @@ const ClientAppFolders: React.FC = () => {
   const buildBreadcrumbs = (): { name: string; path: string }[] => {
     const crumbs: { name: string; path: string }[] = [];
     
+    // Always include app name as first breadcrumb
+    crumbs.push({
+      name: app?.name || appSlug || 'App',
+      path: '/' + appSlug
+    });
+
     if (!currentFolderPath && !currentFolder) {
       return crumbs;
     }
@@ -312,12 +318,12 @@ const ClientAppFolders: React.FC = () => {
     const path = currentFolderPath || currentFolder?.path || '';
     const segments = path.split('/').filter(Boolean);
 
-    let accumulated = '';
+    // Build from app root, not from segments alone
     for (let i = 0; i < segments.length; i++) {
-      accumulated += '/' + segments[i];
+      const subPath = '/' + appSlug + '/' + segments.slice(0, i + 1).join('/');
       crumbs.push({
         name: segments[i],
-        path: accumulated
+        path: subPath
       });
     }
 
