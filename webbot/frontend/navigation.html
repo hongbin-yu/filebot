@@ -290,6 +290,13 @@
                             <input type="checkbox" id="prop-hide-nav"> Hide in Navigation
                         </label>
                     </div>
+                    <div class="form-group">
+                        <label for="prop-template">Page Template:</label>
+                        <select id="prop-template" class="form-control">
+                            <option value="">(Default page template)</option>
+                        </select>
+                        <small class="form-text text-muted">Select a different Mustache template for this page. Default: /canadasite/mustache-templates/page-template</small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
@@ -312,12 +319,20 @@
                 <form id="movePageForm">
                     <div class="modal-body">
                         <div class="row">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Title</label>
-                                    <p class="form-control-static" id="movePageTitle" style="font-weight:bold;padding-top:6px;"></p>
+                                    <label for="movePageTitleInput">Title</label>
+                                    <input type="text" class="form-control" id="movePageTitleInput" placeholder="Page title">
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="movePageNameInput">Name (slug)</label>
+                                    <input type="text" class="form-control" id="movePageNameInput" placeholder="page-url-slug">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label>Language</label>
@@ -332,7 +347,7 @@
                         <div class="form-group">
                             <label for="moveNewParent">Move to Parent Folder</label>
                             <input type="text" class="form-control" id="moveNewParent" placeholder="e.g. /canadasite/en/new-parent-folder" required>
-                            <small class="form-text text-muted">Enter the target parent path. The page slug will remain the same.</small>
+                            <small class="form-text text-muted">You can also change the title and name (slug) above.</small>
                         </div>
                         <div style="margin:10px 0;padding:10px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;">
                             <strong>New path preview</strong><br>

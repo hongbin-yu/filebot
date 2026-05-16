@@ -352,7 +352,8 @@
     window.showWetAlert = showWetAlert;
     window.wetYesOrNo   = wetYesOrNo;
 
-    // Legacy alias (used by some code)
+    // Legacy aliases
+    window.wetAlert       = showWetAlert;   // shorthand for alert replacement
     window.showWetConfirm = wetYesOrNo;
 
     console.log('[wet-dialogs] Initialized — showWetAlert and wetYesOrNo are now global.');

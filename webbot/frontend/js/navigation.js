@@ -318,13 +318,13 @@ async function performDelete(pagePath, pageTitle) {
 }
 
 // ============================================================================
-// Publish page — POST to backend, open result in new tab
+// Publish page — POST to backend, show toast + refresh status
 // ============================================================================
 async function performPublish(pageData) {
     var pagePath = pageData.path;
-    var pageTitle = pageTitle ? pageTitle : pageData.name;
+    var pageName = pageData.title || pageData.name;
 
-    showToast('Publishing "' + (pageTitle || pageData.name) + '"...', 'info');
+    showToast('Publishing "' + pageName + '"...', 'info');
 
     try {
         var resp = await fetch('/api/v1/pages/publish?path=' + encodeURIComponent(pagePath), {
@@ -339,13 +339,14 @@ async function performPublish(pageData) {
 
         var result = await resp.json();
 
-        showToast('"' + (pageTitle || pageData.name) + '" published successfully!', 'success');
+        // Update local data
+        pageData.status = 'published';
+        pageData.last_published = new Date().toISOString();
 
-        // Open published page in new tab
-        // Strip site prefix (canadasite/site/www) since FileBot strips it during publish
-        const publishPath = pagePath.replace(/^\/(canadasite|site|www)\/?/, '/');
-        const pageUrl = '/publish/' + publishPath.replace(/^\//, '') + '.html';
-        window.open(pageUrl, '_blank');
+        showToast('Page ' + pagePath + ' is published', 'success');
+
+        // Re-render to reflect status change
+        renderColumns();
     } catch (err) {
         showToast('Failed to publish: ' + err.message, 'danger');
     }
@@ -407,6 +408,9 @@ function renderColumn(columnIndex, title, pages, parentPath) {
     // Pages list
     var list = document.createElement('ul');
     list.className = 'pages-list';
+    if (pages.length > 20) {
+        list.className = 'pages-list wb-filter';
+    }
 
     pages.forEach(function(page) {
         var li = document.createElement('li');
@@ -455,15 +459,36 @@ function renderColumn(columnIndex, title, pages, parentPath) {
         });
 
         li.appendChild(link);
-        column.appendChild(li);
+        list.appendChild(li);
     });
 
     // Empty state
     if (pages.length === 0) {
-        var empty = document.createElement('li');
-        empty.className = 'page-item empty';
-        empty.textContent = 'No child pages';
-        list.appendChild(empty);
+        var emptyLi = document.createElement('li');
+        emptyLi.className = 'page-item empty';
+        emptyLi.textContent = 'No child pages';
+        list.appendChild(emptyLi);
+
+        // If we have a parent path, add a "Go to parent" link
+        if (parentPath) {
+            var parentBtn = document.createElement('li');
+            parentBtn.className = 'page-item go-parent';
+            var parentLink = document.createElement('a');
+            parentLink.href = '#';
+            parentLink.className = 'page-link';
+            parentLink.innerHTML = '← Go to parent page';
+            parentLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                var goIdx = columnIndex;
+                if (goIdx < currentPath.length && goIdx >= 0) {
+                    goToPath(goIdx);
+                } else {
+                    navigateHome();
+                }
+            });
+            parentBtn.appendChild(parentLink);
+            list.appendChild(parentBtn);
+        }
     }
 
     column.appendChild(list);
@@ -482,6 +507,11 @@ function renderColumns() {
     updateButtons();
     updateStats();
     highlightSelectedPage();
+
+    // Init WET-BOEW plugins on newly added elements
+    if (typeof jQuery !== 'undefined') {
+        jQuery('.wb-filter').trigger('wb-init.wb-filter');
+    }
 }
 
 function highlightSelectedPage() {
@@ -510,11 +540,11 @@ async function selectPage(page, columnIndex) {
         if (currentPath.length < 2) {
             // Levels 1-2: drill-down, single column replaces content
             currentPath.push(page);
-            columnsCache = children.length > 0 ? [{
+            columnsCache = [{
                 title: pageTitle(page),
                 pages: children,
                 parentPath: page.path
-            }] : [];
+            }];
         } else {
             // Levels 3+: multi-column
             // Column N holds path entry N+1 (col 0 = entry 1, col 1 = entry 2, etc.)
@@ -523,7 +553,7 @@ async function selectPage(page, columnIndex) {
             currentPath.push(page);
 
             columnsCache = columnsCache.slice(0, columnIndex + 1);
-            if (children.length > 0 && columnsCache.length < MAX_COLUMNS) {
+            if (columnsCache.length < MAX_COLUMNS) {
                 columnsCache.push({
                     title: pageTitle(page),
                     pages: children,
@@ -603,11 +633,11 @@ function goToPath(index) {
     var children = loadedPaths[lastPage.path] || [];
 
     if (currentPath.length <= 2) {
-        columnsCache = children.length > 0 ? [{
+        columnsCache = [{
             title: pageTitle(lastPage),
             pages: children,
             parentPath: lastPage.path
-        }] : [];
+        }];
     } else {
         columnsCache = [];
         for (var i = 1; i < currentPath.length; i++) {
@@ -709,7 +739,8 @@ function setupButtons() {
     // ============================================================================
     var moveModal = document.getElementById('moveModal');
     var movePageForm = document.getElementById('movePageForm');
-    var movePageTitle = document.getElementById('movePageTitle');
+    var movePageTitleInput = document.getElementById('movePageTitleInput');
+    var movePageNameInput = document.getElementById('movePageNameInput');
     var movePageLang = document.getElementById('movePageLang');
     var movePageCurrentPath = document.getElementById('movePageCurrentPath');
     var moveNewParent = document.getElementById('moveNewParent');
@@ -762,7 +793,7 @@ function setupButtons() {
     // ============================================================================
     btnMove.addEventListener('click', function() {
         if (selectedPageData) {
-            showToast('Move feature: under development.', 'warning');
+            showMoveModal(selectedPageData);
         }
     });
 
@@ -888,6 +919,12 @@ function setupButtons() {
                     hideNavEl.checked = !!data.hide_in_navigation;
                 }
 
+                // Template dropdown
+                var templateSel = document.getElementById('prop-template');
+                if (templateSel) {
+                    templateSel.value = data.publish_template || '';
+                }
+
                 showModal(modal);
             })
             .catch(function(err) {
@@ -906,6 +943,62 @@ function setupButtons() {
     function getPropVal(id) {
         var el = document.getElementById(id);
         return el ? el.value.trim() : '';
+    }
+
+    // Populate template dropdown
+    function populateTemplateSelect() {
+        var sel = document.getElementById('prop-template');
+        if (!sel) return;
+        sel.disabled = true;
+
+        // Fetch templates from the server — children of the templates folder, recursively
+        var templateBase = '/canadasite/mustache-templates/page-template';
+        var seen = new Set();
+
+        function cleanLabel(text) {
+            return text ? text.replace(/^Mustache Template:\s*/i, '') : text;
+        }
+
+        function addTemplateItem(path, label) {
+            if (seen.has(path)) return;
+            seen.add(path);
+            var opt = document.createElement('option');
+            opt.value = path;
+            opt.textContent = cleanLabel(label);
+            sel.appendChild(opt);
+        }
+
+        fetch('/api/v1/pages/by-path/' + encodeURI((templateBase.startsWith('/') ? templateBase.slice(1) : templateBase)) + '/children')
+            .then(function(r) { if (r.ok) return r.json(); throw new Error('status ' + r.status); })
+            .then(function(children) {
+                sel.disabled = false;
+                // Clear and rebuild
+                sel.innerHTML = '';
+                sel.appendChild(new Option('(Default page template)', '', false, true));
+                // Add the base template itself
+                addTemplateItem(templateBase, 'page-template');
+                // Add children
+                children.forEach(function(c) {
+                    var label = c.title || c.path.split('/').pop() || c.id;
+                    addTemplateItem(c.path, label);
+                    // Fetch grandchildren too (e.g. HTML-template, Left-navigation-template)
+                    fetch('/api/v1/pages/by-path/' + encodeURI((c.path.startsWith('/') ? c.path.slice(1) : c.path)) + '/children')
+                        .then(function(r2) { if (r2.ok) return r2.json(); return []; })
+                        .then(function(grandchildren) {
+                            grandchildren.forEach(function(gc) {
+                                var gLabel = (label + ' / ' + (gc.title || gc.path.split('/').pop() || gc.id));
+                                addTemplateItem(gc.path, gLabel);
+                            });
+                        })
+                        .catch(function() {});
+                });
+            })
+            .catch(function(err) {
+                sel.disabled = false;
+                sel.innerHTML = '';
+                sel.appendChild(new Option('(Default page template)', '', false, true));
+                console.warn('Failed to load template list:', err);
+            });
     }
 
     // Save properties handler
@@ -932,7 +1025,8 @@ function setupButtons() {
                 status: document.getElementById('prop-status') ? document.getElementById('prop-status').value : undefined,
                 file_path: filePath || undefined,
                 other_language_path: otherLang.trim(),
-                hide_in_navigation: document.getElementById('prop-hide-nav') ? document.getElementById('prop-hide-nav').checked : undefined
+                hide_in_navigation: document.getElementById('prop-hide-nav') ? document.getElementById('prop-hide-nav').checked : undefined,
+                publish_template: document.getElementById('prop-template') ? document.getElementById('prop-template').value || undefined : undefined
             };
 
             // Remove undefined values
@@ -983,7 +1077,9 @@ function setupButtons() {
 
     function showMoveModal(pageData) {
         moveModalPageData = pageData;
-        movePageTitle.textContent = pageData.title || '(untitled)';
+        movePageTitleInput.value = pageData.title || '';
+        var currentSlug = pageData.path ? pageData.path.split('/').filter(Boolean).pop() || '' : '';
+        movePageNameInput.value = currentSlug;
         movePageLang.textContent = (pageData.language || 'en').toUpperCase();
         movePageCurrentPath.textContent = pageData.path;
         moveNewParent.value = '';
@@ -999,9 +1095,8 @@ function setupButtons() {
     }
 
     function updateMovePreview() {
-        var currentPath = moveModalPageData ? moveModalPageData.path : '';
         var parentPath = moveNewParent.value.trim();
-        var slug = currentPath.split('/').filter(Boolean).pop() || '';
+        var slug = movePageNameInput.value.trim();
         if (parentPath && slug) {
             var newPath = parentPath.replace(/\/+$/, '') + '/' + slug;
             movePathPreview.textContent = newPath;
@@ -1014,9 +1109,12 @@ function setupButtons() {
         }
     }
 
-    // Live preview as user types parent path
+    // Live preview as user types parent path, name, or title
     if (moveNewParent) {
         moveNewParent.addEventListener('input', updateMovePreview);
+    }
+    if (movePageNameInput) {
+        movePageNameInput.addEventListener('input', updateMovePreview);
     }
 
     // Move form submit
@@ -1037,6 +1135,8 @@ function setupButtons() {
         var url = '/api/v1/pages/move';
         url += '?path=' + encodeURIComponent(pageData.path);
         url += '&new_parent_path=' + encodeURIComponent(newParentPath);
+        url += '&new_name=' + encodeURIComponent(movePageNameInput.value.trim());
+        url += '&new_title=' + encodeURIComponent(movePageTitleInput.value.trim());
 
         fetch(url, {
             method: 'POST',
@@ -1059,7 +1159,12 @@ function setupButtons() {
             // Refresh the navigation tree after a short delay
             setTimeout(function() {
                 hideModal(moveModal);
-                refreshTree();
+                loadedPaths = {};
+                columnsCache = [];
+                currentPath = [];
+                selectedPageId = null;
+                selectedPageData = null;
+                initNavigation();
             }, 1200);
         })
         .catch(function(err) {
@@ -1394,6 +1499,8 @@ function setupButtons() {
             createPageSaveBtn.textContent = 'Create & Edit';
         }
     });
+
+    populateTemplateSelect();
 }
 
 // ============================================================================
@@ -1434,7 +1541,7 @@ async function initNavigationAt(pathToRestore) {
             var children = await fetchChildren(entry.path);
 
             // Build column for this level's children (except last level = selected page)
-            if (children.length > 0 && columnsCache.length < MAX_COLUMNS) {
+            if (columnsCache.length < MAX_COLUMNS) {
                 columnsCache.push({
                     title: pageTitle(entry),
                     pages: children,

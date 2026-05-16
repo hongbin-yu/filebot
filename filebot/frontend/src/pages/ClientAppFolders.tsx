@@ -141,12 +141,13 @@ const ClientAppFolders: React.FC = () => {
           }
         }
 
-        // If not found in this query, search flat list
+        // If not found in this query, get it directly by path
         if (!current) {
-          const flatFolders = await folderService.getFolders(appSlug);
-          current = flatFolders.find(f => f.path === fullPath) || null;
-          // Also get immediate subs
-          subs.push(...flatFolders.filter(f => f.parent_folder_path === fullPath));
+          try {
+            current = await folderService.getFolder(fullPath);
+          } catch (err) {
+            console.warn('Could not find current folder by path:', fullPath);
+          }
         }
 
         // Deduplicate subs
@@ -539,7 +540,7 @@ const ClientAppFolders: React.FC = () => {
                   <thead>
                     <tr>
                       <th></th>
-                      <th style={{width:'10px'}}>Publish<br/>status</th>
+                      {appSlug === 'publish' && <th style={{width:'10px'}}>Publish<br/>status</th>}
                       <th>Name</th>
                       <th>Type</th>
                       <th>Size</th>
@@ -551,44 +552,50 @@ const ClientAppFolders: React.FC = () => {
                     {documents.map(doc => {
                       const token = localStorage.getItem('access_token');
                       const encodedPath = encodeURIComponent(doc.path || doc.storage_path);
-                      const docViewUrl = doc.file_type === 'html'
+                      // Published documents open directly on port 8003
+                      const publishUrl = doc.publish_status === 'PUBLISHED' && doc.path
+                        ? `http://localhost:8003${doc.path.replace('/publish', '')}`
+                        : null;
+                      const docViewUrl = publishUrl || (doc.file_type === 'html'
                         ? `/api/v1/documents/${encodedPath}/preview/html?token=${token}`
-                        : `/api/v1/documents/${encodedPath}/download?preview=1&token=${token}`;
+                        : `/api/v1/documents/${encodedPath}/download?preview=1&token=${token}`);
                       return (
                       <tr key={doc.path || doc.storage_path}>
                         <td className="text-center">
-                          <a href={docViewUrl} onClick={(e) => openPreview(docViewUrl, e)} title="Preview">
+                          <a href={docViewUrl} onClick={(e) => { if (publishUrl) return; openPreview(docViewUrl, e); }} title="Preview" target={publishUrl ? '_blank' : undefined} rel="noopener noreferrer">
                             <span className="glyphicon glyphicon-file text-muted" style={{cursor:'pointer'}}></span>
                           </a>
                         </td>
                         <td className="text-center">
-                          <label className="switch" style={{cursor:'pointer', margin:0, verticalAlign:'middle', display:'inline-block'}}>
-                            <input
-                              type="checkbox"
-                              checked={doc.publish_status === 'PUBLISHED'}
-                              onChange={async () => {
-                                const newStatus = doc.publish_status === 'PUBLISHED' ? 'UNPUBLISHED' : 'PUBLISHED';
-                                try {
-                                  await documentService.updateDocument(
-                                    doc.path || doc.storage_path,
-                                    { publish_status: newStatus }
-                                  );
-                                  // Refresh documents
-                                  setDocuments(prev => prev.map(d =>
-                                    (d.path || d.storage_path) === (doc.path || doc.storage_path)
-                                      ? { ...d, publish_status: newStatus }
-                                      : d
-                                  ));
-                                } catch (err) {
-                                  console.error('Failed to update publish status:', err);
-                                }
-                              }}
-                            />
-                            <span className="slider round"></span>
-                          </label>
+                          {appSlug === 'publish' && (
+                            <label className="switch" style={{cursor:'pointer', margin:0, verticalAlign:'middle', display:'inline-block'}}>
+                              <input
+                                type="checkbox"
+                                checked={doc.publish_status === 'PUBLISHED'}
+                                onChange={async () => {
+                                  const newStatus = doc.publish_status === 'PUBLISHED' ? 'UNPUBLISHED' : 'PUBLISHED';
+                                  try {
+                                    await documentService.updateDocument(
+                                      doc.path || doc.storage_path,
+                                      { publish_status: newStatus }
+                                    );
+                                    // Refresh documents
+                                    setDocuments(prev => prev.map(d =>
+                                      (d.path || d.storage_path) === (doc.path || doc.storage_path)
+                                        ? { ...d, publish_status: newStatus }
+                                        : d
+                                    ));
+                                  } catch (err) {
+                                    console.error('Failed to update publish status:', err);
+                                  }
+                                }}
+                              />
+                              <span className="slider round"></span>
+                            </label>
+                          )}
                         </td>
                         <td>
-                          <a href={docViewUrl} onClick={(e) => openPreview(docViewUrl, e)} title="Preview">
+                          <a href={docViewUrl} onClick={(e) => { if (publishUrl) return; openPreview(docViewUrl, e); }} title="Preview" target={publishUrl ? '_blank' : undefined} rel="noopener noreferrer">
                             <div className="font-medium" style={{cursor:'pointer'}}>
                               {doc.title || doc.original_filename || 'Untitled'}
                             </div>

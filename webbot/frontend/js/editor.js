@@ -98,7 +98,6 @@
             // (loadPage will call loadPagesForSidebar with page path if needed)
             // Load all pages for path resolution (for breadcrumb navigation)
             loadAllPages();
-
             // Add CSS styles for component menus
             addTemplateEditStyles();
             
@@ -666,6 +665,13 @@
                 image_title: true,
                 image_caption: true,
                 object_resizing: 'img',
+                // Preserve root-relative URLs (e.g. /en/contact.html) as-is
+                relative_urls: false,
+                remove_script_host: true,
+                convert_urls: false,
+                // Prevent link plugin from converting relative paths
+                link_default_protocol: 'https',
+                link_assume_external_targets: false,
                 // Custom preview template to match WebBot preview
                 preview_template: '<!DOCTYPE html><html><head><title>Preview</title><base target="_blank"></head><body style="background: #f8f9fa; padding: 20px;"><div style="max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px;">{content}</div></body></html>',
                 // Setup callback when editor is initialized
@@ -1219,6 +1225,30 @@
             }
         }
 
+        // Same as getEffectiveFilePath but accepts an already-fetched page object (avoids duplicate API call)
+        async function getEffectiveFilePathFromPage(page, maxDepth = 10) {
+            if (maxDepth <= 0) {
+                return { file_path: null, source: 'root (max depth reached)' };
+            }
+            try {
+                // Check if this page has file_path
+                if (page.metadata && page.metadata.file_path) {
+                    return { file_path: page.metadata.file_path, source: 'current page' };
+                }
+                // No file_path, recurse up to parent
+                if (page.parent_path) {
+                    const parentResult = await getEffectiveFilePath(page.parent_path, maxDepth - 1);
+                    if (parentResult.file_path) {
+                        return { file_path: parentResult.file_path, source: 'inherited from parent (' + parentResult.source + ')' };
+                    }
+                    return { file_path: null, source: 'no file_path found in ' + (maxDepth - 1) + ' parent levels' };
+                }
+                return { file_path: null, source: 'root page (no parent)' };
+            } catch (error) {
+                return { file_path: null, source: 'error: ' + error.message };
+            }
+        }
+
         // Update FileBot target folder display
         function updateFileBotTargetFolder(filePathInfo) {
             const folderPathEl = document.getElementById('filebot-target-folder-path');
@@ -1227,7 +1257,7 @@
             console.log('Elements found:', !!folderPathEl, !!folderSourceEl);
 
             if (!folderPathEl || !folderSourceEl) {
-                console.warn('FileBot target folder elements not found');
+                console.debug('FileBot target folder elements not found (not present in this HTML revision)');
                 return;
             }
 
@@ -1820,7 +1850,7 @@
                     }
                     // Priority 2: Inherited file_path from page hierarchy
                     else {
-                        effectiveFilePathInfo = await getEffectiveFilePath(pageId);
+                        effectiveFilePathInfo = await getEffectiveFilePathFromPage(page);
                         console.log('Using inherited file_path for FileBot:', effectiveFilePathInfo);
                     }
 
@@ -1999,86 +2029,56 @@
 
         // Build breadcrumb path by traversing up the page hierarchy
         async function buildBreadcrumbPath(startPage) {
+            // Use the parents endpoint for a single API call
+            if (startPage && startPage.path) {
+                try {
+                    const resp = await fetch(`${API_BASE}/parents?path=${encodeURIComponent(startPage.path)}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const parents = data.parents || [];
+                        const page = data.page;
+                        if (page) {
+                            const path = [...parents, page];
+                            console.log('Built breadcrumb path via /parents endpoint:', path.length, 'pages:', path.map(p => p.id));
+                            return path;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Parents endpoint failed, falling back to manual traversal:', e);
+                }
+            }
+
+            // Fallback: manual traversal
             const path = [startPage];
             let currentPage = startPage;
-
-            // Traverse up while there's a parent
             while (currentPage && currentPage.parent_path) {
                 try {
                     let parentPage = null;
-
-                    // Try to fetch parent page using different methods
-                    // Method 1: Use path-based lookup (most reliable)
                     if (currentPage.path) {
-                        // Derive parent path from current path
                         const currentPath = currentPage.path;
                         const lastSlashIndex = currentPath.lastIndexOf('/');
                         if (lastSlashIndex > 0) {
                             const parentPath = currentPath.substring(0, lastSlashIndex) || '/';
-                            console.log(`Attempting to fetch parent via path: ${parentPath} (derived from ${currentPath})`);
-
-                            try {
-                                const parentResponse = await fetch(`${API_BASE}/by-path?path=${encodeURIComponent(parentPath)}`);
-                                if (parentResponse.ok) {
-                                    parentPage = await parentResponse.json();
-                                    console.log(`Found parent via path: ${parentPage.id} (path: ${parentPage.path})`);
-                                } else {
-                                    console.warn(`Failed to fetch parent page via path ${parentPath}: ${parentResponse.status}`);
-                                }
-                            } catch (pathError) {
-                                console.warn(`Error fetching parent via path ${parentPath}:`, pathError);
-                            }
-                        }
-                    }
-
-                    // Method 2: If path method failed, try to fetch by ID with parent_path parameter
-                    // Note: This is less reliable because parent_path alone may not be unique
-                    if (!parentPage) {
-                        console.log(`Attempting to fetch parent by ID: ${currentPage.parent_path}`);
-                        // First, try to get the page without parent_path (for backward compatibility)
-                        let parentResponse = await fetch(`${API_BASE}/${encodeURIComponent(currentPage.parent_path)}`);
-
-                        if (!parentResponse.ok) {
-                            // If that fails, the page might require a parent_path parameter
-                            // We don't know the parent's parent_path, so we can't uniquely identify it
-                            console.warn(`Failed to fetch parent page ${currentPage.parent_path}: ${parentResponse.status}`);
-                            // Try one more approach: look up by ID and filter
-                            parentResponse = await fetch(`${API_BASE}/${encodeURIComponent(currentPage.parent_path)}?parent_path=${encodeURIComponent(currentPage.parent_parent_path || '')}`);
+                            const parentResponse = await fetch(`${API_BASE}/by-path?path=${encodeURIComponent(parentPath)}`);
                             if (parentResponse.ok) {
                                 parentPage = await parentResponse.json();
                             }
-                        } else {
-                            parentPage = await parentResponse.json();
                         }
                     }
-
                     if (!parentPage) {
-                        console.warn(`Unable to fetch parent page ${currentPage.parent_path}, stopping breadcrumb traversal`);
+                        console.warn(`Unable to fetch parent page ${currentPage.parent_path}, stopping breadcrumb`);
                         break;
                     }
-
-                    // Check if parent should be skipped (hidden in navigation)
-                    if (parentPage.hide_in_navigation === true) {
-                        console.log(`Skipping hidden parent page: ${parentPage.id} - ${parentPage.title}`);
-                        // Skip this parent but continue with its parent
-                        currentPage = parentPage;
-                        continue;
+                    if (parentPage.hide_in_navigation !== true) {
+                        path.unshift(parentPage);
                     }
-
-                    // Add parent to path (at beginning since we're building from current up)
-                    path.unshift(parentPage);
                     currentPage = parentPage;
-
                 } catch (error) {
-                    console.error(`Error fetching parent page ${currentPage.parent_path}:`, error);
+                    console.error(`Error fetching parent ${currentPage.parent_path}:`, error);
                     break;
                 }
             }
-
-            // Add root pages if needed (pages without parent_path but not necessarily root)
-            // For now, we'll just return the path we built
-
-            console.log('Built breadcrumb path with', path.length, 'pages:', path.map(p => p.id));
+            console.log('Built breadcrumb path (fallback) with', path.length, 'pages');
             return path;
         }
 
@@ -3298,7 +3298,13 @@
                 showError('Preview failed. Falling back to local rendering.');
                 previewPageLocal();
             } finally {
-                showLoading(false);
+                hideLoading();
+                if (currentPageData) {
+                    editorFormEl.style.display = 'block';
+                    editorActionsEl.style.display = 'block';
+                    if (savePageTopBtn) savePageTopBtn.style.display = '';
+                    noPageSelectedEl.style.display = 'none';
+                }
             }
         }
 
@@ -3579,6 +3585,8 @@
                 if (tinyMceEditor) {
                     content = tinyMceEditor.getContent();
                     console.log('Getting content from TinyMCE editor');
+                    // Fix any '../' paths that TinyMCE may have added to href attributes
+                    content = content.replace(/(href=["'])(?:\.\.\/)+/gi, '$1/');
                 } else {
                     content = editorContentEl.value;
                     console.log('Getting content from textarea');

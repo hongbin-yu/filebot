@@ -1302,11 +1302,17 @@ async def get_parent_pages(path: str = Query(..., description="Full page path. R
                 _parse_page_dict(page_dict)
                 item = PageListItem(**page_dict)
                 if depth == len(path_parts):
+                    # Strip the site prefix (e.g. /canadasite) from breadcrumb path
+                    stripped_parts = path_parts[1:depth]
+                    item.path = "/" + "/".join(stripped_parts)
                     page = item
                 else:
                     # Always include root (Home), but skip other pages with hide_in_navigation
                     is_root = depth == 2
                     if is_root or not item.hide_in_navigation:
+                        # Strip the site prefix (e.g. /canadasite) from breadcrumb path
+                        stripped_parts = path_parts[1:depth]
+                        item.path = "/" + "/".join(stripped_parts)
                         parents.append(item)
         
         return {"parents": parents, "page": page}
@@ -1643,11 +1649,13 @@ async def _render_preview(
                 return f"<!-- Mustache render error: {e} -->"
 
         # 2. Render head, header, footer
-        gethead_path = f"/canadasite/{page_language}/mustache-templates/gethead"
-        head_html = await render_mustache_template(gethead_path, path)
+        head_html = await render_mustache_template("/canadasite/mustache-templates/gethead", path)
 
-        getheader_path = f"/canadasite/{page_language}/mustache-templates/getheader"
-        header_html = await render_mustache_template(getheader_path, path)
+        # Render language-specific headers for page template
+        header_en_html = await render_mustache_template("/canadasite/mustache-templates/getheader_en", path)
+        header_fr_html = await render_mustache_template("/canadasite/mustache-templates/getheader_fr", path)
+        # Set header to the correct language for backward compatibility
+        header_html = header_en_html if page_language == "en" else header_fr_html
 
         # Get footer — try DB page first, fallback to extracting from raw content
         footer_path = f"/canadasite/{page_language}/footer"
@@ -1689,7 +1697,7 @@ async def _render_preview(
 
         # 5. Render with template or default
         # Helper: try to render a page template from DB, returns None if not found
-        async def render_page_template(template_path, head, header, footer, content, date_modified, lang, title, page_path):
+        async def render_page_template(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None):
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
             if not tmpl_row:
@@ -1708,6 +1716,10 @@ async def _render_preview(
                 "language": lang,
                 "title": title,
                 "path": page_path,
+                "header_en": header_en or header,
+                "header_fr": header_fr or header,
+                "is_en": lang == "en",
+                "is_fr": lang == "fr",
             }
             return chevron.render(tmpl, render_data)
 
@@ -1728,18 +1740,20 @@ async def _render_preview(
             )
 
         # Try per-page template first, then default DB template, then hardcoded fallback
+        rendered = None
         if page_publish_template:
             rendered = await render_page_template(
                 page_publish_template, head_html, header_html, footer_html,
-                cleaned_content, date_modified_str, page_language, page_title, path
+                cleaned_content, date_modified_str, page_language, page_title, path,
+                header_en=header_en_html, header_fr=header_fr_html
             )
 
         if not rendered:
             # Try default language-specific template from DB
-            default_template = f"/canadasite/{page_language}/mustache-templates/page-template"
             rendered = await render_page_template(
-                default_template, head_html, header_html, footer_html,
-                cleaned_content, date_modified_str, page_language, page_title, path
+                "/canadasite/mustache-templates/page-template", head_html, header_html, footer_html,
+                cleaned_content, date_modified_str, page_language, page_title, path,
+                header_en=header_en_html, header_fr=header_fr_html
             )
 
         if not rendered:
@@ -2747,12 +2761,12 @@ async def publish_page(
                 return f"<!-- Mustache render error: {e} -->"
 
         # 3. Render head via gethead template
-        gethead_path = f"/canadasite/{page_language}/mustache-templates/gethead"
-        head_html = await render_mustache_template(gethead_path, path)
+        head_html = await render_mustache_template("/canadasite/mustache-templates/gethead", path)
 
         # 4. Render header via getheader template
-        getheader_path = f"/canadasite/{page_language}/mustache-templates/getheader"
-        header_html = await render_mustache_template(getheader_path, path)
+        header_en_html = await render_mustache_template("/canadasite/mustache-templates/getheader_en", path)
+        header_fr_html = await render_mustache_template("/canadasite/mustache-templates/getheader_fr", path)
+        header_html = header_en_html if page_language == "en" else header_fr_html
 
         # 5. Get footer — try DB page first, fallback to extracting from raw content
         footer_path = f"/canadasite/{page_language}/footer"
@@ -2801,7 +2815,7 @@ async def publish_page(
         #    Otherwise, try default DB template, then hardcoded fallback
 
         # Helper: try to render a page template from DB
-        def render_page_template_fb(template_path, head, header, footer, content, date_modified, lang, title, page_path):
+        def render_page_template_fb(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None):
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
             if not tmpl_row:
@@ -2820,6 +2834,10 @@ async def publish_page(
                 "language": lang,
                 "title": title,
                 "path": page_path,
+                "header_en": header_en or header,
+                "header_fr": header_fr or header,
+                "is_en": lang == "en",
+                "is_fr": lang == "fr",
             }
             return chevron.render(tmpl, render_data)
 
@@ -2829,15 +2847,16 @@ async def publish_page(
         if page_publish_template:
             full_html = render_page_template_fb(
                 page_publish_template, head_html, header_html, footer_html,
-                cleaned_content, date_modified_str, page_language, page_title, path
+                cleaned_content, date_modified_str, page_language, page_title, path,
+                header_en=header_en_html, header_fr=header_fr_html
             )
 
         # 2) Try default language-specific template from DB
         if not full_html:
-            default_template = f"/canadasite/{page_language}/mustache-templates/page-template"
             full_html = render_page_template_fb(
-                default_template, head_html, header_html, footer_html,
-                cleaned_content, date_modified_str, page_language, page_title, path
+                "/canadasite/mustache-templates/page-template", head_html, header_html, footer_html,
+                cleaned_content, date_modified_str, page_language, page_title, path,
+                header_en=header_en_html, header_fr=header_fr_html
             )
 
         # 3) Ultimate hardcoded fallback
@@ -2969,10 +2988,13 @@ async def move_page(
     request: FastAPIRequest,
     path: str = Query(..., description="Current full page path, e.g. /canadasite/en/some-page"),
     new_parent_path: str = Query(None, description="New parent path, e.g. /canadasite/en/new-parent. Use empty or omit for root level."),
+    new_name: str = Query(None, description="New page slug/name (optional). Defaults to current slug if omitted."),
+    new_title: str = Query(None, description="New page title (optional). Leaves unchanged if omitted."),
 ):
     """
     Move a page to a new parent. Updates:
     - Page's own path and parent_path
+    - Page title and slug/name if provided
     - All descendant pages' path and parent_path
     - other_language_path references to moved pages
     - Stores original_path in metadata
@@ -2997,7 +3019,7 @@ async def move_page(
                 raise HTTPException(status_code=404, detail=f"Parent page not found: {new_parent_path}")
 
         old_path = normalize_path(path)
-        page_id = old_path.rstrip('/').split('/')[-1]
+        page_id = new_name if new_name else old_path.rstrip('/').split('/')[-1]
 
         # 3. Calculate new path
         if new_parent_path:
@@ -3025,12 +3047,19 @@ async def move_page(
         # Preserve existing metadata, add/update original_path
         metadata['original_path'] = old_path
 
-        # 7. Update the page itself: path, parent_path, metadata
-        cursor.execute("""
-            UPDATE webbot_page
-            SET id = ?, path = ?, parent_path = ?, metadata = ?, last_modified = CURRENT_TIMESTAMP
-            WHERE path = ?
-        """, (new_path, new_path, new_parent_path, json.dumps(metadata), old_path))
+        # 7. Update the page itself: path, parent_path, title (optional), metadata
+        if new_title:
+            cursor.execute("""
+                UPDATE webbot_page
+                SET id = ?, path = ?, parent_path = ?, title = ?, metadata = ?, last_modified = CURRENT_TIMESTAMP
+                WHERE path = ?
+            """, (new_path, new_path, new_parent_path, new_title, json.dumps(metadata), old_path))
+        else:
+            cursor.execute("""
+                UPDATE webbot_page
+                SET id = ?, path = ?, parent_path = ?, metadata = ?, last_modified = CURRENT_TIMESTAMP
+                WHERE path = ?
+            """, (new_path, new_path, new_parent_path, json.dumps(metadata), old_path))
 
         # 8. Recursively update all children's paths and parent_paths
         _rebuild_subtree_paths_and_parents(cursor, old_path, new_path)
@@ -3045,6 +3074,8 @@ async def move_page(
             "old_path": old_path,
             "new_path": new_path,
             "new_parent_path": new_parent_path,
+            "new_title": new_title if new_title else page['title'],
+            "new_name": page_id,
         }
 
     except HTTPException:

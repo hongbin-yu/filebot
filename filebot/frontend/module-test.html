@@ -393,7 +393,7 @@ ${hasAuthService ? '⚠️ 模块包含命名导出 "authService"，这可能导
         // 工具函数
         function clearConsole() {
             console.clear();
-            alert('控制台已清理');
+            wetAlert('控制台已清理');
         }
         
         function copyResults() {
@@ -404,8 +404,8 @@ ${hasAuthService ? '⚠️ 模块包含命名导出 "authService"，这可能导
             });
             
             navigator.clipboard.writeText(results.join('\n\n'))
-                .then(() => alert('结果已复制到剪贴板'))
-                .catch(err => alert('复制失败: ' + err));
+                .then(() => wetAlert('结果已复制到剪贴板'))
+                .catch(err => wetAlert('复制失败: ' + err));
         }
 
         // 页面加载时自动运行一些检查
