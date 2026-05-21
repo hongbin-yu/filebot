@@ -120,9 +120,9 @@
             <div class="editor-header">
                 <h2>
                     <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
-                        <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
+                        <img src="/static/icons/filebot_icon.png" alt="FileBot">
                     </button>
-                    <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
+                    <img src="/static/icons/webbot_icon.png" alt="WebBot">
                     WebBot Page Editor
                 </h2>
                 <div class="header-actions">
@@ -139,6 +139,7 @@
                     <span id="page-status-display"></span>
                     <span id="file-path-display"></span>
                     <span id="page-lastmodified-display"></span>
+                    <span id="page-published-display"></span>
                 </div>
                 <div id="breadcrumb" class="breadcrumb">
                     <div class="breadcrumb-item">
@@ -225,6 +226,10 @@
                     <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
                     Save Page
                 </button>
+                <button id="translate-btn" class="btn btn-warning" style="display:none;" title="Translate from other language version">
+                    <span class="glyphicon glyphicon-globe" aria-hidden="true"></span>
+                    Translate
+                </button>
 
                 <button id="publish-page" class="btn btn-primary" title="Generate static HTML with header/footer and publish the page">
                     <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
@@ -262,12 +267,13 @@
                 console.log('Mustache.js version:', Mustache?.version || 'unknown');
             }
         });
+
     </script>
 
     <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
 
     <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
-    <script src="/static/js/editor.js?v=20260513-1553"></script>
+    <script src="/static/js/editor.js?v=20260521-6"></script>
 
     <!-- Initialize after all scripts are loaded -->
     <!-- Simple Metadata Editor (Backend Use Only) -->
@@ -301,7 +307,7 @@
                         <div class="form-group">
                             <label for="metadata-subjects">Subjects:</label>
                             <input type="text" id="metadata-subjects" class="form-control"
-                                   placeholder="Page subjects or categories">
+                                   placeholder="Page subjects or categories (comma-separated)">
                         </div>
 
                         <div class="form-group">
@@ -425,5 +431,7 @@
 
     <script src="/static/js/component-params.js?v=202604121740"></script>
     <script src="/static/js/component-color-manager.js"></script>
+
+
 </body>
 </html>

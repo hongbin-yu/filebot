@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from fastapi import Request as FastAPIRequest
 
-from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, PreviewRequest, PagePropertiesResponse, PageMetadataResponse, PageStatus
+from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, PageMetadataItem, PreviewRequest, PagePropertiesResponse, PageMetadataResponse, PageStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/pages", tags=["pages"])
@@ -410,9 +410,26 @@ async def create_page(page: PageCreate):
             language_from_path = page.language if page.language else 'en'
 
         # Check if page path already exists
-        cursor.execute("SELECT id FROM webbot_page WHERE path = ?", (page_id,))
+        cursor.execute("SELECT id, path, title, language FROM webbot_page WHERE path = ?", (page_id,))
+        existing = cursor.fetchone()
 
-        if cursor.fetchone():
+        import json
+        if existing:
+            if page.skip_if_exists:
+                # Return existing page data instead of error
+                cursor.execute("SELECT * FROM webbot_page WHERE path = ?", (page_id,))
+                full_page = cursor.fetchone()
+                if full_page:
+                    page_data = dict(full_page)
+                    # Parse JSON string fields to dict if needed
+                    for field in ['metadata', 'tags']:
+                        if field in page_data and isinstance(page_data[field], str):
+                            try:
+                                page_data[field] = json.loads(page_data[field])
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+                    return PageResponse(**page_data)
+                return {"id": page_id, "title": "", "content": "", "language": "en", "status": "", "path": page_id}
             raise HTTPException(
                 status_code=400,
                 detail=f"Page path '{page_id}' already exists."
@@ -535,11 +552,11 @@ async def create_page(page: PageCreate):
 
         # 获取pageTags
         cursor.execute("""
-            SELECT t.name
+            SELECT t.id
             FROM webbot_tag t
             JOIN webbot_page_tag pt ON t.id = pt.tag_id
             WHERE pt.page_id = ?
-            ORDER BY t.name
+            ORDER BY t.id
         """, (page_id,))
         tag_rows = cursor.fetchall()
         result["tags"] = [row[0] for row in tag_rows] if tag_rows else []
@@ -666,62 +683,47 @@ async def list_pages(skip: int = 0, limit: int = 100, path: Optional[str] = Quer
 async def get_header(path: str = ""):
     """
     Get header component content
-    Fallback: try level 3 (language-specific) first, then level 2 (generic)
+    Fallback: department-specific (level 4) → language-level (level 3)
 
-    Example: for path /canadasite/en/about
-    1. First try /canadasite/en/header
-    2. If not found, try /canadasite/header
+    Example: for path /canadasite/en/government/about
+    1. First try /canadasite/en/government/header
+    2. If not found, try /canadasite/en/header
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        # Normalize path
         normalized_path = normalize_path(path) if path else ""
-
-        # Extract language
         language = extract_language_from_path(normalized_path)
+        parts = normalized_path.strip('/').split('/') if normalized_path else []
+        site_name = parts[0] if parts else "canadasite"
+        dept = parts[2] if len(parts) >= 3 else None
 
-        # 第一步:尝试第三级(语言特定)
-        third_level_path = ""
-        if language and normalized_path:
-            # Build level 3 path:/canadasite/{language}/header
-            parts = normalized_path.strip('/').split('/')
-            if len(parts) >= 2:
-                # 保持站点Name
-                site_name = parts[0]
-                third_level_path = f"/{site_name}/{language}/header"
+        content = None
+        path_used = None
+        fallback_level = None
 
-        # 第二步:尝试第二级(通用)
-        second_level_path = ""
-        if normalized_path:
-            parts = normalized_path.strip('/').split('/')
-            if len(parts) >= 1 and parts[0]:  # 确保站点Name不为空
-                site_name = parts[0]
-                second_level_path = f"/{site_name}/header"
+        # level 4: /canadasite/{lang}/{dept}/header
+        if language and dept:
+            l4 = f"/{site_name}/{language}/{dept}/header"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l4,))
+            r = cursor.fetchone()
+            if r:
+                content = _unwrap_component(r["content"])
+                path_used = l4
+                fallback_level = "fourth"
 
-        # 查询优先级:第三级 -> 第二级
-        header_path = None
-        header_content = None
+        # level 3: /canadasite/{lang}/header
+        if not content and language:
+            l3 = f"/{site_name}/{language}/header"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l3,))
+            r = cursor.fetchone()
+            if r:
+                content = _unwrap_component(r["content"])
+                path_used = l3
+                fallback_level = "third"
 
-        # 先查第三级
-        if third_level_path:
-            cursor.execute("SELECT content FROM webbot_page WHERE id = ? AND status = 'published'", (third_level_path,))
-            result = cursor.fetchone()
-            if result:
-                header_path = third_level_path
-                header_content = result["content"]
-
-        # If第三级没找到,查第二级
-        if not header_content and second_level_path:
-            cursor.execute("SELECT content FROM webbot_page WHERE id = ? AND status = 'published'", (second_level_path,))
-            result = cursor.fetchone()
-            if result:
-                header_path = second_level_path
-                header_content = result["content"]
-
-        if not header_content:
-            # 都没有找到,返回空内容
+        if not content:
             return {
                 "success": False,
                 "message": "Header not found",
@@ -732,9 +734,9 @@ async def get_header(path: str = ""):
 
         return {
             "success": True,
-            "content": header_content,
-            "path_used": header_path,
-            "fallback_level": "third" if header_path == third_level_path else "second",
+            "content": content,
+            "path_used": path_used,
+            "fallback_level": fallback_level,
             "language": language
         }
 
@@ -829,64 +831,49 @@ async def get_footer(path: str = ""):
 async def get_megamenu(path: str = ""):
     """
     Get megamenu component content
-    Fallback: try level 3 (language-specific) first, then level 2 (generic)
+    Fallback: department-specific (level 4) → language-level (level 3)
 
-    Example: for path /canadasite/en/about
-    1. First try /canadasite/en/megamenu
-    2. If not found, try /canadasite/megamenu
+    Example: for path /canadasite/en/government/about
+    1. First try /canadasite/en/government/megamenu
+    2. If not found, try /canadasite/en/megamenu
 
-    Same rules as header and footer
+    Same rules as header
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        # Normalize path
         normalized_path = normalize_path(path) if path else ""
-
-        # Extract language
         language = extract_language_from_path(normalized_path)
+        parts = normalized_path.strip('/').split('/') if normalized_path else []
+        site_name = parts[0] if parts else "canadasite"
+        dept = parts[2] if len(parts) >= 3 else None
 
-        # 第一步:尝试第三级(语言特定)
-        third_level_path = ""
-        if language and normalized_path:
-            # Build level 3 path:/canadasite/{language}/megamenu
-            parts = normalized_path.strip('/').split('/')
-            if len(parts) >= 2:
-                # 保持站点Name
-                site_name = parts[0]
-                third_level_path = f"/{site_name}/{language}/megamenu"
+        content = None
+        path_used = None
+        fallback_level = None
 
-        # 第二步:尝试第二级(通用)
-        second_level_path = ""
-        if normalized_path:
-            parts = normalized_path.strip('/').split('/')
-            if len(parts) >= 1 and parts[0]:  # 确保站点Name不为空
-                site_name = parts[0]
-                second_level_path = f"/{site_name}/megamenu"
+        # level 4: /canadasite/{lang}/{dept}/megamenu
+        if language and dept:
+            l4 = f"/{site_name}/{language}/{dept}/megamenu"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l4,))
+            r = cursor.fetchone()
+            if r:
+                content = _unwrap_component(r["content"])
+                path_used = l4
+                fallback_level = "fourth"
 
-        # 查询优先级:第三级 -> 第二级
-        megamenu_path = None
-        megamenu_content = None
+        # level 3: /canadasite/{lang}/megamenu
+        if not content and language:
+            l3 = f"/{site_name}/{language}/megamenu"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l3,))
+            r = cursor.fetchone()
+            if r:
+                content = _unwrap_component(r["content"])
+                path_used = l3
+                fallback_level = "third"
 
-        # 先查第三级
-        if third_level_path:
-            cursor.execute("SELECT content FROM webbot_page WHERE id = ? AND status = 'published'", (third_level_path,))
-            result = cursor.fetchone()
-            if result:
-                megamenu_path = third_level_path
-                megamenu_content = result["content"]
-
-        # If第三级没找到,查第二级
-        if not megamenu_content and second_level_path:
-            cursor.execute("SELECT content FROM webbot_page WHERE id = ? AND status = 'published'", (second_level_path,))
-            result = cursor.fetchone()
-            if result:
-                megamenu_path = second_level_path
-                megamenu_content = result["content"]
-
-        if not megamenu_content:
-            # 都没有找到,返回空内容
+        if not content:
             return {
                 "success": False,
                 "message": "Megamenu not found",
@@ -897,9 +884,9 @@ async def get_megamenu(path: str = ""):
 
         return {
             "success": True,
-            "content": megamenu_content,
-            "path_used": megamenu_path,
-            "fallback_level": "third" if megamenu_path == third_level_path else "second",
+            "content": content,
+            "path_used": path_used,
+            "fallback_level": fallback_level,
             "language": language
         }
 
@@ -1203,6 +1190,24 @@ async def get_page_by_path_param(full_path: str):
         conn.close()
 
 
+@router.get("/property-forms/{form_name}")
+async def get_property_form(form_name: str):
+    """Get a property form definition by name
+
+    Form definitions are stored as JSON files in webbot/property-forms/
+    """
+    import os
+    forms_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "property-forms")
+    form_path = os.path.join(forms_dir, f"{form_name}.json")
+    if not os.path.exists(form_path):
+        raise HTTPException(status_code=404, detail=f"Property form '{form_name}' not found")
+    try:
+        with open(form_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load form: {e}")
+
+
 @router.get("/metadata", response_model=PageMetadataResponse)
 async def get_page_metadata(path: str = Query(..., description="Full page path, e.g. /canadasite/en/government")):
     """Get page hierarchy metadata
@@ -1252,10 +1257,63 @@ async def get_page_metadata(path: str = Query(..., description="Full page path, 
                 inst_level_data = dict(inst_row)
                 _parse_page_dict(inst_level_data)
 
+        # Helper: populate subjects/audience/type from linked tags (with metadata fallback)
+        def populate_dcterms(d):
+            if not d:
+                return d
+            page_id = d.get("id")
+            if not page_id:
+                return d
+            # Fetch linked tags for this page
+            tag_rows = conn.execute("""
+                SELECT t.type, t.title_en FROM webbot_tag t
+                INNER JOIN webbot_page_tags pt ON pt.tag_id = t.id
+                WHERE pt.page_id = ?
+            """, (page_id,)).fetchall()
+            subjects = []
+            audiences = []
+            type_val = None
+            for r in tag_rows:
+                tag_type = r["type"]
+                title_en = r["title_en"]
+                if tag_type == "subject":
+                    subjects.append(title_en)
+                elif tag_type == "audience":
+                    audiences.append(title_en)
+                elif tag_type == "type":
+                    type_val = title_en
+            if subjects:
+                d["subjects"] = ";".join(subjects)
+            elif d.get("metadata") and d["metadata"].get("subjects"):
+                d["subjects"] = d["metadata"]["subjects"]
+            if audiences:
+                d["audience"] = ";".join(audiences)
+            elif d.get("metadata") and d["metadata"].get("audience"):
+                d["audience"] = d["metadata"]["audience"]
+            if type_val:
+                d["type"] = type_val
+            elif d.get("metadata") and d["metadata"].get("type"):
+                d["type"] = d["metadata"]["type"]
+            return d
+
+        # Populate dcterms for all levels
+        if page_data:
+            populate_dcterms(page_data)
+        if inst_level_data:
+            populate_dcterms(inst_level_data)
+        if lang_level_data:
+            populate_dcterms(lang_level_data)
+
+        # Strip content field from each page dict before passing to PageMetadataItem
+        def strip_content(d):
+            if d and "content" in d:
+                d = {k: v for k, v in d.items() if k != "content"}
+            return d
+
         return PageMetadataResponse(
-            page=PageListItem(**page_data) if page_data else None,
-            institution_level=PageListItem(**inst_level_data) if inst_level_data else None,
-            language_level=PageListItem(**lang_level_data) if lang_level_data else None,
+            page=PageMetadataItem(**strip_content(page_data)) if page_data else None,
+            institution_level=PageMetadataItem(**strip_content(inst_level_data)) if inst_level_data else None,
+            language_level=PageMetadataItem(**strip_content(lang_level_data)) if lang_level_data else None,
             path=normalized,
             path_depth=len(path_parts)
         )
@@ -1263,6 +1321,16 @@ async def get_page_metadata(path: str = Query(..., description="Full page path, 
         raise HTTPException(status_code=500, detail=f"Metadata query failed: {e}")
     finally:
         conn.close()
+
+
+def _unwrap_component(content: str) -> str:
+    """Strip <html><head>...</head><body> wrapper from component HTML."""
+    if not content:
+        return content
+    import re
+    content = re.sub(r'<html[^>]*>.*?</head><body[^>]*>', '', content, count=1, flags=re.DOTALL)
+    content = re.sub(r'</body>\s*</html>\s*$', '', content, count=1, flags=re.DOTALL | re.MULTILINE)
+    return content.strip()
 
 
 def _parse_page_dict(page_dict: dict):
@@ -1309,13 +1377,57 @@ async def get_parent_pages(path: str = Query(..., description="Full page path. R
                 else:
                     # Always include root (Home), but skip other pages with hide_in_navigation
                     is_root = depth == 2
-                    if is_root or not item.hide_in_navigation:
+                    if is_root or not page_dict.get('hide_in_navigation', False):
                         # Strip the site prefix (e.g. /canadasite) from breadcrumb path
                         stripped_parts = path_parts[1:depth]
                         item.path = "/" + "/".join(stripped_parts)
                         parents.append(item)
         
-        return {"parents": parents, "page": page}
+        # ─── Fetch header ──────────────────────────────────────────────
+        # Fallback: department-specific (level 4) → language-level (level 3)
+        language = extract_language_from_path(normalized)
+        parts = normalized.strip('/').split('/')
+        site_name = parts[0] if parts else "canadasite"
+        dept = parts[2] if len(parts) >= 3 else None
+
+        header = None
+        # level 4: /canadasite/{lang}/{dept}/header
+        if language and dept and len(parts) >= 3:
+            l4 = f"/{site_name}/{language}/{dept}/header"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l4,))
+            r = cursor.fetchone()
+            if r:
+                header = {"success": True, "content": _unwrap_component(r["content"]), "path_used": l4, "fallback_level": "fourth", "language": language}
+        # level 3: /canadasite/{lang}/header
+        if not header and language:
+            l3 = f"/{site_name}/{language}/header"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l3,))
+            r = cursor.fetchone()
+            if r:
+                header = {"success": True, "content": _unwrap_component(r["content"]), "path_used": l3, "fallback_level": "third", "language": language}
+        if not header:
+            header = {"success": False, "message": "Header not found", "content": "", "path_used": None, "fallback_level": None}
+
+        # ─── Fetch megamenu ────────────────────────────────────────────
+        megamenu = None
+        # level 4: /canadasite/{lang}/{dept}/megamenu
+        if language and dept and len(parts) >= 3:
+            l4 = f"/{site_name}/{language}/{dept}/megamenu"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l4,))
+            r = cursor.fetchone()
+            if r:
+                megamenu = {"success": True, "content": _unwrap_component(r["content"]), "path_used": l4, "fallback_level": "fourth", "language": language}
+        # level 3: /canadasite/{lang}/megamenu
+        if not megamenu and language:
+            l3 = f"/{site_name}/{language}/megamenu"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l3,))
+            r = cursor.fetchone()
+            if r:
+                megamenu = {"success": True, "content": _unwrap_component(r["content"]), "path_used": l3, "fallback_level": "third", "language": language}
+        if not megamenu:
+            megamenu = {"success": False, "message": "Megamenu not found", "content": "", "path_used": None, "fallback_level": None}
+
+        return {"parents": parents, "page": page, "header": header, "megamenu": megamenu}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ancestor query failed: {e}")
     finally:
@@ -1521,6 +1633,23 @@ async def get_page_properties(page_id: str,
             page_dict["metadata"] = {}
         # 移除content字段,因为它可能很大
         page_dict.pop("content", None)
+        # 映射字段名: DB用last_modified/last_published, 响应模型用updated_at/published_at
+        if "last_modified" in page_dict and "updated_at" not in page_dict:
+            page_dict["updated_at"] = page_dict.pop("last_modified")
+        if "last_published" in page_dict and "published_at" not in page_dict:
+            page_dict["published_at"] = page_dict.pop("last_published")
+
+        # Load page tags from junction table
+        try:
+            cursor.execute("""
+                SELECT t.path FROM webbot_tag t
+                JOIN webbot_page_tags pt ON pt.tag_id = t.id
+                WHERE pt.page_id = ?
+            """, (page_dict.get("id"),))
+            page_dict["tags"] = [row["path"] for row in cursor.fetchall()]
+        except Exception:
+            page_dict["tags"] = []
+
         return PagePropertiesResponse(**page_dict)
 
     except sqlite3.Error as e:
@@ -1657,17 +1786,61 @@ async def _render_preview(
         # Set header to the correct language for backward compatibility
         header_html = header_en_html if page_language == "en" else header_fr_html
 
-        # Get footer — try DB page first, fallback to extracting from raw content
-        footer_path = f"/canadasite/{page_language}/footer"
-        cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (footer_path,))
-        footer_row = cursor.fetchone()
+        # Get footer — try institution-level first, then language-level, then site-level
+        # For /canadasite/en/auditor-general:
+        #   1. Try /canadasite/en/auditor-general/footer
+        #   2. Fallback to /canadasite/{language}/footer
+        #   3. Fallback to /canadasite/footer
+        def _find_footer(search_path: str) -> str:
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (search_path,))
+            row = cursor.fetchone()
+            if row:
+                raw = row[0]
+                # Strip outer <html><head><body> wrapper — DB content is stored as full HTML doc
+                f_match = re.search(r'<footer[^>]*>.*?</footer>', raw, re.DOTALL | re.IGNORECASE)
+                if f_match:
+                    return f_match.group(0)
+                b_match = re.search(r'<body[^>]*>(.*?)</body>', raw, re.DOTALL | re.IGNORECASE)
+                if b_match:
+                    return b_match.group(1).strip()
+                return raw
+            return ""
+
         footer_html = ""
-        if footer_row:
-            footer_html = footer_row[0]
-        else:
+        # Step 1: Try path-specific footer (e.g. /canadasite/en/auditor-general/footer)
+        path_parts = path.strip('/').split('/')
+        if len(path_parts) >= 2:
+            institution_footer_path = f"/{path_parts[0]}/{path_parts[1]}/{'/'.join(path_parts[2:])}/footer" if len(path_parts) > 2 else f"/{path_parts[0]}/{path_parts[1]}/footer"
+            footer_html = _find_footer(institution_footer_path)
+
+        # Step 2: Fallback to language-level footer
+        if not footer_html:
+            lang_footer_path = f"/canadasite/{page_language}/footer"
+            footer_html = _find_footer(lang_footer_path)
+
+        # Step 3: Fallback to site-level footer
+        if not footer_html:
+            site_footer_path = "/canadasite/footer"
+            footer_html = _find_footer(site_footer_path)
+
+        # Step 4: Fallback to extracting from raw content
+        if not footer_html:
             footer_match = re.search(r'<footer[^>]*id=[\"\']wb-info[\"\'][^>]*>.*?</footer>', page.get("content", ""), re.DOTALL | re.IGNORECASE)
             if footer_match:
                 footer_html = footer_match.group(0)
+
+        # Get contextual-footer — from /canadasite/{lang}/{institution}/contextual-footer
+        contextual_footer = ""
+        if len(path_parts) >= 3:
+            ctx_path = f"/canadasite/{page_language}/{path_parts[2]}/contextual-footer"
+            ctx_row = cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (ctx_path,)).fetchone()
+            if ctx_row:
+                raw = ctx_row[0]
+                b_match = re.search(r'<body[^>]*>(.*?)</body>', raw, re.DOTALL | re.IGNORECASE)
+                if b_match:
+                    contextual_footer = b_match.group(1).strip()
+                else:
+                    contextual_footer = raw.strip()
 
         # 3. Clean content
         def extract_content(raw_content: str) -> str:
@@ -1697,7 +1870,7 @@ async def _render_preview(
 
         # 5. Render with template or default
         # Helper: try to render a page template from DB, returns None if not found
-        async def render_page_template(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None):
+        async def render_page_template(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None, contextual_footer=""):
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
             if not tmpl_row:
@@ -1712,6 +1885,7 @@ async def _render_preview(
                 "head": head,
                 "header": header,
                 "footer": footer,
+                "contextual-footer": contextual_footer,
                 "date_modified": date_modified,
                 "language": lang,
                 "title": title,
@@ -1745,7 +1919,8 @@ async def _render_preview(
             rendered = await render_page_template(
                 page_publish_template, head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html
+                header_en=header_en_html, header_fr=header_fr_html,
+                contextual_footer=contextual_footer
             )
 
         if not rendered:
@@ -1753,7 +1928,8 @@ async def _render_preview(
             rendered = await render_page_template(
                 "/canadasite/mustache-templates/page-template", head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html
+                header_en=header_en_html, header_fr=header_fr_html,
+                contextual_footer=contextual_footer
             )
 
         if not rendered:
@@ -1764,6 +1940,11 @@ async def _render_preview(
             )
 
         conn.close()
+
+        # Inject tracking script before </body>
+        track_script = '<script src="/api/v1/track/track.js"></script>'
+        rendered = rendered.replace('</body>', track_script + '\n</body>', 1) if rendered else rendered
+
         return HTMLResponse(content=rendered, status_code=200)
     except HTTPException:
         conn.close()
@@ -2028,7 +2209,7 @@ async def update_page(page_id: str, page_update: PageUpdate,
 
         if page_update.status is not None:
             update_fields.append("status = ?")
-            update_values.append(page_update.status.value)
+            update_values.append(page_update.status)
 
         if page_update.metadata is not None or page_update.file_path is not None:
             # Get existing metadata from DB (may include file_path etc.)
@@ -2692,6 +2873,25 @@ async def publish_page(
         page_language = page.get("language", "en")
         page_publish_template = page.get("publish_template", None)
         page_last_modified = page.get("last_modified", now.isoformat())
+        # Load page metadata (includes properties entered via the editor form)
+        raw_metadata = page.get("metadata", {})
+        if isinstance(raw_metadata, str):
+            try:
+                page_metadata = json.loads(raw_metadata)
+            except json.JSONDecodeError:
+                page_metadata = {}
+        elif isinstance(raw_metadata, dict):
+            page_metadata = raw_metadata
+        else:
+            page_metadata = {}
+
+        # 2. Check approval
+        page_approved = page.get("approved", 0)
+        if not page_approved:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Page '{path}' is not approved. Approve it first before publishing."
+            )
         if page_last_modified:
             if isinstance(page_last_modified, str):
                 try:
@@ -2768,17 +2968,59 @@ async def publish_page(
         header_fr_html = await render_mustache_template("/canadasite/mustache-templates/getheader_fr", path)
         header_html = header_en_html if page_language == "en" else header_fr_html
 
-        # 5. Get footer — try DB page first, fallback to extracting from raw content
-        footer_path = f"/canadasite/{page_language}/footer"
-        cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (footer_path,))
-        footer_row = cursor.fetchone()
+        # 5. Get footer — try institution-level first, then language-level, then site-level
+        def _find_footer_publish(search_path: str) -> str:
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (search_path,))
+            row = cursor.fetchone()
+            if row:
+                raw = row[0]
+                # Strip outer <html><head><body> wrapper — DB content is stored as full HTML doc
+                f_match = re.search(r'<footer[^>]*>.*?</footer>', raw, re.DOTALL | re.IGNORECASE)
+                if f_match:
+                    return f_match.group(0)
+                b_match = re.search(r'<body[^>]*>(.*?)</body>', raw, re.DOTALL | re.IGNORECASE)
+                if b_match:
+                    return b_match.group(1).strip()
+                return raw
+            return ""
+
         footer_html = ""
-        if footer_row:
-            footer_html = footer_row[0]
-        else:
+        # Step 1: Try path-specific footer (e.g. /canadasite/en/auditor-general/footer)
+        path_parts = path.strip('/').split('/')
+        if len(path_parts) >= 2:
+            inst_path = f"/{'/'.join(path_parts)}/footer"
+            footer_html = _find_footer_publish(inst_path)
+
+        # Step 2: Fallback to language-level footer
+        if not footer_html:
+            lang_path = f"/canadasite/{page_language}/footer"
+            footer_html = _find_footer_publish(lang_path)
+
+        # Step 3: Fallback to site-level footer
+        if not footer_html:
+            site_path = "/canadasite/footer"
+            footer_html = _find_footer_publish(site_path)
+
+        # # Step 4: Fallback to extracting from raw content
+        if not footer_html:
             footer_match = re.search(r'<footer[^>]*id=[\"\']wb-info[\"\'][^>]*>.*?</footer>', page_content or "", re.DOTALL | re.IGNORECASE)
             if footer_match:
                 footer_html = footer_match.group(0)
+
+        # Get contextual-footer — from /canadasite/{lang}/{institution}/contextual-footer
+        contextual_footer = ""
+        if len(path_parts) >= 3:
+            ctx_path = f"/canadasite/{page_language}/{path_parts[2]}/contextual-footer"
+            ctx_row = cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (ctx_path,)).fetchone()
+            if ctx_row:
+                raw = ctx_row[0]
+                b_match = re.search(r'<body[^>]*>(.*?)</body>', raw, re.DOTALL | re.IGNORECASE)
+                if b_match:
+                    contextual_footer = b_match.group(1).strip()
+                else:
+                    contextual_footer = raw.strip()
+
+        # 6. Clean page content: extract meaningful body/main content from the raw content
 
         # 6. Clean page content: extract meaningful body/main content from the raw content
         #    (AEM imported pages contain full HTML documents with their own <html>, <head>, <body>)
@@ -2815,7 +3057,7 @@ async def publish_page(
         #    Otherwise, try default DB template, then hardcoded fallback
 
         # Helper: try to render a page template from DB
-        def render_page_template_fb(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None):
+        def render_page_template_fb(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None, page_metadata=None, contextual_footer=""):
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
             if not tmpl_row:
@@ -2823,13 +3065,19 @@ async def publish_page(
             try:
                 tmpl_config = json.loads(tmpl_row[0])
                 tmpl = tmpl_config.get("template", tmpl_row[0])
+                # Also extract template data for render context
+                tmpl_data = tmpl_config.get("data", {})
+                if not isinstance(tmpl_data, dict):
+                    tmpl_data = {}
             except json.JSONDecodeError:
                 tmpl = tmpl_row[0]
+                tmpl_data = {}
             render_data = {
                 "content": content,
                 "head": head,
                 "header": header,
                 "footer": footer,
+                "contextual-footer": contextual_footer,
                 "date_modified": date_modified,
                 "language": lang,
                 "title": title,
@@ -2839,24 +3087,64 @@ async def publish_page(
                 "is_en": lang == "en",
                 "is_fr": lang == "fr",
             }
+            # Merge template data into render context (properties, extension, etc.)
+            render_data.update(tmpl_data)
+            # Merge page metadata into render context (includes properties entered via form)
+            if page_metadata and isinstance(page_metadata, dict):
+                # Put raw metadata fields at top level (for mustache access)
+                if page_metadata.get("properties"):
+                    render_data["page_properties"] = page_metadata["properties"]
+                if page_metadata.get("file_path"):
+                    render_data["file_path"] = page_metadata["file_path"]
+                # Also pass full metadata as 'metadata' for template use
+                render_data["metadata"] = page_metadata
             return chevron.render(tmpl, render_data)
 
         full_html = None
+        publish_ext = ".html"  # default extension
+
+        # Helper to render a template AND extract extension from its config
+        def render_and_get_ext(template_path, *args, **kwargs):
+            # Load template config to check for extension field
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
+            tmpl_row = cursor.fetchone()
+            ext = ".html"
+            if tmpl_row:
+                try:
+                    tmpl_config = json.loads(tmpl_row[0])
+                    # Check extension in data dict (user's "static data") or top-level config
+                    data = tmpl_config.get("data", {})
+                    if isinstance(data, dict):
+                        ext = data.get("extension", tmpl_config.get("extension", ".html"))
+                    else:
+                        ext = tmpl_config.get("extension", ".html")
+                    if not ext.startswith("."):
+                        ext = f".{ext}"
+                except (json.JSONDecodeError, Exception):
+                    pass
+            html = render_page_template_fb(template_path, *args, **kwargs)
+            # Also load page metadata properties into render_and_get_ext's return if template has properties
+            # (properties are already handled inside render_page_template_fb via page_metadata param)
+            return html, ext
 
         # 1) Try per-page publish_template
         if page_publish_template:
-            full_html = render_page_template_fb(
+            full_html, publish_ext = render_and_get_ext(
                 page_publish_template, head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html
+                header_en=header_en_html, header_fr=header_fr_html,
+                page_metadata=page_metadata,
+                contextual_footer=contextual_footer
             )
 
         # 2) Try default language-specific template from DB
         if not full_html:
-            full_html = render_page_template_fb(
+            full_html, publish_ext = render_and_get_ext(
                 "/canadasite/mustache-templates/page-template", head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html
+                header_en=header_en_html, header_fr=header_fr_html,
+                page_metadata=page_metadata,
+                contextual_footer=contextual_footer
             )
 
         # 3) Ultimate hardcoded fallback
@@ -2875,11 +3163,12 @@ async def publish_page(
                 "</body>\n"
                 "</html>"
             )
+            publish_ext = ".html"
 
                 # 9. Save to FileBot publish directory via FileBot API
         # 调用FileBot的publish app接口来写入发布文件
         filebot_publish_url = "http://localhost:8001/api/v1/pages/publish"
-        fb_params = {"path": path}
+        fb_params = {"path": path, "extension": publish_ext}
         if output_dir:
             fb_params["output_dir"] = output_dir
         async with aiohttp.ClientSession() as session:
@@ -2899,7 +3188,29 @@ async def publish_page(
                 fb_result = await fb_resp.json()
                 output_file = fb_result.get("output_file", "")
 
-        # 10. Update page status to "published"
+        # 10. Save version snapshot (非阻塞)
+        try:
+            from .. import versioning
+            version = versioning.get_next_version(path)
+            versioning.save_version(
+                page_path=path,
+                content=cleaned_content,  # 只存页面正文，不含 header/footer
+                page_id=page["id"],
+                page_title=page_title,
+                page_language=page_language,
+                version=version,
+                author=page.get("created_by", "system"),
+                notes=f"Published via WebBot"
+            )
+            # 更新 DB 版本号
+            cursor.execute(
+                "UPDATE webbot_page SET current_version = ? WHERE path = ?",
+                (version, path)
+            )
+        except Exception as ve:
+            logger.error(f"Version snapshot failed (non-fatal): {ve}")
+
+        # 11. Update page status to "published"
         cursor.execute(
             "UPDATE webbot_page SET status = 'published', last_published = ? WHERE path = ?",
             (now.isoformat(), path)

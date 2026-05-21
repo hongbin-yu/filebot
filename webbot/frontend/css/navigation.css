@@ -638,3 +638,237 @@
     background-color: #f0ad4e;
     border-color: #eea236;
 }
+
+/* Tag checkbox groups */
+.tag-checkbox-group {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    background: #fafafa;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+
+.tag-checkbox-group label {
+    font-weight: normal;
+    font-size: 13px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+
+.tag-checkbox-group label:hover {
+    background: #e8f4fd;
+    border-radius: 3px;
+}
+
+.tag-checkbox-group input[type="checkbox"] {
+    margin: 0;
+}
+
+.tag-fr-label {
+    color: #888;
+    font-size: 11px;
+}
+
+/* Tag management UI */
+.tag-mgmt-section {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 8px;
+    min-height: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+    background: #fafafa;
+}
+
+.tag-mgmt-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    background: white;
+    border: 1px solid #f0f0f0;
+}
+
+.tag-mgmt-item:hover {
+    background: #f0f7ff;
+    border-color: #cce5ff;
+}
+
+.tag-mgmt-item .tag-id {
+    font-weight: 600;
+    font-size: 13px;
+    color: #333;
+}
+
+.tag-mgmt-item .tag-fr {
+    color: #888;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.tag-mgmt-item .tag-counts {
+    font-size: 11px;
+    color: #aaa;
+    margin-left: 8px;
+}
+
+.tag-mgmt-item .tag-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.tag-mgmt-item .tag-actions button {
+    padding: 1px 6px;
+    font-size: 11px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background: white;
+    cursor: pointer;
+}
+
+.tag-mgmt-item .tag-actions button:hover {
+    background: #f5f5f5;
+}
+
+.tag-mgmt-item .tag-actions .btn-edit-tag:hover {
+    border-color: #5bc0de;
+    color: #31708f;
+}
+
+.tag-mgmt-item .tag-actions .btn-del-tag:hover {
+    border-color: #d9534f;
+    color: #c9302c;
+}
+
+/* Inline tag editor */
+.tag-editor-row {
+    display: none;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: #fffef5;
+    border: 1px solid #e6d9a0;
+    border-radius: 4px;
+}
+
+.tag-editor-row.active {
+    display: block;
+}
+
+.tag-editor-row label {
+    display: inline-block;
+    width: 70px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+}
+
+.tag-editor-row input {
+    width: calc(100% - 80px);
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.tag-editor-row .btn-save-tag {
+    margin-right: 4px;
+}
+
+/* Tag selection display in properties modal */
+.tag-selection-display {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fafafa;
+    min-height: 32px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.tag-selection-item {
+    display: inline-block;
+    background: #e8f4fd;
+    border: 1px solid #bcd9f0;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 2px 3px;
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+.tag-selection-item .remove-tag {
+    cursor: pointer;
+    color: #c00;
+    margin-left: 4px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.tag-selection-item .remove-tag:hover {
+    color: #800;
+}
+
+/* Tag tree modal */
+.ttm-tag-list .ttm-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    border-bottom: 1px solid #eee;
+    cursor: default;
+    transition: background 0.1s;
+}
+
+.ttm-tag-list .ttm-item:hover {
+    background: #f0f7ff;
+}
+
+.ttm-tag-list .ttm-item .ttm-check {
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.ttm-tag-list .ttm-item .ttm-label {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.ttm-tag-list .ttm-item .ttm-label .ttm-title {
+    font-size: 13px;
+    color: #333;
+}
+
+.ttm-tag-list .ttm-item .ttm-label .ttm-path {
+    font-size: 11px;
+    color: #999;
+    display: block;
+}
+
+.ttm-tag-list .ttm-item .ttm-has-children {
+    color: #2572b4;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.ttm-tag-list .ttm-item .ttm-has-children:hover {
+    background: #e0ecf7;
+}
+
+.ttm-tag-list .ttm-item.selected {
+    background: #d4edda;
+}

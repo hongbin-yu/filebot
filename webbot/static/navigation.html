@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>WebBot Page Navigation</title>
+    <link rel="shortcut icon" href="/static/icons/webbot_favicon.png" type="image/png">
+    <link rel="icon" href="/static/icons/webbot_favicon.png" sizes="32x32">
 
     <!-- Canada.ca WET theme CSS -->
     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
@@ -296,6 +298,63 @@
                             <option value="">(Default page template)</option>
                         </select>
                         <small class="form-text text-muted">Select a different Mustache template for this page. Default: /canadasite/mustache-templates/page-template</small>
+                    </div>
+
+                    <!-- Tags: Subjects -->
+                    <div class="form-group">
+                        <label>Subjects <span class="text-muted">(tagging)</span></label>
+                        <div id="prop-tags-subjects" class="tag-checkbox-group">
+                            <span class="text-muted">(Loading subjects...)</span>
+                        </div>
+                    </div>
+
+                    <!-- Tags: Audience -->
+                    <div class="form-group">
+                        <label>Audience <span class="text-muted">(tagging)</span></label>
+                        <div id="prop-tags-audience" class="tag-checkbox-group">
+                            <span class="text-muted">(Loading audience tags...)</span>
+                        </div>
+                    </div>
+
+                    <!-- Version Info -->
+                    <div class="form-group" id="version-info-section">
+                        <label>Version History <span class="text-muted">(publish snapshots)</span></label>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+                            <span id="prop-current-version" style="font-size:14px;color:#555;">v—</span>
+                            <button type="button" class="btn btn-sm btn-primary" id="btn-view-version-history" onclick="viewVersionHistory()" disabled>
+                                📋 History
+                            </button>
+                            <a href="#" id="btn-open-editor" class="btn btn-sm btn-info" target="_blank" style="background:#2572b4;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" disabled>
+                                ✏️ Editor
+                            </a>
+                            <button type="button" class="btn btn-sm btn-secondary" id="btn-raw-html" onclick="viewRawHTML()" style="background:#6f42c1;color:#fff;" disabled>
+                                🔍 HTML
+                            </button>
+                            <button type="button" class="btn btn-sm btn-warning" id="btn-compare" onclick="openCompare()" style="background:#e67e22;color:#fff;" disabled>
+                                📋 Compare
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Approval Status -->
+                    <div class="form-group" id="approval-section">
+                        <label>✅ Approval Status</label>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span id="prop-approval-status" style="font-size:14px;font-weight:500;">—</span>
+                            <button type="button" class="btn btn-sm btn-success" id="btn-approve" onclick="approvePage()" disabled>✅ Approve</button>
+                            <button type="button" class="btn btn-sm btn-warning" id="btn-unapprove" onclick="unapprovePage()" disabled>⛔ Revoke</button>
+                        </div>
+                    </div>
+
+                    <!-- Scheduled Publish -->
+                    <div class="form-group" id="schedule-section">
+                        <label>⏰ Scheduled Publish</label>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <input type="datetime-local" id="prop-schedule-dt" class="form-control" style="width:auto;display:inline-block;" />
+                            <button type="button" class="btn btn-sm btn-primary" onclick="setSchedule()">Set</button>
+                            <button type="button" class="btn btn-sm btn-default" onclick="cancelSchedule()">Cancel</button>
+                            <span id="prop-schedule-status" style="font-size:13px;color:#888;"></span>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

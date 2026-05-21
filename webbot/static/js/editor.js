@@ -50,6 +50,7 @@
         const pageStatusDisplayEl = document.querySelector('#page-status-display');
         const filePathDisplayEl = document.querySelector('#file-path-display');
         const lastModifiedDisplayEl = document.querySelector('#page-lastmodified-display');
+        const pagePublishedDisplayEl = document.querySelector('#page-published-display');
         const savePageTopBtn = document.getElementById('save-page-top');
         const breadcrumbEl = document.getElementById('breadcrumb');
 
@@ -100,7 +101,7 @@
             loadAllPages();
             // Add CSS styles for component menus
             addTemplateEditStyles();
-            
+
             // Initialize menus for existing components
             setTimeout(() => {
                 initializeComponentMenus();
@@ -230,7 +231,7 @@
                     aiPanel.classList.toggle('hidden');
                     aiToggleBtn.classList.toggle('active');
                     console.log('AI assistant panel toggled');
-                    
+
                     // Focus on input when panel opens
                     if (!aiPanel.classList.contains('hidden')) {
                         setTimeout(() => {
@@ -446,7 +447,7 @@
 
             const templateCache = {};
 
-            // Map: template URL pattern -> (apiUrl, dataMapper)  
+            // Map: template URL pattern -> (apiUrl, dataMapper)
             // dataMapper receives API response and returns { dataKey: itemsArray }
             const sectionHandlers = {
                 'images.html': {
@@ -981,6 +982,7 @@
 
             currentPageId = newPage.id;
             currentPageData = newPage;
+            window.currentPageData = newPage;
 
             // Update breadcrumb (wrap in try-catch since new page doesn't exist yet)
             try {
@@ -996,6 +998,7 @@
             pageStatusDisplayEl.textContent = ' | Status: DRAFT';
             filePathDisplayEl.textContent = '';
             lastModifiedDisplayEl.textContent = '';
+            pagePublishedDisplayEl.textContent = '';
 
             // Populate editor with empty content
             editorContentEl.value = '';
@@ -1313,7 +1316,7 @@
 
             try {
                 console.log(`Looking up folder ID for path: ${folderPath}`);
-                
+
                 // 尝试直接通过路径获取文件夹信息
                 // 使用新的文件夹路径端点
                 const response = await fetch(`${URL_CONFIG.filebot.folders}/by-path/${encodeURIComponent(folderPath)}`, {
@@ -1327,8 +1330,8 @@
                     console.log(`Found folder ID ${folder.id} for path: ${folderPath}`);
                     return folder.id;
                 } else if (response.status === 404) {
-                    // 文件夹不存在，但我们不在这里创建它
-                    // 创建文件夹应该在FileBot端处理（当通过路径上传文档时）
+                    // 文件夹不存在,但我们不在这里创建它
+                    // 创建文件夹应该在FileBot端处理(当通过路径上传文档时)
                     console.warn(`Folder not found for path: ${folderPath}`);
                     return null;
                 } else {
@@ -1467,9 +1470,9 @@
             let apiUrl = ''; // Declare outside try block for error logging
 
             try {
-                // 直接使用文件夹路径，不尝试获取folderId
+                // 直接使用文件夹路径,不尝试获取folderId
                 // FileBot API应该支持folder_path参数
-                
+
                 // Build API URL using environment-aware base
                 apiUrl = URL_CONFIG.filebot.documents;
                 const params = new URLSearchParams();
@@ -1491,17 +1494,17 @@
                 });
 
                 if (!response.ok) {
-                    // 如果API不支持folder_path参数，尝试备用方法
+                    // 如果API不支持folder_path参数,尝试备用方法
                     if (folderPath && response.status === 400) {
-                        console.warn(`folder_path参数可能不被支持，尝试备用方法`);
-                        // 这里可以尝试获取folderId，但我们应该优先修复API而不是这里
+                        console.warn(`folder_path参数可能不被支持,尝试备用方法`);
+                        // 这里可以尝试获取folderId,但我们应该优先修复API而不是这里
                         throw new Error(`FileBot API不支持folder_path参数`);
                     }
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 let documentsData = await response.json();
-                
+
                 // Ensure documents is an array
                 let documents = [];
                 if (Array.isArray(documentsData)) {
@@ -1516,10 +1519,10 @@
                     // Single document object
                     documents = [documentsData];
                 }
-                
+
                 console.log(`Loaded ${documents.length || 0} documents for folder: ${folderPath || 'root'}`);
 
-                // 注意：不再需要客户端过滤，因为API应该已经正确过滤
+                // 注意:不再需要客户端过滤,因为API应该已经正确过滤
 
                 // Update sidebar with documents
                 if (!documents || documents.length === 0) {
@@ -1794,6 +1797,7 @@
 
                 // Store page data
                 currentPageData = page;
+                window.currentPageData = page;
 
                 // Update breadcrumb
                 await updateBreadcrumb(page);
@@ -1808,9 +1812,12 @@
                 pageLanguageDisplayEl.textContent = ` | Language: ${page.language ? page.language.toUpperCase() : 'EN'}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${page.status || 'draft'}`;
                 lastModifiedDisplayEl.textContent = formatLastModified(page.last_modified);
+                pagePublishedDisplayEl.textContent = formatPublishedAt(page.last_published);
 
                 // Update language switcher
                 populateLanguageSwitcher();
+                // Update translate button visibility
+                if (window.updateTranslateBtn) window.updateTranslateBtn();
 
                 // Extract language links and metadata from page content head section
                 if (page.content && typeof page.content === 'string') {
@@ -1834,6 +1841,7 @@
                 filePathDisplayEl.style.fontWeight = '';
                 filePathDisplayEl.title = '';
                 lastModifiedDisplayEl.textContent = formatLastModified(page.last_modified);
+                pagePublishedDisplayEl.textContent = formatPublishedAt(page.last_published);
 
                 // Update FileBot target folder display
                 try {
@@ -2392,6 +2400,18 @@
                     metadata.subjects = subjectsMeta.getAttribute('content') || '';
                 }
 
+                // Extract audience
+                const audienceMeta = head.querySelector('meta[name="audience"]');
+                if (audienceMeta) {
+                    metadata.audience = audienceMeta.getAttribute('content') || '';
+                }
+
+                // Extract custom tags
+                const customMeta = head.querySelector('meta[name="custom-tags"]');
+                if (customMeta) {
+                    metadata.custom = customMeta.getAttribute('content') || '';
+                }
+
                 // Extract author
                 const authorMeta = head.querySelector('meta[name="author"]');
                 if (authorMeta) {
@@ -2507,7 +2527,8 @@
                 // Clear existing metadata tags (but keep other head elements like style, script, etc.)
                 // We'll only remove specific meta tags that we manage
                 const metaTagsToRemove = [
-                    'description', 'keywords', 'subjects', 'author', 'viewport', 'robots'
+                    'description', 'keywords', 'subjects', 'author', 'viewport', 'robots',
+                    'audience', 'custom-tags'
                 ];
 
                 metaTagsToRemove.forEach(name => {
@@ -2556,6 +2577,22 @@
                     const meta = doc.createElement('meta');
                     meta.setAttribute('name', 'subjects');
                     meta.setAttribute('content', metadata.subjects.trim());
+                    head.appendChild(meta);
+                }
+
+                // Audience
+                if (metadata.audience && metadata.audience.trim()) {
+                    const meta = doc.createElement('meta');
+                    meta.setAttribute('name', 'audience');
+                    meta.setAttribute('content', metadata.audience.trim());
+                    head.appendChild(meta);
+                }
+
+                // Custom tags
+                if (metadata.custom && metadata.custom.trim()) {
+                    const meta = doc.createElement('meta');
+                    meta.setAttribute('name', 'custom-tags');
+                    meta.setAttribute('content', metadata.custom.trim());
                     head.appendChild(meta);
                 }
 
@@ -3367,7 +3404,13 @@
                         const fallbackResp = await fetch(`/api/v1/getfooter?path=${encodeURIComponent(pathForFooter)}`);
                         if (fallbackResp.ok) {
                             const fd = await fallbackResp.json();
-                            footerContent = (fd.institution_level?.content || '') + (fd.language_level?.content || '');
+                            var _inst = (fd.institution_level?.content || '');
+                            var _lang = (fd.language_level?.content || '');
+                            var _m1 = _inst.match(/<footer[^>]*>[\s\S]*?<\/footer>/i);
+                            if (_m1) _inst = _m1[0];
+                            var _m2 = _lang.match(/<footer[^>]*>[\s\S]*?<\/footer>/i);
+                            if (_m2) _lang = _m2[0];
+                            footerContent = _inst + _lang;
                         }
                     } catch (e2) {
                         console.error('Fallback footer fetch failed:', e2);
@@ -3495,8 +3538,8 @@
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => null);
                     throw new Error(
-                        (errorData && errorData.detail) 
-                            ? errorData.detail 
+                        (errorData && errorData.detail)
+                            ? errorData.detail
                             : 'HTTP ' + response.status + ': ' + response.statusText
                     );
                 }
@@ -3508,7 +3551,8 @@
                 isNewPage = false;
                 currentPageId = createdPage.path || createdPage.id;
                 currentPageData = createdPage;
-
+                window.currentPageData = createdPage;
+                
                 // Update display
                 pageTitleDisplayEl.textContent = createdPage.title || title;
                 pageIdDisplayEl.textContent = ' | Path: ' + (createdPage.metadata?.file_path || createdPage.id || '');
@@ -3522,6 +3566,7 @@
                     filePathDisplayEl.textContent = '';
                 }
                 lastModifiedDisplayEl.textContent = formatLastModified(createdPage.last_modified);
+                pagePublishedDisplayEl.textContent = formatPublishedAt(createdPage.last_published);
 
                 // Update URL
                 const url = new URL(window.location);
@@ -3695,6 +3740,7 @@
                 const now = new Date();
                 updatedData.last_modified = now.toISOString();
                 currentPageData = { ...currentPageData, ...updatedData };
+                window.currentPageData = currentPageData;
 
                 // Show success message
                 successMessageEl.textContent = 'Page saved successfully!';
@@ -3706,7 +3752,7 @@
                 pageLanguageDisplayEl.textContent = ` | Language: ${updatedData.language.toUpperCase()}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${updatedData.status}`;
                 lastModifiedDisplayEl.textContent = formatLastModified(updatedData.last_modified);
-                // Update file path display
+                pagePublishedDisplayEl.textContent = formatPublishedAt(currentPageData.last_published);
                 if (currentPageData.metadata && currentPageData.metadata.file_path) {
                     filePathDisplayEl.textContent = ` | File Path: ${currentPageData.metadata.file_path}`;
                     filePathDisplayEl.style.color = '#007bff';
@@ -3715,6 +3761,7 @@
                     filePathDisplayEl.textContent = '';
                 }
                 lastModifiedDisplayEl.textContent = formatLastModified(currentPageData.last_modified);
+                pagePublishedDisplayEl.textContent = formatPublishedAt(currentPageData.last_published);
 
 
                 console.log('Page saved successfully');
@@ -3770,9 +3817,11 @@
                 // Update local page data with publish status
                 currentPageData.status = 'published';
                 currentPageData.last_published = result.published_at;
+                currentPageData.last_modified = result.published_at;
                 // Refresh display
                 pageStatusDisplayEl.textContent = ' | Status: published';
-                lastModifiedDisplayEl.textContent = formatLastModified(result.published_at);
+                lastModifiedDisplayEl.textContent = formatLastModified(result.last_modified || result.published_at);
+                pagePublishedDisplayEl.textContent = formatPublishedAt(result.published_at);
 
                 showSuccess('Page published successfully!');
                 console.log('Published page:', result);
@@ -3818,7 +3867,8 @@
         function clearEditor() {
             currentPageId = null;
             currentPageData = null;
-
+            window.currentPageData = null;
+            
             editorFormEl.style.display = 'none';
             editorActionsEl.style.display = 'none';
             if (savePageTopBtn) savePageTopBtn.style.display = 'none';
@@ -3832,6 +3882,7 @@
             pageStatusDisplayEl.textContent = '';
             filePathDisplayEl.textContent = '';
             lastModifiedDisplayEl.textContent = '';
+            pagePublishedDisplayEl.textContent = '';
 
             // Clear URL parameter
             const url = new URL(window.location);
@@ -3869,6 +3920,22 @@
                 const hours = String(d.getHours()).padStart(2, '0');
                 const minutes = String(d.getMinutes()).padStart(2, '0');
                 return ` | Last modified: ${year}-${month}-${day} ${hours}:${minutes}`;
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function formatPublishedAt(publishedAt) {
+            if (!publishedAt) return '';
+            try {
+                const d = new Date(publishedAt);
+                if (isNaN(d.getTime())) return '';
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                return ` | Published: ${year}-${month}-${day} ${hours}:${minutes}`;
             } catch (e) {
                 return '';
             }
@@ -4660,14 +4727,14 @@
         // Function to show template selector modal
         function showTemplateSelector() {
             console.log('showTemplateSelector called - checking registry availability');
-            
+
             // Use ONLY window.templateRegistry to avoid scope issues
             let registry = window.templateRegistry;
-            
+
             // If window.templateRegistry doesn't exist, check if we can find it elsewhere
             if (typeof registry === 'undefined') {
                 console.log('window.templateRegistry not found, checking other sources...');
-                
+
                 // Try to find templateRegistry in global scope (non-window)
                 try {
                     // Use eval in try-catch to check if variable exists without throwing
@@ -4679,7 +4746,7 @@
                     console.log('templateRegistry not accessible:', e.message);
                 }
             }
-            
+
             // If still undefined, create a fallback registry
             if (typeof registry === 'undefined') {
                 console.warn('templateRegistry not found in any scope, creating fallback');
@@ -5538,7 +5605,7 @@
 
         // Insert component at cursor position
         /**
-         * Canada.ca component templates — parameterized.
+         * Canada.ca component templates - parameterized.
          * Colorable components (button, alert) use a shared color mapper
          * instead of creating one variant per color.
          */
@@ -5565,7 +5632,7 @@
 
         /**
          * Build HTML for a colorable component by type + color.
-         * Keeps templates DRY — no more 5 button variants, 8 alert variants, etc.
+         * Keeps templates DRY - no more 5 button variants, 8 alert variants, etc.
          */
         function makeButtonHtml(color, label) {
             const cls = CANADA_CSS_PREFIXES['button'] + '-' + (CANADA_COLOR_MAP_TEMPLATE[color] || 'primary');
@@ -5574,7 +5641,7 @@
 
         function makeAlertHtml(color, withLink) {
             const cls = 'alert-' + (CANADA_COLOR_MAP_TEMPLATE[color] || 'info');
-            const title = color === 'danger' ? 'Danger alert' : 
+            const title = color === 'danger' ? 'Danger alert' :
                           color === 'warning' ? 'Warning alert' :
                           color === 'success' ? 'Success alert' : 'Info alert';
             if (withLink) {
@@ -5589,28 +5656,28 @@
                    '</div>';
         }
 
-        function insertComponent(componentType, options) {
+        async function insertComponent(componentType, options) {
             if (!tinyMceEditor) {
                 console.error('TinyMCE editor not initialized');
                 return false;
             }
 
             let componentHtml;
-            
-            // Map old compound names (button-danger, alert-success-link) 
+
+            // Map old compound names (button-danger, alert-success-link)
             // to simple type + options
             var match;
             var parsedType = componentType;
             var parsedColor = (options && options.color) || null;
             var parsedLink = (options && options.link) || false;
-            
+
             // Parse 'type-color' compound format (e.g. 'button-danger')
             match = componentType.match(/^(button|alert)-(danger|success|info|warning)$/);
             if (match) {
                 parsedType = match[1];
                 parsedColor = match[2];
             }
-            
+
             // Parse 'type-color-link' format (e.g. 'alert-success-link')
             match = componentType.match(/^(alert)-(danger|success|info|warning)-link$/);
             if (match) {
@@ -5618,12 +5685,55 @@
                 parsedColor = match[2];
                 parsedLink = true;
             }
-            
+
             // Handle new format: button(color: danger)
             match = componentType.match(/^(button|alert)\(color:\s*(\w+)\)$/);
             if (match) {
                 parsedType = match[1];
                 parsedColor = match[2];
+            }
+
+            // Helper: extract inner <footer> from full HTML doc (DB stores with <html><body> wrapper)
+            function _cleanFooterHtml(raw) {
+                var m = raw.match(/<footer[^>]*>[\s\S]*?<\/footer>/i);
+                if (m) return m[0];
+                var b = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (b) return b[1].trim();
+                return raw;
+            }
+
+            // Special async handling for footer: fetch real Canada.ca footer via mustache API
+            if (parsedType === 'footer') {
+                try {
+                    const currentPagePath = window.currentPageData?.path || '/' + (window.currentPageData?.language || 'en');
+                    const lang = window.currentPageData?.language || 'en';
+                    const dsUrl = '/api/v1/getfooter?path=' + encodeURIComponent(currentPagePath);
+                    const mustacheResp = await fetch('/mustache/' + lang + '/mustache-templates/getfooter?datasource=' + encodeURIComponent(dsUrl));
+                    if (mustacheResp.ok) {
+                        var footerHtml = await mustacheResp.text();
+                        tinyMceEditor.insertContent(_cleanFooterHtml(footerHtml));
+                        return true;
+                    }
+                } catch (e) {
+                    console.error('Footer fetch via mustache failed:', e);
+                }
+                // Fallback: try direct API
+                try {
+                    const currentPagePath = window.currentPageData?.path || '/' + (window.currentPageData?.language || 'en');
+                    const fallbackResp = await fetch('/api/v1/getfooter?path=' + encodeURIComponent(currentPagePath));
+                    if (fallbackResp.ok) {
+                        const fd = await fallbackResp.json();
+                        var footerHtml = _cleanFooterHtml(fd.institution_level?.content || '') + _cleanFooterHtml(fd.language_level?.content || '');
+                        if (footerHtml.trim()) {
+                            tinyMceEditor.insertContent(footerHtml);
+                            return true;
+                        }
+                    }
+                } catch (e2) {
+                    console.error('Footer fallback fetch failed:', e2);
+                }
+                // If async methods failed, fall through to hardcoded fallback
+                console.warn('Footer API fetch failed, using hardcoded fallback');
             }
 
             switch(parsedType) {
@@ -6226,12 +6336,12 @@
                 // Fetch page content by path
                 const apiUrl = `${API_BASE}/by-path?path=${encodeURIComponent(normalizedPath)}`;
                 console.log('Fetching page content from:', apiUrl);
-                
+
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const page = await response.json();
                 console.log('Page fetched:', page?.id, page?.title);
 
@@ -7000,6 +7110,30 @@
                     } else {
                         response = "Color/component manager not loaded. Try refreshing the page.";
                     }
+                } else if (lowerMsg.includes('make it open') || lowerMsg.includes('打开它') || lowerMsg.includes('展开') || lowerMsg.includes('open details') || lowerMsg.includes('open it') || lowerMsg.includes('make open')) {
+                    // "Make it open" - add open="true" to <details>
+                    if (window.CanadaColorManager) {
+                        var openResult = window.CanadaColorManager.makeOpen();
+                        if (openResult.success) {
+                            response = '🔓 ' + openResult.display;
+                        } else {
+                            response = '❌ ' + openResult.error + '\n\nTip: Click on a <details> element first, then say "make it open" or use /open.';
+                        }
+                    } else {
+                        response = 'Component manager not loaded. Try refreshing the page.';
+                    }
+                } else if (lowerMsg.includes('make it close') || lowerMsg.includes('关') || lowerMsg.includes('收起') || lowerMsg.includes('close details') || lowerMsg.includes('close it') || lowerMsg.includes('make close')) {
+                    // "Make it close" - remove open="true" from <details>
+                    if (window.CanadaColorManager) {
+                        var closeResult = window.CanadaColorManager.makeClose();
+                        if (closeResult.success) {
+                            response = '🔒 ' + closeResult.display;
+                        } else {
+                            response = '❌ ' + closeResult.error + '\n\nTip: Click on a <details> element first, then say "make it close" or use /close.';
+                        }
+                    } else {
+                        response = 'Component manager not loaded. Try refreshing the page.';
+                    }
                 } else if (lowerMsg.includes('change') || lowerMsg.includes('改为') || lowerMsg.includes('改成') || lowerMsg.includes('make it') || lowerMsg.includes('turn it') || lowerMsg.includes('变成')) {
                     // Color change command - natural language
                     const colorKeywords = ['red', 'green', 'blue', 'yellow', 'danger', 'success', 'info', 'warning', '红色', '绿色', '蓝色', '黄色', '红', '绿', '蓝', '黄'];
@@ -7037,7 +7171,7 @@
 
                 // Insert or delete component if identified
                 if (componentType) {
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (componentType === 'delete') {
                             const deleted = deleteComponent();
                             if (deleted) {
@@ -7087,7 +7221,7 @@
                             addAIMessage(appendMessage, 'system');
                         } else {
                             // Handle regular insert commands
-                            const inserted = insertComponent(componentType);
+                            const inserted = await insertComponent(componentType);
                             if (inserted) {
                                 addAIMessage(`✅ Successfully inserted ${componentType} component at cursor position.`, 'system');
                             } else {
@@ -7789,7 +7923,7 @@
                 }
 
                 const responseData = await response.json();
-                
+
                 // Ensure data is an array
                 let data = [];
                 if (Array.isArray(responseData)) {
@@ -7804,7 +7938,7 @@
                     // Single document object
                     data = [responseData];
                 }
-                
+
                 console.log(`Loaded ${data.length || 0} documents from FileBot${targetFolder ? ` for folder: ${targetFolder}` : ''}`);
 
                 // Convert documents to file format - handle each document individually
@@ -7882,7 +8016,7 @@
                 console.warn('applyFilters: files is not an array, converting to empty array');
                 files = [];
             }
-            
+
             const searchTerm = document.getElementById('search-filter')?.value.toLowerCase() || '';
             const fileTypeFilter = document.getElementById('file-type-filter')?.value || 'all';
             const sortBy = document.getElementById('sort-by')?.value || 'name';
@@ -8333,7 +8467,7 @@
                     console.log('Uploading image to folder path:', folderPath);
                     formData.append('folder_path', folderPath);
                 }
-                
+
                 const uploadResponse = await fetch(URL_CONFIG.filebot.upload, {
                     method: 'POST',
                     headers: {
@@ -9237,7 +9371,7 @@
             // kept for callers that reference it
         }
 
-    
+
 
         // Start initialization when document is ready
         // Wait for both jQuery and WET-BOEW to be ready
@@ -9390,6 +9524,26 @@
             }
             if (keywordsInput) keywordsInput.value = metadata.keywords || '';
             if (authorInput) authorInput.value = metadata.author || 'Government of Canada';
+
+            // Subjects and Audience - auto-populate from sidebar child page titles if field is empty
+            const subjectsInput = document.getElementById('metadata-subjects');
+            const audienceInput = document.getElementById('metadata-audience');
+
+            if (allPagesForSidebar && allPagesForSidebar.length > 0) {
+                const allTitles = allPagesForSidebar
+                    .map(p => (p.navigation_title || p.title || '').trim())
+                    .filter(t => t.length > 0)
+                    .join('; ');
+                if (subjectsInput && !subjectsInput.value.trim()) {
+                    subjectsInput.value = allTitles;
+                }
+                if (audienceInput && !audienceInput.value.trim()) {
+                    audienceInput.value = allTitles;
+                }
+            } else {
+                if (subjectsInput) subjectsInput.value = metadata.subjects || '';
+                if (audienceInput) audienceInput.value = metadata.audience || '';
+            }
 
             // SEO metadata
             const canonicalInput = document.getElementById('metadata-canonical');
@@ -9545,6 +9699,16 @@
             const searchIndexSelect = document.getElementById('metadata-search-index');
             if (searchIndexSelect) {
                 metadataManager.updateField('search_index', searchIndexSelect.value || 'default');
+            }
+
+            // Subjects and Audience (text inputs, tag names from page metadata)
+            const subjectsInput = document.getElementById('metadata-subjects');
+            if (subjectsInput && subjectsInput.value.trim()) {
+                metadataManager.updateField('subjects', subjectsInput.value.trim());
+            }
+            const audienceInput = document.getElementById('metadata-audience');
+            if (audienceInput && audienceInput.value.trim()) {
+                metadataManager.updateField('audience', audienceInput.value.trim());
             }
 
             // Update social metadata
@@ -9844,7 +10008,7 @@
                 name: 'Custom Template',
                 template: `<div class="custom-info" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 20px 0; background-color: #f9f9f9;">
     <h2 style="color: #2c3e50; margin-top: 0;">{{section_title}}</h2>
-    
+
     <div style="display: flex; flex-wrap: wrap; gap: 20px;">
         <div style="flex: 1; min-width: 250px;">
             <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px;">Personal Details</h3>
@@ -9863,7 +10027,7 @@
                 </tr>
             </table>
         </div>
-        
+
         <div style="flex: 1; min-width: 250px;">
             <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px;">Company Information</h3>
             <table style="width: 100%; border-collapse: collapse;">
@@ -9882,7 +10046,7 @@
             </table>
         </div>
     </div>
-    
+
     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
         <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px;">Service Request</h3>
         <table style="width: 100%; border-collapse: collapse;">
@@ -9916,7 +10080,7 @@
             </tr>
         </table>
     </div>
-    
+
     {{#additional_info}}
     <div style="margin-top: 20px; padding: 15px; background-color: #e8f4fd; border-radius: 6px; border-left: 4px solid #3498db;">
         <h4 style="margin-top: 0; color: #2c3e50;">Additional Information</h4>
@@ -9948,15 +10112,15 @@
                 name: 'Simple Template',
                 template: `<div style="border: 1px solid #ddd; border-radius: 6px; padding: 20px; margin: 20px 0; background-color: #f8f9fa;">
     <h2 style="color: #333; margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 10px;">{{title}}</h2>
-    
+
     <div style="color: #666; font-size: 14px; margin-bottom: 15px;">
         <strong>Author:</strong> {{author}} | <strong>Date:</strong> {{date}}
     </div>
-    
+
     <div style="line-height: 1.6;">
         {{content}}
     </div>
-    
+
     {{#has_tags}}
     <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
         <strong>Tags:</strong>
@@ -10056,7 +10220,7 @@
                         // Find the newly inserted template wrapper in TinyMCE editor
                         const editor = window.tinymce.activeEditor;
                         const wrapper = editor.dom.select(`[data-template-instance="${instanceId}"]`)[0];
-                        
+
                         if (wrapper) {
                             // Attach menu system dynamically
                             attachComponentMenu(wrapper, instanceId);
@@ -10138,7 +10302,7 @@
                         // Find the newly inserted template wrapper in TinyMCE editor
                         const editor = window.tinymce.activeEditor;
                         const wrapper = editor.dom.select(`[data-template-instance="${instanceId}"]`)[0];
-                        
+
                         if (wrapper) {
                             // Attach menu system dynamically
                             attachComponentMenu(wrapper, instanceId);
@@ -10721,7 +10885,7 @@
                 document.head.appendChild(style);
                 console.log('Template edit styles added to main document');
             }
-            
+
             // Also add to TinyMCE editor if available
             if (window.tinymce && window.tinymce.activeEditor) {
                 try {
@@ -10851,13 +11015,13 @@
                 console.error('Invalid parameters for attachComponentMenu');
                 return;
             }
-            
+
             // Check if menu already exists
             if (wrapper.querySelector('.component-menu-btn')) {
                 console.log('Menu already attached to component:', instanceId);
                 return;
             }
-            
+
             // Check if this is a template that should not be editable by customers
             // Only the custom template (customer-template) should show edit icon
             const templateId = wrapper.getAttribute('data-template-id');
@@ -10865,20 +11029,20 @@
                 console.log('Skipping menu for non-custom template:', templateId);
                 return;
             }
-            
+
             // Create menu button
             const menuBtn = document.createElement('div');
             menuBtn.className = 'component-menu-btn';
             menuBtn.title = 'Component menu';
             menuBtn.textContent = '⋮';
-            
+
             // Create dropdown menu - append to body instead of wrapper
             const dropdown = document.createElement('div');
             dropdown.className = 'component-dropdown';
             dropdown.id = `menu-${instanceId}`;
             dropdown.style.display = 'none'; // Initially hidden
             dropdown.setAttribute('data-component-instance', instanceId);
-            
+
             // Menu items configuration
             const menuItems = [
                 { label: '✏️ Edit', action: 'edit' },
@@ -10886,14 +11050,14 @@
                 { label: '📄 Paste Here', action: 'paste' },
                 { label: '🗑️ Delete', action: 'delete' }
             ];
-            
+
             // Create menu items
             menuItems.forEach(item => {
                 const button = document.createElement('button');
                 button.className = 'menu-item';
                 button.setAttribute('data-action', item.action);
                 button.textContent = item.label;
-                
+
                 // Add click event listener
                 button.addEventListener('click', (event) => {
                     event.stopPropagation();
@@ -10901,23 +11065,23 @@
                     dropdown.classList.remove('show');
                     window.handleComponentAction(event, instanceId, item.action, wrapper);
                 });
-                
+
                 dropdown.appendChild(button);
             });
-            
+
             // Add click event to menu button
             menuBtn.addEventListener('click', (event) => {
                 event.stopPropagation();
-                
+
                 // Get menu button position for dropdown placement
                 const rect = menuBtn.getBoundingClientRect();
-                
+
                 // Check if dropdown is in parent document
-                const dropdownInParent = dropdown.parentNode && 
+                const dropdownInParent = dropdown.parentNode &&
                                        dropdown.parentNode.ownerDocument !== document;
-                
+
                 let topPos, leftPos;
-                
+
                 if (dropdownInParent && window.parent && window.parent !== window) {
                     // Dropdown is in parent document, need to convert coordinates
                     // Get iframe position in parent window
@@ -10927,8 +11091,8 @@
                         // Convert from iframe-relative to parent-relative coordinates
                         topPos = iframeRect.top + rect.bottom;
                         leftPos = iframeRect.left + rect.right - 140;
-                        console.log('📍 Converting coordinates for parent document:', { 
-                            iframeTop: iframeRect.top, 
+                        console.log('📍 Converting coordinates for parent document:', {
+                            iframeTop: iframeRect.top,
                             iframeLeft: iframeRect.left,
                             rectBottom: rect.bottom,
                             rectRight: rect.right,
@@ -10945,57 +11109,57 @@
                     topPos = rect.bottom;
                     leftPos = rect.right - 140;
                 }
-                
+
                 // Apply positions
                 dropdown.style.top = `${topPos}px`;
                 dropdown.style.left = `${leftPos}px`;
-                
+
                 // Ensure dropdown is visible and on top
                 dropdown.style.zIndex = '99999';
-                
+
                 window.toggleComponentMenu(event, instanceId, dropdown);
             });
-            
+
             // Add hover events for showing/hiding menu button
             let hideTimeout;
             wrapper.addEventListener('mouseenter', () => {
                 clearTimeout(hideTimeout);
             });
-            
+
             wrapper.addEventListener('mouseleave', () => {
                 hideTimeout = setTimeout(() => {
                     // Also hide dropdown if open
                     dropdown.classList.remove('show');
                 }, 300); // Small delay to allow moving to menu
             });
-            
+
             // Keep menu button visible when hovering over it or dropdown
             menuBtn.addEventListener('mouseenter', () => {
                 clearTimeout(hideTimeout);
             });
-            
+
             dropdown.addEventListener('mouseenter', () => {
                 clearTimeout(hideTimeout);
             });
-            
+
             dropdown.addEventListener('mouseleave', () => {
                 hideTimeout = setTimeout(() => {
                     dropdown.classList.remove('show');
                 }, 300);
             });
-            
+
             // Determine the correct document for appending dropdown
             // If we're in an iframe (like TinyMCE), append to parent document for proper positioning
             let targetDocument = document;
             let targetBody = document.body;
-            
+
             try {
                 // Check if we're in an iframe with a parent window
                 if (window.parent && window.parent !== window && window.parent.document) {
                     // Check if we should use parent document (for TinyMCE iframes)
-                    const isInEditor = wrapper.closest('iframe') || 
+                    const isInEditor = wrapper.closest('iframe') ||
                                       (typeof tinymce !== 'undefined' && tinymce.activeEditor);
-                    
+
                     if (isInEditor) {
                         targetDocument = window.parent.document;
                         targetBody = window.parent.document.body;
@@ -11005,26 +11169,26 @@
             } catch (error) {
                 console.warn('Cannot access parent document, using current document:', error);
             }
-            
+
             // Append menu button to wrapper, dropdown to appropriate body
             wrapper.appendChild(menuBtn);
             targetBody.appendChild(dropdown);
-            
+
             console.log('Menu system attached to component:', instanceId);
         }
 
         // Initialize menus for existing components on page load
         function initializeComponentMenus() {
             console.log('Initializing component menus...');
-            
+
             // Find all component elements
             const components = document.querySelectorAll('.webbot-component, .webbot-mustache-template');
             console.log(`Found ${components.length} components to initialize`);
-            
+
             components.forEach(wrapper => {
                 // Get instance ID from data attribute
                 const instanceId = wrapper.getAttribute('data-template-instance');
-                
+
                 if (instanceId) {
                     // Check if menu already exists
                     if (!wrapper.querySelector('.component-menu-btn')) {
@@ -11034,7 +11198,7 @@
                     console.warn('Component missing data-template-instance attribute:', wrapper);
                 }
             });
-            
+
             // Also check inside TinyMCE editor if available
             if (window.tinymce) {
                 const checkEditor = () => {
@@ -11047,7 +11211,7 @@
                         }
                         const editorComponents = editor.dom.select('.webbot-component, .webbot-mustache-template');
                         console.log(`Found ${editorComponents.length} components in editor to initialize`);
-                        
+
                         editorComponents.forEach(wrapper => {
                             const instanceId = wrapper.getAttribute('data-template-instance');
                             if (instanceId && !wrapper.querySelector('.component-menu-btn')) {
@@ -11061,7 +11225,7 @@
                 // Initial call
                 checkEditor();
             }
-            
+
             console.log('Component menu initialization complete');
         }
 
@@ -11072,27 +11236,27 @@
         // Toggle component menu visibility
         function toggleComponentMenu(event, instanceId, dropdown = null) {
             event.stopPropagation(); // Prevent event bubbling
-            
+
             // Get the dropdown element if not provided
             if (!dropdown) {
                 dropdown = document.getElementById(`menu-${instanceId}`);
             }
-            
+
             if (!dropdown) {
                 console.error('Dropdown not found for instance:', instanceId);
                 return;
             }
-            
+
             // Close all other open menus
             document.querySelectorAll('.component-dropdown.show').forEach(menu => {
                 if (menu.id !== `menu-${instanceId}`) {
                     menu.classList.remove('show');
                 }
             });
-            
+
             // Toggle the clicked menu
             dropdown.classList.toggle('show');
-            
+
             // Close menu when clicking outside (only if menu exists)
             if (dropdown) {
                 const closeMenuHandler = (e) => {
@@ -11102,7 +11266,7 @@
                         document.removeEventListener('click', closeMenuHandler);
                     }
                 };
-                
+
                 // Add event listener to close menu on outside click
                 setTimeout(() => {
                     document.addEventListener('click', closeMenuHandler);
@@ -11113,17 +11277,17 @@
         // Handle component menu actions
         function handleComponentAction(event, instanceId, action, wrapper = null) {
             event.stopPropagation();
-            
+
             // Close the menu
             const menu = document.getElementById(`menu-${instanceId}`);
             if (menu) {
                 menu.classList.remove('show');
             }
-            
+
             // Find the component wrapper if not provided
             if (!wrapper) {
                 wrapper = document.querySelector(`[data-template-instance="${instanceId}"]`);
-                
+
                 // If not found in main document, try TinyMCE editor
                 if (!wrapper && window.tinymce && window.tinymce.activeEditor) {
                     try {
@@ -11133,14 +11297,14 @@
                         console.error('Error finding component in editor:', error);
                     }
                 }
-                
+
                 if (!wrapper) {
                     console.error('Component not found:', instanceId);
                     alert('Component not found in document. It may have been removed.');
                     return;
                 }
             }
-            
+
             // Execute the requested action
             switch (action) {
                 case 'edit':
@@ -11160,19 +11324,19 @@
                         }
                     }
                     break;
-                    
+
                 case 'copy':
                     copyComponent(wrapper);
                     break;
-                    
+
                 case 'paste':
                     pasteComponent(wrapper);
                     break;
-                    
+
                 case 'delete':
                     deleteComponent(wrapper);
                     break;
-                    
+
                 default:
                     console.error('Unknown action:', action);
             }
@@ -11191,15 +11355,15 @@
                     // Store the HTML structure for re-insertion
                     html: wrapper.outerHTML
                 };
-                
+
                 // Update global clipboard
                 window.webbotClipboard.componentData = componentData;
                 window.webbotClipboard.componentType = componentData.isCustom ? 'custom-template' : 'mustache-template';
                 window.webbotClipboard.copiedAt = new Date().toISOString();
-                
+
                 console.log('Component copied to clipboard:', componentData);
                 alert('✅ Component copied to clipboard! You can now paste it elsewhere.');
-                
+
             } catch (error) {
                 console.error('Failed to copy component:', error);
                 alert('Failed to copy component: ' + error.message);
@@ -11213,39 +11377,39 @@
                     alert('No component in clipboard. Copy a component first.');
                     return;
                 }
-                
+
                 const componentData = window.webbotClipboard.componentData;
-                
+
                 // Create a new instance ID for the pasted component
-                const newInstanceId = componentData.isCustom 
+                const newInstanceId = componentData.isCustom
                     ? 'custom-template-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
                     : 'template-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-                
+
                 // Update the HTML with new instance ID
                 let newHtml = componentData.html
                     .replace(`data-template-instance="${componentData.instanceId}"`, `data-template-instance="${newInstanceId}"`)
                     .replace(`id="menu-${componentData.instanceId}"`, `id="menu-${newInstanceId}"`)
-                    .replace(/onclick=\"window\.toggleComponentMenu\(event, '${componentData.instanceId}'\)\"/g, 
+                    .replace(/onclick=\"window\.toggleComponentMenu\(event, '${componentData.instanceId}'\)\"/g,
                              `onclick="window.toggleComponentMenu(event, '${newInstanceId}')"`)
-                    .replace(/onclick=\"window\.handleComponentAction\(event, '${componentData.instanceId}',/g, 
+                    .replace(/onclick=\"window\.handleComponentAction\(event, '${componentData.instanceId}',/g,
                              `onclick="window.handleComponentAction(event, '${newInstanceId}',`);
-                
+
                 // If pasting in TinyMCE editor
                 if (window.tinymce && window.tinymce.activeEditor) {
                     // Insert after the reference component
                     const editor = window.tinymce.activeEditor;
                     const referenceNode = editor.dom.select(`[data-template-instance="${referenceWrapper.getAttribute('data-template-instance')}"]`)[0];
-                    
+
                     if (referenceNode && referenceNode.parentNode) {
                         // Create a temporary container
                         const tempDiv = editor.dom.create('div', {}, newHtml);
-                        
+
                         // Insert after the reference node
                         referenceNode.parentNode.insertBefore(tempDiv, referenceNode.nextSibling);
-                        
+
                         console.log('Component pasted with new instance ID:', newInstanceId);
                         alert('✅ Component pasted successfully!');
-                        
+
                         // Re-initialize WET-BOEW
                         setTimeout(() => {
                             if (typeof initializeWETBOEW === 'function') {
@@ -11262,7 +11426,7 @@
                     console.error('TinyMCE editor not available for paste');
                     alert('Editor not available for paste operation');
                 }
-                
+
             } catch (error) {
                 console.error('Failed to paste component:', error);
                 alert('Failed to paste component: ' + error.message);
@@ -11274,17 +11438,17 @@
             if (!confirm('Are you sure you want to delete this component?')) {
                 return;
             }
-            
+
             try {
                 // Get instance ID before removal for logging
                 const instanceId = wrapper.getAttribute('data-template-instance');
-                
+
                 // Remove from DOM
                 if (wrapper.parentNode) {
                     wrapper.parentNode.removeChild(wrapper);
                     console.log('Component deleted:', instanceId);
                     alert('✅ Component deleted successfully!');
-                    
+
                     // Also remove the associated dropdown menu from body
                     const dropdown = document.getElementById(`menu-${instanceId}`);
                     if (dropdown && dropdown.parentNode) {
@@ -11295,7 +11459,7 @@
                     console.error('Component has no parent node');
                     alert('Failed to delete component: No parent node');
                 }
-                
+
             } catch (error) {
                 console.error('Failed to delete component:', error);
                 alert('Failed to delete component: ' + error.message);
@@ -11666,7 +11830,7 @@
         let _editMode = 'code'; // 'code' or 'wysiwyg'
 
         /**
-         * Open Quick Edit modal — "edit HTML" triggers code mode, "edit component" triggers WYSIWYG
+         * Open Quick Edit modal - "edit HTML" triggers code mode, "edit component" triggers WYSIWYG
          */
         function showCurrentElementHTMLEdit(mode) {
             if (mode === undefined || mode === null) mode = 'code';
@@ -11707,7 +11871,7 @@
         }
 
         /**
-         * Show the HTML edit modal — code mode = dark textarea, wysiwyg mode = TinyMCE (no Canada theme)
+         * Show the HTML edit modal - code mode = dark textarea, wysiwyg mode = TinyMCE (no Canada theme)
          */
         function showHTMLEditModal(targetElement, mode) {
             const modal = document.getElementById('html-edit-modal');
@@ -12076,19 +12240,19 @@
                     if (!window.CanadaColorManager) {
                         return 'Error: Color manager not loaded. Please refresh the page.';
                     }
-                    
+
                     if (args.length === 0) {
                         // Describe current component and available colors
                         const desc = window.CanadaColorManager.describeCurrent();
                         return desc;
                     }
-                    
+
                     const colorName = args.join(' ');
                     const comp = window.CanadaColorManager.getCurrentComponent();
                     if (!comp) {
                         return 'Please place your cursor on a component first (click on a button, alert, etc.), then try again.';
                     }
-                    
+
                     const result = window.CanadaColorManager.changeColor(comp.element, colorName);
                     if (result.success) {
                         return result.display;
@@ -12098,10 +12262,48 @@
                 }
             };
             console.log('🎨 Color command added to AI assistant');
+
+            // Add open/details command
+            window.aiAssistantCommands.open = {
+                name: 'open',
+                description: 'Make a <details> element open by adding open="true"',
+                usage: '/open',
+                execute: function(args) {
+                    if (!window.CanadaColorManager) {
+                        return 'Error: Color/component manager not loaded. Please refresh the page.';
+                    }
+                    var result = window.CanadaColorManager.makeOpen();
+                    if (result.success) {
+                        return result.display;
+                    } else {
+                        return result.error || 'Could not open the details element.';
+                    }
+                }
+            };
+            console.log('🔓 /open command added to AI assistant');
+
+            // Add close/details command
+            window.aiAssistantCommands.close = {
+                name: 'close',
+                description: 'Close a <details> element by removing open="true"',
+                usage: '/close',
+                execute: function(args) {
+                    if (!window.CanadaColorManager) {
+                        return 'Error: Color/component manager not loaded. Please refresh the page.';
+                    }
+                    var result = window.CanadaColorManager.makeClose();
+                    if (result.success) {
+                        return result.display;
+                    } else {
+                        return result.error || 'Could not close the details element.';
+                    }
+                }
+            };
+            console.log('🔒 /close command added to AI assistant');
         }
 
         // ============================================================
-        // Resource Sidebar Module — Images, Documents, Components, etc.
+        // Resource Sidebar Module - Images, Documents, Components, etc.
         // ============================================================
 
         (function initResourceSidebar() {
@@ -12923,4 +13125,3 @@
                 }
             };
         })();
-    

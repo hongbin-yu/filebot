@@ -3,11 +3,18 @@
 
 console.log('Navigation Module initializing...');
 
+// HTML escape helper (must be at top for global availability)
+function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ============================================================================
 // 1. CONSTANTS
 // ============================================================================
 const API_BASE = '/api/v1/pages/';
 const ROOT_PATH = '/canadasite';
+const TAG_ROOT = '/canadasite/tags';
 const MAX_COLUMNS = 10;
 
 // ============================================================================
@@ -452,7 +459,7 @@ function renderColumn(columnIndex, title, pages, parentPath) {
         pathSpan.textContent = page.path;
         link.appendChild(pathSpan);
 
-        // Click handler
+    // Click handler
         link.addEventListener('click', function(e) {
             e.preventDefault();
             selectPage(page, columnIndex);
@@ -707,9 +714,12 @@ function showModal(el) {
 function hideModal(el) {
     el.style.display = 'none';
     el.classList.remove('in');
-    document.body.classList.remove('modal-open');
     var backdrop = document.querySelector('[data-modal-backdrop="' + el.id + '"]');
     if (backdrop) backdrop.remove();
+    // Only remove modal-open if no other modal backdrops remain
+    if (!document.querySelector('[data-modal-backdrop]')) {
+        document.body.classList.remove('modal-open');
+    }
 }
 
 function setupButtons() {
@@ -901,6 +911,11 @@ function setupButtons() {
                 var filePath = data.file_path || (data.metadata && data.metadata.file_path) || '';
                 setPropVal('prop-filepath', filePath);
 
+                // Version info
+                loadVersionInfo(thePath);
+                loadScheduleInfo(thePath);
+                loadApprovalInfo(thePath);
+
                 // Has children
                 var childEl = document.getElementById('prop-has-children');
                 if (childEl && data.has_children !== undefined) {
@@ -924,6 +939,12 @@ function setupButtons() {
                 if (templateSel) {
                     templateSel.value = data.publish_template || '';
                 }
+
+                // Render tag checkboxes — pass paths
+                var tagPaths = (data.tags || []).map(function(t) {
+                    return typeof t === 'string' ? t : (t.path || (TAG_ROOT + '/' + t.id));
+                });
+                renderTagCheckboxes(tagPaths);
 
                 showModal(modal);
             })
@@ -1034,6 +1055,23 @@ function setupButtons() {
                 if (payload[k] === undefined) delete payload[k];
             });
 
+            // Collect selected tag paths from hidden inputs and content type
+            var selectedTags = [];
+            [
+                document.getElementById('selected-subject-tags'),
+                document.getElementById('selected-audience-tags')
+            ].forEach(function(h) {
+                if (h && h.value) {
+                    h.value.split(',').filter(function(p) { return p; }).forEach(function(p) {
+                        if (selectedTags.indexOf(p) === -1) selectedTags.push(p);
+                    });
+                }
+            });
+            var ct = document.getElementById('prop-content-type');
+            if (ct && ct.value) {
+                if (selectedTags.indexOf(ct.value) === -1) selectedTags.push(ct.value);
+            }
+
             fetch('/api/v1/pages/' + encodeURIComponent(pagePath), {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
@@ -1044,7 +1082,19 @@ function setupButtons() {
                 return r.json();
             })
             .then(function() {
-                showToast('✅ Properties saved!', 'success');
+                // Also save tags via tags API
+                return fetch('/api/v1/tags/page/' + encodeURIComponent(pagePath), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({tag_paths: selectedTags})
+                });
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(e) { throw new Error('Tags save failed: ' + (e.detail || e.message)); });
+                return r.json();
+            })
+            .then(function() {
+                showToast('✅ Properties and tags saved!', 'success');
                 hideModal(modal);
                 // Refresh current view without jumping to root
                 loadedPaths = {};
@@ -1066,6 +1116,14 @@ function setupButtons() {
     if (propModal) {
         propModal.querySelectorAll('[data-dismiss="modal"]').forEach(function(btn) {
             btn.addEventListener('click', function() { hideModal(propModal); });
+        });
+    }
+
+    // Bind close for tag tree modal
+    var ttm = document.getElementById('tagTreeModal');
+    if (ttm) {
+        ttm.querySelectorAll('[data-dismiss="modal"]').forEach(function(btn) {
+            btn.addEventListener('click', function() { hideModal(ttm); });
         });
     }
 
@@ -1420,78 +1478,83 @@ function setupButtons() {
         createPageSaveBtn.textContent = 'Creating...';
 
         try {
-            // 1. Create English page
-            var response = await fetch('/api/v1/pages/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: title,
-                    path: pagePath,
-                    parent_path: parentPath,
-                    language: 'en',
-                    status: 'draft',
-                    content: '',
-                    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-                    other_language_path: otherLanguagePath || undefined
-                })
-            });
-
-            if (!response.ok) {
+            // Helper function: create a page, or skip if already exists
+            async function createOrSkip(lang, bodyData) {
+                bodyData.skip_if_exists = true;
+                var resp = await fetch('/api/v1/pages/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+                if (resp.ok) {
+                    var data = await resp.json();
+                    return { created: true, path: data.path || bodyData.path, data: data };
+                }
                 var errData = null;
-                try { errData = await response.json(); } catch(e) {}
-                throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + response.status);
+                try { errData = await resp.json(); } catch(e) {}
+                var errMsg = (errData && errData.detail) || '';
+                if (errMsg.indexOf('already exists') !== -1) {
+                    return { created: false, skipped: true, path: bodyData.path };
+                }
+                throw new Error('Failed to create ' + lang + ' page: ' + errMsg);
             }
 
-            var newPage = await response.json();
-            var actualPagePath = newPage.path || pagePath;
-            var frCreated = false;
+            var enResult = { created: false, path: pagePath };
+            var frResult = { created: false, path: '' };
+
+            // 1. Create English page (or skip if exists)
+            enResult = await createOrSkip('en', {
+                title: title,
+                path: pagePath,
+                parent_path: parentPath,
+                language: 'en',
+                status: 'draft',
+                content: '',
+                metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+                other_language_path: otherLanguagePath || undefined
+            });
+
+            var actualPagePath = enResult.path;
 
             // 2. Create French page too if FR fields present
             if (frTitle && frName && otherLangParent) {
                 var frParentClean = otherLangParent.replace(/\/+$/, '');
                 var frPagePath = frParentClean + '/' + frName;
 
-                try {
-                    var frResp = await fetch('/api/v1/pages/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            title: frTitle,
-                            path: frPagePath,
-                            parent_path: otherLangParent,
-                            language: 'fr',
-                            status: 'draft',
-                            content: '',
-                            metadata: {
-                                en_title: title,
-                                en_name: slug,
-                                en_parent_path: parentPath
-                            },
-                            other_language_path: actualPagePath
-                        })
-                    });
-                    frCreated = frResp.ok;
-                } catch(e) {
-                    // French page creation failed silently
-                }
+                frResult = await createOrSkip('fr', {
+                    title: frTitle,
+                    path: frPagePath,
+                    parent_path: otherLangParent,
+                    language: 'fr',
+                    status: 'draft',
+                    content: '',
+                    metadata: {
+                        en_title: title,
+                        en_name: slug,
+                        en_parent_path: parentPath
+                    },
+                    other_language_path: actualPagePath
+                });
             }
 
-            // Show toast
-            var msg = '✅ Page "' + title + '" created!';
-            if (frCreated) {
-                msg += ' French page "' + frTitle + '" also created.';
-            } else if (frTitle) {
-                msg += ' (French page was not created — check FR fields.)';
-            }
-            showToast(msg, 'success');
+            // 3. Show result message
+            var msgs = [];
+            if (enResult.created) msgs.push('✅ Created: "' + title + '" (EN)');
+            else if (enResult.skipped) msgs.push('⚠️ Skipped (already exists): "' + title + '" (EN)');
+            if (frResult.created) msgs.push('✅ Created: "' + frTitle + '" (FR)');
+            else if (frResult.skipped) msgs.push('⚠️ Skipped (already exists): "' + frTitle + '" (FR)');
+            if (frTitle && !frResult.created && !frResult.skipped) msgs.push('(French page was not created — check FR fields.)');
+            showToast(msgs.join(' | '), 'success');
 
             // Refresh navigation
             loadedPaths = {};
             columnsCache = [];
 
-            // Open English page editor in new tab
-            var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
-            window.open(editorUrl, '_blank');
+            // Open English page editor in new tab (if EN was created)
+            if (enResult.created || enResult.path) {
+                var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
+                window.open(editorUrl, '_blank');
+            }
 
         } catch (err) {
             showToast('Failed to create page: ' + err.message, 'danger');
@@ -1501,7 +1564,305 @@ function setupButtons() {
     });
 
     populateTemplateSelect();
+
+    // Preload tags for Properties modal (disabled - now uses per-level loading)
+    // loadAllTags();
 }
+
+// ============================================================================
+// TAG MANAGEMENT
+// ============================================================================
+
+// Cache for all tags
+var allTags = null;
+
+// Load all tags from API
+function loadAllTags() {
+    fetch('/api/v1/tags?flat=true')
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(data) {
+            allTags = data;
+        })
+        .catch(function() {
+            allTags = [];
+        });
+}
+
+// Render tag checkboxes for the Properties modal
+function renderTagCheckboxes(selectedTagPaths) {
+    // Called when loading properties. Populates the display areas and hidden inputs.
+    var selected = selectedTagPaths || [];
+
+    // Group selected paths by type
+    var subjectPaths = [];
+    var audiencePaths = [];
+    var contentTypePath = '';
+
+    selected.forEach(function(p) {
+        if (p.indexOf('/audience/') !== -1) audiencePaths.push(p);
+        else if (p.indexOf('/content-types/') !== -1) contentTypePath = p;
+        else subjectPaths.push(p); // includes /subjects/, /themes-and-topics/, /subject/
+    });
+
+    updateTagDisplay('prop-tags-subjects', 'selected-subject-tags', subjectPaths);
+    updateTagDisplay('prop-tags-audience', 'selected-audience-tags', audiencePaths);
+
+    // Load content types into the select
+    populateContentTypeSelect(contentTypePath);
+}
+
+function updateTagDisplay(containerId, hiddenId, paths) {
+    var container = document.getElementById(containerId);
+    var hidden = document.getElementById(hiddenId);
+    if (!container) return;
+    if (hidden) hidden.value = paths.join(',');
+
+    if (!paths || paths.length === 0) {
+        container.innerHTML = '<span class="text-muted">(none selected)</span>';
+        return;
+    }
+
+    var html = '';
+    paths.forEach(function(p) {
+        html += '<span class="tag-selection-item">' + esc(p) +
+            ' <a href="#" class="remove-tag" onclick="removeSelectedTag(\'' + containerId + '\', \'' + hiddenId + '\', \'' + esc(p.replace(/'/g, "\\'")) + '\');return false;">&times;</a></span>';
+    });
+    container.innerHTML = html;
+}
+
+function removeSelectedTag(containerId, hiddenId, path) {
+    var hidden = document.getElementById(hiddenId);
+    if (!hidden) return;
+    var paths = hidden.value ? hidden.value.split(',') : [];
+    var idx = paths.indexOf(path);
+    if (idx !== -1) paths.splice(idx, 1);
+    updateTagDisplay(containerId, hiddenId, paths);
+}
+
+function populateContentTypeSelect(selectedPath) {
+    var sel = document.getElementById('prop-content-type');
+    if (!sel) return;
+
+    // Clear existing options (keep the first empty one)
+    sel.innerHTML = '<option value="">(none)</option>';
+
+    fetch('/api/v1/tags?parent_path=' + encodeURIComponent(TAG_ROOT + '/content-types'))
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(tags) {
+            tags.forEach(function(t) {
+                var tagPath = t.path || (TAG_ROOT + '/' + t.id);
+                var opt = document.createElement('option');
+                opt.value = tagPath;
+                opt.textContent = (t.title_en || t.id) + ' / ' + (t.title_fr || '');
+                if (tagPath === selectedPath) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        })
+        .catch(function() {});
+}
+
+// ============================================================================
+// TAG TREE MODAL (Lightbox)
+// ============================================================================
+
+var ttmType = '';      // 'subject' | 'audience'
+var ttmMulti = true;   // multi- or single-select
+var ttmPaths = [];     // currently selected paths
+var ttmRootPath = '';  // TAG_ROOT + '/' + type
+var ttmStack = [];     // breadcrumb stack: [{title, path}]
+var ttmTags = [];      // current level's tags
+var ttmCallback = null;// callback(selectedPaths)
+
+function openTagTree(type, multi) {
+    ttmType = type;
+    ttmMulti = multi;
+    ttmStack = [];
+    ttmTags = [];
+
+    // Load existing selections from hidden input
+    var hiddenId = type === 'subject' ? 'selected-subject-tags' : 'selected-' + type + '-tags';
+    var hidden = document.getElementById(hiddenId);
+    ttmPaths = hidden && hidden.value ? hidden.value.split(',').filter(function(p) { return p; }) : [];
+
+    var list = document.getElementById('ttm-tag-list');
+    list.innerHTML = '<span class="text-muted">Loading...</span>';
+
+    // Reset modal
+    document.getElementById('ttm-filter').value = '';
+    document.getElementById('ttm-selected-count').textContent = ttmPaths.length;
+    document.getElementById('ttm-up-btn').style.display = 'none';
+    document.getElementById('ttm-breadcrumb').textContent = '';
+
+    var label = document.getElementById('tagTreeModalLabel');
+    if (label) label.textContent = 'Select ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Tags';
+
+    // Set callback to update display on confirm
+    ttmCallback = function(selectedPaths) {
+        if (type === 'subject') {
+            updateTagDisplay('prop-tags-subjects', 'selected-subject-tags', selectedPaths);
+        } else {
+            updateTagDisplay('prop-tags-audience', 'selected-audience-tags', selectedPaths);
+        }
+    };
+
+    // Load root-level tags and filter by type. This shows namespace nodes
+    // like 'subjects' and 'themes-and-topics' for type=subject.
+    fetch('/api/v1/tags?parent_path=' + encodeURIComponent(TAG_ROOT))
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(roots) {
+            // Filter by type (subject or audience)
+            ttmTags = roots.filter(function(t) { return t.type === type; });
+            if (ttmTags.length === 0) {
+                list.innerHTML = '<span class="text-muted">No ' + type + ' namespaces found.</span>';
+                return;
+            }
+
+            var html = '';
+            ttmTags.forEach(function(t) {
+                var tagPath = t.path || (TAG_ROOT + '/' + t.id);
+                var childCount = t.children_count || 0;
+                var title = esc(t.title_en || t.id);
+                var titleFr = t.title_fr ? ' / ' + esc(t.title_fr) : '';
+
+                html += '<div class="ttm-item">' +
+                    '<div class="ttm-label" style="font-weight:600;">' + title + '<span style="color:#888;font-size:11px;">' + titleFr + '</span></div>' +
+                    '<span class="ttm-has-children" onclick="ttmDrill(\'' + esc(tagPath) + '\',\'' + esc(t.title_en || t.id) + '\');event.stopPropagation();">📂 ' + childCount + ' children</span>' +
+                    '</div>';
+            });
+            list.innerHTML = html;
+            showModal(document.getElementById('tagTreeModal'));
+        })
+        .catch(function() {
+            list.innerHTML = '<span class="text-muted">Failed to load tags.</span>';
+        });
+}
+
+function ttmLoadLevel(parentPath) {
+    var list = document.getElementById('ttm-tag-list');
+    list.innerHTML = '<span class="text-muted">Loading...</span>';
+
+    // Update breadcrumb
+    var bc = document.getElementById('ttm-breadcrumb');
+    bc.innerHTML = ttmStack.map(function(s) {
+        return '<span style="color:#888;">' + esc(s.title) + '</span>';
+    }).join(' <span style="color:#ccc;">›</span> ');
+
+    document.getElementById('ttm-up-btn').style.display = ttmStack.length > 1 ? 'inline-block' : 'none';
+
+    fetch('/api/v1/tags?parent_path=' + encodeURIComponent(parentPath))
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(tags) {
+            ttmTags = tags;
+            ttmRender();
+        })
+        .catch(function() {
+            list.innerHTML = '<span class="text-muted">Failed to load tags.</span>';
+        });
+}
+
+function ttmRender() {
+    var list = document.getElementById('ttm-tag-list');
+    var filter = (document.getElementById('ttm-filter').value || '').toLowerCase();
+
+    var filtered = ttmTags;
+    if (filter) {
+        filtered = ttmTags.filter(function(t) {
+            return (t.title_en || '').toLowerCase().indexOf(filter) !== -1 ||
+                   (t.title_fr || '').toLowerCase().indexOf(filter) !== -1 ||
+                   (t.path || '').toLowerCase().indexOf(filter) !== -1 ||
+                   (t.id || '').toLowerCase().indexOf(filter) !== -1;
+        });
+    }
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<span class="text-muted">No tags found' + (filter ? ' matching \'' + esc(filter) + '\'' : '') + '.</span>';
+        return;
+    }
+
+    var html = '';
+    filtered.forEach(function(t) {
+        var tagPath = t.path || (TAG_ROOT + '/' + t.id);
+        var title = esc(t.title_en || t.id);
+        var titleFr = t.title_fr ? ' <span style="color:#888;font-size:11px;">/ ' + esc(t.title_fr) + '</span>' : '';
+        var childCount = t.children_count || 0;
+        var isSelected = ttmPaths.indexOf(tagPath) !== -1;
+
+        if (ttmMulti) {
+            html += '<div class="ttm-item' + (isSelected ? ' selected' : '') + '">' +
+                '<input type="checkbox" class="ttm-check" value="' + esc(tagPath) + '" ' + (isSelected ? 'checked' : '') + ' onchange="ttmToggle(this.value)">' +
+                '<div class="ttm-label" onclick="ttmToggleCheck(this)">' +
+                    '<span class="ttm-title">' + title + titleFr + '</span>' +
+                    '<span class="ttm-path">' + esc(tagPath) + '</span>' +
+                '</div>' +
+                (childCount > 0 ? '<span class="ttm-has-children" onclick="ttmDrill(\'' + esc(tagPath) + '\',\'' + esc(t.title_en || t.id) + '\');event.stopPropagation();">▶ ' + childCount + '</span>' : '') +
+                '</div>';
+        } else {
+            html += '<div class="ttm-item' + (isSelected ? ' selected' : '') + '" onclick="ttmSelectSingle(\'' + esc(tagPath) + '\')">' +
+                '<div class="ttm-label">' +
+                    '<span class="ttm-title">' + title + titleFr + '</span>' +
+                    '<span class="ttm-path">' + esc(tagPath) + '</span>' +
+                '</div>' +
+                (childCount > 0 ? '<span class="ttm-has-children" onclick="ttmDrill(\'' + esc(tagPath) + '\',\'' + esc(t.title_en || t.id) + '\');event.stopPropagation();">▶ ' + childCount + '</span>' : '') +
+                '</div>';
+        }
+    });
+    list.innerHTML = html;
+
+    var count = document.getElementById('ttm-selected-count');
+    if (count) count.textContent = ttmPaths.length;
+}
+
+function ttmToggle(path) {
+    var idx = ttmPaths.indexOf(path);
+    if (idx === -1) {
+        ttmPaths.push(path);
+    } else {
+        ttmPaths.splice(idx, 1);
+    }
+    ttmRender();
+}
+
+function ttmToggleCheck(el) {
+    var checkbox = el.parentNode.querySelector('.ttm-check');
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        ttmToggle(checkbox.value);
+    }
+}
+
+function ttmSelectSingle(path) {
+    ttmPaths = [path];
+    ttmRender();
+    // Auto-confirm for single select
+    setTimeout(ttmConfirm, 300);
+}
+
+function ttmDrill(path, title) {
+    ttmStack.push({title: title, path: path});
+    ttmLoadLevel(path);
+}
+
+function ttmGoUp() {
+    if (ttmStack.length <= 1) return;
+    ttmStack.pop();
+    var prevPath = ttmStack[ttmStack.length - 1].path;
+    ttmLoadLevel(prevPath);
+}
+
+function ttmFilter() {
+    ttmRender();
+}
+
+function ttmConfirm() {
+    if (ttmCallback) {
+        ttmCallback(ttmPaths.slice());
+    }
+    hideModal(document.getElementById('tagTreeModal'));
+}
+
+// ============================================================================
+// TAG MANAGEMENT MODAL
+// ============================================================================
 
 // ============================================================================
 // 8b. NAVIGATION WITH STATE RETENTION (fix #9)
@@ -1611,5 +1972,251 @@ document.addEventListener('DOMContentLoaded', function() {
     setupButtons();
     initNavigation();
 });
+
+// Version info loading for properties modal
+var currentPagePathForVersion = null;
+
+function loadVersionInfo(pagePath) {
+    currentPagePathForVersion = pagePath;
+    var verEl = document.getElementById('prop-current-version');
+    var btnEl = document.getElementById('btn-view-version-history');
+    var editorLink = document.getElementById('btn-open-editor');
+    var rawBtn = document.getElementById('btn-raw-html');
+    var compareBtn = document.getElementById('btn-compare');
+    if (!verEl) return;
+
+    // Set editor link href
+    if (editorLink) {
+        editorLink.href = '/static/editor.html?pageId=' + encodeURIComponent(pagePath);
+        editorLink.disabled = false;
+        editorLink.style.opacity = '1';
+        editorLink.style.pointerEvents = 'auto';
+    }
+
+    // Show loading
+    verEl.textContent = 'loading...';
+
+    fetch('/api/v1/versions/page?path=' + encodeURIComponent(pagePath))
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+            if (data && data.version_count > 0) {
+                var latest = data.versions[0];
+                verEl.textContent = 'v' + latest.version + ' (' + latest.created_at.slice(0, 10) + ', ' + formatFileSize(latest.html_size) + ')';
+                if (btnEl) btnEl.disabled = false;
+                if (rawBtn) { rawBtn.disabled = false; rawBtn.style.opacity = '1'; rawBtn.style.pointerEvents = 'auto'; }
+                if (compareBtn) { compareBtn.disabled = false; compareBtn.style.opacity = '1'; compareBtn.style.pointerEvents = 'auto'; }
+            } else {
+                verEl.textContent = 'No versions yet (publish first)';
+                if (btnEl) btnEl.disabled = true;
+                if (rawBtn) { rawBtn.disabled = true; rawBtn.style.opacity = '0.5'; rawBtn.style.pointerEvents = 'none'; }
+                if (compareBtn) { compareBtn.disabled = true; compareBtn.style.opacity = '0.5'; compareBtn.style.pointerEvents = 'none'; }
+            }
+        })
+        .catch(function() {
+            verEl.textContent = '(unavailable)';
+            if (btnEl) btnEl.disabled = true;
+            if (rawBtn) { rawBtn.disabled = true; rawBtn.style.opacity = '0.5'; rawBtn.style.pointerEvents = 'none'; }
+            if (compareBtn) { compareBtn.disabled = true; compareBtn.style.opacity = '0.5'; compareBtn.style.pointerEvents = 'none'; }
+        });
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// Version history button handler (called from onclick in HTML)
+function viewVersionHistory() {
+    if (!currentPagePathForVersion) return;
+    window.open('/static/version-manager.html?path=' + encodeURIComponent(currentPagePathForVersion), '_blank');
+}
+
+// Raw HTML viewer - opens latest version content in new tab
+function viewRawHTML() {
+    if (!currentPagePathForVersion) return;
+    var path = currentPagePathForVersion;
+    fetch('/api/v1/versions/page?path=' + encodeURIComponent(path))
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+            if (!data || !data.versions || data.versions.length === 0) {
+                alert('No versions available');
+                return;
+            }
+            var latest = data.versions[0];
+            fetch('/api/v1/versions/page/version?path=' + encodeURIComponent(path) + '&version=' + latest.version)
+                .then(function(r) { return r.json(); })
+                .then(function(v) {
+                    if (v.content) {
+                        var win = window.open('', '_blank');
+                        win.document.write('<!DOCTYPE html><html><head><title>Raw HTML v' + latest.version + '</title>');
+                        win.document.write('<style>body{font-family:monospace;padding:20px;white-space:pre-wrap;word-break:break-word;background:#fff;color:#333;max-width:1200px;margin:0 auto;}</style>');
+                        win.document.write('</head><body>');
+                        win.document.write('<div style="background:#f0f4f8;padding:12px;border-radius:8px;margin-bottom:20px;font-family:sans-serif;font-size:14px;">');
+                        win.document.write('<strong>📄 ' + escHtml(path) + '</strong> · v' + latest.version + ' · ' + (latest.created_at ? latest.created_at.slice(0,10) : '') );
+                        win.document.write('<br><span style="color:#888;">Raw HTML content (' + formatFileSize((v.content || '').length) + ')</span>');
+                        win.document.write('</div>');
+                        win.document.write('<div style="border:1px solid #e0e0e0;border-radius:4px;padding:20px;">');
+                        win.document.write(escHtml(v.content));
+                        win.document.write('</div>');
+                        win.document.write('</body></html>');
+                        win.document.close();
+                    }
+                })
+                .catch(function(e) { alert('Error: ' + e.message); });
+        })
+        .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+// Open version manager compare mode
+function openCompare() {
+    if (!currentPagePathForVersion) return;
+    window.open('/static/version-manager.html?path=' + encodeURIComponent(currentPagePathForVersion), '_blank');
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ⏰ Scheduled Publish */
+function loadScheduleInfo(pagePath) {
+    if (!pagePath) return;
+    fetch('/api/v1/pages/scheduled')
+        .then(r => r.json())
+        .then(list => {
+            const match = list.find(p => p.path === pagePath);
+            const statusEl = document.getElementById('prop-schedule-status');
+            if (match && match.scheduled_publish) {
+                const dt = match.scheduled_publish;
+                // Convert ISO to local datetime-local format
+                try {
+                    const d = new Date(dt);
+                    if (!isNaN(d.getTime())) {
+                        const localStr = d.getFullYear() + '-' +
+                            String(d.getMonth()+1).padStart(2,'0') + '-' +
+                            String(d.getDate()).padStart(2,'0') + 'T' +
+                            String(d.getHours()).padStart(2,'0') + ':' +
+                            String(d.getMinutes()).padStart(2,'0');
+                        document.getElementById('prop-schedule-dt').value = localStr;
+                    }
+                } catch(e) {}
+                statusEl.textContent = '⏰ Scheduled: ' + dt;
+            } else {
+                document.getElementById('prop-schedule-dt').value = '';
+                statusEl.textContent = '';
+            }
+        })
+        .catch(() => {});
+}
+
+function setSchedule() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    const dtValue = document.getElementById('prop-schedule-dt').value;
+    if (!dtValue) {
+        alert('Please select a date and time');
+        return;
+    }
+    // Convert local datetime to ISO format
+    const localDate = new Date(dtValue);
+    const isoStr = localDate.toISOString();
+    
+    fetch('/api/v1/pages/schedule?path=' + encodeURIComponent(path) +
+          '&scheduled_publish=' + encodeURIComponent(isoStr), {
+        method: 'PATCH'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('prop-schedule-status').textContent =
+                '✅ Set for ' + isoStr;
+        }
+    })
+    .catch(() => alert('Failed to set schedule'));
+}
+
+function cancelSchedule() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    fetch('/api/v1/pages/cancelschedule?path=' + encodeURIComponent(path), {
+        method: 'PATCH'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('prop-schedule-dt').value = '';
+            document.getElementById('prop-schedule-status').textContent = '❌ Cancelled';
+        }
+    })
+    .catch(() => alert('Failed to cancel schedule'));
+}
+
+/* ✅ Approval */
+function loadApprovalInfo(pagePath) {
+    if (!pagePath) {
+        document.getElementById('prop-approval-status').textContent = '—';
+        document.getElementById('btn-approve').disabled = true;
+        document.getElementById('btn-unapprove').disabled = true;
+        return;
+    }
+    fetch('/api/v1/pages/approval-status?path=' + encodeURIComponent(pagePath))
+        .then(r => r.json())
+        .then(data => {
+            const statusEl = document.getElementById('prop-approval-status');
+            const btnApprove = document.getElementById('btn-approve');
+            const btnUnapprove = document.getElementById('btn-unapprove');
+            if (data.approved) {
+                const by = data.approved_by ? ' by ' + data.approved_by : '';
+                const at = data.approved_at ? ' at ' + data.approved_at : '';
+                statusEl.textContent = '✅ Approved' + by + at;
+                statusEl.style.color = '#2e7d32';
+                btnApprove.disabled = true;
+                btnUnapprove.disabled = false;
+            } else {
+                statusEl.textContent = '⏳ Not approved — publish blocked';
+                statusEl.style.color = '#c62828';
+                btnApprove.disabled = false;
+                btnUnapprove.disabled = true;
+            }
+        })
+        .catch(() => {
+            document.getElementById('prop-approval-status').textContent = '⚠️ Could not load';
+            document.getElementById('btn-approve').disabled = true;
+            document.getElementById('btn-unapprove').disabled = true;
+        });
+}
+
+function approvePage() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    if (!confirm('Approve this page for publish?')) return;
+    fetch('/api/v1/pages/approve?path=' + encodeURIComponent(path) + '&approved_by=' + encodeURIComponent('current_user'), {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadApprovalInfo(path);
+        }
+    })
+    .catch(() => alert('Failed to approve page'));
+}
+
+function unapprovePage() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    if (!confirm('Revoke approval for this page?')) return;
+    fetch('/api/v1/pages/unapprove?path=' + encodeURIComponent(path), {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadApprovalInfo(path);
+        }
+    })
+    .catch(() => alert('Failed to revoke approval'));
+}
 
 console.log('Navigation Module loaded.');

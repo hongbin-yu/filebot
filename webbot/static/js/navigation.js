@@ -452,7 +452,7 @@ function renderColumn(columnIndex, title, pages, parentPath) {
         pathSpan.textContent = page.path;
         link.appendChild(pathSpan);
 
-        // Click handler
+    // Click handler
         link.addEventListener('click', function(e) {
             e.preventDefault();
             selectPage(page, columnIndex);
@@ -901,6 +901,11 @@ function setupButtons() {
                 var filePath = data.file_path || (data.metadata && data.metadata.file_path) || '';
                 setPropVal('prop-filepath', filePath);
 
+                // Version info
+                loadVersionInfo(thePath);
+                loadScheduleInfo(thePath);
+                loadApprovalInfo(thePath);
+
                 // Has children
                 var childEl = document.getElementById('prop-has-children');
                 if (childEl && data.has_children !== undefined) {
@@ -924,6 +929,9 @@ function setupButtons() {
                 if (templateSel) {
                     templateSel.value = data.publish_template || '';
                 }
+
+                // Render tag checkboxes
+                renderTagCheckboxes(data.tags || []);
 
                 showModal(modal);
             })
@@ -1034,6 +1042,12 @@ function setupButtons() {
                 if (payload[k] === undefined) delete payload[k];
             });
 
+            // Collect selected tag IDs
+            var selectedTags = [];
+            document.querySelectorAll('.tag-checkbox-group input[type="checkbox"]:checked').forEach(function(cb) {
+                selectedTags.push(cb.value);
+            });
+
             fetch('/api/v1/pages/' + encodeURIComponent(pagePath), {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
@@ -1044,7 +1058,19 @@ function setupButtons() {
                 return r.json();
             })
             .then(function() {
-                showToast('✅ Properties saved!', 'success');
+                // Also save tags via tags API
+                return fetch('/api/v1/pages/' + encodeURIComponent(pagePath) + '/tags', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({tag_ids: selectedTags})
+                });
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(e) { throw new Error('Tags save failed: ' + (e.detail || e.message)); });
+                return r.json();
+            })
+            .then(function() {
+                showToast('✅ Properties and tags saved!', 'success');
                 hideModal(modal);
                 // Refresh current view without jumping to root
                 loadedPaths = {};
@@ -1501,7 +1527,77 @@ function setupButtons() {
     });
 
     populateTemplateSelect();
+
+    // Preload tags for Properties modal
+    loadAllTags();
 }
+
+// ============================================================================
+// TAG MANAGEMENT
+// ============================================================================
+
+// Cache for all tags
+var allTags = null;
+
+// Load all tags from API
+function loadAllTags() {
+    fetch('/api/v1/tags?flat=true')
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(data) {
+            allTags = data;
+        })
+        .catch(function() {
+            allTags = [];
+        });
+}
+
+// Render tag checkboxes for the Properties modal
+function renderTagCheckboxes(selectedTagIds) {
+    if (!allTags) {
+        // Retry if tags not loaded yet
+        fetch('/api/v1/tags?flat=true')
+            .then(function(r) { return r.ok ? r.json() : []; })
+            .then(function(data) {
+                allTags = data;
+                doRenderTagCheckboxes(selectedTagIds);
+            })
+            .catch(function() { });
+        return;
+    }
+    doRenderTagCheckboxes(selectedTagIds);
+}
+
+function doRenderTagCheckboxes(selectedTagIds) {
+    var selected = selectedTagIds || [];
+    var subjectsContainer = document.getElementById('prop-tags-subjects');
+    var audienceContainer = document.getElementById('prop-tags-audience');
+
+    if (subjectsContainer) {
+        var subjectsHtml = '';
+        allTags.filter(function(t) { return t.type === 'subject'; }).forEach(function(t) {
+            var checked = selected.indexOf(t.id) !== -1 ? 'checked' : '';
+            var frLabel = t.label_fr ? ' <span class="tag-fr-label">(' + t.label_fr + ')</span>' : '';
+            subjectsHtml += '<label><input type="checkbox" value="' + t.id + '" ' + checked + '> ' + t.id + frLabel + '</label>';
+        });
+        if (!subjectsHtml) subjectsHtml = '<span class="text-muted">No subject tags available</span>';
+        subjectsContainer.innerHTML = subjectsHtml;
+    }
+
+    if (audienceContainer) {
+        var audienceHtml = '';
+        allTags.filter(function(t) { return t.type === 'audience'; }).forEach(function(t) {
+            var checked = selected.indexOf(t.id) !== -1 ? 'checked' : '';
+            var frLabel = t.label_fr ? ' <span class="tag-fr-label">(' + t.label_fr + ')</span>' : '';
+            audienceHtml += '<label><input type="checkbox" value="' + t.id + '" ' + checked + '> ' + t.id + frLabel + '</label>';
+        });
+        if (!audienceHtml) audienceHtml = '<span class="text-muted">No audience tags available</span>';
+        audienceContainer.innerHTML = audienceHtml;
+    }
+}
+
+// ============================================================================
+// TAG MANAGEMENT MODAL
+// ============================================================================
 
 // ============================================================================
 // 8b. NAVIGATION WITH STATE RETENTION (fix #9)
@@ -1611,5 +1707,252 @@ document.addEventListener('DOMContentLoaded', function() {
     setupButtons();
     initNavigation();
 });
+
+// Version info loading for properties modal
+var currentPagePathForVersion = null;
+
+function loadVersionInfo(pagePath) {
+    currentPagePathForVersion = pagePath;
+    var verEl = document.getElementById('prop-current-version');
+    var btnEl = document.getElementById('btn-view-version-history');
+    var editorLink = document.getElementById('btn-open-editor');
+    var rawBtn = document.getElementById('btn-raw-html');
+    var compareBtn = document.getElementById('btn-compare');
+    if (!verEl) return;
+
+    // Set editor link href
+    if (editorLink) {
+        editorLink.href = '/static/editor.html?pageId=' + encodeURIComponent(pagePath);
+        editorLink.disabled = false;
+        editorLink.style.opacity = '1';
+        editorLink.style.pointerEvents = 'auto';
+    }
+
+    // Show loading
+    verEl.textContent = 'loading...';
+
+    fetch('/api/v1/versions/page?path=' + encodeURIComponent(pagePath))
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+            if (data && data.version_count > 0) {
+                var latest = data.versions[0];
+                verEl.textContent = 'v' + latest.version + ' (' + latest.created_at.slice(0, 10) + ', ' + formatFileSize(latest.html_size) + ')';
+                if (btnEl) btnEl.disabled = false;
+                if (rawBtn) { rawBtn.disabled = false; rawBtn.style.opacity = '1'; rawBtn.style.pointerEvents = 'auto'; }
+                if (compareBtn) { compareBtn.disabled = false; compareBtn.style.opacity = '1'; compareBtn.style.pointerEvents = 'auto'; }
+            } else {
+                verEl.textContent = 'No versions yet (publish first)';
+                if (btnEl) btnEl.disabled = true;
+                if (rawBtn) { rawBtn.disabled = true; rawBtn.style.opacity = '0.5'; rawBtn.style.pointerEvents = 'none'; }
+                if (compareBtn) { compareBtn.disabled = true; compareBtn.style.opacity = '0.5'; compareBtn.style.pointerEvents = 'none'; }
+            }
+        })
+        .catch(function() {
+            verEl.textContent = '(unavailable)';
+            if (btnEl) btnEl.disabled = true;
+            if (rawBtn) { rawBtn.disabled = true; rawBtn.style.opacity = '0.5'; rawBtn.style.pointerEvents = 'none'; }
+            if (compareBtn) { compareBtn.disabled = true; compareBtn.style.opacity = '0.5'; compareBtn.style.pointerEvents = 'none'; }
+        });
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// Version history button handler (called from onclick in HTML)
+function viewVersionHistory() {
+    if (!currentPagePathForVersion) return;
+    window.open('/static/version-manager.html?path=' + encodeURIComponent(currentPagePathForVersion), '_blank');
+}
+
+// Raw HTML viewer - opens latest version content in new tab
+function viewRawHTML() {
+    if (!currentPagePathForVersion) return;
+    var path = currentPagePathForVersion;
+    fetch('/api/v1/versions/page?path=' + encodeURIComponent(path))
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+            if (!data || !data.versions || data.versions.length === 0) {
+                alert('No versions available');
+                return;
+            }
+            var latest = data.versions[0];
+            fetch('/api/v1/versions/page/version?path=' + encodeURIComponent(path) + '&version=' + latest.version)
+                .then(function(r) { return r.json(); })
+                .then(function(v) {
+                    if (v.content) {
+                        var win = window.open('', '_blank');
+                        win.document.write('<!DOCTYPE html><html><head><title>Raw HTML v' + latest.version + '</title>');
+                        win.document.write('<style>body{font-family:monospace;padding:20px;white-space:pre-wrap;word-break:break-word;background:#fff;color:#333;max-width:1200px;margin:0 auto;}</style>');
+                        win.document.write('</head><body>');
+                        win.document.write('<div style="background:#f0f4f8;padding:12px;border-radius:8px;margin-bottom:20px;font-family:sans-serif;font-size:14px;">');
+                        win.document.write('<strong>📄 ' + escHtml(path) + '</strong> · v' + latest.version + ' · ' + (latest.created_at ? latest.created_at.slice(0,10) : '') );
+                        win.document.write('<br><span style="color:#888;">Raw HTML content (' + formatFileSize((v.content || '').length) + ')</span>');
+                        win.document.write('</div>');
+                        win.document.write('<div style="border:1px solid #e0e0e0;border-radius:4px;padding:20px;">');
+                        win.document.write(escHtml(v.content));
+                        win.document.write('</div>');
+                        win.document.write('</body></html>');
+                        win.document.close();
+                    }
+                })
+                .catch(function(e) { alert('Error: ' + e.message); });
+        })
+        .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+// Open version manager compare mode
+function openCompare() {
+    if (!currentPagePathForVersion) return;
+    window.open('/static/version-manager.html?path=' + encodeURIComponent(currentPagePathForVersion), '_blank');
+}
+
+// HTML escape helper
+function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ⏰ Scheduled Publish */
+function loadScheduleInfo(pagePath) {
+    if (!pagePath) return;
+    fetch('/api/v1/pages/scheduled')
+        .then(r => r.json())
+        .then(list => {
+            const match = list.find(p => p.path === pagePath);
+            const statusEl = document.getElementById('prop-schedule-status');
+            if (match && match.scheduled_publish) {
+                const dt = match.scheduled_publish;
+                // Convert ISO to local datetime-local format
+                try {
+                    const d = new Date(dt);
+                    if (!isNaN(d.getTime())) {
+                        const localStr = d.getFullYear() + '-' +
+                            String(d.getMonth()+1).padStart(2,'0') + '-' +
+                            String(d.getDate()).padStart(2,'0') + 'T' +
+                            String(d.getHours()).padStart(2,'0') + ':' +
+                            String(d.getMinutes()).padStart(2,'0');
+                        document.getElementById('prop-schedule-dt').value = localStr;
+                    }
+                } catch(e) {}
+                statusEl.textContent = '⏰ Scheduled: ' + dt;
+            } else {
+                document.getElementById('prop-schedule-dt').value = '';
+                statusEl.textContent = '';
+            }
+        })
+        .catch(() => {});
+}
+
+function setSchedule() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    const dtValue = document.getElementById('prop-schedule-dt').value;
+    if (!dtValue) {
+        alert('Please select a date and time');
+        return;
+    }
+    // Convert local datetime to ISO format
+    const localDate = new Date(dtValue);
+    const isoStr = localDate.toISOString();
+    
+    fetch('/api/v1/pages/schedule?path=' + encodeURIComponent(path) +
+          '&scheduled_publish=' + encodeURIComponent(isoStr), {
+        method: 'PATCH'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('prop-schedule-status').textContent =
+                '✅ Set for ' + isoStr;
+        }
+    })
+    .catch(() => alert('Failed to set schedule'));
+}
+
+function cancelSchedule() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    fetch('/api/v1/pages/cancelschedule?path=' + encodeURIComponent(path), {
+        method: 'PATCH'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('prop-schedule-dt').value = '';
+            document.getElementById('prop-schedule-status').textContent = '❌ Cancelled';
+        }
+    })
+    .catch(() => alert('Failed to cancel schedule'));
+}
+
+/* ✅ Approval */
+function loadApprovalInfo(pagePath) {
+    if (!pagePath) {
+        document.getElementById('prop-approval-status').textContent = '—';
+        document.getElementById('btn-approve').disabled = true;
+        document.getElementById('btn-unapprove').disabled = true;
+        return;
+    }
+    fetch('/api/v1/pages/approval-status?path=' + encodeURIComponent(pagePath))
+        .then(r => r.json())
+        .then(data => {
+            const statusEl = document.getElementById('prop-approval-status');
+            const btnApprove = document.getElementById('btn-approve');
+            const btnUnapprove = document.getElementById('btn-unapprove');
+            if (data.approved) {
+                const by = data.approved_by ? ' by ' + data.approved_by : '';
+                const at = data.approved_at ? ' at ' + data.approved_at : '';
+                statusEl.textContent = '✅ Approved' + by + at;
+                statusEl.style.color = '#2e7d32';
+                btnApprove.disabled = true;
+                btnUnapprove.disabled = false;
+            } else {
+                statusEl.textContent = '⏳ Not approved — publish blocked';
+                statusEl.style.color = '#c62828';
+                btnApprove.disabled = false;
+                btnUnapprove.disabled = true;
+            }
+        })
+        .catch(() => {
+            document.getElementById('prop-approval-status').textContent = '⚠️ Could not load';
+            document.getElementById('btn-approve').disabled = true;
+            document.getElementById('btn-unapprove').disabled = true;
+        });
+}
+
+function approvePage() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    if (!confirm('Approve this page for publish?')) return;
+    fetch('/api/v1/pages/approve?path=' + encodeURIComponent(path) + '&approved_by=' + encodeURIComponent('current_user'), {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadApprovalInfo(path);
+        }
+    })
+    .catch(() => alert('Failed to approve page'));
+}
+
+function unapprovePage() {
+    const path = currentPagePathForVersion;
+    if (!path) return;
+    if (!confirm('Revoke approval for this page?')) return;
+    fetch('/api/v1/pages/unapprove?path=' + encodeURIComponent(path), {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadApprovalInfo(path);
+        }
+    })
+    .catch(() => alert('Failed to revoke approval'));
+}
 
 console.log('Navigation Module loaded.');
