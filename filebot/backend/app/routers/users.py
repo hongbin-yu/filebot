@@ -18,7 +18,7 @@ def get_users(
     db: Session = Depends(get_db)
 ):
     """Get user list (admin only)"""
-    if not current_user.is_superuser:
+    if not current_user.is_superuser and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission"
@@ -92,7 +92,7 @@ def delete_user(
     db: Session = Depends(get_db)
 ):
     """Delete user (admin only)"""
-    if not current_user.is_superuser:
+    if not current_user.is_superuser and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission"
@@ -116,3 +116,30 @@ def delete_user(
     db.commit()
     
     return {"message": "User deleted successfully"}
+
+
+@router.put("/{user_id}/toggle-active", response_model=UserResponse)
+def toggle_user_active(
+    user_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Toggle user active/deactivated status (admin only)"""
+    if not current_user.is_superuser and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No permission"
+        )
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    user.is_active = not user.is_active
+    db.commit()
+    db.refresh(user)
+    
+    return user

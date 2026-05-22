@@ -1,0 +1,522 @@
+{
+  "pages": {
+    "canadasite__en__contact": {
+      "page_path": "/canadasite/en/contact",
+      "versions": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "latest": 4,
+      "latest_meta": {
+        "version": 4,
+        "created_at": "2026-05-22T14:07:43.768473Z",
+        "author": "system",
+        "content_size": 36455
+      }
+    },
+    "canadasite__en__atlantic-canada-opportunities": {
+      "page_path": "/canadasite/en/atlantic-canada-opportunities",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-20T22:58:02.913936Z",
+        "author": "system",
+        "content_size": 10963
+      }
+    },
+    "canadasite__en__administrative-tribunals-support-service": {
+      "page_path": "/canadasite/en/administrative-tribunals-support-service",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-20T22:57:58.328585Z",
+        "author": "system",
+        "content_size": 11712
+      }
+    },
+    "canadasite__en__economic-development-quebec-regions": {
+      "page_path": "/canadasite/en/economic-development-quebec-regions",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:02:51.762358Z",
+        "author": "system",
+        "content_size": 24922
+      }
+    },
+    "canadasite__en__revenue-agency": {
+      "page_path": "/canadasite/en/revenue-agency",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-21T02:19:38.916695Z",
+        "author": "system",
+        "content_size": 26144
+      }
+    },
+    "canadasite__en__canada-water-agency": {
+      "page_path": "/canadasite/en/canada-water-agency",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-21T12:55:41.433630Z",
+        "author": "system",
+        "content_size": 11200
+      }
+    },
+    "canadasite__en__conservation-institute": {
+      "page_path": "/canadasite/en/conservation-institute",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:06:14.364129Z",
+        "author": "system",
+        "content_size": 11328
+      }
+    },
+    "canadasite__en__security-intelligence-service": {
+      "page_path": "/canadasite/en/security-intelligence-service",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:24:50.091577Z",
+        "author": "system",
+        "content_size": 22887
+      }
+    },
+    "canadasite__en__special-operations-forces-command": {
+      "page_path": "/canadasite/en/special-operations-forces-command",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:25:04.656202Z",
+        "author": "system",
+        "content_size": 9334
+      }
+    },
+    "canadasite__en__canadian-heritage__contact-us": {
+      "page_path": "/canadasite/en/canadian-heritage/contact-us",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:26:13.945308Z",
+        "author": "system",
+        "content_size": 11416
+      }
+    },
+    "canadasite__en__department-national-defence": {
+      "page_path": "/canadasite/en/department-national-defence",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:30:41.245975Z",
+        "author": "system",
+        "content_size": 14815
+      }
+    },
+    "canadasite__en__department-national-defence__campaigns__canadian-military-support-to-ukraine": {
+      "page_path": "/canadasite/en/department-national-defence/campaigns/canadian-military-support-to-ukraine",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:31:53.729154Z",
+        "author": "system",
+        "content_size": 112352
+      }
+    },
+    "canadasite__en__army__services__canadian-army-journal": {
+      "page_path": "/canadasite/en/army/services/canadian-army-journal",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T01:46:07.703182Z",
+        "author": "system",
+        "content_size": 10324
+      }
+    },
+    "canadasite__en": {
+      "page_path": "/canadasite/en",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-20T23:28:01.193885Z",
+        "author": "system",
+        "content_size": 14404
+      }
+    },
+    "canadasite__en__services__benefits": {
+      "page_path": "/canadasite/en/services/benefits",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-21T00:35:41.427688Z",
+        "author": "system",
+        "content_size": 7524
+      }
+    },
+    "canadasite__en__services": {
+      "page_path": "/canadasite/en/services",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-18T16:20:09.550698Z",
+        "author": "system",
+        "content_size": 19275
+      }
+    },
+    "canadasite__en__atlantic-canada-opportunities__atlantic-economic-panel": {
+      "page_path": "/canadasite/en/atlantic-canada-opportunities/atlantic-economic-panel",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-19T18:57:24.005086Z",
+        "author": "system",
+        "content_size": 15763
+      }
+    },
+    "canadasite__fr__agence-consommation-matiere-financiere__services__dossier-pointage-credit": {
+      "page_path": "/canadasite/fr/agence-consommation-matiere-financiere/services/dossier-pointage-credit",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-19T19:15:46.141618Z",
+        "author": "system",
+        "content_size": 3005
+      }
+    },
+    "canadasite__en__atlantic-canada-opportunities__services__domestic-trade-opportunities-through-acoa": {
+      "page_path": "/canadasite/en/atlantic-canada-opportunities/services/domestic-trade-opportunities-through-acoa",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T14:56:38.546674Z",
+        "author": "system",
+        "content_size": 1902
+      }
+    },
+    "canadasite__en__auditor-general": {
+      "page_path": "/canadasite/en/auditor-general",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-21T01:06:54.923186Z",
+        "author": "system",
+        "content_size": 16732
+      }
+    },
+    "canadasite__en__canadian-heritage": {
+      "page_path": "/canadasite/en/canadian-heritage",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:58:13.054685Z",
+        "author": "system",
+        "content_size": 18976
+      }
+    },
+    "canadasite__en__auditor-general__footer": {
+      "page_path": "/canadasite/en/auditor-general/footer",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:50:53.799693Z",
+        "author": null,
+        "content_size": 4909
+      }
+    },
+    "canadasite__en__auditor-general__header": {
+      "page_path": "/canadasite/en/auditor-general/header",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:51:03.705673Z",
+        "author": null,
+        "content_size": 1145
+      }
+    },
+    "canadasite__en__auditor-general__megamenu": {
+      "page_path": "/canadasite/en/auditor-general/megamenu",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:51:17.259454Z",
+        "author": null,
+        "content_size": 10141
+      }
+    },
+    "canadasite__en__header": {
+      "page_path": "/canadasite/en/header",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:51:41.344920Z",
+        "author": null,
+        "content_size": 1109
+      }
+    },
+    "canadasite__en__footer": {
+      "page_path": "/canadasite/en/footer",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:52:01.039301Z",
+        "author": null,
+        "content_size": 2640
+      }
+    },
+    "canadasite__en__megamenu": {
+      "page_path": "/canadasite/en/megamenu",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:52:21.876373Z",
+        "author": null,
+        "content_size": 2755
+      }
+    },
+    "canadasite__fr__header": {
+      "page_path": "/canadasite/fr/header",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:53:03.101553Z",
+        "author": null,
+        "content_size": 1133
+      }
+    },
+    "canadasite__fr__footer": {
+      "page_path": "/canadasite/fr/footer",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:53:21.181461Z",
+        "author": null,
+        "content_size": 2722
+      }
+    },
+    "canadasite__fr__megamenu": {
+      "page_path": "/canadasite/fr/megamenu",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:53:58.743302Z",
+        "author": null,
+        "content_size": 2811
+      }
+    },
+    "canadasite__fr": {
+      "page_path": "/canadasite/fr",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T23:28:23.414083Z",
+        "author": "system",
+        "content_size": 16746
+      }
+    },
+    "canadasite__fr__service-canadien-appui-tribunaux-administratifs": {
+      "page_path": "/canadasite/fr/service-canadien-appui-tribunaux-administratifs",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-20T22:55:38.058303Z",
+        "author": "system",
+        "content_size": 13398
+      }
+    },
+    "canadasite__en__services__business": {
+      "page_path": "/canadasite/en/services/business",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-21T00:36:39.892374Z",
+        "author": "system",
+        "content_size": 9358
+      }
+    },
+    "canadasite__en__services__environment": {
+      "page_path": "/canadasite/en/services/environment",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-21T00:37:41.605787Z",
+        "author": "system",
+        "content_size": 7839
+      }
+    },
+    "canadasite__en__services__health": {
+      "page_path": "/canadasite/en/services/health",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-21T00:37:55.037813Z",
+        "author": "system",
+        "content_size": 7856
+      }
+    },
+    "canadasite__en__services__immigration-citizenship": {
+      "page_path": "/canadasite/en/services/immigration-citizenship",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-21T00:38:06.814144Z",
+        "author": "system",
+        "content_size": 13368
+      }
+    },
+    "canadasite__en__revenue-agency__contextual-footer": {
+      "page_path": "/canadasite/en/revenue-agency/contextual-footer",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-21T02:19:47.793339Z",
+        "author": null,
+        "content_size": 513
+      }
+    },
+    "canadasite__en__army": {
+      "page_path": "/canadasite/en/army",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-21T12:56:06.464980Z",
+        "author": "system",
+        "content_size": 29392
+      }
+    },
+    "canadasite__en__defence-investment-agency": {
+      "page_path": "/canadasite/en/defence-investment-agency",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-22T14:09:10.015532Z",
+        "author": "system",
+        "content_size": 17195
+      }
+    }
+  },
+  "updated_at": "2026-05-22T14:09:10.015532Z"
+}

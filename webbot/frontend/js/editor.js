@@ -9,6 +9,7 @@
 
         // Breadcrumb titles to skip (root-level home pages)
         var SKIP_BREADCRUMB_TITLES = ['canadasite', 'home', 'accueil'];
+        const SITE_PREFIX = '/canadasite';
 
         // DOM elements
         const pageTreeEl = document.getElementById('page-tree');
@@ -2075,11 +2076,12 @@
                     const ancestor = breadcrumbPath[i];
                     // Pass only the path up to this ancestor (slice 0 to i+1)
                     const ancestorPath = buildFullPath(ancestor, breadcrumbPath.slice(0, i + 1));
-                    const editorUrl = getEditorUrl(ancestorPath);
+                    const fullAncestorPath = ancestorPath.startsWith(SITE_PREFIX) ? ancestorPath : SITE_PREFIX + ancestorPath;
+                    const editorUrl = getEditorUrl(fullAncestorPath);
                     const ancestorTitle = cleanTitle(ancestor.title) || ancestor.id;
                     breadcrumbHtml += `
                         <div class="breadcrumb-item">
-                            <a href="${editorUrl}" class="breadcrumb-link" data-page-path="${removeHtmlExtension(ancestorPath)}">${ancestorTitle}</a>
+                            <a href="${editorUrl}" class="breadcrumb-link" data-page-path="${removeHtmlExtension(fullAncestorPath)}">${ancestorTitle}</a>
                         </div>
                     `;
                 }
@@ -2378,8 +2380,9 @@
                     const ancestor = breadcrumbPath[i];
                     // Pass only the path up to this ancestor (slice 0 to i+1)
                     const ancestorPath = buildFullPath(ancestor, breadcrumbPath.slice(0, i + 1));
+                    const fullAncestorPath = ancestorPath.startsWith(SITE_PREFIX) ? ancestorPath : SITE_PREFIX + ancestorPath;
                     const ancestorTitle = cleanTitle(ancestor.title) || ancestor.id;
-                    breadcrumbHtml += `<li><a href="${ancestorPath}">${escapeHtml(ancestorTitle)}</a></li>`;
+                    breadcrumbHtml += `<li><a href="${fullAncestorPath}">${escapeHtml(ancestorTitle)}</a></li>`;
                 }
 
                 // Add current page as active (last in array)
@@ -3069,7 +3072,6 @@
                         '.mwstext.section',           // Canada.ca content area
                         '.row.profile',               // Canada.ca profile/content container
                         '#main-content',
-                        'article',
                         '.container.main'
                     ];
 

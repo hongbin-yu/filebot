@@ -265,7 +265,7 @@ def _copy_publish_assets(html: str, page_path: str, publish_dir: Path) -> list[d
 
     return copied
 
-def _save_published_page(html: str, page_path: str) -> tuple[str, int, list[dict]]:
+def _save_published_page(html: str, page_path: str, extension: str = ".html") -> tuple[str, int, list[dict]]:
     """
     发布页面：写入HTML + 复制图片。
     去掉 /canadasite 前缀，直接按 /en/xxx 路径写入。
@@ -276,7 +276,7 @@ def _save_published_page(html: str, page_path: str) -> tuple[str, int, list[dict
     rel_path = page_path.lstrip("/")
     if rel_path.startswith("canadasite/"):
         rel_path = rel_path[len("canadasite/"):]
-    output_file = PUBLISH_DIR / f"{rel_path}.html"
+    output_file = PUBLISH_DIR / f"{rel_path}{extension}"
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Step 1: 复制资源（图片、CSS、JS等）到 publish 目录
@@ -295,6 +295,7 @@ def publish_page(
     path: str = Query(..., description="Page path, e.g. /canadasite/en/contact"),
     publish_req: PublishRequest = Body(..., description="Published HTML content"),
     output_dir: Optional[str] = Query(None, description="Override output directory"),
+    extension: str = Query(".html", description="File extension for published file (e.g. .html, .json)"),
     request: Request = None,
     db: Session = Depends(get_db),
 ):
@@ -325,7 +326,7 @@ def publish_page(
 
     # Step 1: Write HTML file + copy images
     output_file, html_len, copied_images = _save_published_page(
-        publish_req.html_content, path
+        publish_req.html_content, path, extension
     )
 
     # Step 2: Create database records (folder + document) under publish app
@@ -354,10 +355,22 @@ def publish_page(
         folder_path = f"/{PUBLISH_APP_SLUG}"
         if folder_rel_parts:
             folder_path += "/" + "/".join(folder_rel_parts)
-        doc_path = f"{folder_path}/{doc_name}.html"
+        doc_path = f"{folder_path}/{doc_name}{extension}"
 
         # Ensure folder exists
         folder = _ensure_folder(db, folder_path, publish_app.id)
+
+        # Determine MIME type and FileType based on extension
+        ext_lower = extension.lower()
+        if ext_lower == ".json":
+            mime_type = "application/json"
+            file_type = FileType.OTHER
+        elif ext_lower in (".xml", ".txt"):
+            mime_type = "application/xml" if ext_lower == ".xml" else "text/plain"
+            file_type = FileType.OTHER
+        else:
+            mime_type = "text/html"
+            file_type = FileType.HTML
 
         # Check if document already exists (update it) or create new
         existing_doc = db.query(Document).filter(Document.path == doc_path).first()
@@ -379,11 +392,11 @@ def publish_page(
             doc = Document(
                 path=doc_path,
                 folder_path=folder_path,
-                original_filename=f"{doc_name}.html",
-                stored_filename=f"{doc_name}.html",
+                original_filename=f"{doc_name}{extension}",
+                stored_filename=f"{doc_name}{extension}",
                 file_size=html_len,
-                file_type=FileType.HTML,
-                mime_type="text/html",
+                file_type=file_type,
+                mime_type=mime_type,
                 title=doc_name,
                 storage_path=output_file,
                 full_storage_path=output_file,
@@ -431,6 +444,7 @@ def publish_page(
 @router.post("/unpublish")
 def unpublish_page(
     path: str = Query(..., description="Page path, e.g. /canadasite/en/canadian-heritage"),
+    extension: str = Query(".html", description="File extension used when published (e.g. .html, .json)"),
     request: Request = None,
     db: Session = Depends(get_db),
 ):
@@ -463,9 +477,9 @@ def unpublish_page(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
 
-    # 如果没扩展名，补充 .html
+    # 如果没扩展名，使用指定的 extension
     if not publish_file.suffix:
-        publish_file = publish_file.with_suffix(".html")
+        publish_file = publish_file.with_suffix(extension)
 
     file_deleted = False
     if publish_file.exists():
@@ -482,8 +496,8 @@ def unpublish_page(
         if publish_app:
             # 构建 DB 中的 document path
             doc_rel_path = rel_path
-            if not doc_rel_path.endswith(".html"):
-                doc_rel_path += ".html"
+            if not doc_rel_path.endswith(extension):
+                doc_rel_path += extension
             doc_path = f"/{PUBLISH_APP_SLUG}/{doc_rel_path}"
 
             existing_doc = db.query(Document).filter(Document.path == doc_path).first()

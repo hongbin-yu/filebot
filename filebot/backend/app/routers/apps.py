@@ -7,10 +7,11 @@ import re
 import unicodedata
 
 from app.db.database import get_db
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user, has_app_access
 from app.models.user import User
 from app.models.app import App
 from app.models.folder import Folder
+from app.models.permission import Permission
 from app.schemas.app import AppCreate, AppResponse, AppUpdate, FolderResponse
 
 router = APIRouter()
@@ -69,15 +70,50 @@ def get_apps(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get user's app list (can only see own apps)"""
-    # Special handling: public user can see all apps (for Client portal)
+    """Get user's app list
+    - superuser/public: see all apps
+    - others: see own apps + apps they have permission on
+    """
     if current_user.is_superuser or current_user.username == "public":
-        # Admin or public user can see all apps
         apps = db.query(App).offset(skip).limit(limit).all()
     else:
-        # Regular users can only see their own apps
-        apps = db.query(App).filter(App.owner_id == current_user.id).offset(skip).limit(limit).all()
-    
+        # Get apps owned by user
+        owned_apps = db.query(App).filter(App.owner_id == current_user.id)
+        # Get apps where user has direct permission
+        permitted_app_ids = [
+            row[0] for row in db.query(Permission.resource_id)
+            .filter(
+                Permission.resource_type == "app",
+                Permission.user_id == current_user.id,
+            )
+            .all()
+        ]
+        # Get apps where user's groups have permission
+        from app.models.group import GroupMember
+        user_group_ids = [
+            row[0] for row in db.query(GroupMember.group_id)
+            .filter(GroupMember.user_id == current_user.id)
+            .all()
+        ]
+        if user_group_ids:
+            group_permitted_ids = [
+                row[0] for row in db.query(Permission.resource_id)
+                .filter(
+                    Permission.resource_type == "app",
+                    Permission.group_id.in_(user_group_ids),
+                )
+                .all()
+            ]
+            permitted_app_ids = list(set(permitted_app_ids + group_permitted_ids))
+
+        all_app_ids = [row[0] for row in owned_apps.with_entities(App.id).all()] + permitted_app_ids
+        all_app_ids = list(set(all_app_ids))
+
+        if all_app_ids:
+            apps = db.query(App).filter(App.id.in_(all_app_ids)).offset(skip).limit(limit).all()
+        else:
+            apps = []
+
     return apps
 
 
@@ -158,15 +194,15 @@ def get_app(
             detail="App not found"
         )
     
-    # Permission check
-    # Special handling: public user can see all apps (for Client portal)
+    # Permission check (public user bypasses)
     if current_user.username != "public":
         if not current_user.is_superuser and app.owner_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No permission to access this app"
-            )
-    
+            if not has_app_access(current_user, app.id, "read", db):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No permission to access this app"
+                )
+
     return app
 
 
@@ -186,14 +222,14 @@ def get_app_by_slug(
         )
     
     # Permission check
-    # Special handling: public user can see all apps (for Client portal)
     if current_user.username != "public":
         if not current_user.is_superuser and app.owner_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No permission to access this app"
-            )
-    
+            if not has_app_access(current_user, app.id, "read", db):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No permission to access this app"
+                )
+
     return app
 
 
@@ -219,11 +255,12 @@ def update_app(
     
     # Permission check
     if not current_user.is_superuser and app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to update this app"
-        )
-    
+        if not has_app_access(current_user, app.id, "write", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to update this app"
+            )
+
     # Update fields
     if app_data.slug is not None and app_data.slug != app.slug:
         # Check new slug uniqueness (excluding current app)
@@ -292,11 +329,12 @@ def delete_app(
     
     # Permission check
     if not current_user.is_superuser and app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to delete this app"
-        )
-    
+        if not has_app_access(current_user, app.id, "admin", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to delete this app"
+            )
+
     # Delete app (cascade deletes folders and documents)
     db.delete(app)
     db.commit()
@@ -328,14 +366,15 @@ def get_app_folders(
     
     # Permission check
     if not current_user.is_superuser and app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to access this app's folders"
-        )
-    
+        if not has_app_access(current_user, app.id, "read", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to access this app's folders"
+            )
+
     # Get folders
     folders = db.query(Folder).filter(
         Folder.app_id == app.id
     ).offset(skip).limit(limit).all()
-    
+
     return folders

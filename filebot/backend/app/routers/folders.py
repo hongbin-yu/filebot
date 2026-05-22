@@ -7,7 +7,7 @@ from typing import List, Optional
 import logging
 
 from app.db.database import get_db
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user, has_app_access, has_folder_access
 from app.models.user import User
 from app.models.app import App
 from app.models.folder import Folder
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # ========== Helper Functions ==========
 
-def get_app_or_check_permission(app_id: str, current_user: User, db: Session) -> App:
+def get_app_or_check_permission(app_id: str, current_user: User, db: Session, required_level: str = "read") -> App:
     """获取应用并检查权限"""
     app = db.query(App).filter(App.id == app_id).first()
     if not app:
@@ -29,10 +29,11 @@ def get_app_or_check_permission(app_id: str, current_user: User, db: Session) ->
             detail="App not found"
         )
     if not current_user.is_superuser and app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to access this app"
-        )
+        if not has_app_access(current_user, app_id, required_level, db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to access this app"
+            )
     return app
 
 
@@ -47,14 +48,11 @@ def get_folder_or_404(folder_path: str, db: Session) -> Folder:
     return folder
 
 
-def check_folder_permission(folder: Folder, current_user: User, db: Session):
-    """检查用户是否有权限操作该文件夹"""
+def check_folder_permission(folder: Folder, current_user: User, db: Session, required_level: str = "read"):
+    """检查用户是否有权限操作该文件夹（含 app 层级继承）"""
     if current_user.is_superuser:
         return
-    app = db.query(App).filter(App.id == folder.app_id).first()
-    if not app:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Associated app not found")
-    if app.owner_id != current_user.id:
+    if not has_folder_access(current_user, folder.path, required_level, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No permission to access this folder")
 
 
@@ -86,8 +84,41 @@ def get_folders(
         query = query.filter(Folder.app_id == app.id)
     else:
         if not current_user.is_superuser:
-            user_app_ids = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
-            query = query.filter(Folder.app_id.in_(user_app_ids))
+            # Owned apps
+            owned_app_ids = [row[0] for row in db.query(App.id).filter(App.owner_id == current_user.id).all()]
+            # Apps with direct user permission
+            from app.models.permission import Permission
+            from app.models.group import GroupMember
+            perm_app_ids = [
+                row[0] for row in db.query(Permission.resource_id)
+                .filter(
+                    Permission.resource_type == "app",
+                    Permission.user_id == current_user.id,
+                )
+                .all()
+            ]
+            # Apps with group permission
+            user_group_ids = [
+                row[0] for row in db.query(GroupMember.group_id)
+                .filter(GroupMember.user_id == current_user.id)
+                .all()
+            ]
+            if user_group_ids:
+                group_perm_ids = [
+                    row[0] for row in db.query(Permission.resource_id)
+                    .filter(
+                        Permission.resource_type == "app",
+                        Permission.group_id.in_(user_group_ids),
+                    )
+                    .all()
+                ]
+                perm_app_ids = list(set(perm_app_ids + group_perm_ids))
+
+            all_app_ids = list(set(owned_app_ids + perm_app_ids))
+            if all_app_ids:
+                query = query.filter(Folder.app_id.in_(all_app_ids))
+            else:
+                query = query.filter(Folder.app_id == "")  # Return nothing
 
     if path_starts_with:
         query = query.filter(Folder.path.startswith(path_starts_with))
@@ -108,7 +139,7 @@ def create_folder(
     db: Session = Depends(get_db)
 ):
     """创建文件夹（基于路径层级）"""
-    app = get_app_or_check_permission(str(folder_data.app_id), current_user, db)
+    app = get_app_or_check_permission(str(folder_data.app_id), current_user, db, "write")
 
     # 检查同级同名冲突
     existing = db.query(Folder).filter(
@@ -166,7 +197,7 @@ def get_folder_tree(
     db: Session = Depends(get_db)
 ):
     """获取应用的文件夹树"""
-    get_app_or_check_permission(app_id, current_user, db)
+    app = get_app_or_check_permission(app_id, current_user, db)
 
     all_folders = db.query(Folder).filter(Folder.app_id == app_id).all()
 
@@ -197,7 +228,8 @@ def get_folder_tree(
             ))
         return result
 
-    return build_tree(None)
+    # Root folders have parent_folder_path = /{app.slug} (the app's root path)
+    return build_tree(f"/{app.slug}")
 
 
 @router.get("/{folder_path:path}", response_model=FolderResponse)

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "page_id": "test-page-id",
+  "page_path": "/canadasite/en/test-page",
+  "page_title": "Test Page Updated",
+  "language": "en",
+  "created_at": "2026-05-17T16:23:34.217552Z",
+  "author": "test",
+  "notes": "Updated content",
+  "content": "<html><body>Test content v2</body></html>",
+  "content_size": 41
+}

@@ -50,6 +50,27 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/search/, '/api/v1/search')
       },
+      // 用户管理API直接代理到FileBot后端（端口8001）
+      '/api/v1/users': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/users/, '/api/v1/users')
+      },
+      // 用户组管理API直接代理到FileBot后端（端口8001）
+      '/api/v1/groups': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/groups/, '/api/v1/groups')
+      },
+      // 权限管理API直接代理到FileBot后端（端口8001）
+      '/api/v1/permissions': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/v1\/permissions/, '/api/v1/permissions')
+      },
       // Export 相关 API 代理到 FileBot 后端（端口8001）
       '/api/v1/import-to-webbot': {
         target: 'http://localhost:8001',

@@ -1,0 +1,53 @@
+{
+  "name": "canada-department",
+  "label": "Department Properties",
+  "fields": [
+    {
+      "name": "department_name_eng",
+      "label": "Department Name (English)",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "department_name_fra",
+      "label": "Department Name (French)",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "department_acronym",
+      "label": "Acronym",
+      "type": "text"
+    },
+    {
+      "name": "minister_title_eng",
+      "label": "Minister Title (English)",
+      "type": "text"
+    },
+    {
+      "name": "minister_title_fra",
+      "label": "Minister Title (French)",
+      "type": "text"
+    },
+    {
+      "name": "minister_name",
+      "label": "Minister Name",
+      "type": "text"
+    },
+    {
+      "name": "department_logo",
+      "label": "Department Logo URL",
+      "type": "text"
+    },
+    {
+      "name": "parent_department",
+      "label": "Parent Department",
+      "type": "select",
+      "options": [
+        {"value": "", "label": "None"},
+        {"value": "tb-ct", "label": "Treasury Board of Canada Secretariat"},
+        {"value": "ps-sp", "label": "Public Safety Canada"}
+      ]
+    }
+  ]
+}

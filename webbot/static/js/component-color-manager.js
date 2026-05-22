@@ -16,6 +16,9 @@
   'use strict';
 
   // ---- Color mappings for WET-BOEW ----
+  // details is special — not a color component, but we recognise it for the "make it open" command
+  var DETAILS_TYPE = 'details';
+
   var COLOR_MAP = {
     // WET buttons: <a class="btn btn-default">, <button class="btn btn-primary">
     btn: {
@@ -68,6 +71,11 @@
   };
 
   // Allow looking up typeKey by a base class
+  COLOR_MAP[DETAILS_TYPE] = {
+    base: 'details',
+    prefix: '',
+    colors: []
+  };
   var BASE_TO_TYPE = {};
   for (var tk in COLOR_MAP) {
     if (COLOR_MAP[tk].base) {
@@ -249,6 +257,12 @@
       return { element: el, type: 'badge', color: 'default', available: badgeColors };
     }
 
+    // Check for <details> element by tag name
+    if (el.tagName && el.tagName.toLowerCase() === 'details') {
+      var open = el.hasAttribute('open') ? 'open' : 'closed';
+      return { element: el, type: DETAILS_TYPE, color: open, available: ['open', 'closed'] };
+    }
+
     return null;
   }
 
@@ -392,11 +406,112 @@
     };
   }
 
+  /**
+   * Make a <details> element open by adding open="true".
+   * If the element at cursor is not <details>, walks up to find one.
+   * @returns {object} { success, display, error }
+   */
+  function makeOpen() {
+    var editor = getEditor();
+    if (!editor) {
+      return { success: false, error: 'No editor found.' };
+    }
+
+    // Directly get cursor node from TinyMCE (doesn't require WET classes)
+    var node = null;
+    try {
+      node = editor.selection ? editor.selection.getNode() : null;
+    } catch (e) {
+      return { success: false, error: 'Could not read cursor position.' };
+    }
+    if (!node) {
+      return { success: false, error: 'No element at cursor. Click on a <details> element first.' };
+    }
+
+    // Walk up to find a <details> element
+    var detailsEl = node;
+    var maxDepth = 10;
+    while (detailsEl && maxDepth-- > 0) {
+      if (detailsEl.tagName && detailsEl.tagName.toLowerCase() === 'details') break;
+      detailsEl = detailsEl.parentNode;
+    }
+    if (!detailsEl || detailsEl.tagName.toLowerCase() !== 'details') {
+      return { success: false, error: 'No <details> element found near cursor.' };
+    }
+
+    if (detailsEl.hasAttribute('open') && detailsEl.getAttribute('open') !== 'false') {
+      return { success: true, display: '✅ <details> is already open.' };
+    }
+
+    detailsEl.setAttribute('open', 'true');
+
+    // Notify TinyMCE of the change
+    try {
+      editor.dispatch('Change', {});
+      editor.nodeChanged();
+    } catch (e) {
+      // Non-critical
+    }
+
+    return { success: true, display: '✅ Added open="true" to <details>. Content is now visible and editable.' };
+  }
+
+  /**
+   * Close a <details> element by removing open="true".
+   * Uses the same cursor-node logic as makeOpen (without WET class dependency).
+   * @returns {object} { success, display, error }
+   */
+  function makeClose() {
+    var editor = getEditor();
+    if (!editor) {
+      return { success: false, error: 'No editor found.' };
+    }
+
+    var node = null;
+    try {
+      node = editor.selection ? editor.selection.getNode() : null;
+    } catch (e) {
+      return { success: false, error: 'Could not read cursor position.' };
+    }
+    if (!node) {
+      return { success: false, error: 'No element at cursor. Click on a <details> element first.' };
+    }
+
+    // Walk up to find a <details> element
+    var detailsEl = node;
+    var maxDepth = 10;
+    while (detailsEl && maxDepth-- > 0) {
+      if (detailsEl.tagName && detailsEl.tagName.toLowerCase() === 'details') break;
+      detailsEl = detailsEl.parentNode;
+    }
+    if (!detailsEl || detailsEl.tagName.toLowerCase() !== 'details') {
+      return { success: false, error: 'No <details> element found near cursor.' };
+    }
+
+    if (!detailsEl.hasAttribute('open') || detailsEl.getAttribute('open') === 'false') {
+      return { success: true, display: '✅ <details> is already closed.' };
+    }
+
+    detailsEl.removeAttribute('open');
+
+    // Notify TinyMCE of the change
+    try {
+      editor.dispatch('Change', {});
+      editor.nodeChanged();
+    } catch (e) {
+      // Non-critical
+    }
+
+    return { success: true, display: '🔒 Removed open="true" from <details>. Content is collapsed.' };
+  }
+
   // ---- Export to window ----
   window.CanadaColorManager = {
     describeCurrent: describeCurrent,
     getCurrentComponent: getCurrentComponent,
-    changeColor: changeColor
+    changeColor: changeColor,
+    makeOpen: makeOpen,
+    makeClose: makeClose
   };
 
   console.log('🎨 CanadaColorManager v1.1 loaded — btn/alert/label/badge/panel/well/text/bg supported.');

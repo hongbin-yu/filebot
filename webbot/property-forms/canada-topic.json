@@ -1,0 +1,21 @@
+{
+  "name": "canada-topic",
+  "label": "Topic Page Properties",
+  "fields": [
+    {
+      "name": "services_count",
+      "label": "Number of Services",
+      "type": "number"
+    },
+    {
+      "name": "featured_link_text",
+      "label": "Featured Link Text",
+      "type": "text"
+    },
+    {
+      "name": "featured_link_url",
+      "label": "Featured Link URL",
+      "type": "url"
+    }
+  ]
+}

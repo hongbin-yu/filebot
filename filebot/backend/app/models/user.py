@@ -28,6 +28,8 @@ class User(Base):
     apps = relationship("App", back_populates="owner", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="uploader", cascade="all, delete-orphan")
     permissions = relationship("Permission", back_populates="user", cascade="all, delete-orphan")
+    owned_groups = relationship("Group", back_populates="owner", cascade="all, delete-orphan")
+    group_memberships = relationship("GroupMember", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username}, role={self.role})>"

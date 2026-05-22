@@ -15,6 +15,9 @@ import AdminAppFolders from './pages/admin/AdminAppFolders';
 import AdminDocuments from './pages/admin/AdminDocuments';
 import AdminUpload from './pages/admin/AdminUpload';
 import AdminTasks from './pages/admin/AdminTasks';
+import AdminGroups from './pages/admin/AdminGroups';
+import AdminPermissions from './pages/admin/AdminPermissions';
+import AdminUsers from './pages/admin/AdminUsers';
 import DocumentDetail from './pages/DocumentDetail';
 import AdminPathView from './pages/admin/AdminPathView';
 import PathDocumentView from './pages/PathDocumentView';
@@ -185,6 +188,15 @@ function App() {
             
             {/* Admin任务监控 */}
             <Route path="tasks" element={<AdminTasks />} />
+            
+            {/* Admin用户组管理 */}
+            <Route path="groups" element={<AdminGroups />} />
+            
+            {/* Admin权限管理 */}
+            <Route path="permissions" element={<AdminPermissions />} />
+
+            {/* Admin用户管理 */}
+            <Route path="users" element={<AdminUsers />} />
             
             {/* Admin路径视图（新URL模式：/admin/{app}/{path}） */}
             <Route path=":appSlug/*" element={<AdminPathView />} />

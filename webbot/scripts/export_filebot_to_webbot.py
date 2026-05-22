@@ -81,13 +81,15 @@ def read_file(storage_path, data_dir=None):
 
 def extract_meta_tags(html):
     """
-    从 HTML 中提取 <meta name="description"> 和 <meta name="keywords">。
-    返回 (description, keywords) 元组。
+    从 HTML 中提取 <meta name="description">、<meta name="keywords">
+    和 <meta name="dcterms.modified">。
+    返回 (description, keywords, dcterms_modified) 元组。
     """
     desc = ''
     kw = ''
+    modified = None
     if not html:
-        return desc, kw
+        return desc, kw, modified
     
     m = re.search(r'<meta\s+name=["\']description["\']\s+content=["\']([^"\']+)["\']',
                   html, re.I)
@@ -98,6 +100,14 @@ def extract_meta_tags(html):
                   html, re.I)
     if m:
         kw = m.group(1).strip()
+    
+    # 提取 dcterms.modified (W3CDTF date, e.g. "2026-05-15")
+    m = re.search(r'<meta\s+name=["\']dcterms\.modified["\']\s+title=["\']W3CDTF["\']\s+content=["\']([^"\']+)["\']',
+                  html, re.I)
+    if m:
+        modified = m.group(1).strip()
+    
+    return desc, kw, modified
 
     return desc, kw
 
@@ -195,14 +205,17 @@ def guess_webbot_paths(alternate_url):
 def insert_page(cursor, page_id, parent_path, path, title, content,
                 language, description="", keywords="", status="published",
                 metadata=None, created_by="system", hide_in_nav=False,
-                other_language_path=None):
+                other_language_path=None, last_modified=None):
     """
     插入页面。如果 path 已存在，则跳过。
     使用 path 的唯一性来判断重复。
     
     other_language_path: 其他语言对应页面路径（导入时必填）。
+    last_modified: 可选的修改时间（默认使用当前时间）。
+                   导入时从 <meta name="dcterms.modified"> 提取。
     """
     now = datetime.now().isoformat()
+    lm = last_modified if last_modified else now
     meta = json.dumps(metadata or {})
 
     # Check if path already exists
@@ -221,7 +234,7 @@ def insert_page(cursor, page_id, parent_path, path, title, content,
         """, (
             page_id, title, description, keywords, content, language, parent_path,
             other_language_path, status, meta, hide_in_nav,
-            created_by, now, now, path
+            created_by, now, lm, path
         ))
         return True, page_id
     except sqlite3.IntegrityError as e:
@@ -303,8 +316,8 @@ def cmd_import(args):
             print(f"  ⚠️  无法读取文件: {storage_path}")
             content = ""
 
-        # 从 HTML 提取 meta description 和 keywords
-        meta_desc, meta_keywords = extract_meta_tags(content)
+        # 从 HTML 提取 meta description、keywords 和 dcterms.modified
+        meta_desc, meta_keywords, dcterms_modified = extract_meta_tags(content)
         # description 优先级: HTML meta > documents.description
         page_desc = meta_desc if meta_desc else (doc['description'] or '')
 
@@ -375,7 +388,8 @@ def cmd_import(args):
                     description=page_desc, keywords=meta_keywords,
                     status="published", metadata=meta,
                     created_by=created_by, hide_in_nav=len(path_parts) <= 2,
-                    other_language_path=other_lang_path
+                    other_language_path=other_lang_path,
+                    last_modified=dcterms_modified
                 )
                 if ok:
                     inserted += 1

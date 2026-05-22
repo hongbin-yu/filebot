@@ -175,6 +175,12 @@ const AdminAppsDashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
+                    <Link
+                      to={`/admin/permissions?resource_type=app&resource_id=${app.id}`}
+                      className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200"
+                    >
+                      Permissions
+                    </Link>
                     <button 
                       onClick={() => handleEditApp(app.id)}
                       className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"

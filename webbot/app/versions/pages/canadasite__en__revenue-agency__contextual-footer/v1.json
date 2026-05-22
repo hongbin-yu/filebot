@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "page_id": "/canadasite/en/revenue-agency/contextual-footer",
+  "page_path": "/canadasite/en/revenue-agency/contextual-footer",
+  "page_title": "contextual-footer",
+  "language": "en",
+  "content_size": 513,
+  "created_at": "2026-05-21T02:19:47.793339Z",
+  "author": null,
+  "notes": "Published via WebBot",
+  "content": "<h2 class=\"wb-inv\">About this site</h2>\n<div class=\"gc-contextual\">\n<div class=\"container\"><nav>\n<h3>Canada Revenue Agency (CRA)</h3>\n<ul class=\"list-col-xs-1 list-col-sm-2 list-col-md-3\">\n<li><a href=\"/en/revenue-agency/corporate/contact-information.html\">Contact the CRA</a></li>\n<li><a href=\"/en/revenue-agency/services/update-information-cra.html\">Update your information</a></li>\n<li><a href=\"/en/revenue-agency/corporate/about-canada-revenue-agency-cra.html\">About the CRA</a></li>\n</ul>\n</nav></div>\n</div>"
+}

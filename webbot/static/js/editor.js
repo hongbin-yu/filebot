@@ -2975,7 +2975,6 @@
                         '.mwstext.section',           // Canada.ca content area
                         '.row.profile',               // Canada.ca profile/content container
                         '#main-content',
-                        'article',
                         '.container.main'
                     ];
 

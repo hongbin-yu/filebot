@@ -46,4 +46,68 @@ except ImportError as e:
     SEARCH_ENABLED = False
     search_router = None
 
-__all__ = ["pages_router", "pages_v1_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED"]
+try:
+    from .versions import router as versions_router
+    VERSIONS_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Versions route import failed: {e}")
+    VERSIONS_ENABLED = False
+    versions_router = None
+
+try:
+    from .tags import router as tags_router
+    TAGS_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Tags route import failed: {e}")
+    TAGS_ENABLED = False
+    tags_router = None
+
+try:
+    from .analytics import router as analytics_router
+    ANALYTICS_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Analytics route import failed: {e}")
+    ANALYTICS_ENABLED = False
+    analytics_router = None
+
+try:
+    from .schedule import router as schedule_router
+    SCHEDULE_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Schedule route import failed: {e}")
+    SCHEDULE_ENABLED = False
+    schedule_router = None
+
+try:
+    from .mail import router as mail_router
+    MAIL_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Mail route import failed: {e}")
+    MAIL_ENABLED = False
+    mail_router = None
+
+try:
+    from .feedback import router as feedback_router
+    FEEDBACK_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Feedback route import failed: {e}")
+    FEEDBACK_ENABLED = False
+    feedback_router = None
+
+try:
+    from .track import router as track_router
+    TRACK_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Tracking route import failed: {e}")
+    TRACK_ENABLED = False
+    track_router = None
+
+try:
+    from .translate import router as translate_router
+    TRANSLATE_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Translate route import failed: {e}")
+    TRANSLATE_ENABLED = False
+    translate_router = None
+
+__all__ = ["pages_router", "pages_v1_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "tags_router", "analytics_router", "versions_router", "schedule_router", "mail_router", "feedback_router", "track_router", "translate_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED", "TAGS_ENABLED", "ANALYTICS_ENABLED", "VERSIONS_ENABLED", "SCHEDULE_ENABLED", "MAIL_ENABLED", "FEEDBACK_ENABLED", "TRACK_ENABLED", "TRANSLATE_ENABLED"]

@@ -146,7 +146,34 @@ def create_first_superuser(db: Session) -> None:
     logger.info(f"创建默认管理员用户: {admin.username}")
 
 
-def check_user_permission(user: User, resource_type: str, resource_id: str, required_level: str) -> bool:
+from app.models.permission import Permission, ResourceType, PermissionLevel
+from app.models.group import GroupMember
+
+
+_LEVEL_RANK = {
+    PermissionLevel.READ: 0,
+    PermissionLevel.WRITE: 1,
+    PermissionLevel.ADMIN: 2,
+    PermissionLevel.OWNER: 3,
+}
+
+
+def _get_level_rank(level: str) -> int:
+    """将字符串权限级别转换为排名数值"""
+    try:
+        pl = PermissionLevel(level)
+        return _LEVEL_RANK.get(pl, -1)
+    except ValueError:
+        return -1
+
+
+def check_user_permission(
+    user: User,
+    resource_type: str,
+    resource_id: str,
+    required_level: str,
+    db: Session = None
+) -> bool:
     """检查用户权限
     
     Args:
@@ -154,6 +181,7 @@ def check_user_permission(user: User, resource_type: str, resource_id: str, requ
         resource_type: 资源类型 (app, drawer, folder, document)
         resource_id: 资源ID
         required_level: 所需权限级别 (read, write, admin, owner)
+        db: 数据库会话（可选，不提供时返回True以保持兼容）
     
     Returns:
         bool: 是否有权限
@@ -161,13 +189,114 @@ def check_user_permission(user: User, resource_type: str, resource_id: str, requ
     # 超级用户拥有所有权限
     if user.is_superuser:
         return True
+
+    if db is None:
+        # 无数据库会话时返回True保持兼容（旧调用方不会报错）
+        return True
+
+    try:
+        res_type = ResourceType(resource_type)
+        req_level = PermissionLevel(required_level)
+    except ValueError:
+        return False
+
+    required_rank = _LEVEL_RANK.get(req_level, -1)
+
+    # 1. 查 direct user permissions
+    direct_perms = db.query(Permission).filter(
+        Permission.user_id == user.id,
+        Permission.resource_type == res_type,
+        Permission.resource_id == resource_id,
+    ).all()
+
+    # 2. 查 group-based permissions
+    user_group_ids = [
+        row[0] for row in db.query(GroupMember.group_id)
+        .filter(GroupMember.user_id == user.id)
+        .all()
+    ]
+    group_perms = []
+    if user_group_ids:
+        group_perms = db.query(Permission).filter(
+            Permission.group_id.in_(user_group_ids),
+            Permission.resource_type == res_type,
+            Permission.resource_id == resource_id,
+        ).all()
+
+    # 3. 层级继承: 如果 resource_type 是 folder, 检查父 app 权限
+    if res_type == ResourceType.FOLDER:
+        from app.models.folder import Folder
+        folder = db.query(Folder).filter(Folder.path == resource_id).first()
+        if folder:
+            # 检查 app 级别的权限（用户直接权限）
+            app_direct = db.query(Permission).filter(
+                Permission.user_id == user.id,
+                Permission.resource_type == ResourceType.APP,
+                Permission.resource_id == folder.app_id,
+            ).all()
+            if user_group_ids:
+                app_group = db.query(Permission).filter(
+                    Permission.group_id.in_(user_group_ids),
+                    Permission.resource_type == ResourceType.APP,
+                    Permission.resource_id == folder.app_id,
+                ).all()
+                app_direct = app_direct + app_group
+            all_perms = direct_perms + group_perms + app_direct
+        else:
+            all_perms = direct_perms + group_perms
+    else:
+        all_perms = direct_perms + group_perms
+
+    if not all_perms:
+        return False
+
+    best_rank = max(_LEVEL_RANK.get(p.permission_level, -1) for p in all_perms)
+    return best_rank >= required_rank
+
+
+def has_app_access(user: User, app_id: str, level: str = "read", db: Session = None) -> bool:
+    """检查用户是否有权访问指定 app
     
-    # TODO: 实现详细的权限检查逻辑
-    # 这里先实现简单的检查，后续需要结合权限表
+    Args:
+        user: 用户对象
+        app_id: 应用ID
+        level: 所需权限级别 (read, write, admin, owner)
+        db: 数据库会话
     
-    # 临时实现：用户只能访问自己的资源
-    # 实际项目中需要根据权限表进行复杂检查
-    return True  # 暂时返回True，后续完善
+    Returns:
+        bool: 是否有权限
+    """
+    if user.is_superuser:
+        return True
+
+    # App owner 总是有所有权限
+    from app.models.app import App
+    app = db.query(App).filter(App.id == app_id).first()
+    if app and app.owner_id == user.id:
+        return True
+
+    return check_user_permission(user, "app", app_id, level, db)
+
+
+def has_folder_access(user: User, folder_path: str, level: str = "read", db: Session = None) -> bool:
+    """检查用户是否有权访问指定 folder
+    
+    同时检查 folder 权限和上级 app 权限（层级继承）。
+    
+    Args:
+        user: 用户对象
+        folder_path: 文件夹路径
+        level: 所需权限级别 (read, write, admin, owner)
+        db: 数据库会话
+    
+    Returns:
+        bool: 是否有权限
+    """
+    if user.is_superuser:
+        return True
+
+    # 检查 folder 级别权限（含 app 层级继承）
+    return check_user_permission(user, "folder", folder_path, level, db)
 async def get_current_active_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)

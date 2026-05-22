@@ -1,5 +1,5 @@
 # 路由模块
-from . import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export
+from . import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export, groups, permissions
 
 __all__ = [
     "auth",
@@ -13,5 +13,7 @@ __all__ = [
     "ai",
     "features",
     "folders",
-    "export"
+    "export",
+    "groups",
+    "permissions",
 ]

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Version Manager — Canada.ca CMS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            padding: 20px;
+        }
+        h1 {
+            color: #2572b4;
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h1 small { font-size: 14px; font-weight: 400; color: #666; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #2572b4;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .search-bar {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .search-bar input:focus {
+            outline: none;
+            border-color: #2572b4;
+            box-shadow: 0 0 0 2px rgba(37,114,180,0.15);
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            flex: 1;
+            min-width: 150px;
+        }
+        .stat-card .num { font-size: 28px; font-weight: 700; color: #2572b4; }
+        .stat-card .label { font-size: 13px; color: #666; margin-top: 2px; }
+
+        .page-list {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .page-header {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 100px;
+            padding: 12px 20px;
+            background: #f0f4f8;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .page-row {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 100px;
+            padding: 10px 20px;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+        }
+        .page-row:hover { background: #f8faff; }
+        .page-row:last-child { border-bottom: none; }
+        .page-row .path {
+            color: #2572b4;
+            font-weight: 500;
+            cursor: pointer;
+            word-break: break-all;
+        }
+        .page-row .path:hover { text-decoration: underline; }
+        .page-row .v-num { font-weight: 600; }
+        .page-row .v-date { color: #666; font-size: 12px; }
+        .page-row .v-size { color: #888; }
+        .btn-view {
+            background: #2572b4;
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-view:hover { background: #1a5a8c; }
+
+        /* Version detail panel */
+        .version-detail {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+        .version-detail.visible { display: block; }
+        .version-detail h2 { font-size: 18px; margin-bottom: 10px; }
+
+        /* Page action buttons */
+        .page-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .page-actions a, .page-actions button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-editor { background: #2572b4; color: #fff; }
+        .btn-editor:hover { background: #1a5a8c; }
+        .btn-raw { background: #6f42c1; color: #fff; }
+        .btn-raw:hover { background: #5a32a3; }
+        .btn-compare { background: #e67e22; color: #fff; }
+        .btn-compare:hover { background: #d35400; }
+        .btn-rollback { background: #d9534f; color: #fff; }
+        .btn-rollback:hover { background: #c9302c; }
+        .btn-close-detail { background: #eee; color: #333; }
+        .btn-close-detail:hover { background: #ddd; }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 12px;
+        }
+        .meta-item { font-size: 12px; }
+        .meta-item strong { color: #555; }
+        .meta-item .val { color: #333; }
+        .tag-ok { color: #2e7d32; font-weight: 600; }
+        .tag-pending { color: #c62828; font-weight: 600; }
+        .tag-draft { color: #e65100; font-weight: 600; }
+        .tag-published { color: #2e7d32; font-weight: 600; }
+
+        .version-list-compact {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .version-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 3px;
+            gap: 8px;
+        }
+        .version-item:hover { background: #e8f0fe; }
+        .version-item.active { background: #d4e4fc; font-weight: 600; }
+        .version-item .v-checkbox {
+            width: 16px; height: 16px;
+            cursor: pointer;
+            accent-color: #2572b4;
+        }
+
+        /* Compare panel */
+        .compare-panel {
+            display: none;
+            margin-top: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .compare-panel.visible { display: block; }
+        .compare-header {
+            background: #f0f4f8;
+            padding: 10px 15px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .compare-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+        .compare-col {
+            padding: 15px;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .compare-col:first-child {
+            border-right: 1px solid #e0e0e0;
+            background: #fffcf5;
+        }
+        .compare-col:last-child {
+            background: #f5fff5;
+        }
+        .compare-col .col-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .empty-state h3 { font-size: 18px; margin-bottom: 8px; }
+        .loading { text-align: center; padding: 30px; color: #888; }
+
+        @media (max-width: 768px) {
+            .page-header, .page-row {
+                grid-template-columns: 2fr 1fr 80px;
+            }
+            .page-header .v-date, .page-row .v-date,
+            .page-header .v-size, .page-row .v-size {
+                display: none;
+            }
+            .meta-grid { grid-template-columns: 1fr 1fr; }
+            .compare-body { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div style="max-width:1100px;margin:0 auto;">
+        <h1>
+            📋 Version Manager
+            <small>页面发布版本管理 · 编辑器 / Raw HTML / 版本对比</small>
+        </h1>
+        <a href="javascript:history.back()" class="back-link">← Back to CMS</a>
+
+        <!-- Stats -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-card"><div class="num" id="totalPages">-</div><div class="label">Versioned Pages</div></div>
+            <div class="stat-card"><div class="num" id="totalVersions">-</div><div class="label">Total Versions</div></div>
+            <div class="stat-card"><div class="num" id="totalSize">-</div><div class="label">Total Size</div></div>
+        </div>
+
+        <!-- Search -->
+        <div class="search-bar">
+            <span>🔍</span>
+            <input type="text" id="searchInput" placeholder="Search by page path..." oninput="filterPages()">
+        </div>
+
+        <!-- Page list -->
+        <div class="page-list" id="pageListContainer">
+            <div class="page-header">
+                <span>Page Path</span>
+                <span>Versions</span>
+                <span class="v-date">Latest</span>
+                <span class="v-size">Latest Size</span>
+                <span></span>
+            </div>
+            <div id="pageList"><div class="loading">Loading...</div></div>
+        </div>
+
+        <!-- Version Detail -->
+        <div class="version-detail" id="versionDetail">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h2 id="detailTitle">Version History</h2>
+                <button class="btn-close-detail" onclick="closeDetail()">✕ Close</button>
+            </div>
+
+            <!-- Page action buttons -->
+            <div class="page-actions" id="pageActions"></div>
+
+            <!-- Page metadata -->
+            <div class="meta-grid" id="detailMeta"></div>
+
+            <!-- Compare hint -->
+            <div id="compareHint" style="font-size:12px;color:#888;margin-bottom:6px;">
+                💡 Select two versions then click <strong>Compare</strong> to see side-by-side diff
+            </div>
+
+            <!-- Version list -->
+            <div id="versionListContainer"></div>
+
+            <!-- Compare panel -->
+            <div class="compare-panel" id="comparePanel">
+                <div class="compare-header">
+                    <span id="compareTitle">Version Diff</span>
+                    <button class="btn-close-detail" onclick="closeCompare()" style="padding:4px 8px;">✕</button>
+                </div>
+                <div class="compare-body">
+                    <div class="compare-col" id="compareCol1">
+                        <div class="col-header" id="compareCol1Title">v1</div>
+                        <div id="compareContent1"><em>Loading...</em></div>
+                    </div>
+                    <div class="compare-col" id="compareCol2">
+                        <div class="col-header" id="compareCol2Title">v2</div>
+                        <div id="compareContent2"><em>Loading...</em></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allPages = [];
+        let currentPagePath = null;
+        let currentVersions = [];
+        let compareSelections = new Set();
+        const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
+
+        async function loadSummary() {
+            try {
+                const res = await fetch(API_BASE + '/api/v1/versions/summary');
+                const pages = await res.json();
+                allPages = pages;
+
+                const totalVersions = pages.reduce((s, p) => s + p.version_count, 0);
+                const totalBytes = pages.reduce((s, p) => s + p.latest_size, 0);
+                document.getElementById('totalPages').textContent = pages.length;
+                document.getElementById('totalVersions').textContent = totalVersions;
+                document.getElementById('totalSize').textContent = formatBytes(totalBytes);
+
+                renderPageList(pages);
+            } catch (e) {
+                document.getElementById('pageList').innerHTML =
+                    '<div class="empty-state"><h3>⚠️ Connection Error</h3><p>Cannot reach the API server.</p></div>';
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function renderPageList(pages) {
+            const container = document.getElementById('pageList');
+            if (pages.length === 0) {
+                container.innerHTML = '<div class="empty-state"><h3>📭 No Versioned Pages</h3><p>Publish a page first to create version snapshots.</p></div>';
+                return;
+            }
+            container.innerHTML = pages.map(p => `
+                <div class="page-row">
+                    <span class="path" onclick="viewPageHistory('${p.page_path}')">${p.page_path}</span>
+                    <span class="v-num">${p.version_count}</span>
+                    <span class="v-date">${formatDate(p.latest_at)}</span>
+                    <span class="v-size">${formatBytes(p.latest_size)}</span>
+                    <span><button class="btn-view" onclick="viewPageHistory('${p.page_path}')">View</button></span>
+                </div>
+            `).join('');
+        }
+
+        function filterPages() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allPages.filter(p => p.page_path.toLowerCase().includes(q));
+            renderPageList(filtered);
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '-';
+            const d = new Date(iso);
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+
+        /* ── Page detail ── */
+        async function viewPageHistory(pagePath) {
+            currentPagePath = pagePath;
+            compareSelections = new Set();
+            closeCompare();
+            const detail = document.getElementById('versionDetail');
+            detail.classList.add('visible');
+
+            document.getElementById('detailTitle').textContent = '📄 ' + pagePath;
+
+            try {
+                const res = await fetch(API_BASE + '/api/v1/versions/page?path=' + encodeURIComponent(pagePath));
+                const data = await res.json();
+
+                // Page action buttons
+                const editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(pagePath);
+                document.getElementById('pageActions').innerHTML = `
+                    <a href="${editorUrl}" target="_blank" class="btn-editor">✏️ Open in Editor</a>
+                    <button class="btn-compare" id="btnDoCompare" onclick="doCompare()">📋 Compare Selected (${compareSelections.size}/2)</button>
+                    <button class="btn-rollback" onclick="rollbackPage()">⏪ Rollback</button>
+                `;
+
+                // Metadata
+                const m = data.metadata || {};
+                const statusHtml = m.status === 'published'
+                    ? '<span class="tag-published">● Published</span>'
+                    : '<span class="tag-draft">● Draft</span>';
+                const approvedHtml = m.approved
+                    ? '<span class="tag-ok">✅ Approved</span>'
+                    : '<span class="tag-pending">⛔ Not Approved</span>';
+
+                document.getElementById('detailMeta').innerHTML = `
+                    <div class="meta-item"><strong>Title:</strong> <span class="val">${escHtml(m.title || '-')}</span></div>
+                    <div class="meta-item"><strong>Navigation:</strong> <span class="val">${escHtml(m.navigation_title || '-')}</span></div>
+                    <div class="meta-item"><strong>Language:</strong> <span class="val">${escHtml(m.language || '-')}</span></div>
+                    <div class="meta-item"><strong>Status:</strong> ${statusHtml}</div>
+                    <div class="meta-item"><strong>Approval:</strong> ${approvedHtml}</div>
+                    <div class="meta-item"><strong>Current Version:</strong> <span class="val">v${m.current_version || '—'}</span></div>
+                    <div class="meta-item"><strong>Last Published:</strong> <span class="val">${m.last_published ? formatDate(m.last_published) : '—'}</span></div>
+                    <div class="meta-item"><strong>Version Count:</strong> <span class="val">${data.version_count}</span></div>
+                `;
+
+                // Version list
+                currentVersions = data.versions || [];
+                if (currentVersions.length > 0) {
+                    document.getElementById('versionListContainer').innerHTML = `
+                        <div class="version-list-compact">
+                            ${currentVersions.map(v => `
+                                <div class="version-item" onclick="toggleVersionSelect(${v.version}, this)">
+                                    <span style="display:flex;align-items:center;gap:8px;flex:1;">
+                                        <input type="checkbox" class="v-checkbox" data-version="${v.version}"
+                                            onchange="toggleVersionSelect(${v.version}, this.closest('.version-item'))"
+                                            ${compareSelections.has(v.version) ? 'checked' : ''}>
+                                        <span><strong>v${v.version}</strong> · ${formatDate(v.created_at)}</span>
+                                    </span>
+                                    <span style="display:flex;align-items:center;gap:8px;">
+                                        <button class="btn-raw" style="padding:2px 8px;font-size:11px;"
+                                            onclick="event.stopPropagation(); viewRawHTML('${pagePath}', ${v.version})">
+                                            🔍 HTML
+                                        </button>
+                                        <span>${formatBytes(v.html_size)}</span>
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('versionListContainer').innerHTML =
+                        '<div class="empty-state"><h3>📭 No versions</h3></div>';
+                }
+
+                // Scroll to detail
+                detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (e) {
+                document.getElementById('detailMeta').innerHTML = `<div style="color:#d9534f;">Error: ${e.message}</div>`;
+                document.getElementById('versionListContainer').innerHTML = '';
+            }
+        }
+
+        /* ── Version selection for compare ── */
+        function toggleVersionSelect(version, el) {
+            const chk = el ? el.querySelector('.v-checkbox') : null;
+            if (compareSelections.has(version)) {
+                compareSelections.delete(version);
+                if (chk) chk.checked = false;
+                el && el.classList.remove('active');
+            } else {
+                if (compareSelections.size >= 2) {
+                    // Remove oldest selection
+                    const first = compareSelections.values().next().value;
+                    compareSelections.delete(first);
+                    // Uncheck the visual
+                    document.querySelectorAll('.v-checkbox').forEach(c => {
+                        if (parseInt(c.dataset.version) === first) c.checked = false;
+                    });
+                    document.querySelectorAll('.version-item').forEach(i => {
+                        i.style.outline = '';
+                    });
+                }
+                compareSelections.add(version);
+                if (chk) chk.checked = true;
+                el && el.classList.add('active');
+            }
+            // Update button text
+            const btn = document.getElementById('btnDoCompare');
+            if (btn) btn.textContent = '📋 Compare Selected (' + compareSelections.size + '/2)';
+        }
+
+        /* ── Compare ── */
+        async function doCompare() {
+            if (compareSelections.size < 2) {
+                alert('Select exactly 2 versions to compare (checkboxes on the left).');
+                return;
+            }
+            const versions = Array.from(compareSelections).sort((a, b) => a - b);
+            const v1 = versions[0];
+            const v2 = versions[1];
+
+            document.getElementById('comparePanel').classList.add('visible');
+            document.getElementById('compareTitle').textContent = 'Diff: v' + v1 + ' vs v' + v2;
+            document.getElementById('compareCol1Title').textContent = 'v' + v1;
+            document.getElementById('compareCol2Title').textContent = 'v' + v2;
+            document.getElementById('compareContent1').innerHTML = '<em>Loading...</em>';
+            document.getElementById('compareContent2').innerHTML = '<em>Loading...</em>';
+
+            try {
+                const res = await fetch(API_BASE + '/api/v1/versions/page/diff?path=' +
+                    encodeURIComponent(currentPagePath) + '&v1=' + v1 + '&v2=' + v2);
+                const data = await res.json();
+
+                document.getElementById('compareContent1').textContent = data.v1.content || '(empty)';
+                document.getElementById('compareContent2').textContent = data.v2.content || '(empty)';
+            } catch (e) {
+                document.getElementById('compareContent1').innerHTML = '<span style="color:#d9534f;">Error: ' + e.message + '</span>';
+                document.getElementById('compareContent2').innerHTML = '<span style="color:#d9534f;">Error: ' + e.message + '</span>';
+            }
+        }
+
+        function closeCompare() {
+            document.getElementById('comparePanel').classList.remove('visible');
+        }
+
+        /* ── Raw HTML ── */
+        async function viewRawHTML(pagePath, version) {
+            try {
+                const res = await fetch(API_BASE + '/api/v1/versions/page/version?path=' +
+                    encodeURIComponent(pagePath) + '&version=' + version);
+                const data = await res.json();
+                if (data.content) {
+                    const win = window.open('', '_blank');
+                    win.document.write('<!DOCTYPE html><html><head><title>Raw HTML v' + version + '</title>');
+                    win.document.write('<style>body{font-family:monospace;padding:20px;white-space:pre-wrap;word-break:break-word;background:#fff;color:#333;max-width:1200px;margin:0 auto;}</style>');
+                    win.document.write('</head><body>');
+                    win.document.write('<div style="background:#f0f4f8;padding:12px;border-radius:8px;margin-bottom:20px;font-family:sans-serif;font-size:14px;">');
+                    win.document.write('<strong>📄 ' + escHtml(pagePath) + '</strong> · v' + version + ' · ' + formatDate(data.created_at));
+                    win.document.write('<br><span style="color:#888;">Raw HTML content (' + formatBytes((data.content || '').length) + ')</span>');
+                    win.document.write('</div>');
+                    win.document.write('<div style="border:1px solid #e0e0e0;border-radius:4px;padding:20px;">');
+                    win.document.write(escHtml(data.content));  // Escape for raw HTML display
+                    win.document.write('</div>');
+                    win.document.write('</body></html>');
+                    win.document.close();
+                }
+            } catch (e) {
+                alert('Error loading version: ' + e.message);
+            }
+        }
+
+        /* ── Rollback ── */
+        function rollbackPage() {
+            if (!currentPagePath) return;
+            // Find which version to rollback to: use the first active/selected version, or last in list
+            const active = document.querySelector('.version-item.active');
+            let version = null;
+            if (active) {
+                const chk = active.querySelector('.v-checkbox');
+                if (chk) version = parseInt(chk.dataset.version);
+            }
+            if (!version && currentVersions.length > 0) {
+                version = currentVersions[0].version; // latest
+            }
+            if (!version) return alert('Select a version to rollback to.');
+
+            if (!confirm('⏪ Rollback ' + currentPagePath + ' to v' + version + '?\n\nThis will:\n1. Restore historical content\n2. Re-render with current templates\n3. Re-publish via FileBot\n\nProceed?')) return;
+
+            fetch(API_BASE + '/api/v1/versions/page/rollback?path=' +
+                encodeURIComponent(currentPagePath) + '&version=' + version, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Rolled back to v' + version + ' successfully!');
+                        viewPageHistory(currentPagePath);
+                    } else {
+                        alert('❌ Rollback failed: ' + (data.detail || 'Unknown error'));
+                    }
+                })
+                .catch(e => alert('❌ Error: ' + e.message));
+        }
+
+        function closeDetail() {
+            document.getElementById('versionDetail').classList.remove('visible');
+            currentPagePath = null;
+            currentVersions = [];
+            compareSelections = new Set();
+        }
+
+        function escHtml(s) {
+            if (!s) return '';
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        /* ── Init ── */
+        loadSummary();
+
+        // Auto-open if path param provided
+        var params = new URLSearchParams(window.location.search);
+        var initPath = params.get('path');
+        if (initPath) {
+            setTimeout(function() { viewPageHistory(initPath); }, 500);
+        }
+    </script>
+</body>
+</html>

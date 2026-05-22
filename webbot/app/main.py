@@ -9,13 +9,14 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import sqlite3
 import os
+from datetime import datetime
 
 # 导入路由
 try:
-    from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
+    from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, TRANSLATE_ENABLED
 except ImportError:
     # 备用导入方式
-    from routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED
+    from routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, TRANSLATE_ENABLED
 
 # 数据库路径
 WEBBOT_DB_PATH = os.environ.get(
@@ -27,15 +28,72 @@ FILEBOT_DB_PATH = os.environ.get(
     "/home/hongb/.openclaw/workspace/filebot/backend/filebot.db"
 )
 
+async def scheduled_publish_loop():
+    """定时发布后台任务 — 每分钟检查一次，通过 HTTP 调用自身实现发布"""
+    import asyncio
+
+    while True:
+        try:
+            conn = sqlite3.connect(WEBBOT_DB_PATH)
+            conn.row_factory = sqlite3.Row
+            now = datetime.utcnow().isoformat()
+            cursor = conn.execute(
+                "SELECT path FROM webbot_page WHERE scheduled_publish IS NOT NULL "
+                "AND scheduled_publish <= ? AND status != 'published'",
+                (now,)
+            )
+            due = [dict(r) for r in cursor.fetchall()]
+            conn.close()
+
+            for page in due:
+                path = page["path"]
+                try:
+                    print(f"⏰ Scheduled publish: {path}")
+                    # 通过 HTTP 调用内部 publish API
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(
+                            f"http://localhost:8000/api/v1/pages/publish?path={path}",
+                            headers={"X-WebBot-Internal": "scheduler"}
+                        ) as resp:
+                            if resp.status == 200:
+                                # 清除定时标记
+                                conn2 = sqlite3.connect(WEBBOT_DB_PATH)
+                                conn2.execute(
+                                    "UPDATE webbot_page SET scheduled_publish = NULL WHERE path = ?",
+                                    (path,)
+                                )
+                                conn2.commit()
+                                conn2.close()
+                                print(f"✅ Scheduled publish done: {path}")
+                            else:
+                                err = await resp.text()
+                                print(f"⚠️ Scheduled publish failed: {path} HTTP {resp.status}: {err[:200]}")
+                except Exception as e:
+                    print(f"❌ Scheduled publish error: {path}: {e}")
+        except Exception as e:
+            print(f"❌ Scheduler loop error: {e}")
+
+        await asyncio.sleep(60)  # 每分钟检查
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 启动时初始化数据库
+    import asyncio
     print("🚀 WebBot启动中...")
     init_database()
     print("✅ 数据库初始化完成")
+    # 启动定时发布后台任务
+    task = asyncio.create_task(scheduled_publish_loop())
+    print("⏰ Scheduled publish checker started (every 60s)")
     yield
-    # 关闭时清理资源
+    # 关闭时清理
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
     print("🛑 WebBot关闭中...")
 
 # 创建FastAPI应用
@@ -248,18 +306,26 @@ def init_database():
         raise
 
 # 包含路由
-app.include_router(pages_router)
-app.include_router(pages_v1_router)
-app.include_router(ai_router)
+if ANALYTICS_ENABLED and analytics_router:
+    app.include_router(analytics_router)
+    print("✅ Analytics路由已加载 (/api/v1/analytics)")
 
-# 包含文件路由（如果可用）
+if VERSIONS_ENABLED and versions_router:
+    app.include_router(versions_router)
+    print("✅ Versions路由已加载 (/api/v1/versions)")
+    
+if SCHEDULE_ENABLED:
+    app.include_router(schedule_router)
+    print("✅ Schedule路由已加载")
+
+# 文件路由
 if FILES_ENABLED and files_router:
     app.include_router(files_router)
     print("✅ 文件路由已加载")
 else:
     print("⚠️  文件路由未加载")
 
-# 包含组件路由（如果可用）
+# 组件路由
 if COMPONENTS_ENABLED and components_router:
     app.include_router(components_router)
     print("✅ 组件路由已加载")
@@ -275,8 +341,30 @@ if AUTH_ENABLED and auth_router:
 
 if SEARCH_ENABLED and search_router:
     app.include_router(search_router)
-else:
-    print("⚠️  Mustache渲染路由未加载")
+
+if TAGS_ENABLED and tags_router:
+    app.include_router(tags_router)
+
+if MAIL_ENABLED and mail_router:
+    app.include_router(mail_router)
+
+if FEEDBACK_ENABLED and feedback_router:
+    app.include_router(feedback_router)
+
+if TRACK_ENABLED and track_router:
+    app.include_router(track_router)
+    print("✅ Tracking路由已加载 (/api/v1/track)")
+
+if TRANSLATE_ENABLED and translate_router:
+    app.include_router(translate_router)
+    print("✅ Translate路由已加载 (/api/v1/translate)")
+
+# 页面路由（必须最后注册，避免 catch-all 拦截其他路由）
+app.include_router(pages_router)
+app.include_router(pages_v1_router)
+app.include_router(ai_router)
+
+# ==================== FileBot文档代理路由 ====================
 
 # ==================== FileBot文档代理路由 ====================
 # 提供/content/dam/路径访问已发布的FileBot文档
@@ -420,7 +508,19 @@ async def proxy_filebot_upload(request: Request):
 # 添加静态文件服务（前端界面）
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.exists(frontend_dir):
-    # 添加编辑器路径后缀路由（在静态文件服务之前）
+    # 添加编辑器路径路由（在静态文件服务之前）
+    @app.get("/static/editor.html")
+    async def serve_editor():
+        """提供编辑器页面（无路径参数）"""
+        from fastapi.responses import FileResponse
+        import os
+        editor_path = os.path.join(frontend_dir, "editor.html")
+        if os.path.exists(editor_path):
+            return FileResponse(editor_path, media_type="text/html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        else:
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"error": "Editor file not found"}, status_code=404)
+    
     @app.get("/static/editor.html/{path:path}")
     async def serve_editor_with_path(path: str = ""):
         """
@@ -433,7 +533,7 @@ if os.path.exists(frontend_dir):
         # 返回编辑器HTML文件
         editor_path = os.path.join(frontend_dir, "editor.html")
         if os.path.exists(editor_path):
-            return FileResponse(editor_path, media_type="text/html")
+            return FileResponse(editor_path, media_type="text/html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
         else:
             from fastapi.responses import JSONResponse
             return JSONResponse({"error": "Editor file not found"}, status_code=404)
@@ -569,7 +669,9 @@ async def api_info():
             "ai_review": "/api/v1/ai/review-page",
             "ai_delete": "/api/v1/ai/suggest-deletion",
             "files": "/api/v1/files" if FILES_ENABLED else "disabled",
-            "components": "/api/v1/components" if COMPONENTS_ENABLED else "disabled"
+            "components": "/api/v1/components" if COMPONENTS_ENABLED else "disabled",
+            "mail": "/api/v1/mail" if MAIL_ENABLED else "disabled",
+            "feedback": "/api/v1/feedback" if FEEDBACK_ENABLED else "disabled"
         }
     }
 
