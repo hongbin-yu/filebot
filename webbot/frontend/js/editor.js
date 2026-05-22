@@ -1,6 +1,6 @@
 
         // ====== editor.js v20260521-2 : bilingual createNewPage ======
-        const editorjsVersion = '20260521-6';
+        const editorjsVersion = '20260522-1';
         // API configuration
         const API_BASE = '/api/v1/pages';
         let currentPageId = null;

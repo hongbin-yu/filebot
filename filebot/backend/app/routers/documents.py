@@ -17,7 +17,7 @@ from PIL import Image
 from urllib.parse import urlparse
 
 from app.db.database import get_db
-from app.core.security import get_current_active_user, get_current_active_user_allow_query, get_current_user, oauth2_scheme
+from app.core.security import get_current_active_user, get_current_active_user_allow_query, get_current_user, oauth2_scheme, has_folder_access
 from app.core.config import settings
 from app.models.user import User
 from app.models.app import App
@@ -89,13 +89,14 @@ def check_folder_access(
             detail="Folder not found"
         )
     
-    # Check app permission
+    # Check folder-level permission (owner or granted via permission system)
     app = folder.app
     if app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to access this folder"
-        )
+        if not has_folder_access(current_user, folder.path, "read", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to access this folder"
+            )
     
     # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:
@@ -257,13 +258,14 @@ def get_folder_by_identifier_or_path(
     if current_user.is_superuser or current_user.username == "public":
         return folder
     
-    # Check app permission
+    # Check folder-level permission (owner or granted via permission system)
     app = folder.app
     if app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to access this folder"
-        )
+        if not has_folder_access(current_user, folder.path, "read", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to access this folder"
+            )
     
     # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:
@@ -316,13 +318,14 @@ def check_document_access(
             detail="Document not found"
         )
     
-    # Check app permission
+    # Check folder-level permission (owner or granted via permission system)
     app = document.folder.app
     if app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to access this document"
-        )
+        if not has_folder_access(current_user, document.folder.path, "read", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to access this document"
+            )
     
     # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:
@@ -412,16 +415,17 @@ def get_document_by_identifier(
             detail=f"Document not found: {document_identifier}"
         )
     
-    # Check app permission (reuse check_document_access logic)
+    # Check folder permission (reuse check_document_access logic)
     app = document.folder.app
     if current_user.is_superuser or current_user.username == "public":
         return document
     
     if app.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to access this document"
-        )
+        if not has_folder_access(current_user, document.folder.path, "read", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to access this document"
+            )
     
     # If owner is required, verify user is app owner
     if require_owner and app.owner_id != current_user.id:

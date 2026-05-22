@@ -9,6 +9,8 @@ from app.core.security import get_current_active_user
 from app.models.user import User
 from app.models.app import App
 from app.models.folder import Folder
+from app.models.permission import Permission
+from app.models.group import GroupMember
 from app.models.document import Document, ConversionStatus, FileType, DocumentStatus, DocumentType
 from app.models.page import Page
 from app.schemas.document import DocumentResponse, PageResponse
@@ -31,16 +33,78 @@ def build_permission_query(current_user: User, db: Session):
         joinedload(Document.folder).joinedload(Folder.app)
     )
     
-    if current_user.is_superuser:
-        # Admin can access all documents
+    if current_user.is_superuser or current_user.username == "public":
+        # Admin/public can access all documents
         return query
     
-    # Regular users: only access documents under their own apps
-    # Filter through folder -> app chain
-    user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
+    # Regular users: their own apps + apps/folders they have permission on
+    from app.models.permission import Permission
+    from app.models.group import GroupMember
     
-    query = query.join(Folder).join(App)
-    query = query.filter(App.id.in_(user_apps_subquery))
+    # Owned apps
+    owned_app_ids = [row[0] for row in db.query(App.id).filter(App.owner_id == current_user.id).all()]
+    
+    # Apps with direct user permission
+    permitted_app_ids = [
+        row[0] for row in db.query(Permission.resource_id)
+        .filter(
+            Permission.resource_type == "app",
+            Permission.user_id == current_user.id,
+        )
+        .all()
+    ]
+    
+    # Apps with group permission
+    user_group_ids = [
+        row[0] for row in db.query(GroupMember.group_id)
+        .filter(GroupMember.user_id == current_user.id)
+        .all()
+    ]
+    if user_group_ids:
+        group_permitted_ids = [
+            row[0] for row in db.query(Permission.resource_id)
+            .filter(
+                Permission.resource_type == "app",
+                Permission.group_id.in_(user_group_ids),
+            )
+            .all()
+        ]
+        permitted_app_ids = list(set(permitted_app_ids + group_permitted_ids))
+    
+    # Also include folders user has permission on
+    permitted_folder_paths = [
+        row[0] for row in db.query(Permission.resource_id)
+        .filter(
+            Permission.resource_type == "folder",
+            Permission.user_id == current_user.id,
+        )
+        .all()
+    ]
+    if user_group_ids:
+        group_permitted_folder_paths = [
+            row[0] for row in db.query(Permission.resource_id)
+            .filter(
+                Permission.resource_type == "folder",
+                Permission.group_id.in_(user_group_ids),
+            )
+            .all()
+        ]
+        permitted_folder_paths = list(set(permitted_folder_paths + group_permitted_folder_paths))
+    
+    all_app_ids = list(set(owned_app_ids + permitted_app_ids))
+    
+    # Build query filter: docs in user's apps OR docs in permitted folders
+    if all_app_ids or permitted_folder_paths:
+        query = query.join(Folder).join(App)
+        conditions = []
+        if all_app_ids:
+            conditions.append(App.id.in_(all_app_ids))
+        if permitted_folder_paths:
+            conditions.append(Folder.path.in_(permitted_folder_paths))
+        query = query.filter(or_(*conditions))
+    else:
+        # No permissions at all, return empty set
+        query = query.filter(False)
     
     return query
 
