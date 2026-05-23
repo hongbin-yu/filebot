@@ -1786,11 +1786,13 @@ async def _render_preview(
         # Set header to the correct language for backward compatibility
         header_html = header_en_html if page_language == "en" else header_fr_html
 
-        # Get footer — try institution-level first, then language-level, then site-level
-        # For /canadasite/en/auditor-general:
-        #   1. Try /canadasite/en/auditor-general/footer
-        #   2. Fallback to /canadasite/{language}/footer
-        #   3. Fallback to /canadasite/footer
+        # Get footer — walk up path to find nearest footer, then language-level, then site-level
+        # For /canadasite/en/auditor-general/our-work/2026-report:
+        #   1. Walk up: /canadasite/en/auditor-general/our-work/2026-report/footer (skip)
+        #   2. Walk up: /canadasite/en/auditor-general/our-work/footer (skip)
+        #   3. Walk up: /canadasite/en/auditor-general/footer (found ✓)
+        #   4. Fallback to /canadasite/{language}/footer
+        #   5. Fallback to /canadasite/footer
         def _find_footer(search_path: str) -> str:
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (search_path,))
             row = cursor.fetchone()
@@ -1807,21 +1809,26 @@ async def _render_preview(
             return ""
 
         footer_html = ""
-        # Step 1: Try path-specific footer (e.g. /canadasite/en/auditor-general/footer)
+        # Step 1: Walk up from full path to find nearest institution footer
         path_parts = path.strip('/').split('/')
-        if len(path_parts) >= 2:
-            institution_footer_path = f"/{path_parts[0]}/{path_parts[1]}/{'/'.join(path_parts[2:])}/footer" if len(path_parts) > 2 else f"/{path_parts[0]}/{path_parts[1]}/footer"
-            footer_html = _find_footer(institution_footer_path)
+        lang_footer_path = f"/canadasite/{page_language}/footer"
+        if len(path_parts) >= 3:
+            # Walk up from deepest level to just below language level
+            for i in range(len(path_parts), 2, -1):
+                candidate = '/' + '/'.join(path_parts[:i]) + '/footer'
+                if candidate == lang_footer_path:
+                    continue  # skip language-level, we handle it in Step 2
+                footer_html = _find_footer(candidate)
+                if footer_html:
+                    break
 
         # Step 2: Fallback to language-level footer
         if not footer_html:
-            lang_footer_path = f"/canadasite/{page_language}/footer"
             footer_html = _find_footer(lang_footer_path)
 
         # Step 3: Fallback to site-level footer
         if not footer_html:
-            site_footer_path = "/canadasite/footer"
-            footer_html = _find_footer(site_footer_path)
+            footer_html = _find_footer("/canadasite/footer")
 
         # Step 4: Fallback to extracting from raw content
         if not footer_html:
