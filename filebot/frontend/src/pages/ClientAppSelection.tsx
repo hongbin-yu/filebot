@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import appService from '../services/app.service';
+import authService from '../services/auth.service';
 
 const ClientAppSelection: React.FC = () => {
   const navigate = useNavigate();
@@ -9,12 +10,16 @@ const ClientAppSelection: React.FC = () => {
 
   useEffect(() => {
     fetchApps();
+    // 获取完整用户信息（含 group 成员关系），用于 Admin Panel 权限判断
+    if (authService.isAuthenticated()) {
+      authService.getCurrentUser().catch(() => {});
+    }
   }, []);
 
   const fetchApps = async () => {
     try {
       setLoading(true);
-      const data = await appService.getApps();
+      const data = await appService.getClientApps();
       setApps(data);
     } catch (err: any) {
       console.error('Failed to fetch apps:', err);
@@ -25,7 +30,16 @@ const ClientAppSelection: React.FC = () => {
 
   const handleAppClick = (app: any) => {
     if (app.redirect_url) {
-      window.location.href = app.redirect_url;
+      var url = app.redirect_url;
+      // If redirecting to Webbot (port 8000 on localhost), pass token for seamless auth
+      if (url.indexOf('localhost:8000') >= 0 || url.indexOf('127.0.0.1:8000') >= 0) {
+        var token = localStorage.getItem('access_token');
+        if (token) {
+          var sep = url.indexOf('?') >= 0 ? '&' : '?';
+          url = url + sep + 'token=' + encodeURIComponent(token);
+        }
+      }
+      window.location.href = url;
       return;
     }
     const appSlug = app.slug || app.id;
@@ -72,13 +86,40 @@ const ClientAppSelection: React.FC = () => {
               <p className="text-gray-600 mt-2">All apps in one place - Supports internal apps and external redirects</p>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-gray-600">Unified Portal</span>
-              <Link 
-                to="/admin/apps"
-                className="px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50"
-              >
-                Admin Panel
-              </Link>
+              {authService.isAuthenticated() ? (
+                <>
+                  <span className="text-sm text-gray-700 font-medium">
+                    {authService.getUserInfo()?.full_name || authService.getUserInfo()?.username || 'User'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      authService.logout();
+                      window.location.href = '/login';
+                    }}
+                    className="flex items-center text-sm text-gray-500 hover:text-red-600 transition-colors px-3 py-1.5 border border-gray-300 rounded hover:border-red-300"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Logout
+                  </button>
+                  {authService.isAdmin() && (
+                    <Link 
+                      to="/admin/apps"
+                      className="px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50"
+                    >
+                      Admin Panel
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <Link 
+                  to="/login"
+                  className="px-4 py-2 text-blue-600 border border-blue-600 rounded hover:bg-blue-50"
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow p-4">

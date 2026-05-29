@@ -13,10 +13,12 @@
 
     <!-- TinyMCE WYSIWYG Editor -->
     <!-- Using TinyMCE Cloud with valid API key -->
-    <script src="https://cdn.tiny.cloud/1/68matgqcnaoa96gx7x6cn8u8ur4thooph25rnufw2sa9oq8e/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-
+    <!--script src="https://cdn.tiny.cloud/1/68matgqcnaoa96gx7x6cn8u8ur4thooph25rnufw2sa9oq8e/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script-->
+    <!-- TinyMCE WYSIWYG Editor (local installation) -->
+	<script src="/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
     <!-- Simple custom styles for editor -->
     <link rel="stylesheet" href="css/editor.css">
+<script src="/static/js/webbot-auth.js"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="">
     <div class="editor-container">
@@ -124,6 +126,12 @@
                     WebBot Page Editor
                 </h2>
                 <div class="header-actions">
+                    <!-- Login / User Info -->
+                    <div id="auth-header-area" style="display: inline-block; vertical-align: middle;">
+                        <button id="webbot-login-btn" class="filebot-toggle-btn" title="Login" style="display: inline-block;">🔑 Login</button>
+                        <span id="webbot-user-info" class="user-info" style="display: none; font-size: 12px; color: #4CAF50; margin-right: 8px;"></span>
+                        <button id="webbot-logout-btn" class="filebot-toggle-btn" title="Logout" style="display: none;">🚪</button>
+                    </div>
                     <button id="ai-toggle-btn" class="filebot-toggle-btn" title="AI Assistant">🤖 AI</button>
                     <!-- Language switcher -->
                     <div id="language-switcher" class="language-switcher" style="display: none;">
@@ -421,6 +429,19 @@
             </div>
         </div>
     </div>
+
+
+    <script>
+    <script>
+    (function() {
+        var init = function() {
+            if (window.WebbotAuth) window.WebbotAuth.updateUI();
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else { init(); }
+    })();
+    </script>
 
     <script src="/static/js/component-params.js?v=202604121740"></script>
     <script src="/static/js/component-color-manager.js"></script>

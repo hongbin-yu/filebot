@@ -117,6 +117,59 @@ def get_apps(
     return apps
 
 
+@router.get("/client", response_model=List[AppResponse])
+def get_client_apps(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Client-facing endpoint: always filter by user permissions.
+    Unlike GET /apps, this does NOT return all apps for superusers/public.
+    Only returns apps the user has explicit permission to access.
+    """
+    # Apps owned by user
+    owned_apps = db.query(App).filter(App.owner_id == current_user.id)
+    owned_ids = [row[0] for row in owned_apps.with_entities(App.id).all()]
+    
+    # Apps where user has direct permission
+    permitted_ids = [
+        row[0] for row in db.query(Permission.resource_id)
+        .filter(
+            Permission.resource_type == "app",
+            Permission.user_id == current_user.id,
+        )
+        .all()
+    ]
+    
+    # Apps where user's groups have permission
+    from app.models.group import GroupMember
+    user_group_ids = [
+        row[0] for row in db.query(GroupMember.group_id)
+        .filter(GroupMember.user_id == current_user.id)
+        .all()
+    ]
+    if user_group_ids:
+        group_permitted_ids = [
+            row[0] for row in db.query(Permission.resource_id)
+            .filter(
+                Permission.resource_type == "app",
+                Permission.group_id.in_(user_group_ids),
+            )
+            .all()
+        ]
+        permitted_ids = list(set(permitted_ids + group_permitted_ids))
+    
+    all_ids = list(set(owned_ids + permitted_ids))
+    
+    if not all_ids:
+        return []
+    
+    apps = db.query(App).filter(App.id.in_(all_ids)).offset(skip).limit(limit).all()
+    return apps
+
+
 @router.post("/", response_model=AppResponse)
 def create_app(
     app_data: AppCreate,
@@ -378,3 +431,6 @@ def get_app_folders(
     ).offset(skip).limit(limit).all()
 
     return folders
+
+
+

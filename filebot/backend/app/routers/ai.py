@@ -494,7 +494,7 @@ def sitemap_import_background(
         crawler = ScraplingCrawler(db, task_id=task_id, use_stealth=False, use_dynamic=False)
         stats = crawler.crawl_from_sitemap(
             sitemap_url=sitemap_url,
-            folder_path=folder.path,
+            folder_path=folder_path,
             include_images=include_images,
             max_depth=depth
         )

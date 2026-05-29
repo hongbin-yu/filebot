@@ -282,6 +282,7 @@ def has_folder_access(user: User, folder_path: str, level: str = "read", db: Ses
     """检查用户是否有权访问指定 folder
     
     同时检查 folder 权限和上级 app 权限（层级继承）。
+    如果用户没有 folder 级别的显式权限，做 app 级别权限的回退检查。
     
     Args:
         user: 用户对象
@@ -295,8 +296,28 @@ def has_folder_access(user: User, folder_path: str, level: str = "read", db: Ses
     if user.is_superuser:
         return True
 
-    # 检查 folder 级别权限（含 app 层级继承）
-    return check_user_permission(user, "folder", folder_path, level, db)
+    # 1) 先检查 folder 级别权限
+    if check_user_permission(user, "folder", folder_path, level, db):
+        return True
+
+    # 2) 如果没有 folder 权限，尝试 app 级别权限回退
+    #    通过文件夹路径找到所属 app（路径格式 /{app_slug}/...）
+    if not folder_path:
+        return False
+
+    # 路径格式为 /{app_slug}/...，提取第一段作为 app_slug
+    parts = folder_path.strip("/").split("/")
+    if not parts:
+        return False
+    app_slug = parts[0]
+
+    from app.models.app import App
+    app = db.query(App).filter(App.slug == app_slug).first()
+    if not app:
+        return False
+
+    # 检查用户是否有 app 级别权限
+    return has_app_access(user, app.id, level, db)
 async def get_current_active_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)

@@ -13,6 +13,7 @@
 
     <!-- AEM Style Navigation CSS -->
     <link rel="stylesheet" href="css/navigation.css">
+<script src="/static/js/webbot-auth.js"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
     <!-- Skip links for accessibility -->
@@ -26,15 +27,24 @@
         <div class="aem-navigation-container">
             <!-- Header -->
             <div class="navigation-header">
-                <h1>
-                    <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
-                        <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
-                    </button>
-                    <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
-                    WebBot Page Navigation
-                </h1>
-                <div id="page-stats" class="text-muted" style="font-size: 13px;">
-                    Loading pages...
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <h1 style="margin:0;">
+                            <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
+                                <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
+                            </button>
+                            <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
+                            WebBot Page Navigation
+                        </h1>
+                        <div id="page-stats" class="text-muted" style="font-size:13px;white-space:nowrap;">
+                            Loading pages...
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span id="webbot-user-info" style="font-size:13px;color:#335075;font-weight:500;"></span>
+                        <button id="webbot-login-btn" style="display:none;padding:4px 10px;font-size:12px;border:1px solid #2563eb;color:#2563eb;border-radius:4px;cursor:pointer;background:white;">🔑 Login</button>
+                        <button id="webbot-logout-btn" class="btn btn-sm" style="font-size:12px;padding:4px 10px;display:none;">🚪 Logout</button>
+                    </div>
                 </div>
             </div>
 

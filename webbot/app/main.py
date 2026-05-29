@@ -11,6 +11,13 @@ import sqlite3
 import os
 from datetime import datetime
 
+# 导入认证模块（用于中间件保护）
+try:
+    from .routes.auth_security import decode_access_token, get_user_by_id
+except ImportError:
+    def decode_access_token(token): return None
+    def get_user_by_id(uid): return None
+
 # 导入路由
 try:
     from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, TRANSLATE_ENABLED
@@ -117,6 +124,77 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── 认证中间件：保护写操作 API 端点 ──────────────────────────────────
+EXEMPT_WRITE_PATHS = frozenset([
+    "/api/v1/auth/login",
+    "/api/v1/auth/filebot-token",
+    "/api/v1/track",
+    "/api/v1/feedback/submit",
+    "/api/v1/feedback/QueueProblemForm",
+    "/api/v1/mail/status",
+    "/content/upload/",
+    "/api/v1/components/health",
+])
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    import json as _json
+    from starlette.responses import JSONResponse as _JSONResponse
+    from fastapi.responses import Response as _Response
+
+    # 只保护写操作（POST/PUT/DELETE/PATCH）
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        path = request.url.path
+        # 如果是静态文件请求，放行
+        if path.startswith("/static/") or path.startswith("/mustache/") or path.startswith("/gcweb-assets/"):
+            pass
+        # 检查是否在白名单中
+        elif path not in EXEMPT_WRITE_PATHS and path.startswith("/api/v1/"):
+            auth_header = request.headers.get("Authorization", "")
+            token = None
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+
+            if not token:
+                return _JSONResponse(
+                    status_code=401,
+                    content={"detail": "需要登录认证"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            payload = decode_access_token(token)
+            if not payload:
+                return _JSONResponse(
+                    status_code=401,
+                    content={"detail": "无效的认证凭据"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            user_id = payload.get("sub")
+            if not user_id:
+                return _JSONResponse(
+                    status_code=401,
+                    content={"detail": "无效的认证凭据"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            user = get_user_by_id(user_id)
+            if not user:
+                return _JSONResponse(
+                    status_code=401,
+                    content={"detail": "用户不存在"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            if not user.get("is_active"):
+                return _JSONResponse(
+                    status_code=403,
+                    content={"detail": "用户未激活"},
+                )
+
+    response = await call_next(request)
+    return response
 
 def get_db_connection():
     """获取WebBot数据库连接"""

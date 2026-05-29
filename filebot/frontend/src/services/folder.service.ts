@@ -83,6 +83,12 @@ class FolderService {
       )
     };
 
+    // 始终传入 app_slug 以便后端做权限校验
+    // 后端通过 app_slug 找到应用并检查用户是否有权访问
+    if (!requestParams.app_slug) {
+      requestParams.app_slug = appIdentifier;
+    }
+
     console.log('🔍 [DEBUG] folderService.getFolders:', { appIdentifier, requestParams });
 
     const response = await api.get('/folders/', { 

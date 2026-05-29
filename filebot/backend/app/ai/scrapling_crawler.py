@@ -54,7 +54,7 @@ SYSTEM_PAGE_FRAGMENTS = {
     'footer', 'header', 'mustache-templates', 'standard-page-template', 'template-container',
     '404', 'search', 'sitemap', 'test', 'test-create-post', 'test-filepath-2', 'test-contact-page',
     'mobile', 'index', 'whats-new', 'government-services-portal', 'privacy-policy-compliance',
-    'administrative-tribunals-support-service', 'auditor-general', 'canada-water-agency',
+    'administrative-tribunals-support-service', 'canada-water-agency',
     'canadian-coast-guard', 'chief-military-judge', 'defence-investment-agency',
     'defence-research-development', 'democratic-institutions', 'economic-development-quebec-regions',
     'farm-products-council', 'heritage-information-network', 'impact-assessment-agency',

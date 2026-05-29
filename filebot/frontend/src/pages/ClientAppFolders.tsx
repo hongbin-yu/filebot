@@ -45,6 +45,11 @@ const ClientAppFolders: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -181,13 +186,10 @@ const ClientAppFolders: React.FC = () => {
       (async () => {
         try {
           const fullPath = '/' + appSlug;
-          const docs = await documentService.getDocumentsByFolderPath(fullPath, { limit: 1000 });
-          docs.sort((a, b) => {
-            const pA = a.parent_folder_path || a.folder_id || '';
-            const pB = b.parent_folder_path || b.folder_id || '';
-            if (pA !== pB) return pA.localeCompare(pB);
-            return (a.title || a.original_filename || '').localeCompare(b.title || b.original_filename || '');
-          });
+          const loadSkip = (currentPage - 1) * pageSize;
+          const docs = await documentService.getDocumentsByFolderPath(fullPath, { skip: loadSkip, limit: pageSize });
+          const total = documentService.lastTotalCount;
+          setTotalPages(Math.ceil(total / pageSize) || 1);
           setDocuments(docs);
         } catch (err) {
           console.error('Failed to load root documents:', err);
@@ -206,21 +208,16 @@ const ClientAppFolders: React.FC = () => {
 
         // 前三层只显示直属文档，更深层显示全部递归文档
         const pathDepth = currentFolderPath.split('/').filter(Boolean).length;
+        const loadSkip = (currentPage - 1) * pageSize;
         let docs;
         if (pathDepth >= 3) {
-          docs = await documentService.getDocumentsByPathPrefix(fullPath, { limit: 1000 });
+          docs = await documentService.getDocumentsByPathPrefix(fullPath, { skip: loadSkip, limit: pageSize });
         } else {
-          docs = await documentService.getDocumentsByFolderPath(fullPath, { limit: 1000 });
+          docs = await documentService.getDocumentsByFolderPath(fullPath, { skip: loadSkip, limit: pageSize });
         }
 
-        // Sort by folder path then title
-        docs.sort((a, b) => {
-          const pA = a.parent_folder_path || a.folder_id || '';
-          const pB = b.parent_folder_path || b.folder_id || '';
-          if (pA !== pB) return pA.localeCompare(pB);
-          return (a.title || a.original_filename || '').localeCompare(b.title || b.original_filename || '');
-        });
-
+        const total = documentService.lastTotalCount;
+        setTotalPages(Math.ceil(total / pageSize) || 1);
         setDocuments(docs);
       } catch (err) {
         console.error('Failed to load documents recursively:', err);
@@ -231,7 +228,7 @@ const ClientAppFolders: React.FC = () => {
     };
 
     loadAllDocumentsRecursive();
-  }, [currentFolderPath, appSlug]);
+  }, [currentFolderPath, appSlug, currentPage, pageSize]);
 
   // Handle search (recursive: searches across all descendant folders)
   const handleSearch = useCallback(async (query: string) => {
@@ -246,18 +243,15 @@ const ClientAppFolders: React.FC = () => {
       try {
         setDocumentsLoading(true);
         const pathDepth = currentFolderPath.split('/').filter(Boolean).length;
+        const skip = (currentPage - 1) * pageSize;
         let docs;
         if (pathDepth >= 3) {
-          docs = await documentService.getDocumentsByPathPrefix(fullPath, { limit: 1000 });
+          docs = await documentService.getDocumentsByPathPrefix(fullPath, { skip, limit: pageSize });
         } else {
-          docs = await documentService.getDocumentsByFolderPath(fullPath, { limit: 1000 });
+          docs = await documentService.getDocumentsByFolderPath(fullPath, { skip, limit: pageSize });
         }
-        docs.sort((a, b) => {
-          const pA = a.parent_folder_path || a.folder_id || '';
-          const pB = b.parent_folder_path || b.folder_id || '';
-          if (pA !== pB) return pA.localeCompare(pB);
-          return (a.title || a.original_filename || '').localeCompare(b.title || b.original_filename || '');
-        });
+        const total = documentService.lastTotalCount;
+        setTotalPages(Math.ceil(total / pageSize) || 1);
         setDocuments(docs);
       } catch (err) {
         console.error('Failed to reload documents:', err);
@@ -280,7 +274,16 @@ const ClientAppFolders: React.FC = () => {
     } finally {
       setIsSearching(false);
     }
-  }, [currentFolderPath, appSlug]);
+  }, [currentFolderPath, appSlug, currentPage, pageSize]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
 
   const handleFolderClick = (folderPath: string) => {
     // Strip app slug prefix if present (API paths include it)
@@ -633,6 +636,97 @@ const ClientAppFolders: React.FC = () => {
                     })}
                   </tbody>
                 </table>
+
+              {/* Pagination */}
+              {!isSearching && documents.length > 0 && (
+                <div className="bg-white px-6 py-4 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-sm text-gray-600">
+                      Page <span className="font-medium">{currentPage}</span> of{' '}
+                      <span className="font-medium">{totalPages}</span>
+                      {' · '}
+                      <span className="font-medium">{documentService.lastTotalCount}</span> total docs
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-600">Per page:</label>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                        className="border border-gray-300 rounded px-2 py-1 text-sm"
+                      >
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage <= 1}
+                        className="px-2 py-1 text-sm border rounded hover:bg-gray-100 disabled:opacity-40"
+                      >
+                        ««
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage <= 1}
+                        className="px-2 py-1 text-sm border rounded hover:bg-gray-100 disabled:opacity-40"
+                      >
+                        « Prev
+                      </button>
+
+                      {(() => {
+                        const pages: (number | string)[] = [];
+                        const maxVisible = 7;
+                        if (totalPages <= maxVisible) {
+                          for (let i = 1; i <= totalPages; i++) pages.push(i);
+                        } else {
+                          pages.push(1);
+                          if (currentPage > 3) pages.push('...');
+                          const start = Math.max(2, currentPage - 1);
+                          const end = Math.min(totalPages - 1, currentPage + 1);
+                          for (let i = start; i <= end; i++) pages.push(i);
+                          if (currentPage < totalPages - 2) pages.push('...');
+                          pages.push(totalPages);
+                        }
+                        return pages.map((p, idx) =>
+                          p === '...' ? (
+                            <span key={`e${idx}`} className="px-2 py-1 text-sm text-gray-400">…</span>
+                          ) : (
+                            <button
+                              key={p}
+                              onClick={() => handlePageChange(p as number)}
+                              className={`px-2 py-1 text-sm border rounded hover:bg-gray-100 ${
+                                p === currentPage ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600' : ''
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          )
+                        );
+                      })()}
+
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage >= totalPages}
+                        className="px-2 py-1 text-sm border rounded hover:bg-gray-100 disabled:opacity-40"
+                      >
+                        Next »
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage >= totalPages}
+                        className="px-2 py-1 text-sm border rounded hover:bg-gray-100 disabled:opacity-40"
+                      >
+                        »»
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               </div>
             )}
           </div>

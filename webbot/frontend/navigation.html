@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>WebBot Page Navigation</title>
+    <link rel="shortcut icon" href="/static/icons/webbot_favicon.png" type="image/png">
+    <link rel="icon" href="/static/icons/webbot_favicon.png" sizes="32x32">
 
     <!-- Canada.ca WET theme CSS -->
     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
     <!-- AEM Style Navigation CSS -->
     <link rel="stylesheet" href="css/navigation.css">
+<script src="/static/js/webbot-auth.js"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
     <!-- Skip links for accessibility -->
@@ -24,14 +27,24 @@
         <div class="aem-navigation-container">
             <!-- Header -->
             <div class="navigation-header">
-                <h1>
-                    <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
-                    </button>
-                    <img src="/static/icons/webbot_icon.png" alt="WebBot">
-                    WebBot Page Navigation
-                </h1>
-                <div id="page-stats" class="text-muted" style="font-size: 13px;">
-                    Loading pages...
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <h1 style="margin:0;">
+                            <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
+                                <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
+                            </button>
+                            <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
+                            WebBot Page Navigation
+                        </h1>
+                        <div id="page-stats" class="text-muted" style="font-size:13px;white-space:nowrap;">
+                            Loading pages...
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span id="webbot-user-info" style="font-size:13px;color:#335075;font-weight:500;"></span>
+                        <button id="webbot-login-btn" style="display:none;padding:4px 10px;font-size:12px;border:1px solid #2563eb;color:#2563eb;border-radius:4px;cursor:pointer;background:white;">🔑 Login</button>
+                        <button id="webbot-logout-btn" class="btn btn-sm" style="font-size:12px;padding:4px 10px;display:none;">🚪 Logout</button>
+                    </div>
                 </div>
             </div>
 
@@ -297,36 +310,20 @@
                         <small class="form-text text-muted">Select a different Mustache template for this page. Default: /canadasite/mustache-templates/page-template</small>
                     </div>
 
-                    <!-- Tags: Subjects (multi-select) -->
+                    <!-- Tags: Subjects -->
                     <div class="form-group">
-                        <label style="display:flex;align-items:center;gap:8px;">
-                            Subjects
-                            <button type="button" class="btn btn-sm btn-default" onclick="openTagTree('subject', true)" style="font-size:12px;">📂 Select...</button>
-                        </label>
-                        <div id="prop-tags-subjects" class="tag-selection-display">
-                            <span class="text-muted">(none selected)</span>
+                        <label>Subjects <span class="text-muted">(tagging)</span></label>
+                        <div id="prop-tags-subjects" class="tag-checkbox-group">
+                            <span class="text-muted">(Loading subjects...)</span>
                         </div>
-                        <input type="hidden" id="selected-subject-tags" value="">
                     </div>
 
-                    <!-- Tags: Audience (multi-select) -->
+                    <!-- Tags: Audience -->
                     <div class="form-group">
-                        <label style="display:flex;align-items:center;gap:8px;">
-                            Audience
-                            <button type="button" class="btn btn-sm btn-default" onclick="openTagTree('audience', true)" style="font-size:12px;">📂 Select...</button>
-                        </label>
-                        <div id="prop-tags-audience" class="tag-selection-display">
-                            <span class="text-muted">(none selected)</span>
+                        <label>Audience <span class="text-muted">(tagging)</span></label>
+                        <div id="prop-tags-audience" class="tag-checkbox-group">
+                            <span class="text-muted">(Loading audience tags...)</span>
                         </div>
-                        <input type="hidden" id="selected-audience-tags" value="">
-                    </div>
-
-                    <!-- Tags: Content Type (single select) -->
-                    <div class="form-group">
-                        <label>Content Type</label>
-                        <select id="prop-content-type" class="form-control">
-                            <option value="">(none)</option>
-                        </select>
                     </div>
 
                     <!-- Version Info -->
@@ -373,39 +370,6 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-success" id="prop-save-btn">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tag Tree Selection Modal -->
-    <div class="modal fade" id="tagTreeModal" tabindex="-1" role="dialog" aria-labelledby="tagTreeModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="tagTreeModalLabel">Select Tags</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                        <button type="button" class="btn btn-sm btn-default" id="ttm-up-btn" onclick="ttmGoUp()" style="display:none;">⬆ Up</button>
-                        <span id="ttm-breadcrumb" style="font-size:13px;color:#555;"></span>
-                    </div>
-                    <div id="ttm-search" style="margin-bottom:8px;">
-                        <input type="text" id="ttm-filter" class="form-control" placeholder="Filter tags by name or path..." oninput="ttmFilter()">
-                    </div>
-                    <div id="ttm-tag-list" class="ttm-tag-list" style="max-height:400px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:8px;">
-                        <span class="text-muted">Loading tags...</span>
-                    </div>
-                    <div style="margin-top:8px;font-size:12px;color:#888;">
-                        Selected: <span id="ttm-selected-count">0</span>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-success" id="ttm-confirm-btn" onclick="ttmConfirm()">✅ Confirm</button>
                 </div>
             </div>
         </div>
@@ -497,7 +461,7 @@
     <script src="/etc/designs/canada/wet-boew/js/theme.min.js"></script>
 
     <!-- Navigation JavaScript -->
-    <script src="js/navigation.js?v=20260521-1"></script>
+    <script src="js/navigation.js"></script>
     <script>
         // Hide WET-BOEW/GCWeb dynamically-injected header/footer
         (function() {

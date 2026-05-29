@@ -774,6 +774,13 @@
         .page-card-icon {
             font-size: 18px;
             flex-shrink: 0;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .page-card-icon:hover {
+            background: #e3f2fd;
         }
 
         .page-card-info {

@@ -69,13 +69,56 @@ def extract_meta_tags(html: str):
     d = k = ''
     if not html:
         return d, k
-    m = re.search(r'<meta\s+name=["\']description["\']\s+content=["\']([^"\']+)["\']', html, re.I)
+    m = re.search(r'<meta\s+name=["\']description["\'][^>]*?\s+content=["\']([^"\']+)["\']', html, re.I)
     if m:
         d = m.group(1).strip()
-    m = re.search(r'<meta\s+name=["\']keywords["\']\s+content=["\']([^"\']+)["\']', html, re.I)
+    m = re.search(r'<meta\s+name=["\']keywords["\'][^>]*?\s+content=["\']([^"\']+)["\']', html, re.I)
     if m:
         k = m.group(1).strip()
     return d, k
+
+
+def extract_dcterms_meta(html: str) -> dict:
+    """Extract dcterms.subject, dcterms.audience, dcterms.type from HTML meta tags.
+    
+    Returns:
+        dict with keys 'subjects', 'audience', 'type' (or empty if not found)
+    """
+    result = {}
+    if not html:
+        return result
+    # dcterms.subject — multiple values, collect all (allow any attributes between name and content)
+    subjects = []
+    for m in re.finditer(
+        r'<meta\s+name=["\']dcterms\.subject["\'][^>]*?\s+content=["\']([^"\']+)["\']',
+        html, re.I
+    ):
+        val = m.group(1).strip()
+        if val:
+            subjects.append(val)
+    if subjects:
+        result['subjects'] = ';'.join(subjects)
+    # dcterms.audience — multiple values
+    audiences = []
+    for m in re.finditer(
+        r'<meta\s+name=["\']dcterms\.audience["\'][^>]*?\s+content=["\']([^"\']+)["\']',
+        html, re.I
+    ):
+        val = m.group(1).strip()
+        if val:
+            audiences.append(val)
+    if audiences:
+        result['audience'] = ';'.join(audiences)
+    # dcterms.type — single value
+    m = re.search(
+        r'<meta\s+name=["\']dcterms\.type["\'][^>]*?\s+content=["\']([^"\']+)["\']',
+        html, re.I
+    )
+    if m:
+        val = m.group(1).strip()
+        if val:
+            result['type'] = val
+    return result
 
 
 def ensure_page_exists(cursor, path, parent_path, title, content, language,
@@ -253,6 +296,12 @@ def import_to_webbot(
             continue
 
         meta_desc, meta_keywords = extract_meta_tags(content)
+        dcterms = extract_dcterms_meta(content)
+        if dcterms:
+            meta.update(dcterms)
+        # Remove original_html from metadata — it's duplicated in the content column
+        if isinstance(meta, dict):
+            meta.pop('original_html', None)
         page_desc = meta_desc or doc.description or ''
 
         path_parts = [p for p in wb_path.strip('/').split('/') if p]
@@ -451,6 +500,12 @@ def import_single_to_webbot(
                                       detail="Could not read file content")
 
     meta_desc, meta_keywords = extract_meta_tags(content)
+    dcterms = extract_dcterms_meta(content)
+    if dcterms:
+        meta.update(dcterms)
+    # Remove original_html from metadata — it's duplicated in the content column
+    if isinstance(meta, dict):
+        meta.pop('original_html', None)
     page_desc = meta_desc or doc.description or ''
 
     path_parts = [p for p in wb_path.strip('/').split('/') if p]

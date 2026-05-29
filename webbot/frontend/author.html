@@ -4,18 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>WebBot Page Editor - Simple</title>
+    <title>WebBot Author Editor - WYSIWYG Only</title>
     <link rel="shortcut icon" href="/static/icons/filebot_favicon.png" type="image/png">
     <link rel="icon" href="/static/icons/filebot_favicon.png" sizes="32x32">
 
     <!-- Canada.ca WET theme CSS -->
     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
-    <!-- TinyMCE WYSIWYG Editor -->
-    <!-- Using TinyMCE Cloud with valid API key -->
-    <!--script src="https://cdn.tiny.cloud/1/68matgqcnaoa96gx7x6cn8u8ur4thooph25rnufw2sa9oq8e/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script-->
     <!-- TinyMCE WYSIWYG Editor (local installation) -->
-	<script src="/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
+    <script src="/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
+
     <!-- Simple custom styles for editor -->
     <link rel="stylesheet" href="css/editor.css">
 <script src="/static/js/webbot-auth.js"></script>
@@ -123,7 +121,7 @@
                         <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
                     </button>
                     <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
-                    WebBot Page Editor
+                    WebBot Author Editor
                 </h2>
                 <div class="header-actions">
                     <!-- Login / User Info -->
@@ -147,11 +145,11 @@
                     <span id="page-lastmodified-display"></span>
                     <span id="page-published-display"></span>
                 </div>
-                <div id="breadcrumb" class="breadcrumb">
+                <!--div id="breadcrumb" class="breadcrumb">
                     <div class="breadcrumb-item">
                         <a href="navigation.html" id="home-link">nav</a>
                     </div>
-                </div>
+                </div-->
             </div>
 
             <div class="editor-content">
@@ -174,16 +172,12 @@
                 <div id="editor-form" style="display: none;">
 
 
-                        <!-- Editor mode switcher -->
+                        <!-- Editor mode: WYSIWYG only (no HTML source mode for authors) -->
                         <div class="form-group">
                         <div class="editor-mode-switcher">
                             <button type="button" class="editor-mode-btn active" data-mode="wysiwyg">
                                 <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
                                 WYSIWYG Editor
-                            </button>
-                            <button type="button" class="editor-mode-btn" data-mode="html">
-                                <span class="glyphicon glyphicon-console" aria-hidden="true"></span>
-                                HTML Source
                             </button>
                             <button type="button" id="save-page-top" class="btn btn-success" style="margin-left: auto;">
                                 <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
@@ -193,17 +187,17 @@
 
                         <!-- WYSIWYG Editor Container -->
                         <div id="wysiwyg-editor-container" class="wysiwyg-container active">
-                            <!-- Quill editor will be initialized here -->
+                            <!-- TinyMCE will be initialized here by editor.js -->
                         </div>
 
-                        <!-- HTML Source Container -->
-                        <div id="html-source-container" class="html-source-container">
-                            <textarea id="editor-content" class="form-control" rows="70" placeholder="Enter HTML content"></textarea>
+                        <!-- Hidden elements for JS compatibility (editor.js references these) -->
+                        <div id="html-source-container" class="html-source-container" style="display:none;">
+                            <textarea id="editor-content" class="form-control" style="display:none;"></textarea>
                         </div>
 
                         <div style="margin-top: 10px; font-size: 13px; color: #666;">
                             <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
-                            Switch between WYSIWYG (What You See Is What You Get) editor and HTML source code view.
+                            WYSIWYG editor for page content. Edit visually and save.
                         </div>
                     </div>
 
@@ -403,19 +397,18 @@
 
     <link rel="stylesheet" href="css/metadata-modal.css">
 
-    <!-- HTML Quick Edit Modal -->
-    <!-- HTML / Component Edit Modal (dual-mode) -->
+    <!-- HTML Quick Edit Modal (WYSIWYG mode only for authors) -->
     <div id="html-edit-modal" class="html-edit-modal" style="display: none;">
         <div class="html-edit-modal-content">
             <div class="html-edit-modal-header">
-                <h3><span id="html-edit-mode-title">✏️ HTML Editor</span></h3>
-                <span id="html-edit-mode-badge" class="html-edit-mode-badge">CODE</span>
+                <h3><span id="html-edit-mode-title">✏️ Component Editor</span></h3>
+                <span id="html-edit-mode-badge" class="html-edit-mode-badge">WYSIWYG</span>
                 <span id="html-edit-location" class="html-edit-location"></span>
                 <button class="html-edit-modal-close" id="html-edit-modal-close">×</button>
             </div>
             <div class="html-edit-modal-body">
                 <div class="html-edit-controls">
-                    <label id="html-edit-mode-label">Edit raw HTML. Ctrl+Enter to save, Esc to close.</label>
+                    <label id="html-edit-mode-label">Edit component visually. Ctrl+Enter to save, Esc to close.</label>
                 </div>
                 <!-- Code mode: raw textarea -->
                 <textarea id="html-edit-textarea" class="html-edit-textarea" spellcheck="false" style="display: none;"></textarea>

@@ -675,6 +675,8 @@
                 link_assume_external_targets: false,
                 // Custom preview template to match WebBot preview
                 preview_template: '<!DOCTYPE html><html><head><title>Preview</title><base target="_blank"></head><body style="background: #f8f9fa; padding: 20px;"><div style="max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px;">{content}</div></body></html>',
+                // Hide TinyMCE branding/promotion (Upgrade link)
+                promotion: false,
                 // Setup callback when editor is initialized
                 setup: function(editor) {
                     tinyMceEditor = editor;

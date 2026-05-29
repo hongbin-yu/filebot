@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import authService from '../services/auth.service';
 
 const Login: React.FC = () => {
@@ -9,6 +9,8 @@ const Login: React.FC = () => {
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +20,15 @@ const Login: React.FC = () => {
     try {
       const success = await authService.login(username, password);
       if (success) {
-        navigate('/');
+        // If there's a cross-origin redirect, pass token via URL params
+        if (redirectUrl && redirectUrl.startsWith('http')) {
+          const token = localStorage.getItem('access_token');
+          const user = localStorage.getItem('user_info');
+          const separator = redirectUrl.includes('?') ? '&' : '?';
+          window.location.href = redirectUrl + separator + 'token=' + encodeURIComponent(token || '') + '&user=' + encodeURIComponent(user || '');
+        } else {
+          navigate('/');
+        }
       } else {
         setErrors(['Invalid username or password']);
       }

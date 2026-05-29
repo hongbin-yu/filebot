@@ -79,8 +79,8 @@ def get_folders(
         app = db.query(App).filter(App.slug == app_slug).first()
         if not app:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"App not found: {app_slug}")
-        if not current_user.is_superuser and app.owner_id != current_user.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No permission to access this app")
+        # 使用 get_app_or_check_permission 做权限检查（含 has_app_access）
+        get_app_or_check_permission(app.id, current_user, db)
         query = query.filter(Folder.app_id == app.id)
     else:
         if not current_user.is_superuser:
@@ -119,6 +119,55 @@ def get_folders(
                 query = query.filter(Folder.app_id.in_(all_app_ids))
             else:
                 query = query.filter(Folder.app_id == "")  # Return nothing
+
+    # 非超级用户的文件夹权限过滤：按用户拥有的 folder 级别权限缩小可见范围
+    if not current_user.is_superuser:
+        from app.models.permission import Permission
+        from app.models.group import GroupMember
+        from sqlalchemy import or_
+
+        # 收集用户所有 folder 级别权限的 path
+        folder_paths = set()
+
+        # 直接权限
+        direct = db.query(Permission.resource_id).filter(
+            Permission.user_id == current_user.id,
+            Permission.resource_type == "folder",
+        ).all()
+        folder_paths.update(p[0] for p in direct)
+
+        # 组权限
+        user_group_ids_2 = [
+            row[0] for row in db.query(GroupMember.group_id)
+            .filter(GroupMember.user_id == current_user.id)
+            .all()
+        ]
+        if user_group_ids_2:
+            group_perms_2 = db.query(Permission.resource_id).filter(
+                Permission.group_id.in_(user_group_ids_2),
+                Permission.resource_type == "folder",
+            ).all()
+            folder_paths.update(p[0] for p in group_perms_2)
+
+        if folder_paths:
+            # 构建可导航树：授权文件夹 + 它们的祖先（供导航用）+ 它们的子孙（供查看用）
+            # 例如：授权 path=/boarding/canadasite/en/employment-social-development
+            # → 可导航的祖先：/boarding, /boarding/canadasite, /boarding/canadasite/en
+            # → 直接可查看：该 path 及其子孙
+            # 不可见：/boarding 下 OTHER 子文件夹（如 /boarding/other-app）
+            ancestor_paths = set()
+            for p in folder_paths:
+                parts = p.strip("/").split("/")
+                for i in range(1, len(parts)):
+                    ancestor_paths.add("/" + "/".join(parts[:i]))
+
+            # (A) 精确匹配祖先（导航用）
+            # (B) 精确匹配授权路径 or 以授权路径 + "/" 开头（内容可见）
+            # (A) AND (B) 都只匹配自己；防止 (A) 中的祖先把不相关子文件夹也带进来
+            path_conditions = [Folder.path == ap for ap in ancestor_paths]
+            path_conditions += [Folder.path == p for p in folder_paths]
+            path_conditions += [Folder.path.startswith(p + "/") for p in folder_paths]
+            query = query.filter(or_(*path_conditions))
 
     if path_starts_with:
         query = query.filter(Folder.path.startswith(path_starts_with))

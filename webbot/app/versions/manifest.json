@@ -20,12 +20,13 @@
       "page_path": "/canadasite/en/atlantic-canada-opportunities",
       "versions": [
         1,
-        2
+        2,
+        3
       ],
-      "latest": 2,
+      "latest": 3,
       "latest_meta": {
-        "version": 2,
-        "created_at": "2026-05-20T22:58:02.913936Z",
+        "version": 3,
+        "created_at": "2026-05-26T22:31:08.333568Z",
         "author": "system",
         "content_size": 10963
       }
@@ -34,12 +35,13 @@
       "page_path": "/canadasite/en/administrative-tribunals-support-service",
       "versions": [
         1,
-        2
+        2,
+        3
       ],
-      "latest": 2,
+      "latest": 3,
       "latest_meta": {
-        "version": 2,
-        "created_at": "2026-05-20T22:57:58.328585Z",
+        "version": 3,
+        "created_at": "2026-05-27T15:17:58.034445Z",
         "author": "system",
         "content_size": 11712
       }
@@ -61,12 +63,13 @@
       "page_path": "/canadasite/en/revenue-agency",
       "versions": [
         1,
-        2
+        2,
+        3
       ],
-      "latest": 2,
+      "latest": 3,
       "latest_meta": {
-        "version": 2,
-        "created_at": "2026-05-21T02:19:38.916695Z",
+        "version": 3,
+        "created_at": "2026-05-26T22:36:25.160553Z",
         "author": "system",
         "content_size": 26144
       }
@@ -180,12 +183,13 @@
       "page_path": "/canadasite/en",
       "versions": [
         1,
-        2
+        2,
+        3
       ],
-      "latest": 2,
+      "latest": 3,
       "latest_meta": {
-        "version": 2,
-        "created_at": "2026-05-20T23:28:01.193885Z",
+        "version": 3,
+        "created_at": "2026-05-26T15:39:24.774263Z",
         "author": "system",
         "content_size": 14404
       }
@@ -220,12 +224,13 @@
     "canadasite__en__atlantic-canada-opportunities__atlantic-economic-panel": {
       "page_path": "/canadasite/en/atlantic-canada-opportunities/atlantic-economic-panel",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-19T18:57:24.005086Z",
+        "version": 2,
+        "created_at": "2026-05-26T22:34:23.509692Z",
         "author": "system",
         "content_size": 15763
       }
@@ -508,16 +513,69 @@
     "canadasite__en__defence-investment-agency": {
       "page_path": "/canadasite/en/defence-investment-agency",
       "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-26T01:41:57.705872Z",
+        "author": "system",
+        "content_size": 8617
+      }
+    },
+    "canadasite__en__auditor-general__environmental-petitions__federal-departments-and-agencies": {
+      "page_path": "/canadasite/en/auditor-general/environmental-petitions/federal-departments-and-agencies",
+      "versions": [
         1
       ],
       "latest": 1,
       "latest_meta": {
         "version": 1,
-        "created_at": "2026-05-22T14:09:10.015532Z",
+        "created_at": "2026-05-23T21:37:04.711758Z",
         "author": "system",
-        "content_size": 17195
+        "content_size": 16150
+      }
+    },
+    "canadasite__fr__verificateur-general": {
+      "page_path": "/canadasite/fr/verificateur-general",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-24T00:48:22.964617Z",
+        "author": "system",
+        "content_size": 19986
+      }
+    },
+    "canadasite__index": {
+      "page_path": "/canadasite/index",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-27T18:04:45.305904Z",
+        "author": "system",
+        "content_size": 1386
+      }
+    },
+    "canadasite__en__financial-consumer-agency": {
+      "page_path": "/canadasite/en/financial-consumer-agency",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-28T19:18:30.682691Z",
+        "author": "system",
+        "content_size": 14634
       }
     }
   },
-  "updated_at": "2026-05-22T14:36:26.189198Z"
+  "updated_at": "2026-05-28T19:18:30.682691Z"
 }

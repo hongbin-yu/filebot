@@ -221,11 +221,12 @@
 
             if (resourceSidebarClose) {
                 resourceSidebarClose.addEventListener('click', function() {
-                    resourceSidebar.classList.add('hidden');
-                    resourceToggleBtn.classList.remove('active');
-                    console.log('Resource sidebar closed via close button');
+                    window.closeResourceSidebar();
                 });
             }
+
+            // Placeholder exposed on window — real implementation lives inside initResourceSidebar IIFE
+            window.closeResourceSidebar = function() { console.warn('closeResourceSidebar not yet initialized'); };
 
             // AI toggle button - controls right panel
             const aiToggleBtn = document.getElementById('ai-toggle-btn');
@@ -680,6 +681,8 @@
                 link_assume_external_targets: false,
                 // Custom preview template to match WebBot preview
                 preview_template: '<!DOCTYPE html><html><head><title>Preview</title><base target="_blank"></head><body style="background: #f8f9fa; padding: 20px;"><div style="max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px;">{content}</div></body></html>',
+                // Hide TinyMCE branding/promotion (Upgrade link)
+                promotion: false,
                 // Setup callback when editor is initialized
                 setup: function(editor) {
                     tinyMceEditor = editor;
@@ -1400,6 +1403,11 @@
 
                             // Always use WebBot proxy path /content/dam/ for better security
                             // This hides FileBot backend and provides unified access control
+                            // Avoid duplicate /content/dam if path already contains it
+                            if (path.startsWith('/content/dam')) {
+                                console.log('Using path directly (already has /content/dam):', path);
+                                return path;
+                            }
                             console.log('Using WebBot proxy path:', `/content/dam${path}`);
                             return `/content/dam${path}`;  // Proxy through WebBot for security
                         }
@@ -1990,6 +1998,11 @@
                     } catch (e) {
                         console.warn('TinyMCE setContent failed (non-fatal):', e);
                     }
+
+                    // Load template-specific CSS/JS/body class so editor matches published page
+                    loadTemplateAssets(page).catch(function(err) {
+                        console.warn('Template assets load failed (non-fatal):', err);
+                    });
                 }
 
                 // Update page content in currentPageData to cleaned version
@@ -2028,6 +2041,59 @@
                 console.error('Error stack:', error.stack);
                 console.error('Error occurred in loadPage with pageId:', pageId);
                 showError(`Failed to load page: ${error.message}`);
+            }
+        }
+
+        /**
+         * Fetch template-specific CSS/JS/body class and inject into TinyMCE iframe.
+         * Makes WYSIWYG editing match the published page appearance.
+         */
+        async function loadTemplateAssets(page) {
+            if (!tinyMceEditor || !page.path) return;
+
+            try {
+                const apiUrl = '/api/v1/pages/template-assets?path=' + encodeURIComponent(page.path);
+                const resp = await fetch(apiUrl);
+                if (!resp.ok) return;
+                const assets = await resp.json();
+
+                // Inject CSS into TinyMCE iframe head
+                const iframe = tinyMceEditor.getContentAreaContainer().querySelector('iframe');
+                if (!iframe) return;
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                if (!doc) return;
+
+                // Remove previously injected template CSS (marked with data-template-css)
+                const oldLinks = doc.querySelectorAll('link[data-template-css]');
+                oldLinks.forEach(function(el) { el.remove(); });
+
+                // Inject new CSS
+                if (assets.css_urls && assets.css_urls.length) {
+                    assets.css_urls.forEach(function(url) {
+                        var link = doc.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = url;
+                        link.setAttribute('data-template-css', 'true');
+                        doc.head.appendChild(link);
+                    });
+                }
+
+                // Remove previously injected body class
+                if (assets.body_class) {
+                    var body = doc.body;
+                    // Remove old template classes (marked with data-template-body-class)
+                    var oldBody = doc.querySelector('body[data-template-body-class]');
+                    if (oldBody) {
+                        oldBody.removeAttribute('data-template-body-class');
+                    }
+                    body.setAttribute('data-template-body-class', 'true');
+                    // Apply the template's body class (e.g. 'oag-theme' or 'page')
+                    body.className = assets.body_class;
+                }
+
+                console.log('Template assets applied:', assets);
+            } catch (e) {
+                console.warn('loadTemplateAssets error:', e);
             }
         }
 
@@ -3873,7 +3939,9 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const errBody = await response.json().catch(() => ({}));
+                    const msg = errBody.detail || response.statusText || `HTTP ${response.status}`;
+                    throw new Error(msg);
                 }
 
                 // Update last modified and current page data
@@ -12565,7 +12633,7 @@
             // -------- Images --------
             async function searchImages(pathVal, titleVal) {
                 try {
-                    var url = '/api/v1/search/documents?limit=200&mime_type=image%';
+                    var url = '/api/v1/search/documents?limit=30&mime_type=image%';
                     if (pathVal) {
                         // DB paths need /boarding prefix (e.g. /boarding/canadasite/content/dam/...)
                         // metadata.file_path is stored as /canadasite/content/dam/canada
@@ -12616,16 +12684,22 @@
                 // Helper: convert storage_path to DAM proxy URL
                 function pathToDamUrl(storagePath) {
                     // storage_path: 'boarding/canadasite/content/dam/canada/...'
-                    // DAM proxy URL: '/content/dam/canada/...'
-                    // Strip 'boarding/canadasite' or just 'boarding/' prefix
+                    // or 'boarding/canadasite/content/dam/esdc-edsc/...' (no 'canada/' segment)
+                    // DAM proxy URL: '/content/dam/canada/...' or '/content/dam/esdc-edsc/...'
                     if (!storagePath) return '';
-                    // Find 'canada/' or 'content/dam/canada/' in path
-                    var idx = storagePath.indexOf('canada/');
-                    if (idx >= 0) {
-                        return '/content/dam/' + storagePath.substring(idx);
+                    // Strip leading prefixes ('boarding/', 'boarding/canadasite/')
+                    var path = storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
+                    // If path already has /content/dam/, use it as-is (with leading /)
+                    if (path.startsWith('content/dam/') || path.startsWith('/content/dam/')) {
+                        return '/' + path.replace(/^\/+/, '');
                     }
-                    // Fallback: strip leading boarding/canadasite/
-                    return '/content/dam/' + storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
+                    // Find 'canada/' segment as marker
+                    var idx = path.indexOf('canada/');
+                    if (idx >= 0) {
+                        return '/content/dam/' + path.substring(idx);
+                    }
+                    // Fallback: prepend /content/dam/
+                    return '/content/dam/' + path;
                 }
 
                 let html = '<div class="image-grid">';
@@ -13160,6 +13234,8 @@
                 }
 
                 function addHtmlExt(p) { return p ? p + '.html' : p; }
+                // Strip .html extension for navigation
+                function stripHtmlExt(p) { return p ? p.replace(/\.html$/, '') : p; }
 
                 var html = '<div class="resource-info">📁 ' + deptPath + '</div>';
                 html += '<div class="page-list">';
@@ -13168,7 +13244,7 @@
                     var pagePath = page.path || '';
                     var pagePathHtml = addHtmlExt(pagePath);
                     html += '<div class="page-card" data-path="' + pagePathHtml + '">';
-                    html += '<div class="page-card-icon">📄</div>';
+                    html += '<div class="page-card-icon" title="Edit page">📄</div>';
                     html += '<div class="page-card-info">';
                     html += '<div class="page-card-title" title="' + title + '">' + title + '</div>';
                     html += '<div class="page-card-path">' + pagePathHtml + '</div>';
@@ -13180,19 +13256,23 @@
 
                 resultsEl.innerHTML = html;
 
-                // Bind insert buttons
+                // Bind edit icon (📄) — click to navigate/edit the page
+                resultsEl.querySelectorAll('.page-card-icon').forEach(function(icon) {
+                    icon.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = icon.closest('.page-card');
+                        var path = stripHtmlExt(card.dataset.path);
+                        // Close resource sidebar and load page
+                        closeResourceSidebar();
+                        loadPage(path);
+                    });
+                });
+
+                // Bind insert buttons (🔗) — insert link into editor
                 resultsEl.querySelectorAll('.page-insert-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.stopPropagation();
                         var card = btn.closest('.page-card');
-                        var path = card.dataset.path;
-                        var title = card.querySelector('.page-card-title').textContent;
-                        insertPageLink(path, title);
-                    });
-                });
-
-                resultsEl.querySelectorAll('.page-card').forEach(function(card) {
-                    card.addEventListener('click', function() {
                         var path = card.dataset.path;
                         var title = card.querySelector('.page-card-title').textContent;
                         insertPageLink(path, title);
@@ -13316,5 +13396,21 @@
                         searchPages(pathVal, titleVal);
                         break;
                 }
+            };
+
+            // Close sidebar and optionally reset to Components
+            var closeResourceSidebar = window.closeResourceSidebar = function(resetToComponents) {
+                var sb = document.getElementById('resource-sidebar');
+                var toggle = document.getElementById('filebot-toggle-btn');
+                if (!sb || !toggle) return;
+                sb.classList.add('hidden');
+                toggle.classList.remove('active');
+                if (resetToComponents !== false) {
+                    resourceTypeSelect.value = 'components';
+                    pathInput.value = '/canadasite/en/components';
+                    searchInput.value = '';
+                    doSearch();
+                }
+                console.log('Resource sidebar closed');
             };
         })();

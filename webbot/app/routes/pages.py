@@ -17,6 +17,8 @@ from typing import List, Optional, Dict, Any
 from fastapi import Request as FastAPIRequest
 
 from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, PageMetadataItem, PreviewRequest, PagePropertiesResponse, PageMetadataResponse, PageStatus
+from app.routes.permission_utils import filter_pages_by_permission, user_can_write_page, user_can_see_page
+from app.routes.auth_security import get_current_active_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/pages", tags=["pages"])
@@ -377,7 +379,7 @@ async def translate_text(text: str = Query(..., description="English text to tra
 
 
 @router.post("/", response_model=PageResponse)
-async def create_page(page: PageCreate):
+async def create_page(page: PageCreate, current_user: dict = Depends(get_current_active_user)):
     """Create new page"""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -408,6 +410,13 @@ async def create_page(page: PageCreate):
             page_id = generate_page_id(page.title)
             parent_path = page.parent_path
             language_from_path = page.language if page.language else 'en'
+
+        # Permission check: verify user has write access to the parent path
+        if not user_can_write_page(current_user["id"], page_id):
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not have permission to create pages under: {page_id}"
+            )
 
         # Check if page path already exists
         cursor.execute("SELECT id, path, title, language FROM webbot_page WHERE path = ?", (page_id,))
@@ -570,11 +579,15 @@ async def create_page(page: PageCreate):
         conn.close()
 
 @router.get("/path", response_model=List[PageListItem])
-async def get_pages_by_path(path: str = Query(..., description="Parent page path, returns all direct children. e.g. path=/en returns pages with parent_path=/en. path=/ returns root pagese(parent_path IS NULL)。")):
+async def get_pages_by_path(
+    path: str = Query(..., description="Parent page path, returns all direct children. e.g. path=/en returns pages with parent_path=/en. path=/ returns root pages (parent_path IS NULL)。"),
+    current_user: dict = Depends(get_current_active_user)
+):
     """Get pages by parent path
 
     Get all pages under a specific path (direct children).
     Simplified version of /api/v1/pages?path=..., designed for path filtering.
+    Results are filtered by the current user's app permissions.
 
     Example:
     - GET /api/v1/pages/path?path=/en → returns all pages with parent_path=/en
@@ -607,7 +620,9 @@ async def get_pages_by_path(path: str = Query(..., description="Parent page path
                 page_dict["metadata"] = {}
             result.append(PageListItem(**page_dict))
 
-        return result
+        # Filter by user's app permissions
+        filtered = filter_pages_by_permission(result, current_user["id"], path_attr="path")
+        return filtered
 
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
@@ -615,10 +630,18 @@ async def get_pages_by_path(path: str = Query(..., description="Parent page path
         conn.close()
 
 @router.get("/", response_model=List[PageListItem])
-async def list_pages(skip: int = 0, limit: int = 100, path: Optional[str] = Query(None, description="Parent page path, returns all direct children under this path. e.g. path=/en returns pages with parent_path=/en. If omitted, returns all pagese。"), prefix: Optional[str] = Query(None, description="Path prefix filter, returns all pages whose path starts with this prefix. e.g. prefix=/canadasite/en/components/ returns all component pages recursively.\nWhen both prefix and path are provided, prefix takes precedence.")):
+async def list_pages(
+    skip: int = 0,
+    limit: int = 100,
+    path: Optional[str] = Query(None, description="Parent page path, returns all direct children under this path. e.g. path=/en returns pages with parent_path=/en. If omitted, returns all pagese。"),
+    prefix: Optional[str] = Query(None, description="Path prefix filter, returns all pages whose path starts with this prefix. e.g. prefix=/canadasite/en/components/ returns all component pages recursively.\nWhen both prefix and path are provided, prefix takes precedence."),
+    current_user: dict = Depends(get_current_active_user)
+):
     """Get page list
 
     Supports filtering by parent path, returns all pages under a specific path (direct children).
+    Results are filtered by the current user's app permissions.
+
     Example:
     - GET /api/v1/pages?path=/en → returns pages with parent_path=/en
     - GET /api/v1/pages?path=/ → returns root pages (parent_path IS NULL)
@@ -672,7 +695,9 @@ async def list_pages(skip: int = 0, limit: int = 100, path: Optional[str] = Quer
                 page_dict["metadata"] = {}
             result.append(PageListItem(**page_dict))
 
-        return result
+        # Filter by user's app permissions
+        filtered = filter_pages_by_permission(result, current_user["id"], path_attr="path")
+        return filtered
 
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
@@ -896,7 +921,7 @@ async def get_megamenu(path: str = ""):
         conn.close()
 
 @router.get("/by-path", response_model=PageResponse)
-async def get_page_by_path(path: str = Query(..., description="Full page path, e.g. /en/contact", alias="path")):
+async def get_page_by_path(path: str = Query(..., description="Full page path, e.g. /en/contact", alias="path"), current_user: dict = Depends(get_current_active_user)):
     """Get page by full path (e.g. /en/contact)
 
     Queries directly by path field without parsing id or parent_path.
@@ -987,6 +1012,11 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
 
         # Transform为字典并返回
         page_dict = dict(page)
+
+        # Permission check: verify user can read this page
+        if not user_can_see_page(current_user["id"], page_dict["path"]):
+            raise HTTPException(status_code=404, detail=f"Page not found: {page_dict['path']}")
+
         # 解析metadata field
         if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
             try:
@@ -1014,10 +1044,14 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
         conn.close()
 
 @router.get("/by-path/{path:path}/children", response_model=List[PageListItem])
-async def get_page_children_by_path(path: str = ""):
-    """Get direct children of a page by path
+async def get_page_children_by_path(path: str = "", title: Optional[str] = Query(None), limit: int = Query(30)):
+    """Get children of a page by path
+
+    When title is provided, searches ALL descendants (any level) matching title
+    and path prefix. Otherwise returns direct children only.
 
     Example: /api/v1/pages/by-path/canadasite/en/children
+             /api/v1/pages/by-path/canadasite/en/children?title=Illness
              /api/v1/pages/by-path/canadasite/en/mustache-templates/children
     """
     import sys
@@ -1027,30 +1061,46 @@ async def get_page_children_by_path(path: str = ""):
     try:
         # Normalize path
         normalized_path = normalize_path(path)
-        print(f"DEBUG get_page_children_by_path: path='{path}', normalized='{normalized_path}'", file=sys.stderr)
+        print(f"DEBUG get_page_children_by_path: path='{path}', normalized='{normalized_path}', title_filter='{title}', limit={limit}", file=sys.stderr)
 
-        # If路径Root path(空或单个斜杠),特殊处理
-        if normalized_path == '/' or normalized_path == '':
-            print("DEBUG: Root path requested, returning pages with parent_path IS NULL", file=sys.stderr)
-            cursor.execute("""
-                SELECT * FROM webbot_page
-                WHERE parent_path IS NULL
-                ORDER BY title ASC
-            """)
+        if title:
+            # Title search: return ALL descendants (any level) matching both path prefix and title
+            if normalized_path == '/' or normalized_path == '':
+                # Root search - match all pages
+                cursor.execute("""
+                    SELECT * FROM webbot_page
+                    WHERE title LIKE ?
+                    ORDER BY title ASC
+                    LIMIT ?
+                """, (f"%{title}%", limit))
+            else:
+                cursor.execute("""
+                    SELECT * FROM webbot_page
+                    WHERE path LIKE ? AND title LIKE ?
+                    ORDER BY title ASC
+                    LIMIT ?
+                """, (f"{normalized_path}%", f"%{title}%", limit))
         else:
-            # 直接通过 path 列查找page(支持任意层级的路径)
-            cursor.execute("SELECT id FROM webbot_page WHERE path = ?", (normalized_path,))
-            parent_page = cursor.fetchone()
-            if not parent_page:
-                raise HTTPException(status_code=404, detail=f"Parent page path not found: {normalized_path}")
+            # No title filter: direct children only (existing behavior)
+            if normalized_path == '/' or normalized_path == '':
+                cursor.execute("""
+                    SELECT * FROM webbot_page
+                    WHERE parent_path IS NULL
+                    ORDER BY title ASC
+                """)
+            else:
+                # 直接通过 path 列查找page(支持任意层级的路径)
+                cursor.execute("SELECT id FROM webbot_page WHERE path = ?", (normalized_path,))
+                parent_page = cursor.fetchone()
+                if not parent_page:
+                    raise HTTPException(status_code=404, detail=f"Parent page path not found: {normalized_path}")
 
-            parent_id = parent_page[0]
-            # 查询所有parent_path等于该Page ID的子page
-            cursor.execute("""
-                SELECT * FROM webbot_page
-                WHERE parent_path = ?
-                ORDER BY title ASC
-            """, (parent_id,))
+                parent_id = parent_page[0]
+                cursor.execute("""
+                    SELECT * FROM webbot_page
+                    WHERE parent_path = ?
+                    ORDER BY title ASC
+                """, (parent_id,))
 
         children = cursor.fetchall()
         result = []
@@ -1077,7 +1127,7 @@ async def get_page_children_by_path(path: str = ""):
         conn.close()
 
 @router.get("/by-path/{full_path:path}", response_model=PageResponse)
-async def get_page_by_path_param(full_path: str):
+async def get_page_by_path_param(full_path: str, current_user: dict = Depends(get_current_active_user)):
     """Get page by full path (path parameter version)
 
     Supports path parameter format: /api/v1/pages/by-path/boarding/content/dam
@@ -1163,6 +1213,11 @@ async def get_page_by_path_param(full_path: str):
 
         # Transform为字典并返回
         page_dict = dict(page)
+
+        # Permission check: verify user can read this page
+        if not user_can_see_page(current_user["id"], page_dict["path"]):
+            raise HTTPException(status_code=404, detail=f"Page not found: {page_dict['path']}")
+
         # 解析metadata field
         if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
             try:
@@ -1962,9 +2017,80 @@ async def _render_preview(
         raise HTTPException(status_code=500, detail=f"Preview failed: {str(e)}")
 
 
+@router.get("/template-assets")
+async def get_template_assets(path: str = Query(...)):
+    """
+    Extract template-specific CSS/JS URLs and body class for a given page path.
+    Used by the editor to make TinyMCE content area styling match the published page.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        norm_path = path if path.startswith('/') else f'/{path}'
+        cursor.execute("SELECT publish_template, path FROM webbot_page WHERE path = ?", (norm_path,))
+        page = cursor.fetchone()
+        if not page:
+            return {"css_urls": [], "js_urls": [], "body_class": ""}
+
+        template_path = page["publish_template"] if page["publish_template"] else None
+
+        css_urls = []
+        js_urls = []
+        body_class = ""
+
+        if template_path:
+            cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
+            template_row = cursor.fetchone()
+            if template_row:
+                raw = template_row[0]
+
+                # Templates are stored as JSON with a "template" key containing HTML
+                if raw.strip().startswith('{'):
+                    try:
+                        parsed = json.loads(raw)
+                        html = parsed.get("template", "")
+                    except json.JSONDecodeError:
+                        html = raw
+                else:
+                    html = raw
+
+                # Extract CSS <link rel="stylesheet" href="...">
+                css_matches = re.findall(
+                    r'<link[^>]*rel=[\"\']stylesheet[\"\'][^>]*href=[\"\']([^\"\']+)[\"\'][^>]*/?>',
+                    html, re.IGNORECASE
+                )
+                css_urls = list(set(css_matches))
+
+                # Extract JS <script src="...">
+                js_matches = re.findall(
+                    r'<script[^>]*src=[\"\']([^\"\']+)[\"\'][^>]*>',
+                    html, re.IGNORECASE
+                )
+                js_urls = list(set(js_matches))
+
+                # Extract body class from <body class="...">
+                body_match = re.search(
+                    r'<body[^>]*class=[\"\']([^\"\']+)[\"\']',
+                    html, re.IGNORECASE
+                )
+                if body_match:
+                    body_class = body_match.group(1)
+
+        return {
+            "css_urls": css_urls,
+            "js_urls": js_urls,
+            "body_class": body_class
+        }
+
+    except Exception:
+        return {"css_urls": [], "js_urls": [], "body_class": ""}
+    finally:
+        conn.close()
 @router.get("/{page_id:path}", response_model=PageResponse)
 async def get_page(page_id: str,
-                   parent_path: Optional[str] = Query(None, description="Parent page path or ID, e.g. /en or page ID.")):
+                   parent_path: Optional[str] = Query(None, description="Parent page path or ID, e.g. /en or page ID."),
+                   current_user: dict = Depends(get_current_active_user)):
     """Get a single page
 
     Enhanced smart page lookup logic:
@@ -2053,6 +2179,10 @@ async def get_page(page_id: str,
             raise HTTPException(status_code=404, detail=error_msg)
 
         page_dict = dict(page)
+        # 权限检查：验证用户是否有权看到此页面
+        if not user_can_see_page(current_user["id"], page_dict["path"]):
+            raise HTTPException(status_code=404, detail=f"Page not found: {page_dict['path']}")
+
         # 解析metadata field(数据库存储为JSON字符串)
         if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
             try:
@@ -2072,7 +2202,8 @@ async def get_page(page_id: str,
 
 @router.put("/{page_id:path}", response_model=PageResponse)
 async def update_page(page_id: str, page_update: PageUpdate,
-                     parent_path: Optional[str] = Query(None, description="Parent page path or ID, e.g. /en or page ID.")):
+                     parent_path: Optional[str] = Query(None, description="Parent page path or ID, e.g. /en or page ID."),
+                     current_user: dict = Depends(get_current_active_user)):
     """Update page
 
     Enhanced smart page lookup logic (consistent with GET endpoint):
@@ -2156,6 +2287,15 @@ async def update_page(page_id: str, page_update: PageUpdate,
             error_msg += f". Tried path: '{normalized_path}'"
 
             raise HTTPException(status_code=404, detail=error_msg)
+
+        # Permission check: verify user has write access to this page
+        print(f"DEBUG update_page permission: path='{existing_page['path']}', user='{current_user['id']}'", file=sys.stderr)
+        sys.stderr.flush()
+        if not user_can_write_page(current_user["id"], existing_page["path"]):
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not have permission to edit this page: {existing_page['path']}"
+            )
 
         # Determine target parent identifier for subsequent update
         # If通过Parameter找到了page,使用相应的标识符
@@ -2382,6 +2522,10 @@ async def update_page(page_id: str, page_update: PageUpdate,
     except sqlite3.Error as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Update failed: {e}")
+    except HTTPException:
+        # Re-raise FastAPI HTTPExceptions (e.g. 403 permission denied) as-is
+        conn.rollback()
+        raise
     except Exception as e:
         conn.rollback()
         traceback.print_exc()
@@ -2393,7 +2537,8 @@ async def update_page(page_id: str, page_update: PageUpdate,
 async def delete_page(
     page_id: str,
     delete_other_language: bool = Query(False, description="Also delete the other language page"),
-    other_language_path: Optional[str] = Query(None, description="Explicit other language path to delete")
+    other_language_path: Optional[str] = Query(None, description="Explicit other language path to delete"),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """Delete page
 
@@ -2403,17 +2548,28 @@ async def delete_page(
     cursor = conn.cursor()
 
     try:
+        # Normalise page path to ensure leading slash
+        normalized_path = page_id if page_id.startswith('/') else f'/{page_id}'
+        normalized_path = normalized_path.rstrip('/')
+
         # Look up page directly by path
-        cursor.execute("SELECT id, other_language_path FROM webbot_page WHERE path = ?", (page_id,))
+        cursor.execute("SELECT id, other_language_path, path FROM webbot_page WHERE path = ?", (normalized_path,))
         page_row = cursor.fetchone()
         if not page_row:
             raise HTTPException(status_code=404, detail="Page not found")
+
+        # Permission check: verify user has write access
+        if not user_can_write_page(current_user["id"], page_row["path"]):
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not have permission to delete this page"
+            )
 
         # Determine the other language path to also delete
         target_other_path = other_language_path or page_row['other_language_path']
 
         # Delete main page
-        cursor.execute("DELETE FROM webbot_page WHERE path = ?", (page_id,))
+        cursor.execute("DELETE FROM webbot_page WHERE path = ?", (normalized_path,))
 
         # Delete other language page if requested
         deleted_other = None
@@ -2433,6 +2589,9 @@ async def delete_page(
     except sqlite3.Error as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
+    except HTTPException:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -2828,6 +2987,9 @@ async def create_bilingual_template(page_data: BilingualTemplateCreate):
     except sqlite3.Error as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    except HTTPException:
+        conn.rollback()
+        raise
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Create failed: {e}")
@@ -2855,7 +3017,8 @@ async def test_path_param(path: str = Query(..., description="Test path paramete
 async def publish_page(
     request: FastAPIRequest,
     path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact"),
-    output_dir: Optional[str] = Query(None, description="Output directory for static HTML")
+    output_dir: Optional[str] = Query(None, description="Output directory for static HTML"),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Publish a page: generate complete HTML with head, header, content, date-modified, and footer.
@@ -2875,6 +3038,13 @@ async def publish_page(
         if not page:
             raise HTTPException(status_code=404, detail=f"Page not found: {path}")
         page = dict(page)
+
+        # Permission check: verify user can write to this page
+        if not user_can_write_page(current_user["id"], page["path"]):
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not have permission to publish this page"
+            )
         page_content = page.get("content", "")
         page_title = page.get("navigation_title") or page.get("title", "Untitled")
         page_language = page.get("language", "en")
@@ -3248,6 +3418,7 @@ async def publish_page(
 async def unpublish_page(
     request: FastAPIRequest,
     path: str = Query(..., description="Full page path, e.g. /canadasite/en/canadian-heritage"),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Unpublish a page: forward to FileBot to delete from /publish folder.
@@ -3258,6 +3429,13 @@ async def unpublish_page(
     cursor = conn.cursor()
 
     try:
+        # Permission check: verify user can write to this page before unpublishing
+        if not user_can_write_page(current_user["id"], path):
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not have permission to unpublish this page: {path}"
+            )
+
         # 1. Forward to FileBot to delete the published file
         filebot_unpublish_url = "http://localhost:8001/api/v1/pages/unpublish"
         async with aiohttp.ClientSession() as session:
@@ -3308,6 +3486,7 @@ async def move_page(
     new_parent_path: str = Query(None, description="New parent path, e.g. /canadasite/en/new-parent. Use empty or omit for root level."),
     new_name: str = Query(None, description="New page slug/name (optional). Defaults to current slug if omitted."),
     new_title: str = Query(None, description="New page title (optional). Leaves unchanged if omitted."),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Move a page to a new parent. Updates:
@@ -3326,6 +3505,13 @@ async def move_page(
         page = cursor.fetchone()
         if not page:
             raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+
+        # Permission check: verify user can write to this page
+        if not user_can_write_page(current_user["id"], page["path"]):
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not have permission to move this page"
+            )
 
         # 2. Validate new parent exists (unless moving to root)
         if new_parent_path:
@@ -3540,3 +3726,4 @@ async def get_footer_v2(path: str = ""):
         raise HTTPException(status_code=500, detail=f"Internal error: {e}")
     finally:
         conn.close()
+

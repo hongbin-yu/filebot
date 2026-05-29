@@ -226,12 +226,26 @@ const ClientDocuments: React.FC = () => {
         // Fetch folder documents (with pagination)
         const targetFolderIdentifier = folderId || (folder ? getFolderIdentifier(folder) : '');
         if (targetFolderIdentifier) {
-          // Check folder depth - if >=3 (department level), fetch all descendant docs
+          // Check folder depth - if >=3 (department level), use path_prefix for all descendant docs
           const folderNode = findFolderInTree(folderTree, currentFolderData?.path || '');
-          if (folderNode && folderNode.level !== undefined && folderNode.level >= 3) {
-            console.log(`📁 Folder depth ${folderNode.level} >= 3 (department level), fetching all descendant docs`);
-            await fetchAllDescendantDocuments(folderNode);
+          const isDeepPath = folderNode && folderNode.level !== undefined && folderNode.level >= 3;
+          
+          if (isDeepPath) {
+            console.log(`📁 Deep path (level ${folderNode!.level}), using path_prefix pagination`);
+            // Single API call with path_prefix + skip/limit + total_count header
+            const documentsData = await documentService.getDocumentsByPathPrefix(
+              currentFolderData?.path || targetFolderIdentifier,
+              {
+                skip: (currentPage - 1) * pageSize,
+                limit: pageSize,
+                sort_by: 'created_at',
+                sort_order: 'desc'
+              }
+            );
+            setDocuments(documentsData);
+            setTotalPages(Math.ceil(documentService.lastTotalCount / pageSize) || 1);
           } else {
+            // Single folder: standard path-based query
             const documentsData = await documentService.getDocuments(targetFolderIdentifier, {
               skip: (currentPage - 1) * pageSize,
               limit: pageSize,
@@ -240,13 +254,12 @@ const ClientDocuments: React.FC = () => {
             });
             setDocuments(documentsData);
             
-            // Get total docs for pagination (simple pagination for now)
-            // Assume array length < limit means last page
-            if (documentsData.length < pageSize) {
-              setTotalPages(currentPage);
+            // Proper pagination from total count header
+            if (documentService.lastTotalCount > 0) {
+              setTotalPages(Math.ceil(documentService.lastTotalCount / pageSize) || 1);
             } else {
-              // Temporarily set to current page + 5
-              setTotalPages(currentPage + 5);
+              // Fallback: assume last page if fewer results than pageSize
+              setTotalPages(documentsData.length < pageSize ? currentPage : currentPage + 1);
             }
           }
         }
@@ -293,61 +306,6 @@ const ClientDocuments: React.FC = () => {
       }
     }
     return null;
-  };
-
-  // Recursively get all descendant folder identifiers (path preferred)
-  const getAllDescendantFolderIdentifiers = (node: FolderTreeNode): string[] => {
-    const identifiers: string[] = [];
-    if (node.children && node.children.length > 0) {
-      for (const child of node.children) {
-        // Use path-first identifier
-        const childIdentifier = getFolderIdentifier(child);
-        identifiers.push(childIdentifier);
-        identifiers.push(...getAllDescendantFolderIdentifiers(child));
-      }
-    }
-    return identifiers;
-  };
-
-  // Fetch docs for folder and all descendants
-  const fetchAllDescendantDocuments = async (folderNode: FolderTreeNode) => {
-    try {
-      // Get current folder and all descendant identifiers
-      const currentFolderIdentifier = getFolderIdentifier(folderNode);
-      const folderIdentifiers = [currentFolderIdentifier, ...getAllDescendantFolderIdentifiers(folderNode)];
-      console.log(`📁 Fetching docs for ${folderIdentifiers.length} folders (depth ${folderNode.level})`);
-      
-      // Fetch docs for each folder
-      const allDocuments: any[] = [];
-      for (const folderId of folderIdentifiers) {
-        try {
-          const documents = await documentService.getDocuments(folderId, {
-            skip: (currentPage - 1) * pageSize,
-            limit: pageSize,
-            sort_by: 'created_at',
-            sort_order: 'desc'
-          });
-          allDocuments.push(...documents);
-        } catch (err) {
-          console.error(`Failed to fetch docs for folder ${folderId}:`, err);
-        }
-      }
-      
-      // Deduplicate by ID
-      const uniqueDocuments = allDocuments.filter((doc, index, self) => 
-        index === self.findIndex(d => d.path === doc.path)
-      );
-      
-      console.log(`✅ Got ${uniqueDocuments.length} unique docs total`);
-      setDocuments(uniqueDocuments);
-      
-      // Update pagination info
-      setTotalPages(1);
-      setCurrentPage(1);
-    } catch (err: any) {
-      console.error('Failed to fetch descendant docs:', err);
-      setDocuments([]);
-    }
   };
 
   // Toggle tree node expand state
@@ -1072,6 +1030,109 @@ const ClientDocuments: React.FC = () => {
                         </div>
                       </div>
                     </div>
+
+                  {/* Pagination controls */}
+                  {!isShowingSearchResults() && documents.length > 0 && (
+                    <div className="bg-white px-6 py-4 border-t border-gray-200">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        {/* Page info */}
+                        <div className="text-sm text-gray-600">
+                          Page <span className="font-medium">{currentPage}</span> of{' '}
+                          <span className="font-medium">{totalPages}</span>
+                          {' · '}
+                          <span className="font-medium">{documentService.lastTotalCount}</span> total docs
+                        </div>
+
+                        {/* Page size selector */}
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-gray-600">Per page:</label>
+                          <select
+                            value={pageSize}
+                            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                            className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+
+                        {/* Page navigation */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handlePageChange(1)}
+                            disabled={currentPage <= 1}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="First page"
+                          >
+                            ««
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage <= 1}
+                            className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            « Prev
+                          </button>
+
+                          {/* Page number buttons */}
+                          {(() => {
+                            const pages: (number | string)[] = [];
+                            const maxVisible = 7;
+                            let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                            let end = Math.min(totalPages, start + maxVisible - 1);
+                            if (end - start < maxVisible - 1) {
+                              start = Math.max(1, end - maxVisible + 1);
+                            }
+
+                            if (start > 1) {
+                              pages.push(1);
+                              if (start > 2) pages.push('...');
+                            }
+                            for (let i = start; i <= end; i++) pages.push(i);
+                            if (end < totalPages) {
+                              if (end < totalPages - 1) pages.push('...');
+                              pages.push(totalPages);
+                            }
+
+                            return pages.map((p, idx) =>
+                              p === '...' ? (
+                                <span key={`ellipsis-${idx}`} className="px-2 py-1 text-sm text-gray-400">…</span>
+                              ) : (
+                                <button
+                                  key={`page-${p}`}
+                                  onClick={() => handlePageChange(p as number)}
+                                  className={`px-3 py-1 text-sm border rounded ${
+                                    currentPage === p
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'border-gray-300 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {p}
+                                </button>
+                              )
+                            );
+                          })()}
+
+                          <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage >= totalPages}
+                            className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Next »
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(totalPages)}
+                            disabled={currentPage >= totalPages}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Last page"
+                          >
+                            »»
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   </div>
                 )}
               </div>

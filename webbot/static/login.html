@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in to FileBot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: #f9fafb;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header .icon {
+            font-size: 40px;
+            margin-bottom: 16px;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .login-card {
+            background: #ffffff;
+            padding: 32px 28px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            display: block;
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            background: #fff;
+        }
+
+        .form-group input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+        }
+
+        .form-group input::placeholder {
+            color: #9ca3af;
+        }
+
+        .form-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .form-options label {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #111827;
+            cursor: pointer;
+        }
+
+        .form-options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            accent-color: #2563eb;
+        }
+
+        .form-options a {
+            font-size: 14px;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .form-options a:hover {
+            color: #1d4ed8;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 10px 16px;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .login-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .error-box {
+            margin-bottom: 20px;
+            background: #fef2f2;
+            border-radius: 6px;
+            padding: 12px 16px;
+            display: none;
+        }
+
+        .error-box.visible {
+            display: block;
+        }
+
+        .error-box .error-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #991b1b;
+            margin-bottom: 4px;
+        }
+
+        .error-box .error-msg {
+            font-size: 14px;
+            color: #b91c1c;
+            margin: 0;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        .login-btn.loading .loading-spinner {
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .divider {
+            margin: 24px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .divider-text {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .demo-box {
+            background: #f9fafb;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+        }
+
+        .demo-box p {
+            font-size: 13px;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .demo-box strong {
+            color: #111827;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="icon">🔐</div>
+            <h1>Sign in to FileBot</h1>
+            <p>Unified login — Webbot &amp; FileBot</p>
+        </div>
+
+        <div class="login-card">
+            <form id="login-form">
+                <!-- Error Message -->
+                <div class="error-box" id="error-box">
+                    <div class="error-title" id="error-title">Error</div>
+                    <p class="error-msg" id="error-text"></p>
+                </div>
+
+                <!-- Username -->
+                <div class="form-group">
+                    <label for="username">Username or Email</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        autocomplete="username"
+                        placeholder="demo or demo@filebot.app"
+                        required
+                    >
+                </div>
+
+                <!-- Password -->
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autocomplete="current-password"
+                        placeholder="••••••••"
+                        required
+                    >
+                </div>
+
+                <!-- Options -->
+                <div class="form-options">
+                    <label>
+                        <input type="checkbox" id="remember-me">
+                        Remember me
+                    </label>
+                    <a href="#">Forgot your password?</a>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="login-btn" id="login-btn">
+                    <span class="loading-spinner"></span>
+                    <span class="btn-text">Sign in</span>
+                </button>
+            </form>
+
+            <div class="divider">
+                <span class="divider-line"></span>
+                <span class="divider-text">Demo account</span>
+                <span class="divider-line"></span>
+            </div>
+
+            <div class="demo-box">
+                <p>
+                    <strong>Username:</strong> admin<br>
+                    <strong>Password:</strong> admin123
+                </p>
+            </div>
+        </div>
+
+        <div class="login-footer">
+            WebBot — Content Management System · Canada.ca
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var STORAGE_KEY = 'access_token';
+        var USER_KEY = 'user_info';
+        var API_BASE = '/api/v1/auth';
+        var REDIRECT_KEY = 'webbot_redirect';
+
+        // Check if already logged in — redirect to saved page
+        var existingToken = localStorage.getItem(STORAGE_KEY);
+        if (existingToken) {
+            var savedRedirect = localStorage.getItem(REDIRECT_KEY) || '/static/navigation.html';
+            localStorage.removeItem(REDIRECT_KEY);
+            window.location.href = savedRedirect;
+            return;
+        }
+
+        // Get redirect URL from query string
+        var params = new URLSearchParams(window.location.search);
+        var redirect = params.get('redirect') || params.get('r');
+        if (redirect) {
+            localStorage.setItem(REDIRECT_KEY, redirect);
+        }
+
+        // ── DOM refs ──────────────────────────────────────────────────
+
+        var form = document.getElementById('login-form');
+        var usernameInput = document.getElementById('username');
+        var passwordInput = document.getElementById('password');
+        var submitBtn = document.getElementById('login-btn');
+        var btnText = submitBtn.querySelector('.btn-text');
+        var spinner = submitBtn.querySelector('.loading-spinner');
+        var errorBox = document.getElementById('error-box');
+        var errorText = document.getElementById('error-text');
+
+        // ── Helpers ───────────────────────────────────────────────────
+
+        function showError(msg) {
+            errorBox.classList.add('visible');
+            errorText.textContent = msg;
+        }
+
+        function hideError() {
+            errorBox.classList.remove('visible');
+            errorText.textContent = '';
+        }
+
+        function setLoading(loading) {
+            if (loading) {
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+                btnText.textContent = 'Signing in...';
+            } else {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+                btnText.textContent = 'Sign in';
+            }
+        }
+
+        // ── Login ─────────────────────────────────────────────────────
+
+        async function doLogin(e) {
+            if (e) e.preventDefault();
+            hideError();
+
+            var username = usernameInput.value.trim();
+            var password = passwordInput.value;
+
+            if (!username) { showError('Please enter your username or email.'); return; }
+            if (!password) { showError('Please enter your password.'); return; }
+
+            setLoading(true);
+
+            try {
+                var resp = await fetch(API_BASE + '/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password)
+                });
+
+                var data = await resp.json();
+
+                if (!resp.ok) {
+                    showError(data.detail || 'Login failed. Please check your credentials.');
+                    setLoading(false);
+                    return;
+                }
+
+                // Save auth using same keys as FileBot
+                localStorage.setItem(STORAGE_KEY, data.access_token);
+                localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+                setLoading(false);
+
+                // Redirect to saved page
+                var target = localStorage.getItem(REDIRECT_KEY) || '/static/navigation.html';
+                localStorage.removeItem(REDIRECT_KEY);
+                window.location.href = target;
+            } catch(err) {
+                showError('Network error. Please try again.');
+                setLoading(false);
+            }
+        }
+
+        // ── Wire events ───────────────────────────────────────────────
+
+        form.addEventListener('submit', doLogin);
+        passwordInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') doLogin(e);
+        });
+        usernameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') doLogin(e);
+        });
+
+        usernameInput.focus();
+    })();
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../../services/auth.service';
 import { useCopilot } from '../../contexts/CopilotContext';
@@ -9,6 +9,13 @@ const Navbar: React.FC = () => {
   const isAuthenticated = authService.isAuthenticated();
   const user = authService.getUserInfo();
   const { openCopilot } = useCopilot();
+
+  // 页面加载时获取完整用户信息（含 group 成员关系）
+  useEffect(() => {
+    if (isAuthenticated) {
+      authService.getCurrentUser().catch(() => {/* 静默失败，使用缓存数据 */});
+    }
+  }, []);
 
   const handleLogout = () => {
     authService.logout();
@@ -42,8 +49,32 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          {/* Right Side: FileBot Icon for Chat Window Toggle */}
-          <div className="flex items-center">
+          {/* Right Side: User Info + Logout + Chat */}
+          <div className="flex items-center space-x-4">
+            {isAuthenticated && user ? (
+              <>
+                <span className="text-sm text-gray-700 font-medium hidden sm:inline">
+                  {user.full_name || user.username}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center text-sm text-gray-500 hover:text-red-600 transition-colors"
+                  title="Logout"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span className="hidden sm:inline ml-1">Logout</span>
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="text-sm font-medium text-blue-600 hover:text-blue-800"
+              >
+                Login
+              </Link>
+            )}
             <button
               className="text-3xl font-bold text-blue-600 hover:text-blue-800 focus:outline-none"
               onClick={openCopilot}
@@ -119,6 +150,8 @@ const Navbar: React.FC = () => {
                   <span className="font-medium">Task Monitor</span>
                 </Link>
                 
+  {authService.isAdmin() && (
+                <>
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 mt-6">
                   Admin
                 </h3>
@@ -154,6 +187,8 @@ const Navbar: React.FC = () => {
                   </svg>
                   <span className="font-medium">Users</span>
                 </Link>
+                </>
+              )}
                 
                 <div className="flex items-center text-gray-400 p-3 rounded-lg cursor-not-allowed">
                   <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

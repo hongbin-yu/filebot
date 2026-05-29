@@ -95,6 +95,12 @@ class AppService {
     return response.data;
   }
 
+  // 客户端应用列表（只返回有权限的应用，不包含admin可见的全局应用）
+  async getClientApps(): Promise<App[]> {
+    const response = await api.get('/apps/client');
+    return response.data;
+  }
+
   // 获取单个应用详情
   async getAppById(appId: string): Promise<App | null> {
     // 开发模式：使用模拟数据

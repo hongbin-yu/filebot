@@ -18,6 +18,11 @@ export interface TokenResponse {
   token_type: string;
 }
 
+export interface GroupInfo {
+  id: string;
+  name: string;
+}
+
 export interface UserInfo {
   id: string;
   username: string;
@@ -25,6 +30,8 @@ export interface UserInfo {
   full_name?: string;
   is_active: boolean;
   is_superuser: boolean;
+  role?: string;
+  groups?: GroupInfo[];
 }
 
 class AuthService {
@@ -126,6 +133,22 @@ class AuthService {
       }
     }
     return null;
+  }
+
+  // 检查当前用户是否有管理员权限
+  isAdmin(): boolean {
+    const user = this.getUserInfo();
+    if (!user) return false;
+    
+    // superuser 或 role 为 admin
+    if (user.is_superuser || user.role === 'admin') return true;
+    
+    // 检查是否在 Administrator 组中
+    if (user.groups && Array.isArray(user.groups)) {
+      return user.groups.some(g => g.name === 'Administrator');
+    }
+    
+    return false;
   }
 }
 

@@ -60,6 +60,20 @@ export interface DocumentUploadRequest {
 }
 
 class DocumentService {
+  // 上一次 API 调用的总文档数（用于分页）
+  private _lastTotalCount: number = 0;
+  
+  get lastTotalCount(): number {
+    return this._lastTotalCount;
+  }
+
+  // 从 axios response 中提取 X-Total-Count 头
+  private captureTotalCount(response: any): void {
+    const header = response.headers?.['x-total-count'];
+    console.log('📋 [X-Total-Count] headers:', Object.keys(response.headers || {}).filter(k => k.includes('total') || k.includes('count')), 'value:', header);
+    this._lastTotalCount = header ? parseInt(header, 10) : 0;
+  }
+
   // 获取文件夹中的文档 (兼容性方法)
   async getDocuments(folderIdentifier: string, params?: {
     skip?: number;
@@ -103,8 +117,16 @@ class DocumentService {
       }
     });
     
+    // Capture total count from response header for pagination
+    console.log('📋 [HEADERS] raw response headers:', response.headers);
+    console.log('📋 [HEADERS] total-count keys:', Object.keys(response.headers || {}).filter((k: string) => k.toLowerCase().includes('total') || k.toLowerCase().includes('count')));
+    console.log('📋 [HEADERS] x-total-count value:', response.headers?.['x-total-count'], '| X-Total-Count:', response.headers?.['X-Total-Count']);
+    console.log('📋 [HEADERS] all keys:', Object.keys(response.headers || {}).slice(0, 20));
+    this.captureTotalCount(response);
+    
     console.log('🔍 [DEBUG] documentService.getDocumentsByFolderPath response:', {
       count: response.data?.length,
+      totalCount: this._lastTotalCount,
       sample: response.data?.slice(0, 3).map((d: Document) => ({
         id: d.id,
         title: d.title,
@@ -136,6 +158,9 @@ class DocumentService {
         ...params
       }
     });
+    
+    // Capture total count from response header for pagination
+    this.captureTotalCount(response);
     
     return response.data;
   }

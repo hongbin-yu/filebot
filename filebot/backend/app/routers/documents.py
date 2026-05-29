@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Path as FastaPath, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, UploadFile, File, Form, Path as FastaPath, Request
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -8,6 +8,8 @@ import os
 import logging
 import shutil
 import tempfile
+
+logger = logging.getLogger(__name__)
 import base64
 from datetime import datetime
 from pathlib import Path
@@ -597,7 +599,8 @@ def get_documents(
     conversion_status_filter: Optional[ConversionStatus] = Query(None, description="Filter by conversion status"),
     search_term: Optional[str] = Query(None, description="Search document title or description"),
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    response: Response = None
 ):
     """获取文档列表
     
@@ -617,7 +620,9 @@ def get_documents(
     )
     
     # Add permission filter: only visible apps
-    if not current_user.is_superuser:
+    # Skip base filter when a path filter is provided — those paths have their own permission checks below
+    has_path_filter = bool(folder_path or parent_folder_path or path_prefix)
+    if not current_user.is_superuser and not has_path_filter:
         # Subquery: get all app IDs owned by current user
         user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
         
@@ -639,9 +644,8 @@ def get_documents(
             # Folder not found, return empty list
             return []
         
-        # 检查权限
-        app = folder.app
-        if not current_user.is_superuser and app.owner_id != current_user.id:
+        # 检查权限（支持组权限和 folder 级别权限）
+        if not current_user.is_superuser and not has_folder_access(current_user, path, "read", db):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No permission to access this folder"
@@ -655,6 +659,12 @@ def get_documents(
         path = parent_folder_path
         if not path.startswith('/'):
             path = '/' + path
+        # 检查父文件夹权限（只检查根路径，不逐个检查子文件夹）
+        if not current_user.is_superuser and not has_folder_access(current_user, path, "read", db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No permission to access this folder"
+            )
         # Ensure trailing slash so /boarding doesn't match /boarding-extra
         like_path = path.rstrip('/') + '/%'
         query = query.filter(Document.folder_path.like(like_path))
@@ -664,6 +674,15 @@ def get_documents(
         prefix = path_prefix
         if not prefix.startswith('/'):
             prefix = '/' + prefix
+        # 检查路径前缀权限
+        if not current_user.is_superuser:
+            # 提取第一段路径作为 app slug 做回退检查
+            root_path = '/' + prefix.strip('/').split('/')[0]
+            if not has_folder_access(current_user, root_path, "read", db):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No permission to access this path"
+                )
         # Use 'prefix%' to match everything under the path
         query = query.filter(Document.path.like(prefix + '%'))
     
@@ -684,9 +703,16 @@ def get_documents(
             (Document.document_number.ilike(search_pattern))
         )
     
+    # Count total matching records before pagination
+    total_count = query.count()
+    
     # Sort and paginate
     query = query.order_by(Document.created_at.desc())
     documents = query.offset(skip).limit(limit).all()
+    
+    # Set total count header for frontend pagination
+    if response is not None:
+        response.headers["X-Total-Count"] = str(total_count)
     
     return documents
 
@@ -735,14 +761,7 @@ def get_documents_by_path(
         joinedload(Document.folder).joinedload(Folder.app)
     )
     
-    # Add permission filter: only visible apps
-    if not current_user.is_superuser:
-        # Subquery: get all app IDs owned by current user
-        user_apps_subquery = db.query(App.id).filter(App.owner_id == current_user.id).subquery()
-        
-        # Filter via folder->app chain (no drawer layer)
-        query = query.join(Folder).join(App)
-        query = query.filter(App.id.in_(user_apps_subquery))
+    # Note: check_folder_access already verified folder permission above, skip base filter
     
     # Filter by folder ID
     query = query.filter(Document.folder_path == folder.path)

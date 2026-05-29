@@ -4,18 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>WebBot Page Editor - Simple</title>
+    <title>WebBot Author Editor - WYSIWYG Only</title>
     <link rel="shortcut icon" href="/static/icons/filebot_favicon.png" type="image/png">
     <link rel="icon" href="/static/icons/filebot_favicon.png" sizes="32x32">
 
     <!-- Canada.ca WET theme CSS -->
     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
-    <!-- TinyMCE WYSIWYG Editor -->
-    <!-- Using TinyMCE Cloud with valid API key -->
-    <!--script src="https://cdn.tiny.cloud/1/68matgqcnaoa96gx7x6cn8u8ur4thooph25rnufw2sa9oq8e/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script-->
     <!-- TinyMCE WYSIWYG Editor (local installation) -->
-	<script src="/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
+    <script src="/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
+
     <!-- Simple custom styles for editor -->
     <link rel="stylesheet" href="css/editor.css">
 <script src="/static/js/webbot-auth.js"></script>
@@ -57,7 +55,6 @@
                 <button class="resource-sidebar-close" id="resource-sidebar-close">×</button>
             </div>
             <div class="resource-sidebar-body">
-                <!-- Resource type selector -->
                 <div class="resource-selector-row">
                     <select id="resource-type-select" class="form-control">
                         <option value="components" selected>🧩 Components</option>
@@ -68,7 +65,6 @@
                     </select>
                 </div>
 
-                <!-- Search bar: path (fixed) + title (free search) -->
                 <div class="resource-search-row">
                     <div class="resource-path-field">
                         <span class="resource-path-label">📁 Path</span>
@@ -91,7 +87,6 @@
                     <button id="resource-search-btn" class="btn btn-primary btn-sm">🔍</button>
                 </div>
 
-                <!-- Results area -->
                 <div id="resource-results" class="resource-results">
                     <div class="resource-placeholder">Select a resource type and search.</div>
                 </div>
@@ -123,17 +118,15 @@
                         <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
                     </button>
                     <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
-                    WebBot Page Editor
+                    WebBot Author Editor
                 </h2>
                 <div class="header-actions">
-                    <!-- Login / User Info -->
                     <div id="auth-header-area" style="display: inline-block; vertical-align: middle;">
                         <button id="webbot-login-btn" class="filebot-toggle-btn" title="Login" style="display: inline-block;">🔑 Login</button>
                         <span id="webbot-user-info" class="user-info" style="display: none; font-size: 12px; color: #4CAF50; margin-right: 8px;"></span>
                         <button id="webbot-logout-btn" class="filebot-toggle-btn" title="Logout" style="display: none;">🚪</button>
                     </div>
                     <button id="ai-toggle-btn" class="filebot-toggle-btn" title="AI Assistant">🤖 AI</button>
-                    <!-- Language switcher -->
                     <div id="language-switcher" class="language-switcher" style="display: none;">
                         <a id="language-link" class="btn btn-default" href="#" target="_blank" style="padding: 5px 10px; font-size: 13px;">Other language</a>
                     </div>
@@ -155,35 +148,26 @@
             </div>
 
             <div class="editor-content">
-                <!-- Loading state -->
                 <div id="loading-content" class="loading" style="display: none;">
                     Loading page data...
                 </div>
 
-                <!-- Error state -->
                 <div id="error-area" class="error" style="display: none;">
                     Error loading page. Please try again.
                 </div>
 
-                <!-- Success message -->
                 <div id="success-message" class="success" style="display: none;">
                     Page saved successfully!
                 </div>
 
-                <!-- Editor form (initially hidden) -->
                 <div id="editor-form" style="display: none;">
 
 
-                        <!-- Editor mode switcher -->
                         <div class="form-group">
                         <div class="editor-mode-switcher">
                             <button type="button" class="editor-mode-btn active" data-mode="wysiwyg">
                                 <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
                                 WYSIWYG Editor
-                            </button>
-                            <button type="button" class="editor-mode-btn" data-mode="html">
-                                <span class="glyphicon glyphicon-console" aria-hidden="true"></span>
-                                HTML Source
                             </button>
                             <button type="button" id="save-page-top" class="btn btn-success" style="margin-left: auto;">
                                 <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
@@ -191,19 +175,18 @@
                             </button>
                         </div>
 
-                        <!-- WYSIWYG Editor Container -->
                         <div id="wysiwyg-editor-container" class="wysiwyg-container active">
-                            <!-- Quill editor will be initialized here -->
+                            <!-- TinyMCE will be initialized here by editor.js -->
                         </div>
 
-                        <!-- HTML Source Container -->
-                        <div id="html-source-container" class="html-source-container">
-                            <textarea id="editor-content" class="form-control" rows="70" placeholder="Enter HTML content"></textarea>
+                        <!-- Hidden elements for JS compatibility (editor.js references these) -->
+                        <div id="html-source-container" class="html-source-container" style="display:none;">
+                            <textarea id="editor-content" class="form-control" style="display:none;"></textarea>
                         </div>
 
                         <div style="margin-top: 10px; font-size: 13px; color: #666;">
                             <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
-                            Switch between WYSIWYG (What You See Is What You Get) editor and HTML source code view.
+                            WYSIWYG editor for page content. Edit visually and save.
                         </div>
                     </div>
 
@@ -212,7 +195,6 @@
 
                 </div>
 
-                <!-- No page selected message -->
                 <div id="no-page-selected">
                     <div class="loading">
                         <p>Select a page from the tree to start editing.</p>
@@ -254,14 +236,10 @@
 
     <!-- TinyMCE WYSIWYG Editor JS already loaded in head -->
 
-
-    <!-- jQuery (required by WET-BOEW, moved to footer for performance) -->
     <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"></script>
 
-    <!-- Mustache.js template engine (using jsdelivr CDN for reliability) -->
     <script src="https://cdn.jsdelivr.net/npm/mustache@3.2.1/mustache.min.js" crossorigin="anonymous"></script>
     <script>
-        // Debug: Check Mustache.js loading
         console.log('Mustache.js script tag added');
         window.addEventListener('load', function() {
             console.log('Page loaded, Mustache.js available:', !!window.Mustache);
@@ -271,13 +249,8 @@
         });
     </script>
 
-    <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
-
-    <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
     <script src="/static/js/editor.js?v=20260513-1553"></script>
 
-    <!-- Initialize after all scripts are loaded -->
-    <!-- Simple Metadata Editor (Backend Use Only) -->
     <div id="metadata-modal" class="metadata-modal" style="display: none;">
         <div class="metadata-modal-content">
             <div class="metadata-modal-header">
@@ -403,23 +376,19 @@
 
     <link rel="stylesheet" href="css/metadata-modal.css">
 
-    <!-- HTML Quick Edit Modal -->
-    <!-- HTML / Component Edit Modal (dual-mode) -->
     <div id="html-edit-modal" class="html-edit-modal" style="display: none;">
         <div class="html-edit-modal-content">
             <div class="html-edit-modal-header">
-                <h3><span id="html-edit-mode-title">✏️ HTML Editor</span></h3>
-                <span id="html-edit-mode-badge" class="html-edit-mode-badge">CODE</span>
+                <h3><span id="html-edit-mode-title">✏️ Component Editor</span></h3>
+                <span id="html-edit-mode-badge" class="html-edit-mode-badge">WYSIWYG</span>
                 <span id="html-edit-location" class="html-edit-location"></span>
                 <button class="html-edit-modal-close" id="html-edit-modal-close">×</button>
             </div>
             <div class="html-edit-modal-body">
                 <div class="html-edit-controls">
-                    <label id="html-edit-mode-label">Edit raw HTML. Ctrl+Enter to save, Esc to close.</label>
+                    <label id="html-edit-mode-label">Edit component visually. Ctrl+Enter to save, Esc to close.</label>
                 </div>
-                <!-- Code mode: raw textarea -->
                 <textarea id="html-edit-textarea" class="html-edit-textarea" spellcheck="false" style="display: none;"></textarea>
-                <!-- WYSIWYG mode: TinyMCE container -->
                 <div id="html-edit-wysiwyg" class="html-edit-wysiwyg" style="display: none;"></div>
             </div>
             <div class="html-edit-modal-footer">
