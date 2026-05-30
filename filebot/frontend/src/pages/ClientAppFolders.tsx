@@ -667,7 +667,6 @@ const ClientAppFolders: React.FC = () => {
                 <table className="table table-striped table-hover w-full text-sm">
                   <thead>
                     <tr>
-                      <th></th>
                       <th style={{width:'80px'}}>Preview</th>
                       {appSlug === 'publish' && <th style={{width:'10px'}}>Publish<br/>status</th>}
                       <th>Name</th>
@@ -688,33 +687,29 @@ const ClientAppFolders: React.FC = () => {
                       const docViewUrl = publishUrl || (doc.file_type === 'html'
                         ? `/api/v1/documents/${encodedPath}/preview/html?token=${token}`
                         : `/api/v1/documents/${encodedPath}/download?preview=1&token=${token}`);
+                      const isImage = ['jpeg', 'jpg', 'png', 'gif', 'svg', 'tiff', 'tif'].includes(doc.file_type);
+                      const thumbUrl = `/api/v1/documents/${encodedPath}/thumbnail?token=${token}`;
                       return (
                       <tr key={doc.path || doc.storage_path}>
-                        <td className="text-center">
-                          <a href={docViewUrl} onClick={(e) => { if (publishUrl) return; openPreview(docViewUrl, e); }} title="Preview" target={publishUrl ? '_blank' : undefined} rel="noopener noreferrer">
-                            <span className="glyphicon glyphicon-file text-muted" style={{cursor:'pointer'}}></span>
-                          </a>
-                        </td>
-                        <td className="text-center" style={{width:'80px', height:'auto'}}>
-                          {(() => {
-                            const isImage = ['jpeg', 'jpg', 'png', 'gif', 'svg', 'tiff', 'tif'].includes(doc.file_type);
-                            if (!isImage) {
-                              return <span className="text-muted" style={{fontSize:'10px'}}>—</span>;
-                            }
-                            const thumbUrl = `/api/v1/documents/${encodedPath}/thumbnail?token=${token}`;
-                            return (
+                        <td className="text-center" style={{width:'80px', height:'auto', verticalAlign:'middle'}}>
+                          {isImage ? (
+                            <a href={docViewUrl} onClick={(e) => { if (publishUrl) return; openPreview(docViewUrl, e); }} title="Preview" target={publishUrl ? '_blank' : undefined} rel="noopener noreferrer">
                               <img
                                 src={thumbUrl}
                                 alt="thumbnail"
                                 style={{width:'64px', height:'64px', objectFit:'cover', borderRadius:'4px', border:'1px solid #e5e7eb'}}
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display = 'none';
-                                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-muted" style="font-size:10px">—</span>';
+                                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="glyphicon glyphicon-file text-muted" style="cursor:pointer;font-size:18px"></span>';
                                 }}
                                 loading="lazy"
                               />
-                            );
-                          })()}
+                            </a>
+                          ) : (
+                            <a href={docViewUrl} onClick={(e) => { if (publishUrl) return; openPreview(docViewUrl, e); }} title="Preview" target={publishUrl ? '_blank' : undefined} rel="noopener noreferrer">
+                              <span className="glyphicon glyphicon-file text-muted" style={{cursor:'pointer', fontSize:'18px'}}></span>
+                            </a>
+                          )}
                         </td>
                         <td className="text-center">
                           {appSlug === 'publish' && (
