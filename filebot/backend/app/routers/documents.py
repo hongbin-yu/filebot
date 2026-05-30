@@ -2621,17 +2621,31 @@ def get_document_thumbnail(
     current_user: User = Depends(get_current_active_user_allow_query),
     db: Session = Depends(get_db)
 ):
-    """Get 128x128 JPEG thumbnail for an image document"""
+    """Get 128x128 JPEG thumbnail for an image document.
+    
+    If thumbnail file doesn't exist but the document is an image type,
+    generate it on-the-fly so the frontend always gets a response.
+    """
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    if document.thumbnail_status != ThumbnailStatus.GENERATED or not document.thumbnail_path:
-        raise HTTPException(status_code=404, detail="Thumbnail not available for this document")
+    # If thumbnail already exists on disk, return it
+    if document.thumbnail_path:
+        thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
+        if thumb_full_path.exists():
+            return FileResponse(str(thumb_full_path), media_type="image/jpeg")
     
-    thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
-    if not thumb_full_path.exists():
-        raise HTTPException(status_code=404, detail="Thumbnail file not found on disk")
+    # Image file types eligible for thumbnail generation
+    image_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF}
     
-    return FileResponse(str(thumb_full_path), media_type="image/jpeg")
+    # If document is an image type and thumbnail doesn't exist, generate on the fly
+    if document.file_type in image_file_types:
+        success = generate_thumbnail_for_image_document(document, db, settings)
+        if success and document.thumbnail_path:
+            thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
+            if thumb_full_path.exists():
+                return FileResponse(str(thumb_full_path), media_type="image/jpeg")
+    
+    raise HTTPException(status_code=404, detail="Thumbnail not available for this document")
 
 
 @router.get("/{document_identifier:path}", response_model=DocumentResponse)
