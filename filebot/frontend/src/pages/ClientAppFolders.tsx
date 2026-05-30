@@ -711,8 +711,8 @@ const ClientAppFolders: React.FC = () => {
                             </a>
                           )}
                         </td>
-                        <td className="text-center">
-                          {appSlug === 'publish' && (
+                        {appSlug === 'publish' && (
+                          <td className="text-center">
                             <label className="switch" style={{cursor:'pointer', margin:0, verticalAlign:'middle', display:'inline-block'}}>
                               <input
                                 type="checkbox"
@@ -737,8 +737,8 @@ const ClientAppFolders: React.FC = () => {
                               />
                               <span className="slider round"></span>
                             </label>
-                          )}
-                        </td>
+                          </td>
+                        )}
                         <td>
                           <a href={docViewUrl} onClick={(e) => { if (publishUrl) return; openPreview(docViewUrl, e); }} title="Preview" target={publishUrl ? '_blank' : undefined} rel="noopener noreferrer">
                             <div className="font-medium" style={{cursor:'pointer'}}>
