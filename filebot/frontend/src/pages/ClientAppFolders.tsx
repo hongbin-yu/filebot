@@ -664,7 +664,7 @@ const ClientAppFolders: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="wb-tables table table-striped table-hover w-full text-sm">
+                <table className="table table-striped table-hover w-full text-sm">
                   <thead>
                     <tr>
                       <th></th>

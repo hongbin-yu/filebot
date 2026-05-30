@@ -2616,8 +2616,9 @@ async def serve_file_by_hierarchical_path(
 
 @router.get("/{document_identifier:path}/thumbnail")
 def get_document_thumbnail(
+    request: Request,
     document_identifier: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_allow_query),
     db: Session = Depends(get_db)
 ):
     """Get 128x128 JPEG thumbnail for an image document"""
