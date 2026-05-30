@@ -24,7 +24,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.models.app import App
 from app.models.folder import Folder
-from app.models.document import Document, ConversionStatus, FileType, DocumentStatus, DocumentType, PublishStatus
+from app.models.document import Document, ConversionStatus, FileType, DocumentStatus, DocumentType, PublishStatus, ThumbnailStatus
 from app.models.page import Page
 from app.models.file_naming_rule import FileNamingRule
 from app.models.device import Device, DeviceType, DeviceStatus
@@ -504,7 +504,7 @@ def generate_thumbnail_for_image_document(
     """
     为图像文档生成缩略图并更新元数据
     
-    Generate 100x100 PNG thumbnail, store as base64 in document_metadata.original_html,
+    Generate 128x128 JPEG thumbnail, save as file on disk,
     and set conversion_status to COMPLETED.
     
     Args:
@@ -515,8 +515,8 @@ def generate_thumbnail_for_image_document(
     Returns:
         bool: whether successful
     """
-    # Import ThumbnailStatus before try block to avoid Python 3.12+ scoping issues
-    from app.models.document import ThumbnailStatus
+    THUMBNAIL_SIZE = 128
+    THUMBNAIL_QUALITY = 85
 
     try:
         # Get document file path
@@ -531,53 +531,46 @@ def generate_thumbnail_for_image_document(
             if img.mode not in ["RGB", "RGBA", "L"]:
                 img = img.convert("RGB")
             
-            # Generate 100x100 thumbnail (maintain aspect ratio)
-            img.thumbnail((100, 100), Image.Resampling.LANCZOS)
+            # Generate 128x128 thumbnail (maintain aspect ratio)
+            img.thumbnail((THUMBNAIL_SIZE, THUMBNAIL_SIZE), Image.Resampling.LANCZOS)
             
             # If image is RGBA mode, add white background
             if img.mode == "RGBA":
                 background = Image.new("RGB", img.size, (255, 255, 255))
-                background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
+                background.paste(img, mask=img.split()[-1])
                 img = background
             
-            # Save to BytesIO buffer (PNG format)
-            buffer = BytesIO()
-            img.save(buffer, format="PNG", optimize=True)
-            buffer.seek(0)
+            # Determine thumbnail filename and ensure directory exists
+            thumb_filename = f"{document.stored_filename}_{THUMBNAIL_SIZE}.jpg"
+            thumb_rel_path = f"thumbnails/{THUMBNAIL_SIZE}/{thumb_filename}"
+            thumb_full_path = Path(settings.DATA_ROOT) / thumb_rel_path
+            thumb_full_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Convert to base64 string
-            thumbnail_base64 = base64.b64encode(buffer.read()).decode("utf-8")
+            # Save as JPEG on disk
+            img.save(thumb_full_path, format="JPEG", quality=THUMBNAIL_QUALITY, optimize=True)
             
             # Update document metadata
             if not document.document_metadata:
                 document.document_metadata = {}
             
-            # Store base64 thumbnail in original_html field (per boss request)
-            document.document_metadata["original_html"] = thumbnail_base64
-            
-            # Also store thumbnail info (optional)
-            document.document_metadata["thumbnail_base64_png"] = thumbnail_base64
-            document.document_metadata["thumbnail_generated"] = True
-            document.document_metadata["thumbnail_size"] = "100x100"
-            document.document_metadata["thumbnail_format"] = "PNG"
-            
-            # Update conversion status to COMPLETED
-            document.conversion_status = ConversionStatus.COMPLETED
-            
-            # Update thumbnail status
+            document.thumbnail_path = thumb_rel_path
             document.thumbnail_status = ThumbnailStatus.GENERATED
             document.thumbnail_generated_at = datetime.utcnow()
+            document.conversion_status = ConversionStatus.COMPLETED
+            
+            document.document_metadata["thumbnail_generated"] = True
+            document.document_metadata["thumbnail_size"] = f"{THUMBNAIL_SIZE}x{THUMBNAIL_SIZE}"
+            document.document_metadata["thumbnail_format"] = "JPEG"
             
             # Save changes to database
             db.add(document)
             db.commit()
             
-            logging.info(f"Generated thumbnail for image document {document.path} successfully")
+            logging.info(f"Generated {THUMBNAIL_SIZE}x{THUMBNAIL_SIZE} thumbnail for {document.path} -> {thumb_rel_path}")
             return True
             
     except Exception as e:
         logging.error(f"Failed to generate image thumbnail: {str(e)}", exc_info=True)
-        # Update error status
         document.thumbnail_status = ThumbnailStatus.FAILED
         document.thumbnail_error = str(e)[:1000]
         db.add(document)
@@ -2621,6 +2614,25 @@ async def serve_file_by_hierarchical_path(
     )
 
 
+@router.get("/{document_identifier:path}/thumbnail")
+def get_document_thumbnail(
+    document_identifier: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get 128x128 JPEG thumbnail for an image document"""
+    document = get_document_by_identifier(document_identifier, current_user, db)
+    
+    if document.thumbnail_status != ThumbnailStatus.GENERATED or not document.thumbnail_path:
+        raise HTTPException(status_code=404, detail="Thumbnail not available for this document")
+    
+    thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
+    if not thumb_full_path.exists():
+        raise HTTPException(status_code=404, detail="Thumbnail file not found on disk")
+    
+    return FileResponse(str(thumb_full_path), media_type="image/jpeg")
+
+
 @router.get("/{document_identifier:path}", response_model=DocumentResponse)
 def get_document(
     document_identifier: str,
@@ -2713,12 +2725,21 @@ def delete_document(
 ):
     """Delete document by identifier (UUID or path)
     
-    Note: also deletes associated pages and conversion tasks
+    Also deletes associated pages, conversion tasks, and thumbnail file.
     """
     document = get_document_by_identifier(document_identifier, current_user, db)
     
+    # Delete thumbnail file if exists
+    if document.thumbnail_path:
+        thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
+        try:
+            if thumb_full_path.exists():
+                thumb_full_path.unlink()
+                logging.info(f"Deleted thumbnail: {thumb_full_path}")
+        except Exception as e:
+            logging.warning(f"Failed to delete thumbnail {thumb_full_path}: {e}")
+    
     # Delete physical file (TODO: configure storage path)
-    # Only delete database record for now
     
     db.delete(document)
     db.commit()

@@ -76,3 +76,5 @@ Thumbs.db
 
 # Workspace
 memory/
+filebot-ssh
+filebot-ssh.pub

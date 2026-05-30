@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import appService, { App } from '../services/app.service';
+import authService from '../services/auth.service';
 import folderService, { Folder } from '../services/folder.service';
 import documentService, { Document } from '../services/document.service';
 import PreviewOverlay from '../components/PreviewOverlay';
+import CreateFolderModal from '../components/folders/CreateFolderModal';
 
 // Format file size
 function formatSize(bytes: number): string {
@@ -56,6 +58,11 @@ const ClientAppFolders: React.FC = () => {
 
   // Preview overlay state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Open document preview in overlay
   const openPreview = useCallback((url: string, e: React.MouseEvent) => {
@@ -368,6 +375,73 @@ const ClientAppFolders: React.FC = () => {
     </svg>
   );
 
+  // ── Folder Operation Handlers ──
+
+  const handleCreateFolder = async (data: { name: string; description?: string; parent_folder_path?: string; path?: string; app_id: string }) => {
+    try {
+      await folderService.createFolder(data);
+      if (currentFolderPath && appSlug) {
+        const fullPath = '/' + appSlug + currentFolderPath;
+        const subs = await folderService.getFolders(appSlug, { parent_folder_path: fullPath });
+        setSubfolders(subs);
+      }
+    } catch (err) {
+      console.error('Failed to create folder:', err);
+      throw err;
+    }
+  };
+
+  const handleNavigateToUpload = (folderPath: string) => {
+    navigate(`/admin/apps/${appSlug}/upload?folder=${encodeURIComponent(folderPath)}`);
+  };
+
+  const handleNavigateToDocuments = (folderPath: string) => {
+    const encodedPath = encodeURIComponent(folderPath);
+    navigate(`/apps/${appSlug}/folders/${encodedPath}/documents`);
+  };
+
+  const handleEditFolder = (folderPath: string) => {
+    const allFolders = folders.concat(subfolders);
+    const folderToEdit = allFolders.find(f => f.path === folderPath);
+    if (!folderToEdit) return;
+    setEditingFolder(folderToEdit);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditFolder = async (data: { name: string; description?: string; parent_folder_path?: string }) => {
+    if (!editingFolder || !editingFolder.path) return;
+    try {
+      await folderService.updateFolder(editingFolder.path, data);
+      if (currentFolderPath && appSlug) {
+        const fullPath = '/' + appSlug + currentFolderPath;
+        const subs = await folderService.getFolders(appSlug, { parent_folder_path: fullPath });
+        setSubfolders(subs);
+        const updated = await folderService.getFolder(fullPath);
+        if (updated) setCurrentFolder(updated);
+      }
+      setShowEditModal(false);
+      setEditingFolder(null);
+    } catch (err) {
+      console.error('Failed to edit folder:', err);
+      throw err;
+    }
+  };
+
+  const handleDeleteFolder = async (folderPath: string) => {
+    if (!window.confirm('Delete this folder? All documents inside will also be deleted.')) return;
+    try {
+      await folderService.deleteFolder(folderPath, true);
+      // Reload subfolders from parent
+      if (currentFolder?.parent_folder_path && appSlug) {
+        const fullPath = '/' + appSlug + currentFolderPath;
+        const subs = await folderService.getFolders(appSlug, { parent_folder_path: currentFolder.parent_folder_path });
+        setSubfolders(subs);
+      }
+    } catch (err) {
+      console.error('Failed to delete folder:', err);
+    }
+  };
+
   return (
     <>
       <PreviewOverlay url={previewUrl} onClose={() => setPreviewUrl(null)} />
@@ -438,8 +512,8 @@ const ClientAppFolders: React.FC = () => {
 
       {/* Two-Column Layout */}
       <div className="flex space-x-6">
-        {/* Left: Folders */}
-        <div className="w-1/3">
+        {/* Left: Folders + AI Operations */}
+        <div className="w-1/3 space-y-4">
           <div className="bg-white rounded-lg shadow">
             <div className="px-4 py-3 border-b flex items-center justify-between">
               <h3 className="font-medium">Folders</h3>
@@ -500,6 +574,57 @@ const ClientAppFolders: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* AI Operations Card - only visible with write permission */}
+          {authService.isAdmin() && (
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="font-medium">AI Operations</h3>
+              </div>
+              <div className="p-4">
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                    onClick={() => {
+                      const parentPath = currentFolder?.path || currentFolderPath || '';
+                      setShowCreateModal(true);
+                    }}
+                  >
+                    <div className="font-medium">Create Subfolder</div>
+                    <div className="text-sm text-gray-500">Create a new subfolder in the current folder</div>
+                  </button>
+                  <button
+                    className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                    onClick={() => handleNavigateToUpload(currentFolder?.path || currentFolderPath || '')}
+                  >
+                    <div className="font-medium">Upload</div>
+                    <div className="text-sm text-gray-500">Upload files to this folder</div>
+                  </button>
+                  <button
+                    className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                    onClick={() => handleNavigateToDocuments(currentFolder?.path || currentFolderPath || '')}
+                  >
+                    <div className="font-medium">Documents</div>
+                    <div className="text-sm text-gray-500">Browse documents in this folder</div>
+                  </button>
+                  <button
+                    className="p-3 border rounded-lg hover:bg-blue-50 text-left border-blue-200"
+                    onClick={() => handleEditFolder(currentFolder?.path || currentFolderPath || '')}
+                  >
+                    <div className="font-medium text-blue-600">Edit Folder</div>
+                    <div className="text-sm text-blue-500">Edit folder name and description</div>
+                  </button>
+                  <button
+                    className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
+                    onClick={() => handleDeleteFolder(currentFolder?.path || currentFolderPath || '')}
+                  >
+                    <div className="font-medium text-red-600">Delete Folder</div>
+                    <div className="text-sm text-red-500">Delete this folder and all its contents</div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Documents (Data Table) */}
@@ -543,6 +668,7 @@ const ClientAppFolders: React.FC = () => {
                   <thead>
                     <tr>
                       <th></th>
+                      <th style={{width:'80px'}}>Preview</th>
                       {appSlug === 'publish' && <th style={{width:'10px'}}>Publish<br/>status</th>}
                       <th>Name</th>
                       <th>Type</th>
@@ -568,6 +694,27 @@ const ClientAppFolders: React.FC = () => {
                           <a href={docViewUrl} onClick={(e) => { if (publishUrl) return; openPreview(docViewUrl, e); }} title="Preview" target={publishUrl ? '_blank' : undefined} rel="noopener noreferrer">
                             <span className="glyphicon glyphicon-file text-muted" style={{cursor:'pointer'}}></span>
                           </a>
+                        </td>
+                        <td className="text-center" style={{width:'80px', height:'auto'}}>
+                          {(() => {
+                            const isImage = ['jpeg', 'jpg', 'png', 'gif', 'svg', 'tiff', 'tif'].includes(doc.file_type);
+                            if (!isImage) {
+                              return <span className="text-muted" style={{fontSize:'10px'}}>—</span>;
+                            }
+                            const thumbUrl = `/api/v1/documents/${encodedPath}/thumbnail?token=${token}`;
+                            return (
+                              <img
+                                src={thumbUrl}
+                                alt="thumbnail"
+                                style={{width:'64px', height:'64px', objectFit:'cover', borderRadius:'4px', border:'1px solid #e5e7eb'}}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-muted" style="font-size:10px">—</span>';
+                                }}
+                                loading="lazy"
+                              />
+                            );
+                          })()}
                         </td>
                         <td className="text-center">
                           {appSlug === 'publish' && (
@@ -733,6 +880,28 @@ const ClientAppFolders: React.FC = () => {
         </div>
       </div>
     </div>
+
+      {/* Create/Edit Folder Modal */}
+      {showCreateModal && (
+        <CreateFolderModal
+          appSlug={appSlug || ''}
+          parentFolderPath={currentFolder?.path || currentFolderPath}
+          folders={currentFolderPath ? subfolders : rootFolders}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateFolder}
+        />
+      )}
+      {showEditModal && editingFolder && (
+        <CreateFolderModal
+          appSlug={appSlug || ''}
+          parentFolderPath={editingFolder.parent_folder_path}
+          folders={currentFolderPath ? subfolders : rootFolders}
+          mode="edit"
+          folderToEdit={editingFolder}
+          onClose={() => { setShowEditModal(false); setEditingFolder(null); }}
+          onSubmit={handleSaveEditFolder}
+        />
+      )}
     </>
   );
 };
