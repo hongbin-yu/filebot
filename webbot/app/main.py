@@ -135,6 +135,8 @@ EXEMPT_WRITE_PATHS = frozenset([
     "/api/v1/mail/status",
     "/content/upload/",
     "/api/v1/components/health",
+    "/api/v1/search/ai-query",
+    "/api/v1/search/ai-query/save",
 ])
 
 @app.middleware("http")
@@ -453,10 +455,12 @@ from fastapi.responses import Response
 from fastapi import HTTPException
 
 @app.get("/content/dam/{path:path}")
-async def proxy_filebot_document(path: str):
+async def proxy_filebot_document(path: str, thumbnail: bool = False):
     """
     代理访问FileBot发布的文档
     路径示例: /content/dam/th.jpg → 代理到 → FileBot /api/v1/documents/by-path/th.jpg
+    
+    支持 ?thumbnail=1 参数，返回缩放后的缩略图（最大宽200px）。
     
     安全性：
     1. 隐藏FileBot后端（localhost:8001不直接暴露）
@@ -471,7 +475,7 @@ async def proxy_filebot_document(path: str):
         
         def try_fetch(url):
             headers = {"X-WebBot-Access": "true"}
-            return requests.get(url, headers=headers)
+            return requests.get(url, headers=headers, timeout=30)
         
         # 尝试路径模式列表
         filebot_urls = [
@@ -495,33 +499,56 @@ async def proxy_filebot_document(path: str):
         if response.status_code == 200:
             # 成功获取文档，返回FileBot的响应
             content_type = response.headers.get("Content-Type", "application/octet-stream")
+            content_data = response.content
             
             # 检查是否为文件下载
             content_disposition = response.headers.get("Content-Disposition", "")
-            if "attachment" in content_disposition or "filename=" in content_disposition:
-                # 文件下载，直接返回二进制数据
+            is_attachment = "attachment" in content_disposition or "filename=" in content_disposition
+            
+            # 如果是图片请求并需要缩略图，进行缩放
+            raw_headers = dict(response.headers)
+            if thumbnail and not is_attachment:
+                is_image = content_type and content_type.startswith("image/")
+                if is_image:
+                    try:
+                        from PIL import Image
+                        import io
+                        img = Image.open(io.BytesIO(content_data))
+                        # 缩放到最大宽度 200px，保持宽高比
+                        max_w = 200
+                        w, h = img.size
+                        if w > max_w:
+                            ratio = max_w / float(w)
+                            new_h = int(h * ratio)
+                            img = img.resize((max_w, new_h), Image.LANCZOS)
+                        buf = io.BytesIO()
+                        # 保持原格式，JPEG则优化
+                        fmt = img.format or 'JPEG'
+                        if fmt.upper() == 'JPEG':
+                            img.save(buf, format='JPEG', quality=85, optimize=True)
+                        else:
+                            img.save(buf, format=fmt)
+                        content_data = buf.getvalue()
+                        # 移除附件相关的响应头，保留 Content-Type
+                        raw_headers = {"Content-Type": content_type}
+                    except Exception as e:
+                        print(f"Thumbnail generation failed for {path}: {e}")
+            
+            if is_attachment:
                 return Response(
-                    content=response.content,
+                    content=content_data,
                     media_type=content_type,
-                    headers=dict(response.headers)
+                    headers=raw_headers
                 )
             else:
-                # 可能是JSON响应（文档信息）
-                try:
-                    return response.json()
-                except:
-                    # 如果不是JSON，返回原始内容
-                    return Response(
-                        content=response.content,
-                        media_type=content_type,
-                        headers=dict(response.headers)
-                    )
+                return Response(
+                    content=content_data,
+                    media_type=content_type,
+                    headers=raw_headers
+                )
         elif response.status_code == 404:
-            # FileBot返回404，文档不存在
-            # 返回404而不是500，这样前端可以正确检测文件名是否可用
             raise HTTPException(status_code=404, detail="文档不存在")
         else:
-            # FileBot API错误
             error_detail = f"FileBot API错误: {response.status_code}"
             try:
                 error_data = response.json()
@@ -581,6 +608,50 @@ async def proxy_filebot_upload(request: Request):
         raise HTTPException(status_code=503, detail="无法连接到FileBot服务")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"上传代理失败: {str(e)}")
+
+
+# ========== AI Q&A Proxy (port 8002) ==========
+
+@app.post("/api/v1/search/ai-query")
+@app.post("/api/v1/search/ai-query/save")
+async def proxy_ai_query(request: Request):
+    """
+    Proxy AI query requests to FileBot port 8002.
+    Forwarded endpoints:
+      POST /api/v1/search/ai-query       - Generate answer
+      POST /api/v1/search/ai-query/save   - Save Q&A page
+    """
+    body = await request.body()
+    auth = request.headers.get("authorization", "")
+    target_path = request.url.path
+    
+    target_url = f"http://localhost:8002{target_path}"
+    if request.url.query:
+        target_url += "?" + request.url.query
+    
+    headers = {"Content-Type": "application/json"}
+    if auth:
+        headers["Authorization"] = auth
+    headers["X-WebBot-Access"] = "true"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(target_url, data=body, headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as resp:
+                resp_body = await resp.read()
+                resp_headers = {k: v for k, v in resp.headers.items()
+                               if k.lower() not in ("transfer-encoding", "content-encoding", "content-length")}
+                return Response(
+                    content=resp_body,
+                    status_code=resp.status,
+                    media_type=resp.content_type,
+                    headers=resp_headers
+                )
+    except aiohttp.ClientConnectorError:
+        raise HTTPException(status_code=503, detail="Cannot connect to AI query service (port 8002)")
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="AI query timed out (Ollama may be overloaded)")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI query proxy failed: {str(e)}")
 
 
 # 添加静态文件服务（前端界面）

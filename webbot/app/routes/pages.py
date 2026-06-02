@@ -3162,15 +3162,23 @@ async def publish_page(
             return ""
 
         footer_html = ""
-        # Step 1: Try path-specific footer (e.g. /canadasite/en/auditor-general/footer)
+        # Step 1: Walk up path segments to find best institution-level footer
+        # e.g. /canadasite/en/auditor-general/environmental-petitions
+        #   → try /canadasite/en/auditor-general/footer
+        #   → try /canadasite/en/footer (skip — language level)
+        #   → try /canadasite/footer
+        lang_path = f"/canadasite/{page_language}/footer"
         path_parts = path.strip('/').split('/')
-        if len(path_parts) >= 2:
-            inst_path = f"/{'/'.join(path_parts)}/footer"
-            footer_html = _find_footer_publish(inst_path)
+        for i in range(len(path_parts), 0, -1):
+            candidate = f"/{'/'.join(path_parts[:i])}/footer"
+            if candidate == lang_path:
+                continue  # skip language-level — try a deeper institution path first
+            footer_html = _find_footer_publish(candidate)
+            if footer_html:
+                break
 
         # Step 2: Fallback to language-level footer
         if not footer_html:
-            lang_path = f"/canadasite/{page_language}/footer"
             footer_html = _find_footer_publish(lang_path)
 
         # Step 3: Fallback to site-level footer
@@ -3352,7 +3360,7 @@ async def publish_page(
             async with session.post(
                 filebot_publish_url,
                 params=fb_params,
-                json={"html_content": full_html},
+                json={"html_content": full_html, "title": page_title},
                 headers={"X-WebBot-Access": "true"}
             ) as fb_resp:
                 if fb_resp.status != 200:

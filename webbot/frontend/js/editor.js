@@ -12627,13 +12627,26 @@
                     case 'pages':
                         searchPages(pathVal, titleVal);
                         break;
+                    case 'ai-qa':
+                        searchAIQA();
+                        break;
                 }
             }
 
-            // -------- Images --------
-            async function searchImages(pathVal, titleVal) {
+            // -------- Images (with pagination) --------
+            var _imageSkip = 0;
+            var _imagePathVal = '';
+            var _imageTitleVal = '';
+
+            async function searchImages(pathVal, titleVal, append) {
                 try {
-                    var url = '/api/v1/search/documents?limit=30&mime_type=image%';
+                    _imagePathVal = pathVal || '';
+                    _imageTitleVal = titleVal || '';
+                    if (!append) {
+                        _imageSkip = 0;
+                    }
+
+                    var url = '/api/v1/search/documents?limit=30&skip=' + _imageSkip + '&mime_type=image%';
                     if (pathVal) {
                         // DB paths need /boarding prefix (e.g. /boarding/canadasite/content/dam/...)
                         // metadata.file_path is stored as /canadasite/content/dam/canada
@@ -12658,27 +12671,44 @@
                     var resp = await fetch(url);
                     if (!resp.ok) throw new Error('HTTP ' + resp.status);
                     var data = await resp.json();
-                    renderImageResults(data.documents || []);
+                    var docs = data.documents || [];
+                    renderImageResults(docs, append);
+                    if (docs.length > 0) {
+                        _imageSkip += docs.length;
+                    }
                 } catch (e) {
                     resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
                 }
             }
 
-            function renderImageResults(docs) {
-                if (!docs || docs.length === 0) {
-                    resultsEl.innerHTML = '<div class="resource-empty">🔍 No images found.</div>';
-                    return;
-                }
+            // Load more images (called from Load More button)
+            window.loadMoreImages = function() {
+                searchImages(_imagePathVal, _imageTitleVal, true);
+            };
 
+            function renderImageResults(docs, append) {
                 // Filter to only image-like mime types (extra safety)
-                docs = docs.filter(function(d) {
+                var filtered = (docs || []).filter(function(d) {
                     var mt = (d.mime_type || '').toLowerCase();
                     return mt.indexOf('image') >= 0;
                 });
 
-                if (docs.length === 0) {
+                if (filtered.length === 0 && !append) {
                     resultsEl.innerHTML = '<div class="resource-empty">🔍 No images found.</div>';
                     return;
+                }
+                if (filtered.length === 0 && append) {
+                    // No more results — remove the load-more button
+                    var btn = resultsEl.querySelector('.image-load-more');
+                    if (btn) btn.remove();
+                    return;
+                }
+
+                var existingGrid = resultsEl.querySelector('.image-grid');
+                var containerHtml = '';
+                if (!append || !existingGrid) {
+                    // Start fresh
+                    containerHtml = '<div class="image-grid">';
                 }
 
                 // Helper: convert storage_path to DAM proxy URL
@@ -12702,28 +12732,41 @@
                     return '/content/dam/' + path;
                 }
 
-                let html = '<div class="image-grid">';
-                docs.forEach(function(doc) {
+                // Build card HTML for the new docs
+                var cardsHtml = '';
+                filtered.forEach(function(doc) {
                     var storagePath = doc.storage_path || doc.path || '';
                     var damUrl = pathToDamUrl(storagePath);
+                    var thumbUrl = damUrl + '?thumbnail=1';  // 缩略图（后端缩放）
                     var filename = doc.original_filename || doc.title || 'image';
                     var fileSize = doc.file_size;
-                    html += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
-                    html += '<div class="image-card-thumb">';
-                    html += '<img src="' + damUrl + '" alt="' + filename + '" loading="lazy">';
-                    html += '</div>';
-                    html += '<div class="image-card-info">';
-                    html += '<span class="image-card-name" title="' + filename + '">' + filename + '</span>';
-                    html += '<span class="image-card-size">' + formatFileSize(fileSize) + '</span>';
-                    html += '</div>';
-                    html += '<button class="image-insert-btn" title="Insert into editor">➕</button>';
-                    html += '</div>';
+                    cardsHtml += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
+                    cardsHtml += '<div class="image-card-thumb">';
+                    cardsHtml += '<img src="' + thumbUrl + '" alt="' + filename + '" loading="lazy">';
+                    cardsHtml += '</div>';
+                    cardsHtml += '<div class="image-card-info">';
+                    cardsHtml += '<span class="image-card-name" title="' + filename + '">' + filename + '</span>';
+                    cardsHtml += '<span class="image-card-size">' + formatFileSize(fileSize) + '</span>';
+                    cardsHtml += '</div>';
+                    cardsHtml += '<button class="image-insert-btn" title="Insert into editor">➕</button>';
+                    cardsHtml += '</div>';
                 });
-                html += '</div>';
 
-                resultsEl.innerHTML = html;
+                if (!append || !existingGrid) {
+                    // Fresh render — replace content
+                    resultsEl.innerHTML = containerHtml + cardsHtml + '</div>';
+                } else {
+                    // Append to existing grid — add new cards before the load-more button
+                    existingGrid.insertAdjacentHTML('beforeend', cardsHtml);
+                    // Remove the previous load-more button (if any)
+                    var oldBtn = resultsEl.querySelector('.image-load-more');
+                    if (oldBtn) oldBtn.remove();
+                }
 
-                // Bind click events for insert buttons
+                // Append load-more button
+                resultsEl.insertAdjacentHTML('beforeend', '<div class="image-load-more" style="text-align:center;padding:12px"><button class="btn btn-primary" onclick="window.loadMoreImages()">📦 Load More Images</button></div>');
+
+                // Bind click events for ALL current image insert buttons
                 resultsEl.querySelectorAll('.image-insert-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.stopPropagation();
@@ -12740,6 +12783,23 @@
                         var url = card.dataset.url;
                         var filename = card.dataset.filename;
                         insertImageToEditor(url, filename);
+                    });
+                });
+
+                // Drag-and-drop: intercept native img drag to use original file URL
+                resultsEl.querySelectorAll('.image-card img').forEach(function(img) {
+                    img.addEventListener('dragstart', function(e) {
+                        var card = img.closest('.image-card');
+                        var originalUrl = card ? card.dataset.url : '';
+                        if (originalUrl) {
+                            // Clear native file data (prevents TinyMCE from creating blob URL)
+                            try { e.dataTransfer.clearData('Files'); } catch(ex) {}
+                            // Override drag data with original file URL (not thumbnail src)
+                            e.dataTransfer.setData('text/uri-list', originalUrl);
+                            e.dataTransfer.setData('text/plain', originalUrl);
+                            e.dataTransfer.setData('text/html', '<img src="' + originalUrl + '" />');
+                            e.dataTransfer.effectAllowed = 'copy';
+                        }
                     });
                 });
             }
@@ -13346,6 +13406,296 @@
             var rs = document.getElementById('resource-sidebar');
             if (rs && !rs.classList.contains('hidden')) {
                 setTimeout(doSearch, 100);
+            }
+
+            // -------- AI Q&A --------
+            var _aiQuestion = '';
+            var _aiAnswer = '';
+            var _aiSources = [];
+
+            function searchAIQA() {
+                var defaultProvider = 'deepseek';  // default to DeepSeek (faster)
+                // Show question input UI instead of normal search
+                // Check if page has description
+                var hasDescription = currentPageData && currentPageData.description && currentPageData.description.trim();
+
+                resultsEl.innerHTML = '' +
+                    '<div class="ai-qa-section">' +
+                    '  <!-- Insert Title command -->' +
+                    '  <div style="margin-bottom:10px;padding:8px 10px;background:#f0f7ff;border:1px solid #cce5ff;border-radius:4px;">' +
+                    '    <div style="font-size:12px;color:#555;margin-bottom:4px;">⚡ Page Info Commands</div>' +
+                    '    <div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                    '      <button id="ai-insert-title-btn" class="btn btn-sm" style="background:#2780e3;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px;">📝 Insert Title</button>' +
+                    (hasDescription ? '      <button id="ai-insert-title-desc-btn" class="btn btn-sm" style="background:#2780e3;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px;">📄 Insert Title + Description</button>' : '') +
+                    '    </div>' +
+                    '  </div>' +
+                    '  <label for="ai-question-input" style="display:block;font-weight:bold;margin-bottom:6px;">❓ Ask a question</label>' +
+                    '  <textarea id="ai-question-input" class="form-control" rows="4" placeholder="e.g. How to apply for EI in Canada?" style="resize:vertical;width:100%;box-sizing:border-box;">' + escapeHtml(_aiQuestion) + '</textarea>' +
+                    '  <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                    '    <div class="btn-group btn-group-sm" role="group" style="display:inline-flex;">' +
+                    '      <button id="ai-provider-ollama-btn" class="btn btn-sm ai-provider-btn" data-provider="ollama" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:3px 0 0 3px;">🦙 Ollama</button>' +
+                    '      <button id="ai-provider-deepseek-btn" class="btn btn-sm ai-provider-btn" data-provider="deepseek" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:0 3px 3px 0;margin-left:-1px;">🌐 DeepSeek</button>' +
+                    '    </div>' +
+                    '    <button id="ai-ask-btn" class="btn btn-primary btn-sm">🤖 Ask AI</button>' +
+                    '    <button id="ai-insert-btn" class="btn btn-success btn-sm" style="display:' + (_aiAnswer ? 'inline-block' : 'none') + '">📥 Insert into Editor</button>' +
+                    '  </div>' +
+                    '  <div id="ai-answer-section" style="margin-top:12px;' + (_aiAnswer ? '' : 'display:none') + '">' +
+                    '    <h4 style="margin:0 0 8px 0;font-size:14px;color:#333;">📝 Answer</h4>' +
+                    '    <div id="ai-answer-content" class="ai-answer-content" style="white-space:pre-wrap;background:#f9f9f9;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:13px;max-height:400px;overflow-y:auto;">' + escapeHtml(_aiAnswer) + '</div>' +
+                    '    <div id="ai-sources-section" style="margin-top:8px;' + (_aiSources.length ? '' : 'display:none') + '">' +
+                    '      <h4 style="margin:0 0 4px 0;font-size:12px;color:#666;">📚 Sources</h4>' +
+                    '      <ul id="ai-sources-list" style="margin:0;padding-left:18px;font-size:12px;color:#555;">' +
+                            _aiSources.map(function(s) {
+                                return '<li>' + escapeHtml(s.page_title || '') + (s.similarity ? ' (' + Math.round(s.similarity) + '%)' : '') + '</li>';
+                            }).join('') +
+                    '      </ul>' +
+                    '    </div>' +
+                    '  </div>' +
+                    '  <div id="ai-loading" class="resource-loading" style="display:none"><span class="ai-spinner">⏳</span> Working<span class="ai-elapsed"></span></div>'
+                    '  <div id="ai-error" class="resource-error" style="display:none"></div>' +
+                    '</div>'
+                ;
+
+                // Provider toggle styling
+                var _activeProvider = 'ollama';
+                function _setActiveProvider(provider) {
+                    _activeProvider = provider;
+                    document.querySelectorAll('.ai-provider-btn').forEach(function(btn) {
+                        var isActive = btn.getAttribute('data-provider') === provider;
+                        btn.style.background = isActive ? '#2780e3' : '#f0f0f0';
+                        btn.style.color = isActive ? '#fff' : '#333';
+                        btn.style.borderColor = isActive ? '#2780e3' : '#ccc';
+                    });
+                }
+                _setActiveProvider(defaultProvider);
+
+                document.querySelectorAll('.ai-provider-btn').forEach(function(btn) {
+                    btn.onclick = function(e) {
+                        _setActiveProvider(this.getAttribute('data-provider'));
+                    };
+                });
+
+                // Bind Ask AI button
+                var askBtn = document.getElementById('ai-ask-btn');
+                if (askBtn) {
+                    askBtn.onclick = function() {
+                        var q = document.getElementById('ai-question-input');
+                        if (!q || !q.value.trim()) { alert('Please enter a question.'); return; }
+                        _aiQuestion = q.value.trim();
+                        _askAI(_aiQuestion);
+                    };
+                }
+
+                // Bind Insert button
+                var insertBtn = document.getElementById('ai-insert-btn');
+                if (insertBtn) {
+                    insertBtn.onclick = function() { _insertAIAnswer(); };
+                }
+
+
+                // Bind Insert Title buttons
+                var insertTitleBtn = document.getElementById('ai-insert-title-btn');
+                if (insertTitleBtn) {
+                    insertTitleBtn.onclick = function() {
+                        var editor = window.tinyMceEditor;
+                        if (!editor) { alert('Editor not initialized.'); return; }
+                        var page = window.currentPageData || {};
+                        var html = '<h1 id="wb-cont">' + escapeHtml(page.title || 'Untitled') + '</h1>';
+                        editor.insertContent(html);
+                    };
+                }
+                var insertTitleDescBtn = document.getElementById('ai-insert-title-desc-btn');
+                if (insertTitleDescBtn) {
+                    insertTitleDescBtn.onclick = function() {
+                        var editor = window.tinyMceEditor;
+                        if (!editor) { alert('Editor not initialized.'); return; }
+                        var page = window.currentPageData || {};
+                        var html = '<h1 id="wb-cont">' + escapeHtml(page.title || 'Untitled') + '</h1>';
+                        if (page.description && page.description.trim()) {
+                            html += '<p>' + escapeHtml(page.description.trim()) + '</p>';
+                        }
+                        editor.insertContent(html);
+                    };
+                }
+
+                // Allow Enter to submit
+                var qInput = document.getElementById('ai-question-input');
+                if (qInput) {
+                    qInput.onkeydown = function(e) {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            var v = qInput.value.trim();
+                            if (v) { _aiQuestion = v; _askAI(v); }
+                        }
+                    };
+                }
+            }
+
+            async function _askAI(question) {
+                var loadingEl = document.getElementById('ai-loading');
+                var errorEl = document.getElementById('ai-error');
+                var answerSectionEl = document.getElementById('ai-answer-section');
+                var askBtn = document.getElementById('ai-ask-btn');
+                var elapsedEl = document.querySelector('.ai-elapsed');
+
+                if (loadingEl) loadingEl.style.display = 'block';
+                if (errorEl) errorEl.style.display = 'none';
+                if (answerSectionEl) answerSectionEl.style.display = 'none';
+                if (askBtn) askBtn.disabled = true;
+
+                // Get current page language and department section
+                var lang = 'en';
+                var sitePath = '/en';
+                if (currentPageData && currentPageData.path) {
+                    var parts = currentPageData.path.split('/').filter(Boolean);
+                    // Format: /canadasite/en/services/ei...
+                    //  index:   0          1   2       3
+                    if (parts.length >= 2) {
+                        if (parts[1] === 'en' || parts[1] === 'fr') {
+                            lang = parts[1];
+                        }
+                        // Build site path = /{lang}/{department}
+                        // e.g. /en/services, /en/auditor-general
+                        if (parts.length >= 3 && parts[2]) {
+                            sitePath = '/' + lang + '/' + parts[2];
+                        } else {
+                            sitePath = '/' + lang;
+                        }
+                    }
+                }
+
+                var startTime = Date.now();
+                // Poll for elapsed time
+                var timer = setInterval(function() {
+                    if (elapsedEl) elapsedEl.textContent = '(' + Math.round((Date.now() - startTime) / 1000) + 's)';
+                }, 1000);
+
+                // Determine provider from active toggle button
+                var _activeProvider = 'deepseek';
+                var activeBtn = document.querySelector('.ai-provider-btn[style*="background: rgb(39, 128, 227)"]');
+                if (activeBtn) {
+                    _activeProvider = activeBtn.getAttribute('data-provider') || 'deepseek';
+                }
+
+                try {
+                    var body = JSON.stringify({
+                        query: question,
+                        lang: lang,
+                        site: sitePath,
+                        provider: _activeProvider
+                    });
+
+                    var resp = await fetch('/api/v1/search/ai-query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body
+                    });
+
+                    clearInterval(timer);
+
+                    if (!resp.ok) {
+                        var errText = await resp.text();
+                        throw new Error('HTTP ' + resp.status + ': ' + errText.substring(0, 200));
+                    }
+
+                    var data = await resp.json();
+                    _aiAnswer = data.answer || '';
+                    _aiSources = data.sources || [];
+
+                    // Update UI
+                    var contentEl = document.getElementById('ai-answer-content');
+                    if (contentEl) contentEl.textContent = _aiAnswer;
+
+                    var sourcesList = document.getElementById('ai-sources-list');
+                    var sourcesSection = document.getElementById('ai-sources-section');
+                    if (sourcesList) {
+                        sourcesList.innerHTML = _aiSources.map(function(s) {
+                            return '<li>' + escapeHtml(s.page_title || '') +
+                                (s.similarity ? ' (' + Math.round(s.similarity) + '%)' : '') +
+                                (s.source_url ? ' — <a href="' + escapeHtml(s.source_url) + '" target="_blank">source</a>' : '') +
+                                '</li>';
+                        }).join('');
+                    }
+                    if (sourcesSection) {
+                        sourcesSection.style.display = _aiSources.length ? 'block' : 'none';
+                    }
+                    if (answerSectionEl) answerSectionEl.style.display = 'block';
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (errorEl) errorEl.style.display = 'none';
+
+                    // Show insert button
+                    var insertBtn = document.getElementById('ai-insert-btn');
+                    if (insertBtn) insertBtn.style.display = 'inline-block';
+
+                } catch (e) {
+                    clearInterval(timer);
+                    console.error('AI query failed:', e);
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (errorEl) {
+                        errorEl.style.display = 'block';
+                        errorEl.textContent = '❌ Error: ' + e.message;
+                    }
+                } finally {
+                    if (askBtn) askBtn.disabled = false;
+                }
+            }
+
+            function _insertAIAnswer() {
+                var editor = window.tinyMceEditor;
+                if (!editor) {
+                    alert('Editor not initialized. Please focus the editor first.');
+                    return;
+                }
+                if (!_aiAnswer) {
+                    alert('No answer to insert. Ask a question first.');
+                    return;
+                }
+
+                // Build answer HTML with Answer heading, answer body, sources, and disclaimer
+                var html = '';
+
+                // Answer section
+                var answerText = _aiAnswer;
+                if (answerText.indexOf('<') >= 0 && answerText.indexOf('>') >= 0) {
+                    // Answer already has HTML
+                    html = '<h2>Answer:</h2>' + answerText;
+                } else {
+                    // Plain text — split by double newlines into paragraphs
+                    var paragraphs = answerText.split(/\n\n+/);
+                    html = '<h2>Answer:</h2>';
+                    html += paragraphs.map(function(p) {
+                        p = p.trim();
+                        if (!p) return '';
+                        var lines = p.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+                        if (lines.length <= 1) {
+                            return '<p>' + escapeHtml(lines[0]) + '</p>';
+                        }
+                        return '<p>' + lines.join('<br>') + '</p>';
+                    }).join('');
+                }
+
+                // Sources section
+                html += '<h3>Sources</h3>';
+                if (_aiSources && _aiSources.length > 0) {
+                    html += '<ul>';
+                    _aiSources.forEach(function(s) {
+                        var sourceText = escapeHtml(s.page_title || 'Untitled');
+                        if (s.source_url) {
+                            sourceText = '<a href="' + escapeHtml(s.source_url) + '">' + sourceText + '</a>';
+                        }
+                        if (s.similarity) {
+                            sourceText += ' (' + Math.round(s.similarity) + '%)';
+                        }
+                        html += '<li>' + sourceText + '</li>';
+                    });
+                    html += '</ul>';
+                }
+
+                // Disclaimer
+                html += '<p><em>These Q&A are AI-generated and reviewed and edited by content authors</em></p>';
+
+                editor.insertContent(html);
+                console.log('AI answer inserted into editor');
             }
 
             // -------- Upload button (Images mode) --------

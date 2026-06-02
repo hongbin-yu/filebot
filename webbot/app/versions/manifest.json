@@ -198,12 +198,13 @@
       "page_path": "/canadasite/en/services/benefits",
       "versions": [
         1,
-        2
+        2,
+        3
       ],
-      "latest": 2,
+      "latest": 3,
       "latest_meta": {
-        "version": 2,
-        "created_at": "2026-05-21T00:35:41.427688Z",
+        "version": 3,
+        "created_at": "2026-05-31T13:44:25.975802Z",
         "author": "system",
         "content_size": 7524
       }
@@ -211,12 +212,13 @@
     "canadasite__en__services": {
       "page_path": "/canadasite/en/services",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-18T16:20:09.550698Z",
+        "version": 2,
+        "created_at": "2026-05-30T21:29:12.488976Z",
         "author": "system",
         "content_size": 19275
       }
@@ -266,12 +268,13 @@
       "versions": [
         1,
         2,
-        3
+        3,
+        4
       ],
-      "latest": 3,
+      "latest": 4,
       "latest_meta": {
-        "version": 3,
-        "created_at": "2026-05-22T14:36:26.189198Z",
+        "version": 4,
+        "created_at": "2026-05-31T01:30:27.326655Z",
         "author": "system",
         "content_size": 16732
       }
@@ -305,14 +308,15 @@
     "canadasite__en__auditor-general__header": {
       "page_path": "/canadasite/en/auditor-general/header",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-20T22:51:03.705673Z",
+        "version": 2,
+        "created_at": "2026-05-31T01:29:48.974181Z",
         "author": null,
-        "content_size": 1145
+        "content_size": 1252
       }
     },
     "canadasite__en__auditor-general__megamenu": {
@@ -575,7 +579,218 @@
         "author": "system",
         "content_size": 14634
       }
+    },
+    "canadasite__en__services__ai-search": {
+      "page_path": "/canadasite/en/services/ai-search",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-05-31T13:55:20.341959Z",
+        "author": null,
+        "content_size": 897
+      }
+    },
+    "canadasite__en__services__header": {
+      "page_path": "/canadasite/en/services/header",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-31T02:53:53.791874Z",
+        "author": null,
+        "content_size": 1265
+      }
+    },
+    "canadasite__en__auditor-general__ai-search": {
+      "page_path": "/canadasite/en/auditor-general/ai-search",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-31T13:54:49.591980Z",
+        "author": null,
+        "content_size": 949
+      }
+    },
+    "canadasite__en__auditor-general__contact-us": {
+      "page_path": "/canadasite/en/auditor-general/contact-us",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-31T02:36:09.316380Z",
+        "author": "system",
+        "content_size": 12765
+      }
+    },
+    "canadasite__en__auditor-general__environmental-petitions": {
+      "page_path": "/canadasite/en/auditor-general/environmental-petitions",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-31T02:34:09.630314Z",
+        "author": "system",
+        "content_size": 13508
+      }
+    },
+    "canadasite__en__services__qa-search": {
+      "page_path": "/canadasite/en/services/qa-search",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-05-31T21:54:28.536962Z",
+        "author": null,
+        "content_size": 509
+      }
+    },
+    "canadasite__mustache-templates__page-list": {
+      "page_path": "/canadasite/mustache-templates/page-list",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T17:17:31.389638Z",
+        "author": null,
+        "content_size": 167
+      }
+    },
+    "canadasite__en__services__ai-qa": {
+      "page_path": "/canadasite/en/services/ai-qa",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T22:29:07.459202Z",
+        "author": null,
+        "content_size": 220
+      }
+    },
+    "canadasite__en__services__ai-qa__what-is-ei-in-canada": {
+      "page_path": "/canadasite/en/services/ai-qa/what-is-ei-in-canada",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T16:35:57.706401Z",
+        "author": null,
+        "content_size": 1443
+      }
+    },
+    "canadasite__en__services__ai-qa__how-to-apply-ei-in-canada": {
+      "page_path": "/canadasite/en/services/ai-qa/how-to-apply-ei-in-canada",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T22:27:35.608432Z",
+        "author": null,
+        "content_size": 2043
+      }
+    },
+    "canadasite__en__services__ai-qa__how-do-i-apply-for-a-canadian-passport": {
+      "page_path": "/canadasite/en/services/ai-qa/how-do-i-apply-for-a-canadian-passport",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-06-02T14:42:30.356712Z",
+        "author": null,
+        "content_size": 2040
+      }
+    },
+    "canadasite__en__services__ai-qa__how-to-find-a-job-in-canada": {
+      "page_path": "/canadasite/en/services/ai-qa/how-to-find-a-job-in-canada",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T22:29:24.405931Z",
+        "author": null,
+        "content_size": 2747
+      }
+    },
+    "canadasite__en__services__ai-qa__how-to-find-a-jobs-in-federal-government-of-canada": {
+      "page_path": "/canadasite/en/services/ai-qa/how-to-find-a-jobs-in-federal-government-of-canada",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T22:29:30.269072Z",
+        "author": null,
+        "content_size": 1673
+      }
+    },
+    "canadasite__en__services__ai-qa__what-is-child-benefits-in-canada": {
+      "page_path": "/canadasite/en/services/ai-qa/what-is-child-benefits-in-canada",
+      "versions": [
+        1,
+        2
+      ],
+      "latest": 2,
+      "latest_meta": {
+        "version": 2,
+        "created_at": "2026-06-02T14:28:30.614406Z",
+        "author": null,
+        "content_size": 3079
+      }
+    },
+    "canadasite__en__services__ai-qa__what-is-dental-benefits-in-canada": {
+      "page_path": "/canadasite/en/services/ai-qa/what-is-dental-benefits-in-canada",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T22:41:35.433200Z",
+        "author": null,
+        "content_size": 1438
+      }
+    },
+    "canadasite__en__services__ai-qa__i-just-retired-what-is-i-should-do": {
+      "page_path": "/canadasite/en/services/ai-qa/i-just-retired-what-is-i-should-do",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-01T23:58:45.179540Z",
+        "author": null,
+        "content_size": 1538
+      }
     }
   },
-  "updated_at": "2026-05-28T19:18:30.682691Z"
+  "updated_at": "2026-06-02T14:42:30.356712Z"
 }

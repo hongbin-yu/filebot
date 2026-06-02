@@ -3,15 +3,16 @@ WebBot Auth Security
 Shared security utilities using FileBot's user database and JWT compatible with FileBot tokens.
 
 FileBot uses: python-jose (HS256), passlib (pbkdf2_sha256, 30000 rounds)
-WebBot runs on system Python, requires: python-jose, passlib
+WebBot now queries FileBot's PostgreSQL database for user operations.
 """
 
 import os
-import sqlite3
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
+import psycopg2
+import psycopg2.extras
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status, Request
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
-# Try to read FileBot's .env for shared SECRET_KEY
+# Try to read FileBot's .env for shared SECRET_KEY and DATABASE_URL
 _filebot_env = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "..", "..", "..",
@@ -30,28 +31,22 @@ _filebot_env = os.path.join(
 )
 
 _shared_secret = os.environ.get("JWT_SECRET_KEY")
-if not _shared_secret and os.path.exists(_filebot_env):
+_filebot_db_url = os.environ.get("FILEBOT_DATABASE_URL")
+
+if os.path.exists(_filebot_env):
     with open(_filebot_env) as f:
         for line in f:
+            line = line.strip()
             if line.startswith("SECRET_KEY="):
-                _shared_secret = line.split("=", 1)[1].strip().strip('"').strip("'")
-                break
+                _shared_secret = _shared_secret or line.split("=", 1)[1].strip().strip('"').strip("'")
+            elif line.startswith("DATABASE_URL="):
+                _filebot_db_url = _filebot_db_url or line.split("=", 1)[1].strip().strip('"').strip("'")
 
-# Final fallback — must match FileBot's .env value
+# Final fallbacks
 SECRET_KEY = _shared_secret or os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
+FILEBOT_DATABASE_URL = _filebot_db_url or os.environ.get("DATABASE_URL", "postgresql://filebot:filebot@localhost:5432/filebot")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days (matching FileBot)
-
-# ── FileBot DB path (matching webbot main.py) ──────────────────────────────
-
-FILEBOT_DB_PATH = os.environ.get(
-    "FILEBOT_DB_PATH",
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..", "..", "..",
-        "filebot", "backend", "filebot.db"
-    )
-)
 
 # ── Password hashing (compatible with FileBot's passlib config) ────────────
 
@@ -91,34 +86,35 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-# ── User lookup from shared FileBot DB ─────────────────────────────────────
+# ── PostgreSQL connection ──────────────────────────────────────────────────
 
-def get_filebot_db() -> Optional[sqlite3.Connection]:
-    """Open read-only connection to shared filebot.db."""
+def get_pg_connection() -> Optional[psycopg2.extensions.connection]:
+    """Open a connection to FileBot's PostgreSQL database."""
     try:
-        conn = sqlite3.connect(FILEBOT_DB_PATH)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
+        conn = psycopg2.connect(FILEBOT_DATABASE_URL)
+        conn.autocommit = True
         return conn
-    except sqlite3.Error as e:
-        logger.error(f"FileBot DB connection error: {e}")
+    except psycopg2.Error as e:
+        logger.error(f"PostgreSQL connection error: {e}")
         return None
 
 
 def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
-    """Look up a user by UUID string from filebot.db's users table."""
-    conn = get_filebot_db()
+    """Look up a user by UUID string from PostgreSQL users table."""
+    conn = get_pg_connection()
     if not conn:
         return None
     try:
-        row = conn.execute(
-            "SELECT id, username, email, full_name, role, is_active, is_superuser FROM users WHERE id = ?",
-            (user_id,)
-        ).fetchone()
-        if row:
-            return dict(row)
-        return None
-    except sqlite3.Error as e:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, username, email, full_name, role, is_active, is_superuser FROM users WHERE id = %s",
+                (user_id,)
+            )
+            row = cur.fetchone()
+            if row:
+                return dict(row)
+            return None
+    except psycopg2.Error as e:
         logger.error(f"User lookup error: {e}")
         return None
     finally:
@@ -126,19 +122,21 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
-    """Look up a user by username from filebot.db's users table."""
-    conn = get_filebot_db()
+    """Look up a user by username from PostgreSQL users table."""
+    conn = get_pg_connection()
     if not conn:
         return None
     try:
-        row = conn.execute(
-            "SELECT id, username, email, full_name, password_hash, role, is_active, is_superuser FROM users WHERE username = ? OR email = ?",
-            (username, username)
-        ).fetchone()
-        if row:
-            return dict(row)
-        return None
-    except sqlite3.Error as e:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, username, email, full_name, password_hash, role, is_active, is_superuser FROM users WHERE username = %s OR email = %s",
+                (username, username)
+            )
+            row = cur.fetchone()
+            if row:
+                return dict(row)
+            return None
+    except psycopg2.Error as e:
         logger.error(f"User lookup error: {e}")
         return None
     finally:
@@ -146,7 +144,7 @@ def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
 
 
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
-    """Authenticate user against filebot.db."""
+    """Authenticate user against PostgreSQL database."""
     user = get_user_by_username(username)
     if not user:
         return None

@@ -137,6 +137,14 @@
                 </div>
                 <form id="createPageForm">
                     <div class="modal-body">
+                        <div class="form-group">
+                            <label for="newPageTemplate">Page Template</label>
+                            <select id="newPageTemplate" class="form-control">
+                                <option value="">(Default page template)</option>
+                            </select>
+                            <small class="form-text text-muted">Select a template for this page. Default: /canadasite/mustache-templates/page-template</small>
+                        </div>
+                        <hr>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -461,7 +469,7 @@
     <script src="/etc/designs/canada/wet-boew/js/theme.min.js"></script>
 
     <!-- Navigation JavaScript -->
-    <script src="js/navigation.js"></script>
+    <script src="js/navigation.js?v=20260531-1940"></script>
     <script>
         // Hide WET-BOEW/GCWeb dynamically-injected header/footer
         (function() {

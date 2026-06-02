@@ -211,7 +211,7 @@ async def rollback_page(
         async with session.post(
             filebot_publish_url,
             params={"path": path},
-            json={"html_content": full_html},
+            json={"html_content": full_html, "title": page_title},
             headers={"X-WebBot-Access": "true"}
         ) as fb_resp:
             if fb_resp.status != 200:

@@ -968,7 +968,12 @@ function setupButtons() {
 
     // Populate template dropdown
     function populateTemplateSelect() {
-        var sel = document.getElementById('prop-template');
+        populateOneTemplateSelect('prop-template');
+        populateOneTemplateSelect('newPageTemplate');
+    }
+
+    function populateOneTemplateSelect(selectId) {
+        var sel = document.getElementById(selectId);
         if (!sel) return;
         sel.disabled = true;
 
@@ -1459,6 +1464,10 @@ function setupButtons() {
         var frName = newPageFrName ? newPageFrName.value.trim() : '';
         var otherLangParent = newPageOtherLangParent ? newPageOtherLangParent.value.trim() : '';
 
+        // Get selected page template
+        var selectedTemplate = document.getElementById('newPageTemplate');
+        var pageTemplateValue = selectedTemplate ? selectedTemplate.value : '';
+
         // Build metadata with FR fields
         var metadata = {};
         if (frTitle) metadata.fr_title = frTitle;
@@ -1502,8 +1511,8 @@ function setupButtons() {
             var enResult = { created: false, path: pagePath };
             var frResult = { created: false, path: '' };
 
-            // 1. Create English page (or skip if exists)
-            enResult = await createOrSkip('en', {
+            // Build English page data
+            var enPageData = {
                 title: title,
                 path: pagePath,
                 parent_path: parentPath,
@@ -1512,7 +1521,13 @@ function setupButtons() {
                 content: '',
                 metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
                 other_language_path: otherLanguagePath || undefined
-            });
+            };
+            if (pageTemplateValue) {
+                enPageData.template = pageTemplateValue;
+            }
+
+            // 1. Create English page (or skip if exists)
+            enResult = await createOrSkip('en', enPageData);
 
             var actualPagePath = enResult.path;
 
@@ -1555,6 +1570,12 @@ function setupButtons() {
                 var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
                 window.open(editorUrl, '_blank');
             }
+
+            // Close the Create dialog
+            hideModal(createPageModal);
+
+            // Refresh the navigation tree to show the new page
+            refreshTree();
 
         } catch (err) {
             showToast('Failed to create page: ' + err.message, 'danger');

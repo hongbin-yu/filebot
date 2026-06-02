@@ -563,6 +563,22 @@
             color: #5bc0de;
         }
 
+        /* AI Q&A section */
+        .ai-answer-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .ai-answer-content p {
+            margin: 0 0 6px 0;
+        }
+        .ai-qa-section textarea:focus {
+            border-color: #2780e3;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(39,128,227,0.15);
+        }
+
         /* Image grid */
         .image-grid {
             display: flex;

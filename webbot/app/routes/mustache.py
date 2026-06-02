@@ -8,6 +8,7 @@ import sqlite3
 import json
 import os
 import traceback
+import urllib.parse
 from typing import Optional
 
 router = APIRouter(prefix="", tags=["mustache"])
@@ -62,6 +63,53 @@ def load_static_template(template_path: str) -> Optional[str]:
         if os.path.exists(static_path_html) and os.path.isfile(static_path_html):
             with open(static_path_html, "r", encoding="utf-8") as f:
                 return f.read()
+    
+    return None
+
+
+def _query_local_api(path: str, params: dict, cursor) -> Optional[list]:
+    """
+    Handle local /api/v1/ datasource requests via direct SQL (skip HTTP + auth).
+    Returns data or None if the path is not handled.
+    """
+    import json
+    
+    # /api/v1/pages/ — list pages
+    if path == "/api/v1/pages" or path == "/api/v1/pages/":
+        path_val = params.get("path", [None])[0]
+        limit = int(params.get("limit", ["100"])[0])
+        skip = int(params.get("skip", ["0"])[0])
+        prefix_val = params.get("prefix", [None])[0]
+        
+        if prefix_val:
+            normalized = prefix_val.rstrip("/") + "/"
+            cursor.execute(
+                "SELECT * FROM webbot_page WHERE path LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (normalized + "%", limit, skip)
+            )
+        elif path_val is None or path_val == "":
+            cursor.execute(
+                "SELECT * FROM webbot_page WHERE parent_path IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, skip)
+            )
+        else:
+            normalized = path_val.rstrip("/")
+            cursor.execute(
+                "SELECT * FROM webbot_page WHERE parent_path = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (normalized, limit, skip)
+            )
+        
+        columns = [d[0] for d in cursor.description]
+        rows = []
+        for row in cursor.fetchall():
+            page_dict = dict(zip(columns, row))
+            if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
+                try:
+                    page_dict["metadata"] = json.loads(page_dict["metadata"])
+                except json.JSONDecodeError:
+                    page_dict["metadata"] = {}
+            rows.append(page_dict)
+        return rows
     
     return None
 
@@ -170,22 +218,53 @@ async def render_mustache(path: str, request: Request):
         try:
             import aiohttp
             
-            # 构建完整URL
+            # Build full URL
             url = datasource
             if not url.startswith("http"):
                 base_url = str(request.base_url).rstrip("/")
                 url = f"{base_url}{url}"
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as resp:
-                    if resp.status == 200:
-                        datasource_data = await resp.json()
-                        data["datasource_loaded"] = True
-                        data["datasource_raw"] = datasource_data
-                        
-                        # 合并数据
-                        if isinstance(datasource_data, dict):
-                            data = {**data, **datasource_data}
+            # Try direct DB query for local /api/v1/ endpoints (skip auth)
+            datasource_data = None
+            parsed = urllib.parse.urlparse(url)
+            if parsed.path.startswith("/api/v1/pages/") or parsed.path == "/api/v1/pages":
+                params = urllib.parse.parse_qs(parsed.query)
+                datasource_data = _query_local_api(parsed.path, params, cursor)
+            
+            if datasource_data is not None:
+                data["datasource_loaded"] = True
+                data["datasource_raw"] = datasource_data
+                if isinstance(datasource_data, dict):
+                    data = {**data, **datasource_data}
+                elif isinstance(datasource_data, list):
+                    data = datasource_data
+                else:
+                    data["items"] = datasource_data
+            else:
+                # Forward Authorization header from original request
+                headers = {}
+                auth_header = request.headers.get("Authorization")
+                if auth_header:
+                    headers["Authorization"] = auth_header
+                else:
+                    token_param = request.query_params.get("token")
+                    if token_param:
+                        headers["Authorization"] = f"Bearer {token_param}"
+
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=headers, timeout=10) as resp:
+                        if resp.status == 200:
+                            datasource_data = await resp.json()
+                            data["datasource_loaded"] = True
+                            data["datasource_raw"] = datasource_data
+
+                            # 合并数据
+                            if isinstance(datasource_data, dict):
+                                data = {**data, **datasource_data}
+                            elif isinstance(datasource_data, list):
+                                data = datasource_data
+                            else:
+                                data["items"] = datasource_data
                         elif isinstance(datasource_data, list):
                             # If数据源返回数组,直接赋值给根上下文
                             # 这样模板中的 {{#.}} 可以迭代数组项
