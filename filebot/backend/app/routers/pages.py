@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class PublishRequest(BaseModel):
     html_content: str
+    title: Optional[str] = None
 
 
 PUBLISH_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "publish"
@@ -372,13 +373,17 @@ def publish_page(
             mime_type = "text/html"
             file_type = FileType.HTML
 
+        # Use passed title, fall back to doc_name
+        real_title = (publish_req.title or "").strip() or doc_name
+
         # Check if document already exists (update it) or create new
         existing_doc = db.query(Document).filter(Document.path == doc_path).first()
         if existing_doc:
-            existing_doc.title = doc_name
+            existing_doc.title = real_title
             existing_doc.file_size = html_len
             existing_doc.updated_by = "webbot"
             existing_doc.publish_status = PublishStatus.PUBLISHED
+            existing_doc.parent_folder_path = folder_path
             logger.info(f"Updated existing document: {doc_path}")
         else:
             # Find uploader user
@@ -392,12 +397,13 @@ def publish_page(
             doc = Document(
                 path=doc_path,
                 folder_path=folder_path,
+                parent_folder_path=folder_path,
                 original_filename=f"{doc_name}{extension}",
                 stored_filename=f"{doc_name}{extension}",
                 file_size=html_len,
                 file_type=file_type,
                 mime_type=mime_type,
-                title=doc_name,
+                title=real_title,
                 storage_path=output_file,
                 full_storage_path=output_file,
                 publish_status=PublishStatus.PUBLISHED,

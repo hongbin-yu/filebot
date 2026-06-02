@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
 import traceback
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.db.database import get_db
 from app.core.security import get_current_active_user
@@ -16,6 +21,151 @@ from app.models.page import Page
 from app.schemas.document import DocumentResponse, PageResponse
 
 router = APIRouter()
+
+
+# ========== AI Semantic Search ==========
+
+# Lazy-loaded singleton for the embedding model
+_model_lock = threading.Lock()
+_model_instance = None
+
+def get_embedding_model():
+    """Lazy-load and cache the sentence-transformers model."""
+    global _model_instance
+    if _model_instance is None:
+        with _model_lock:
+            if _model_instance is None:
+                from sentence_transformers import SentenceTransformer
+                model_name = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
+                logger.info(f"Loading embedding model: {model_name}...")
+                _model_instance = SentenceTransformer(model_name)
+                logger.info("Embedding model loaded")
+    return _model_instance
+
+
+# Direct psycopg2 connection for pgvector queries
+# Uses same PostgreSQL as the main app
+def get_pg_conn():
+    """Get a raw psycopg2 connection for pgvector queries.
+    Parses DATABASE_URL from settings to match the main app's PostgreSQL.
+    """
+    import psycopg2
+    from urllib.parse import urlparse
+    from app.core.config import settings
+
+    db_url = settings.DATABASE_URL
+    if db_url.startswith("postgresql://"):
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname or "localhost",
+            port=parsed.port or 5432,
+            dbname=parsed.path.lstrip("/") if parsed.path else "filebot",
+            user=parsed.username or "filebot",
+            password=parsed.password or "filebot",
+        )
+    else:
+        # Fallback defaults
+        conn = psycopg2.connect(
+            host="localhost",
+            port=5432,
+            dbname="filebot",
+            user="filebot",
+            password="filebot",
+        )
+    return conn
+
+
+class SearchChunkResult(BaseModel):
+    page_title: str
+    heading: str
+    text: str
+    source_url: str
+    char_count: int
+    similarity: float
+
+
+class AISearchResponse(BaseModel):
+    query: str
+    language: str
+    results: List[SearchChunkResult]
+    total: int
+
+
+@router.get("/ai", response_model=AISearchResponse)
+def ai_search(
+    q: str = Query(..., min_length=1, max_length=500, description="Search query"),
+    lang: str = Query("en", regex="^(en|fr)$", description="Language: en or fr"),
+    top_k: int = Query(5, ge=1, le=50, description="Number of results to return"),
+    site: Optional[str] = Query(None, max_length=500, description="Restrict to URL prefix, e.g. /en/services/benefits"),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    AI-powered semantic search over canada.ca services content.
+
+    Uses multilingual-e5-small embeddings + pgvector for fast semantic search.
+    Supports both English (en) and French (fr).
+    Optional 'site' parameter restricts results to matching URL prefix.
+    """
+    import psycopg2.extras
+
+    try:
+        # Embed the query
+        model = get_embedding_model()
+        query_emb = model.encode(f"query: {q}", normalize_embeddings=True)
+
+        # Build query with optional site filter
+        if site:
+            site_filter = " AND source_url LIKE '%%' || %s || '%%'"
+            params = [query_emb.tolist(), lang, site, query_emb.tolist(), top_k]
+        else:
+            site_filter = ""
+            params = [query_emb.tolist(), lang, query_emb.tolist(), top_k]
+
+        sql = f"""
+            SELECT page_title, heading, text, source_url, char_count,
+                   1 - (embedding <=> %s::vector) as similarity
+            FROM search_chunks
+            WHERE language = %s{site_filter}
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+        """
+
+        # Query pgvector
+        conn = get_pg_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        results = [
+            SearchChunkResult(
+                page_title=r["page_title"],
+                heading=r["heading"],
+                text=r["text"],
+                source_url=r["source_url"],
+                char_count=r["char_count"],
+                similarity=round(float(r["similarity"]) * 100, 1),
+            )
+            for r in rows
+        ]
+
+        return AISearchResponse(
+            query=q,
+            language=lang,
+            results=results,
+            total=len(results),
+        )
+
+    except Exception as e:
+        logger.error(f"AI search failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI search failed: {str(e)}"
+        )
+
+
+# ========== Permission Check Helpers ==========
 
 
 # ========== Permission Check Helpers ==========

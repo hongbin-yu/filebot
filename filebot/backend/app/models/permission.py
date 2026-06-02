@@ -31,7 +31,7 @@ class Permission(Base):
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     group_id = Column(String(36), ForeignKey("groups.id"), nullable=True, index=True)
     resource_type = Column(SAEnum(ResourceType, values_callable=lambda x: [m.value for m in x]), nullable=False, index=True)
-    resource_id = Column(String(36), nullable=False, index=True)
+    resource_id = Column(String(500), nullable=False, index=True)
     permission_level = Column(SAEnum(PermissionLevel, values_callable=lambda x: [m.value for m in x]), nullable=False, default=PermissionLevel.READ)
 
     # 有效期

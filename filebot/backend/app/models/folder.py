@@ -12,8 +12,8 @@ class Folder(Base):
     path = Column(String(500), primary_key=True)  # 路径即主键，如 "/boarding/canadasite/fr/sondages"
     app_id = Column(String(36), ForeignKey("apps.id"), nullable=False)  # 仍关联应用
     parent_folder_path = Column(String(500), ForeignKey("folders.path"), nullable=True, index=True)  # 父路径
-    name = Column(String(100), nullable=False, index=True)
-    title = Column(String(200), nullable=True)
+    name = Column(String(500), nullable=False, index=True)
+    title = Column(String(500), nullable=True)
     description = Column(String(500), nullable=True)
     
     # 系统文件夹标志

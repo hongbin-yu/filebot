@@ -17,6 +17,7 @@ from starlette.applications import Starlette
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from starlette.responses import PlainTextResponse, JSONResponse, Response, FileResponse
+from starlette.requests import Request
 import uvicorn
 import httpx
 import json
@@ -29,6 +30,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("publish-server")
+
+# 内网 FileBot API 地址（AI Search）
+FILEBOT_API_URL = "http://localhost:8002/api/v1"
 
 # 内网 Webbot 追踪 API
 WEBBOT_TRACK_URL = "http://localhost:8000/api/v1/track"
@@ -101,16 +105,94 @@ async def index_page(request):
     return PlainTextResponse(html, media_type="text/html")
 
 
+# 从环境变量读取服务 token，否则启动时用 admin 密码获取
+SERVICE_TOKEN = os.environ.get("PUBLISH_SERVER_TOKEN", "")
+
+async def ensure_service_token():
+    """确保有可用的服务 token 用于代理 FileBot API 请求。"""
+    global SERVICE_TOKEN
+    if SERVICE_TOKEN:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                f"{FILEBOT_API_URL}/auth/login",
+                data={"username": "admin", "password": "admin123"},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            if resp.status_code == 200:
+                SERVICE_TOKEN = resp.json()["access_token"]
+                logger.info("AI Search service token acquired")
+            else:
+                logger.warning(f"Failed to get service token: {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"Cannot get service token: {e}")
+
+
+async def proxy_mustache(request):
+    """Proxy mustache template rendering to FileBot backend (port 8002)."""
+    path = request.url.path  # e.g. /mustache/mustache-templates/page-list
+    qs = request.url.query  # e.g. datasource=...
+    target = f"http://localhost:8002{path}"
+    if qs:
+        target += "?" + qs
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(target)
+            return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "text/html"))
+    except httpx.ConnectError:
+        logger.warning("Mustache proxy: FileBot 8002 unreachable")
+        return PlainTextResponse("Mustache service unavailable", status_code=502)
+    except Exception as e:
+        logger.warning(f"Mustache proxy failed: {e}")
+        return PlainTextResponse(f"Mustache proxy error: {e}", status_code=502)
+
+
+async def proxy_ai_search(request):
+    """Proxy AI search to internal FileBot backend."""
+    q = request.query_params.get("q", "")
+    lang = request.query_params.get("lang", "en")
+    top_k = request.query_params.get("top_k", "5")
+    site = request.query_params.get("site", "")
+
+    if not q:
+        return JSONResponse({"error": "Missing query parameter 'q'"}, status_code=400)
+
+    try:
+        if not SERVICE_TOKEN:
+            await ensure_service_token()
+
+        headers = {"Authorization": f"Bearer {SERVICE_TOKEN}"}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(
+                f"{FILEBOT_API_URL}/search/ai",
+                params={"q": q, "lang": lang, "top_k": top_k, "site": site},
+                headers=headers,
+            )
+            return JSONResponse(resp.json(), status_code=resp.status_code)
+    except httpx.ConnectError:
+        logger.warning("AI Search proxy: FileBot unreachable")
+        return JSONResponse({"error": "AI search service unavailable"}, status_code=502)
+    except Exception as e:
+        logger.warning(f"AI Search proxy failed: {e}")
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
 routes = [
+    Route("/mustache/{path:path}", endpoint=proxy_mustache),
     Route("/api/v1/track/track.js", endpoint=serve_track_js),
     Route("/api/v1/track", endpoint=proxy_track, methods=["POST"]),
+    Route("/api/v1/ai-search", endpoint=proxy_ai_search),
     Route("/admin/analytics", endpoint=lambda r: FileResponse(str(_ADMIN_HTML)) if _ADMIN_HTML.exists() else PlainTextResponse("Not found", status_code=404)),
     Mount("/", app=StaticFiles(directory=str(PUBLISH_DIR), html=True), name="publish"),
 ]
 
 app = Starlette(
     routes=routes,
-    on_startup=[lambda: logger.info("Publish server started")],
+    on_startup=[
+        lambda: logger.info("Publish server started"),
+        ensure_service_token,
+    ],
 )
 
 
