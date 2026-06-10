@@ -2,6 +2,7 @@
 Folder management routes — 基于路径主键，彻底移除UUID
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
@@ -65,7 +66,7 @@ def get_folders(
     parent_folder_path: Optional[str] = Query(None, description="Filter by parent folder path"),
     path_starts_with: Optional[str] = Query(None, description="Filter by path prefix (e.g. '/boarding' for all app folders)"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=10000),
+    limit: int = Query(100, ge=1, le=5000),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -245,10 +246,25 @@ def get_folder_tree(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取应用的文件夹树"""
-    app = get_app_or_check_permission(app_id, current_user, db)
+    """获取应用的文件夹树（支持 UUID 或 slug）"""
+    # 先按 UUID 查，再按 slug 查
+    app = db.query(App).filter(App.id == app_id).first()
+    if not app:
+        app = db.query(App).filter(App.slug == app_id).first()
+    if not app:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+    # 权限检查
+    if not current_user.is_superuser and app.owner_id != current_user.id:
+        from app.models.permission import Permission
+        has_perm = db.query(Permission).filter(
+            Permission.resource_type == "app",
+            Permission.resource_id == app.id,
+            Permission.user_id == current_user.id,
+        ).first()
+        if not has_perm:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No permission to access this app")
 
-    all_folders = db.query(Folder).filter(Folder.app_id == app_id).all()
+    all_folders = db.query(Folder).filter(Folder.app_id == app.id).all()
 
     def build_tree(parent_path: Optional[str] = None) -> List[FolderTreeResponse]:
         children = [f for f in all_folders if f.parent_folder_path == parent_path]
@@ -266,8 +282,8 @@ def get_folder_tree(
                 parent_folder_path=folder.parent_folder_path,
                 description=folder.description,
                 app_id=folder.app_id,
-                is_system_folder=folder.is_system_folder,
-                order_index=folder.order_index,
+                is_system_folder=folder.is_system_folder if folder.is_system_folder is not None else False,
+                order_index=folder.order_index if folder.order_index is not None else 0,
                 created_by=folder.created_by,
                 created_at=folder.created_at,
                 updated_at=folder.updated_at,
@@ -277,8 +293,9 @@ def get_folder_tree(
             ))
         return result
 
-    # Root folders have parent_folder_path = /{app.slug} (the app's root path)
-    return build_tree(f"/{app.slug}")
+    # Start from root folders (parent_folder_path IS NULL for the app)
+    # This handles the case where root folder path differs from /{app.slug}
+    return build_tree(None)
 
 
 @router.get("/{folder_path:path}", response_model=FolderResponse)
@@ -375,7 +392,7 @@ def _recursive_delete(folder_path: str, db: Session):
 def get_folder_children(
     folder_path: str,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=10000),
+    limit: int = Query(100, ge=1, le=5000),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -421,7 +438,7 @@ def move_folder(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """移动文件夹到另一父目录"""
+    """移动文件夹到另一父目录（递归更新所有子文件夹和文档路径）"""
     full_path = "/" + folder_path.lstrip("/")
     folder = get_folder_or_404(full_path, db)
     check_folder_permission(folder, current_user, db)
@@ -434,11 +451,12 @@ def move_folder(
 
     # 防止移动到自身子目录
     current = target
-    while current.parent_folder_path:
-        if current.parent_folder_path == full_path:
+    while current and current.path != current.parent_folder_path:
+        if current.path == full_path:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot move to own subfolder")
-        current = db.query(Folder).filter(Folder.path == current.parent_folder_path).first()
-        if not current:
+        if current.parent_folder_path:
+            current = db.query(Folder).filter(Folder.path == current.parent_folder_path).first()
+        else:
             break
 
     # 检查目标目录下同名冲突
@@ -452,11 +470,100 @@ def move_folder(
             detail=f"Folder '{folder.name}' already exists under target parent"
         )
 
-    folder.parent_folder_path = target_parent_path
-    # 重建路径
-    folder.path = f"{target_parent_path.rstrip('/')}/{folder.name}"
-    folder.updated_by = current_user.username
+    old_path = folder.path
+    new_path = f"{target_parent_path.rstrip('/')}/{folder.name}"
 
-    db.commit()
-    db.refresh(folder)
-    return {"message": "Folder moved successfully", "folder": folder}
+    # ── 用原始 SQL 批量更新 ─────────────────────────────────
+    # 临时禁用 FK 触发器（PostgreSQL 语句级检查，跨表更新需关闭）
+    db.execute(text("ALTER TABLE documents DISABLE TRIGGER ALL"))
+    db.execute(text("ALTER TABLE folders DISABLE TRIGGER ALL"))
+    try:
+        # 更新文件夹（含自身 + 子文件夹的 path 和 parent_folder_path）
+        db.execute(
+            text("""
+                UPDATE folders
+                SET path = REPLACE(path, :old_path, :new_path),
+                    parent_folder_path = CASE
+                        WHEN path = :old_path_exact THEN :target_parent_path
+                        ELSE REPLACE(parent_folder_path, :old_path, :new_path)
+                    END,
+                    updated_by = :updated_by
+                WHERE path = :old_path_exact OR path LIKE :old_path_pattern
+            """),
+            {
+                "old_path": old_path,
+                "new_path": new_path,
+                "target_parent_path": target_parent_path.rstrip('/'),
+                "updated_by": current_user.username,
+                "old_path_exact": old_path,
+                "old_path_pattern": old_path + "/%",
+            }
+        )
+
+        # 更新文档路径
+        db.execute(
+            text("""
+                UPDATE documents
+                SET path = REPLACE(path, :old_path, :new_path),
+                    folder_path = REPLACE(folder_path, :old_path, :new_path)
+                WHERE path = :old_path_exact OR path LIKE :old_path_pattern
+                   OR folder_path = :old_path_exact OR folder_path LIKE :old_path_pattern
+            """),
+            {
+                "old_path": old_path,
+                "new_path": new_path,
+                "old_path_exact": old_path,
+                "old_path_pattern": old_path + "/%",
+            }
+        )
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.execute(text("ALTER TABLE documents ENABLE TRIGGER ALL"))
+        db.execute(text("ALTER TABLE folders ENABLE TRIGGER ALL"))
+
+    # 重新查询返回更新后的文件夹
+    moved = get_folder_or_404(new_path, db)
+    return {"message": "Folder moved successfully", "folder": moved}
+
+
+@router.post("/repair/parent-folder-paths")
+def repair_parent_folder_paths(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """修复所有文件夹的 parent_folder_path（根据 path 重新计算）"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    db.execute(text("ALTER TABLE folders DISABLE TRIGGER ALL"))
+    try:
+        result = db.execute(
+            text("""
+                UPDATE folders
+                SET parent_folder_path = 
+                    CASE
+                        WHEN path = '/' THEN NULL
+                        WHEN path ~ '^/[^/]+$' THEN '/'
+                        ELSE regexp_replace(path, '/[^/]+$', '')
+                    END,
+                    updated_by = :updated_by
+                WHERE parent_folder_path IS DISTINCT FROM
+                    CASE
+                        WHEN path = '/' THEN NULL
+                        WHEN path ~ '^/[^/]+$' THEN '/'
+                        ELSE regexp_replace(path, '/[^/]+$', '')
+                    END
+            """),
+            {"updated_by": current_user.username}
+        )
+        db.commit()
+        return {"message": "Repair completed", "fixed_count": result.rowcount}
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.execute(text("ALTER TABLE folders ENABLE TRIGGER ALL"))

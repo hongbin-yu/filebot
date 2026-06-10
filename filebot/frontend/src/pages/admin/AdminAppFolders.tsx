@@ -41,6 +41,9 @@ const AdminAppFolders: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   
+  // Folder search
+  const [folderSearch, setFolderSearch] = useState('');
+  
   // Sitemap import state
   const [sitemapUrl, setSitemapUrl] = useState('');
   const [sitemapDepth, setSitemapDepth] = useState(0);
@@ -95,7 +98,7 @@ const AdminAppFolders: React.FC = () => {
       const allFolderData = await folderService.getFolders(appIdentifier, {
         app_slug: appIdentifier,
         path_starts_with: '/' + appIdentifier,
-        limit: 10000
+        limit: 5000
       });
       // Sort by path depth: top-level folders first for the sidebar
       const topLevel = allFolderData.filter(f => f.parent_folder_path === '/' + appIdentifier);
@@ -272,14 +275,14 @@ const AdminAppFolders: React.FC = () => {
                            `Click "OK" to recursively delete all subfolders and documents.\n` +
                            `Click "Cancel" to delete only the empty folder.`;
       
-      if (!window.confirm(confirmMessage)) {
+      if (!(await window.wetYesOrNo(confirmMessage))) {
         return;
       }
       
       recursive = true;
     } else {
       // No subfolders, simple confirmation
-      if (!confirm('Delete this folder? All documents inside will also be deleted.')) {
+      if (!(await window.wetYesOrNo('Delete this folder? All documents inside will also be deleted.'))) {
         return;
       }
     }
@@ -329,15 +332,41 @@ const AdminAppFolders: React.FC = () => {
     navigate(`/admin/documents/${docPath.replace(/^\//, '')}`);
   };
   
-  // Handle edit document
-  const handleEditDocument = (document: Document) => {
-    console.log('Edit document:', document);
-    showToast(`Edit document: ${document.title || document.original_filename} (not yet implemented)`, 'info');
+  // Handle push single document to WebBot
+  const handleWebbotPush = async (document: Document) => {
+    const docName = document.title || document.original_filename || 'this document';
+    const confirmed = await window.wetYesOrNo(`Push "${docName}" to WebBot?`);
+    if (!confirmed) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const resp = await fetch('/api/v1/import-to-webbot/single', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          document_path: document.path,
+          path_prefix: '/canadasite'
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        showToast(`WebBot push failed: ${err.detail || resp.statusText}`, 'error');
+        return;
+      }
+      const result = await resp.json();
+      showToast(`✅ WebBot: ${result.inserted} inserted, ${result.updated} updated`, 'success');
+    } catch (error) {
+      console.error('WebBot push error:', error);
+      showToast('Failed to push to WebBot. Check network or server.', 'error');
+    }
   };
   
   // Handle delete document
   const handleDeleteDocument = async (document: Document) => {
-    if (!confirm(`Delete document "${document.title || document.original_filename}"?`)) {
+    if (!(await window.wetYesOrNo(`Delete document "${document.title || document.original_filename}"?`))) {
       return;
     }
     
@@ -394,30 +423,6 @@ const AdminAppFolders: React.FC = () => {
     } catch (error) {
       console.error('Failed to update folder:', error);
       showToast('Failed to update folder: ' + ((error as any).response?.data?.detail || 'Unknown error'), 'error');
-      throw error;
-    }
-  };
-  
-  // Handle move folder
-  const handleMoveFolder = async (folderPath: string, targetParentFolderPath?: string) => {
-    try {
-      // Call move folder API
-      await folderService.moveFolder(folderPath, targetParentFolderPath);
-      
-      // Reload folders to update tree
-      if (app) {
-        await loadFolders(appSlug || app.id, app.id);
-      }
-      
-      // Update current folder path if moving it
-      if (currentFolderPath === folderPath && targetParentFolderPath) {
-        setCurrentFolderPath(folderPath);
-      }
-      
-      console.log('Folder moved successfully');
-    } catch (error) {
-      console.error('Failed to move folder:', error);
-      showToast('Failed to move folder: ' + ((error as any).response?.data?.detail || 'Unknown error'), 'error');
       throw error;
     }
   };
@@ -497,6 +502,53 @@ const AdminAppFolders: React.FC = () => {
     navigate(`/admin/apps/${appSlug}/upload?folder=${encodeURIComponent(folderPath)}&mode=import`);
   };
 
+  // Handle move folder
+  const handleMoveFolder = () => {
+    const path = currentFolder?.path || currentFolderPath || '';
+    if (!path) {
+      showToast('Please select a folder first', 'warning');
+      return;
+    }
+    setMoveFolderTarget('');
+    setMoveFolderError(null);
+    setShowMoveFolderModal(true);
+  };
+
+  const handleMoveFolderConfirm = async () => {
+    const srcPath = currentFolder?.path || currentFolderPath || '';
+    const target = moveFolderTarget.trim().replace(/\/$/, '');
+
+    if (!target) {
+      setMoveFolderError('Please enter a target parent folder path');
+      return;
+    }
+    if (srcPath === target) {
+      setMoveFolderError('Cannot move folder to itself');
+      return;
+    }
+    if (target.startsWith(srcPath + '/')) {
+      setMoveFolderError('Cannot move folder into its own subfolder');
+      return;
+    }
+
+    setMoveFolderLoading(true);
+    setMoveFolderError(null);
+    try {
+      const result = await folderService.moveFolder(srcPath, target);
+      showToast('Folder moved successfully', 'success');
+      setShowMoveFolderModal(false);
+      // Refresh folder tree
+      const appSlug = srcPath.split('/')[1];
+      await loadFolders(appSlug);
+      setCurrentFolderPath(target + '/' + (currentFolder?.name || ''));
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || error.message || 'Move failed';
+      setMoveFolderError(detail);
+    } finally {
+      setMoveFolderLoading(false);
+    }
+  };
+
   // Handle website import
   const handleImportWebsite = (folderPath: string) => {
     setShowImportWebsiteModal(true);
@@ -556,6 +608,10 @@ const AdminAppFolders: React.FC = () => {
 
   // Export to WebBot state
   const [showExportWebBotModal, setShowExportWebBotModal] = useState(false);
+  const [showMoveFolderModal, setShowMoveFolderModal] = useState(false);
+  const [moveFolderTarget, setMoveFolderTarget] = useState('');
+  const [moveFolderLoading, setMoveFolderLoading] = useState(false);
+  const [moveFolderError, setMoveFolderError] = useState<string | null>(null);
   const [exportDepth, setExportDepth] = useState(1);
   const [exportingToWebBot, setExportingToWebBot] = useState(false);
   const [exportResult, setExportResult] = useState<any>(null);
@@ -850,30 +906,54 @@ const AdminAppFolders: React.FC = () => {
               {(() => {
                 // Show subfolders when a folder is selected, otherwise show all folders
                 const displayFolders = currentFolder ? subfolders : folders;
+                const showFilter = displayFolders.length > 30;
+                const filteredFolders = folderSearch
+                  ? displayFolders.filter(f => f.name.toLowerCase().includes(folderSearch.toLowerCase()))
+                  : displayFolders;
                 
-                return displayFolders.length > 0 ? (
-                  <div className="space-y-2">
-                    {displayFolders.map(folder => (
-                      <div
-                        key={folder.path || folder.id}
-                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleFolderClick(folder.path || '')}
-                      >
-                        <div className="flex items-center">
-                          <FolderIcon className="w-5 h-5 text-yellow-500 mr-2" />
-                          <div className="flex-1">
-                            <div className="font-medium">{folder.name}</div>
+                return (
+                  <>
+                    {showFilter && (
+                      <div className="mb-3">
+                        <input
+                          type="text"
+                          value={folderSearch}
+                          onChange={e => setFolderSearch(e.target.value)}
+                          placeholder="Filter folders..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    )}
+                    {filteredFolders.length > 0 ? (
+                      <div className="space-y-2">
+                        {filteredFolders.map(folder => (
+                          <div
+                            key={folder.path || folder.id}
+                            className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                            onClick={() => handleFolderClick(folder.path || '')}
+                          >
+                            <div className="flex items-center">
+                              <FolderIcon className="w-5 h-5 text-yellow-500 mr-2" />
+                              <div className="flex-1">
+                                <div className="font-medium">{folder.name}</div>
+                              </div>
+                              <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                            </div>
                           </div>
-                          <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                        ))}
+                        <div className="text-sm text-gray-500 mt-2">
+                          {filteredFolders.length} folder{filteredFolders.length !== 1 ? 's' : ''} total
+                          {folderSearch && filteredFolders.length !== displayFolders.length && (
+                            <> (filtered from {displayFolders.length})</>
+                          )}
                         </div>
                       </div>
-                    ))}
-                    <div className="text-sm text-gray-500 mt-2">
-                      {displayFolders.length} folder{displayFolders.length !== 1 ? 's' : ''} total
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-4">No folders yet</p>
+                    ) : (
+                      <p className="text-gray-500 text-center py-4">
+                        {folderSearch ? 'No matching folders' : 'No folders yet'}
+                      </p>
+                    )}
+                  </>
                 );
               })()}
             </div>
@@ -886,6 +966,13 @@ const AdminAppFolders: React.FC = () => {
             </div>
             <div className="p-4">
               <div className="grid grid-cols-1 gap-3">
+                <button
+                  className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
+                  onClick={() => handleDeleteFolder(currentFolder?.path || currentFolderPath || '')}
+                >
+                  <div className="font-medium text-red-600">Delete Folder</div>
+                  <div className="text-sm text-red-500">Delete this folder and all its contents</div>
+                </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-gray-50 text-left"
                   onClick={() => {
@@ -918,18 +1005,18 @@ const AdminAppFolders: React.FC = () => {
                   <div className="text-sm text-blue-500">Edit folder name and description</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
-                  onClick={() => handleDeleteFolder(currentFolder?.path || currentFolderPath || '')}
-                >
-                  <div className="font-medium text-red-600">Delete Folder</div>
-                  <div className="text-sm text-red-500">Delete this folder and all its contents</div>
-                </button>
-                <button
                   className="p-3 border rounded-lg hover:bg-green-50 text-left border-green-200"
                   onClick={() => handleImportFolder(currentFolder?.path || currentFolderPath || '')}
                 >
                   <div className="font-medium text-green-600">Import Folder</div>
                   <div className="text-sm text-green-500">Import an entire folder from local drive</div>
+                </button>
+                <button
+                  className="p-3 border rounded-lg hover:bg-amber-50 text-left border-amber-200"
+                  onClick={handleMoveFolder}
+                >
+                  <div className="font-medium text-amber-600">Move Folder</div>
+                  <div className="text-sm text-amber-500">Move this folder to a different parent</div>
                 </button>
                 <button
                   className="p-3 border rounded-lg hover:bg-purple-50 text-left border-purple-200"
@@ -1031,12 +1118,14 @@ const AdminAppFolders: React.FC = () => {
                                   >
                                     Preview
                                   </button>
-                                  <button 
-                                    className="text-green-600 hover:text-green-900 mr-3"
-                                    onClick={() => handleEditDocument(doc)}
-                                  >
-                                    Edit
-                                  </button>
+                                  {doc.file_type === 'HTML' && (
+                                    <button type="button"
+                                      className="text-purple-600 hover:text-purple-900 mr-3"
+                                      onClick={() => handleWebbotPush(doc)}
+                                    >
+                                      Webbot
+                                    </button>
+                                  )}
                                   <button 
                                     className="text-red-600 hover:text-red-900"
                                     onClick={() => handleDeleteDocument(doc)}
@@ -1262,6 +1351,83 @@ const AdminAppFolders: React.FC = () => {
         </div>
       )}
       
+      {/* Move Folder Modal */}
+      {showMoveFolderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-amber-800">Move Folder</h3>
+                <button
+                  onClick={() => setShowMoveFolderModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-600">
+                    <strong>Moving:</strong> {currentFolder?.path || currentFolderPath}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Target Parent Folder Path
+                  </label>
+                  <input
+                    type="text"
+                    value={moveFolderTarget}
+                    onChange={(e) => setMoveFolderTarget(e.target.value)}
+                    placeholder="e.g. /boarding/canadasite/en/new-parent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    disabled={moveFolderLoading}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Enter the full path of the target parent folder
+                  </p>
+                </div>
+
+                {moveFolderError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                    {moveFolderError}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowMoveFolderModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                    disabled={moveFolderLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMoveFolderConfirm}
+                    disabled={moveFolderLoading || !moveFolderTarget.trim()}
+                    className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {moveFolderLoading ? (
+                      <span className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        Moving...
+                      </span>
+                    ) : (
+                      '📦 Move'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Import Website Modal */}
       {showImportWebsiteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

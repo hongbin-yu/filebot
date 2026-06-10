@@ -13,6 +13,8 @@ import re
 import traceback
 import logging
 from datetime import datetime
+import html.parser
+import urllib.parse
 from typing import List, Optional, Dict, Any
 from fastapi import Request as FastAPIRequest
 
@@ -500,6 +502,13 @@ async def create_page(page: PageCreate, current_user: dict = Depends(get_current
         ))
 
         conn.commit()
+
+        # Auto-scan references for this page
+        try:
+            from app.services.references import scan_page_references
+            scan_page_references(page_path, page.content or "")
+        except Exception as ref_err:
+            print(f"⚠️  Reference scan failed for {page_path}: {ref_err}", file=__import__('sys').stderr)
 
         # Handle tags(If提供)
         if hasattr(page, 'tags') and page.tags:
@@ -2087,6 +2096,65 @@ async def get_template_assets(path: str = Query(...)):
         return {"css_urls": [], "js_urls": [], "body_class": ""}
     finally:
         conn.close()
+@router.get("/resolve-file-path", response_model=dict)
+@router_v1.get("/pages/resolve-file-path", response_model=dict)
+async def resolve_file_path(
+    page_path: str = Query(..., description="页面路径，如 /canadasite/en/some-page"),
+    current_user: dict = Depends(get_current_active_user),
+):
+    """
+    根据页面路径，向上递归查找有效的 file_path（FileBot image location）。
+    从当前页开始，如果 metadata.file_path 不存在，则向上找父页面。
+    用于 Resources Images 的路径输入框。
+    """
+    def _find_file_path(cursor, path: str, depth: int = 0) -> dict:
+        if depth > 20:
+            return {"file_path": None, "source": "max depth reached"}
+        if not path:
+            return {"file_path": None, "source": "no path"}
+        cursor.execute(
+            "SELECT metadata, parent_path FROM webbot_page WHERE path = ?",
+            (path,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return {"file_path": None, "source": f"page not found: {path}"}
+        meta = row["metadata"]
+        if meta and isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except json.JSONDecodeError:
+                meta = {}
+        file_path = (meta or {}).get("file_path")
+        if file_path:
+            return {"file_path": file_path, "source": path}
+        parent = row["parent_path"]
+        if parent and parent != "/":
+            result = _find_file_path(cursor, parent, depth + 1)
+            if result["file_path"]:
+                return result
+        return {"file_path": None, "source": f"no file_path in hierarchy from {path}"}
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Normalize path
+        path = page_path.strip()
+        if not path.startswith("/"):
+            path = "/" + path
+
+        result = _find_file_path(cursor, path)
+        return {
+            "page_path": page_path,
+            "effective_file_path": result["file_path"],
+            "source": result["source"],
+        }
+    except Exception as e:
+        logger.error(f"resolve_file_path failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
 @router.get("/{page_id:path}", response_model=PageResponse)
 async def get_page(page_id: str,
                    parent_path: Optional[str] = Query(None, description="Parent page path or ID, e.g. /en or page ID."),
@@ -2350,10 +2418,6 @@ async def update_page(page_id: str, page_update: PageUpdate,
             update_fields.append("other_language_path = ?")
             update_values.append(page_update.other_language_path)
 
-        if page_update.other_language_path is not None:
-            update_fields.append("other_language_path = ?")
-            update_values.append(page_update.other_language_path)
-
         if page_update.status is not None:
             update_fields.append("status = ?")
             update_values.append(page_update.status)
@@ -2450,6 +2514,14 @@ async def update_page(page_id: str, page_update: PageUpdate,
             # 完整实现将在后续Version中Add
             pass
 
+        # Auto-scan references (if content was updated)
+        if page_update.content is not None:
+            try:
+                from app.services.references import scan_page_references
+                scan_page_references(normalized_path, page_update.content)
+            except Exception as ref_err:
+                print(f"⚠️  Reference scan failed for {normalized_path}: {ref_err}", file=__import__('sys').stderr)
+
         conn.commit()
 
         # Cascade other_language_path to parent if parent's is empty
@@ -2538,11 +2610,14 @@ async def delete_page(
     page_id: str,
     delete_other_language: bool = Query(False, description="Also delete the other language page"),
     other_language_path: Optional[str] = Query(None, description="Explicit other language path to delete"),
+    force: bool = Query(False, description="Skip reference warning and force delete"),
     current_user: dict = Depends(get_current_active_user)
 ):
     """Delete page
 
     page_id is now the full path (e.g. /canadasite/en/contact), queried directly by path.
+    If other pages link to this one, a 409 Conflict is returned with the list of
+    referencing pages (unless ?force=true is set).
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -2565,8 +2640,35 @@ async def delete_page(
                 detail=f"You do not have permission to delete this page"
             )
 
+        # Check for incoming references (pages that link to this one)
+        if not force:
+            try:
+                from app.services.references import get_page_references
+                refs = get_page_references(normalized_path)
+                if refs["incoming_count"] > 0:
+                    # Return warning with reference list instead of deleting
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "message": f"This page is referenced by {refs['incoming_count']} other page(s)",
+                            "referenced_by": refs["linked_from"],
+                            "count": refs["incoming_count"],
+                        }
+                    )
+            except HTTPException:
+                raise
+            except Exception as ref_err:
+                print(f"⚠️  Reference check failed for {normalized_path}: {ref_err}", file=__import__('sys').stderr)
+
         # Determine the other language path to also delete
         target_other_path = other_language_path or page_row['other_language_path']
+
+        # Clean up page references before deletion
+        try:
+            from app.services.references import remove_references_for
+            remove_references_for(normalized_path)
+        except Exception as ref_err:
+            print(f"⚠️  Reference cleanup failed for {normalized_path}: {ref_err}", file=__import__('sys').stderr)
 
         # Delete main page
         cursor.execute("DELETE FROM webbot_page WHERE path = ?", (normalized_path,))
@@ -2592,6 +2694,62 @@ async def delete_page(
     except HTTPException:
         conn.rollback()
         raise
+    finally:
+        conn.close()
+
+
+# ==================== Batch String Replace ====================
+
+@router.post("/batch-replace")
+async def batch_string_replace(
+    path: str = Query(..., description="Page path prefix to match, e.g. /canadasite/en"),
+    source: str = Query(..., description="String to find"),
+    replace: str = Query("", description="Replacement string"),
+    current_user: dict = Depends(get_current_active_user),
+):
+    """Batch find-and-replace in page content for all pages matching path prefix.
+
+    Efficient: uses SQLite REPLACE() directly, no per-page Python loops.
+    Only touches pages where INSTR(content, source) > 0.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+
+        # Count how many pages match and will be affected
+        cursor.execute('''
+            SELECT COUNT(*) as total_matched,
+                   SUM(CASE WHEN content IS NOT NULL AND INSTR(content, ?) > 0 THEN 1 ELSE 0 END) as total_affected
+            FROM webbot_page
+            WHERE path LIKE ? || '%'
+        ''', (source, path))
+        stats = cursor.fetchone()
+        total_matched = stats['total_matched']
+        total_affected = stats['total_affected'] or 0
+
+        # Perform the replacement
+        cursor.execute('''
+            UPDATE webbot_page
+            SET content = REPLACE(content, ?, ?),
+                last_modified = datetime('now')
+            WHERE path LIKE ? || '%'
+              AND content IS NOT NULL
+              AND INSTR(content, ?) > 0
+        ''', (source, replace, path, source))
+        conn.commit()
+
+        return {
+            "message": f"Replaced '{source}' with '{replace}' in {total_affected} page(s)",
+            "path_prefix": path,
+            "source": source,
+            "replace": replace,
+            "pages_matched": total_matched,
+            "pages_affected": total_affected,
+        }
+
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Batch replace failed: {e}")
     finally:
         conn.close()
 
@@ -3579,6 +3737,13 @@ async def move_page(
         # 9. Update other_language_path references to moved pages
         _update_other_language_paths(cursor, old_path, new_path)
 
+        # 10. Update page_references table (source_path + target_path)
+        try:
+            from app.services.references import move_references
+            move_references(old_path, new_path)
+        except Exception as ref_err:
+            print(f"⚠️  Reference move failed for {old_path} -> {new_path}: {ref_err}", file=__import__('sys').stderr)
+
         conn.commit()
 
         return {
@@ -3734,4 +3899,99 @@ async def get_footer_v2(path: str = ""):
         raise HTTPException(status_code=500, detail=f"Internal error: {e}")
     finally:
         conn.close()
+
+
+@router.post("/batch-fix-other-lang-paths", response_model=dict)
+@router_v1.post("/pages/batch-fix-other-lang-paths", response_model=dict)
+async def batch_fix_other_lang_paths(current_user: dict = Depends(get_current_active_user)):
+    """
+    Batch fix all pages where other_language_path IS NULL but content has #wb-lng.
+    Parses the language switcher section to extract the alternate language path.
+    """
+    class _WbLngParser(html.parser.HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.alt_href = None
+            self._in_wb_lng = False
+            self._depth = 0
+
+        def handle_starttag(self, tag, attrs):
+            d = dict(attrs)
+            if tag == 'section' and d.get('id') == 'wb-lng':
+                self._in_wb_lng = True
+                self._depth = 1
+                return
+            if self._in_wb_lng:
+                if tag == 'section':
+                    self._depth += 1
+                if tag == 'a' and d.get('lang') in ('fr', 'en'):
+                    self.alt_href = d.get('href', '')
+
+        def handle_endtag(self, tag):
+            if self._in_wb_lng:
+                if tag == 'section':
+                    self._depth -= 1
+                    if self._depth == 0:
+                        self._in_wb_lng = False
+
+    def _extract_path(html_content):
+        if not html_content:
+            return None
+        p = _WbLngParser()
+        try:
+            p.feed(html_content)
+        except Exception:
+            return None
+        if p.alt_href:
+            href = urllib.parse.urlparse(p.alt_href).path.rstrip('/')
+            if href.endswith('.html'):
+                href = href[:-5]
+            return f'/canadasite{href}'
+        return None
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT path, content FROM webbot_page WHERE other_language_path IS NULL AND content IS NOT NULL AND content != ''"
+        )
+        rows = cursor.fetchall()
+
+        fixed = []
+        errors = []
+
+        for row in rows:
+            path = row['path']
+            content = row['content']
+            try:
+                alt_path = _extract_path(content)
+                if alt_path:
+                    cursor.execute(
+                        "UPDATE webbot_page SET other_language_path = ?, last_modified = datetime('now') WHERE path = ?",
+                        (alt_path, path)
+                    )
+                    fixed.append({"path": path, "other_language_path": alt_path})
+                else:
+                    errors.append({"path": path, "reason": "no wb-lng link found"})
+            except Exception as e:
+                errors.append({"path": path, "error": str(e)})
+
+        conn.commit()
+
+        return {
+            "status": "ok",
+            "total_scanned": len(rows),
+            "fixed": len(fixed),
+            "errors": len(errors),
+            "details": {
+                "fixed": fixed[:50],
+                "errors": errors[:20],
+            }
+        }
+    except Exception as e:
+        logger.error(f"batch_fix_other_lang_paths failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
 

@@ -8,76 +8,76 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5174,
     proxy: {
-      // 认证相关API直接代理到FileBot后端（端口8002）
+      // 认证相关API直接代理到FileBot后端（端口8001）
       '/api/v1/auth': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/auth/, '/api/v1/auth')
       },
-      // 应用相关API直接代理到FileBot后端（端口8002）
+      // 应用相关API直接代理到FileBot后端（端口8001）
       '/api/v1/apps': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/apps/, '/api/v1/apps')
       },
-      // 文档相关API直接代理到FileBot后端（端口8002）
+      // 文档相关API直接代理到FileBot后端（端口8001）
       '/api/v1/documents': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/documents/, '/api/v1/documents')
       },
-      // 文件夹相关API直接代理到FileBot后端（端口8002）
+      // 文件夹相关API直接代理到FileBot后端（端口8001）
       '/api/v1/folders': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/folders/, '/api/v1/folders')
       },
-      // AI相关API直接代理到FileBot后端（端口8002）
+      // AI相关API直接代理到FileBot后端（端口8001）
       '/api/v1/ai': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/ai/, '/api/v1/ai')
       },
-      // 搜索相关API直接代理到FileBot后端（端口8002）
+      // 搜索相关API直接代理到FileBot后端（端口8001）
       '/api/v1/search': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/search/, '/api/v1/search')
       },
-      // 用户管理API直接代理到FileBot后端（端口8002）
+      // 用户管理API直接代理到FileBot后端（端口8001）
       '/api/v1/users': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/users/, '/api/v1/users')
       },
-      // 用户组管理API直接代理到FileBot后端（端口8002）
+      // 用户组管理API直接代理到FileBot后端（端口8001）
       '/api/v1/groups': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/groups/, '/api/v1/groups')
       },
-      // 权限管理API直接代理到FileBot后端（端口8002）
+      // 权限管理API直接代理到FileBot后端（端口8001）
       '/api/v1/permissions': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/v1\/permissions/, '/api/v1/permissions')
       },
-      // Export 相关 API 代理到 FileBot 后端（端口8002）
+      // Export 相关 API 代理到 FileBot 后端（端口8001）
       '/api/v1/import-to-webbot': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
       },
       '/api/v1/export': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
       },
@@ -112,9 +112,15 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      // 代理设计文件到FileBot后端（端口8002）
+      // 代理设计文件到FileBot后端（端口8001）
       '/etc/designs': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 代理boarding路径（旧版AEM导入图片）到WebBot（端口8000）
+      '/boarding': {
+        target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       }

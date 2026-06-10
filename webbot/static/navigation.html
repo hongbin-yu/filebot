@@ -109,7 +109,8 @@
         <div class="modal-body">
             <p id="wet-alert-message"></p>
         </div>
-
+        <div class="modal-footer">
+        </div>
     </section>
 
     <section id="wet-confirm-modal" class="modal-dialog modal-content overlay-def mfp-hide" aria-hidden="true" role="dialog">
@@ -137,6 +138,14 @@
                 </div>
                 <form id="createPageForm">
                     <div class="modal-body">
+                        <div class="form-group">
+                            <label for="newPageTemplate">Page Template</label>
+                            <select id="newPageTemplate" class="form-control">
+                                <option value="">(Default page template)</option>
+                            </select>
+                            <small class="form-text text-muted">Select a template for this page. Default: /canadasite/mustache-templates/page-template</small>
+                        </div>
+                        <hr>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -310,20 +319,37 @@
                         <small class="form-text text-muted">Select a different Mustache template for this page. Default: /canadasite/mustache-templates/page-template</small>
                     </div>
 
+                    <!-- Content Type -->
+                    <div class="form-group">
+                        <label for="prop-content-type">Content Type <span class="text-muted">(tagging)</span></label>
+                        <select id="prop-content-type" class="form-control">
+                            <option value="">(none)</option>
+                        </select>
+                        <small class="form-text text-muted">Select a content type for this page.</small>
+                    </div>
+
                     <!-- Tags: Subjects -->
                     <div class="form-group">
                         <label>Subjects <span class="text-muted">(tagging)</span></label>
-                        <div id="prop-tags-subjects" class="tag-checkbox-group">
-                            <span class="text-muted">(Loading subjects...)</span>
+                        <input type="hidden" id="selected-subject-tags" value="">
+                        <div id="prop-tags-subjects" class="tag-selection-display">
+                            <span class="text-muted">(none selected)</span>
                         </div>
+                        <button type="button" class="btn btn-sm btn-default" onclick="openTagTree('subject', true)" style="margin-top:6px;">
+                            📂 Select Subjects
+                        </button>
                     </div>
 
                     <!-- Tags: Audience -->
                     <div class="form-group">
                         <label>Audience <span class="text-muted">(tagging)</span></label>
-                        <div id="prop-tags-audience" class="tag-checkbox-group">
-                            <span class="text-muted">(Loading audience tags...)</span>
+                        <input type="hidden" id="selected-audience-tags" value="">
+                        <div id="prop-tags-audience" class="tag-selection-display">
+                            <span class="text-muted">(none selected)</span>
                         </div>
+                        <button type="button" class="btn btn-sm btn-default" onclick="openTagTree('audience', true)" style="margin-top:6px;">
+                            📂 Select Audience
+                        </button>
                     </div>
 
                     <!-- Version Info -->
@@ -434,6 +460,35 @@
         </div>
     </div>
 
+    <!-- Tag Tree Modal -->
+    <div class="modal fade" id="tagTreeModal" tabindex="-1" role="dialog" aria-labelledby="tagTreeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tagTreeModalLabel">Select Tags</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                        <input type="text" id="ttm-filter" class="form-control" placeholder="Filter tags..." oninput="ttmFilter()" style="font-size:13px;">
+                        <button type="button" id="ttm-up-btn" class="btn btn-sm btn-secondary" onclick="ttmGoUp()" style="display:none;">⬆ Up</button>
+                        <span style="font-size:12px;color:#888;white-space:nowrap;">Selected: <strong id="ttm-selected-count">0</strong></span>
+                    </div>
+                    <div id="ttm-breadcrumb" style="font-size:12px;margin-bottom:6px;"></div>
+                    <div id="ttm-tag-list" class="ttm-tag-list" style="max-height:400px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:2px;">
+                        <span class="text-muted">Loading...</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="ttm-confirm-btn" onclick="ttmConfirm()">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Simple Bootstrap Modal for customAlert -->
     <div class="modal fade" id="alertModal" tabindex="-1" role="dialog" aria-labelledby="alertModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -461,7 +516,8 @@
     <script src="/etc/designs/canada/wet-boew/js/theme.min.js"></script>
 
     <!-- Navigation JavaScript -->
-    <script src="js/navigation.js"></script>
+    <script src="js/wet-alert.js?v=20260605"></script>
+    <script src="js/navigation.js?v=20260605"></script>
     <script>
         // Hide WET-BOEW/GCWeb dynamically-injected header/footer
         (function() {

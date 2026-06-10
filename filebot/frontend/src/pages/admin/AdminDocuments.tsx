@@ -119,7 +119,7 @@ const AdminDocuments: React.FC = () => {
     const docName = targetDoc?.original_filename || targetDoc?.title || 'this document';
     const docPathStr = targetDoc?.storage_path || targetDoc?.path || '';
     const docPathInfo = docPathStr ? `\nPath: ${docPathStr}` : '';
-    const confirmedDel = window.confirm(`Are you sure you want to delete "${docName}"? This cannot be undone.${docPathInfo}`);
+    const confirmedDel = await window.wetYesOrNo(`Are you sure you want to delete "${docName}"? This cannot be undone.${docPathInfo}`);
     if (!confirmedDel) return;
     
     try {
@@ -142,7 +142,7 @@ const AdminDocuments: React.FC = () => {
     
     const folderName = folder?.name || 'current folder';
     const folderPathStr = folder?.path ? `\nTarget path: ${folder.path}` : '';
-    const confirmedAll = window.confirm(`Are you sure you want to delete all ${documents.length} documents in ${folderName}? This cannot be undone and will delete all files.${folderPathStr}`);
+    const confirmedAll = await window.wetYesOrNo(`Are you sure you want to delete all ${documents.length} documents in ${folderName}? This cannot be undone and will delete all files.${folderPathStr}`);
     if (!confirmedAll) return;
     
     try {
@@ -181,9 +181,13 @@ const AdminDocuments: React.FC = () => {
     const docPath = doc.path || doc.storage_path || doc.id;
     const docName = doc.title || doc.original_filename || docPath;
     try {
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/v1/import-to-webbot/single', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         credentials: 'include',
         body: JSON.stringify({ document_path: docPath }),
       });
@@ -264,26 +268,26 @@ const AdminDocuments: React.FC = () => {
       width: '260px',
       cell: (row: Document) => (
         <div className="flex space-x-2">
-          <button 
+          <button type="button"
             onClick={() => handlePreview(row)}
             className="text-blue-600 hover:text-blue-800 text-sm"
           >
             Preview
           </button>
-          <button 
+          <button type="button"
             onClick={() => handleEdit(row)}
             className="text-blue-600 hover:text-blue-800 text-sm"
           >
             Edit
           </button>
-          <button
+          <button type="button"
             onClick={() => handleImportToWebBot(row)}
-            className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+            className="text-emerald-600 hover:text-emerald-800 text-sm font-medium bg-transparent border-0 p-0 cursor-pointer"
             title="Import this page to WebBot"
           >
             WebBot
           </button>
-          <button 
+          <button type="button"
             onClick={() => handleDelete(row.path)}
             className="text-red-600 hover:text-red-800 text-sm"
           >
@@ -293,7 +297,6 @@ const AdminDocuments: React.FC = () => {
       ),
       ignoreRowClick: true,
       allowOverflow: true,
-      button: true,
     },
   ], []);
 

@@ -616,7 +616,7 @@ class ComponentTemplateManager {
         } catch (error) {
             if (error.message !== 'User cancelled') {
                 console.error('Error inserting component:', error);
-                alert(`Failed to insert component: ${error.message}`);
+                showWetAlert(`Failed to insert component: ${error.message}`);
             }
             return false;
         }
@@ -665,7 +665,7 @@ class ComponentTemplateManager {
         console.error('  - tinymce.editors:', typeof tinymce !== 'undefined' ? tinymce.editors : 'tinymce not defined');
         
         // Show user-friendly error message
-        alert('The editor is not ready yet. Please try clicking in the editor area first, then insert the component.');
+        showWetAlert('The editor is not ready yet. Please try clicking in the editor area first, then insert the component.');
         throw new Error('TinyMCE editor not available');
     }
 
@@ -766,7 +766,7 @@ class ComponentTemplateManager {
     ${html}
     <button class="webbot-edit-btn" 
             style="position: absolute; top: 2px; right: 2px; background: #007bff; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; cursor: pointer; z-index: 1000;"
-            onclick="(function(){try{if(top.editWebBotComponent){top.editWebBotComponent('${this.escapeHtml(wrapperId)}');}else if(parent.editWebBotComponent){parent.editWebBotComponent('${this.escapeHtml(wrapperId)}');}else if(window.editWebBotComponent){window.editWebBotComponent('${this.escapeHtml(wrapperId)}');}else{alert('Edit function not available. Please refresh the page.');}}catch(e){console.error('Error calling edit function:',e);alert('Error editing component: '+e.message);}})()"
+            onclick="(function(){try{if(top.editWebBotComponent){top.editWebBotComponent('${this.escapeHtml(wrapperId)}');}else if(parent.editWebBotComponent){parent.editWebBotComponent('${this.escapeHtml(wrapperId)}');}else if(window.editWebBotComponent){window.editWebBotComponent('${this.escapeHtml(wrapperId)}');}else{showWetAlert('Edit function not available. Please refresh the page.');}}catch(e){console.error('Error calling edit function:',e);showWetAlert('Error editing component: '+e.message);}})()"
             title="Edit component parameters">
         ✎
     </button>
@@ -865,7 +865,7 @@ window.ComponentTemplateManager = ComponentTemplateManager;
                 console.error('  - tinymce:', typeof tinymce);
                 console.error('  - tinymce.activeEditor:', typeof tinymce !== 'undefined' ? tinymce.activeEditor : 'N/A');
                 console.error('  - window.parent:', window.parent !== window ? 'available' : 'same window');
-                alert('Cannot edit component: element not found in DOM. Try refreshing the page.');
+                showWetAlert('Cannot edit component: element not found in DOM. Try refreshing the page.');
                 return;
             }
             
@@ -894,11 +894,11 @@ window.ComponentTemplateManager = ComponentTemplateManager;
                 window.insertComponent(componentId);
             } else {
                 console.error('insertComponent function not found');
-                alert('Cannot edit component: insertComponent function not available');
+                showWetAlert('Cannot edit component: insertComponent function not available');
             }
         } catch (error) {
             console.error('Error editing component:', error);
-            alert(`Error editing component: ${error.message}`);
+            showWetAlert(`Error editing component: ${error.message}`);
         }
     };
 })();

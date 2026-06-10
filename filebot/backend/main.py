@@ -73,7 +73,11 @@ app.add_middleware(
         "http://127.0.0.1:5175",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
-        "http://172.29.152.245:8000"
+        "http://172.29.152.245:8000",
+        "http://localhost:8003",
+        "http://127.0.0.1:8003",
+        "https://www.canada.ca",
+        "https://canada.ca"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -158,7 +162,7 @@ async def health_check(db: Session = Depends(get_db)):
 
 
 # 导入路由
-from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export, pages, import_to_webbot, track, groups, permissions, groups, permissions, ai_query, mustache
+from app.routers import auth, users, apps, documents, search, conversion, file_naming_rules, device, ai, features, folders, export, pages, import_to_webbot, import_page, track, groups, permissions, groups, permissions, ai_query, mustache
 
 # 注册路由
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
@@ -178,6 +182,7 @@ app.include_router(groups.router, prefix=f"{settings.API_V1_STR}/groups", tags=[
 app.include_router(permissions.router, prefix=f"{settings.API_V1_STR}/permissions", tags=["Permissions"])
 app.include_router(export.router, prefix=f"{settings.API_V1_STR}/export", tags=["Export"])
 app.include_router(import_to_webbot.router, prefix=f"{settings.API_V1_STR}", tags=["WebBot"])
+app.include_router(import_page.router, prefix=f"{settings.API_V1_STR}", tags=["Import"])
 app.include_router(track.router)
 app.include_router(mustache.router)
 

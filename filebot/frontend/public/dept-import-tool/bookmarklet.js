@@ -1,19 +1,9 @@
-// 🌾 Department Import Tool — Bookmarklet
-// Runs on canada.ca pages (same-origin, no CORS restrictions)
-// Drag this bookmarklet into your bookmarks bar and click to run.
-//
-// Features:
-//   - Sitemap-based bulk import of HTML pages
-//   - Auto-collects same-domain images during crawl
-//   - After sitemap crawl, imports all collected images
-
 (function(){
   if (window.__DEPT_IMPORT_LOADED) return;
   window.__DEPT_IMPORT_LOADED = true;
 
-  // ================================
-  // Styles
-  // ================================
+
+
   var css = document.createElement('style');
   css.textContent = `
 #deptImportTool * { box-sizing:border-box; margin:0; padding:0; font-family:system-ui,sans-serif; }
@@ -74,14 +64,12 @@
   `;
   document.head.appendChild(css);
 
-  // ================================
-  // HTML — built with DOM API (no innerHTML template literals)
-  // This avoids all URL-encoding corruption issues
-  // ================================
+
+
+
   var tool = document.createElement('div');
   tool.id = 'deptImportTool';
 
-  // Header
   var header = document.createElement('div');
   header.className = 'header';
   var title = document.createElement('h2');
@@ -93,11 +81,9 @@
   header.appendChild(closeBtn);
   tool.appendChild(header);
 
-  // Body
   var body = document.createElement('div');
   body.className = 'body';
 
-  // Helper: create a labeled input
   function makeInput(id, labelText, placeholder) {
     var label = document.createElement('label');
     label.textContent = labelText;
@@ -111,7 +97,6 @@
     return input;
   }
 
-  // Helper: create a labeled select
   function makeSelect(id, labelText, options) {
     var label = document.createElement('label');
     label.textContent = labelText;
@@ -132,6 +117,7 @@
   makeInput('d_sitemap', 'Sitemap URL', 'https://canada.ca/sitemap.xml');
   makeInput('d_api', 'FileBot API', 'http://localhost:8001/api/v1/import-page');
   makeInput('d_token', 'API Token (use Bearer prefix)', 'Bearer xxx');
+  makeInput('d_root', 'Image Root Dir', '/boarding/canadasite/content/dam/cwa-ace');
 
   makeSelect('d_rate', 'Rate Limit', [
     { value: 2, text: '2 sec/page' },
@@ -140,7 +126,8 @@
     { value: 5, text: '5 sec/page' }
   ]);
 
-  // Skip existing checkbox
+  makeInput('d_since', 'Only pages modified after', '2026-01-01T00:00 or leave empty for all');
+
   var skipRow = document.createElement('div');
   skipRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:8px;';
   var skipCheckbox = document.createElement('input');
@@ -154,7 +141,6 @@
   skipRow.appendChild(skipLabel);
   body.appendChild(skipRow);
 
-  // Buttons row
   var row = document.createElement('div');
   row.className = 'row';
   var startBtn = document.createElement('button');
@@ -170,7 +156,6 @@
   row.appendChild(stopBtn);
   body.appendChild(row);
 
-  // Stats
   var stats = document.createElement('div');
   stats.className = 'stats';
 
@@ -191,24 +176,20 @@
   makeSpan('d_imgcnt', 'img', '0 images');
   body.appendChild(stats);
 
-  // Log box
   var logBox = document.createElement('div');
   logBox.id = 'd_log';
   logBox.className = 'logBox';
   body.appendChild(logBox);
   tool.appendChild(body);
 
-  // Append to page
   document.body.appendChild(tool);
 
-  // ================================
-  // Logic
-  // ================================
+
+
   var $ = function(id) { return tool.querySelector('#' + id); };
   var log = logBox;
   var running = false, done = 0, failed = 0, skipped = 0, updated = 0;
 
-  // Image tracking: all (for display + dedup) and pending queue (for import)
   var allImages = {};
   var pendingImages = [];
 
@@ -229,7 +210,6 @@
     $('d_imgcnt').textContent = Object.keys(allImages).length + ' images';
   }
 
-  // Extract same-domain image URLs from HTML
   function collectImages(html, pageUrl) {
     var parser = new DOMParser();
     var dom = parser.parseFromString(html, 'text/html');
@@ -246,6 +226,8 @@
       } catch(e) { continue; }
 
       if (absUrl.startsWith('data:')) continue;
+
+      if (src.indexOf('/etc/') !== -1 || absUrl.indexOf('/etc/') !== -1) continue;
       try {
         var u = new URL(absUrl);
         var pageU = new URL(pageUrl);
@@ -253,23 +235,102 @@
       } catch(e) { continue; }
 
       if (allImages[absUrl]) continue;
-      allImages[absUrl] = true;
-      pendingImages.push(absUrl);
+
+      if (!/\.(jpe?g|png|gif|webp|bmp|svg)(\?|#|$)/i.test(absUrl)) continue;
+      var alt = (imgs[i].getAttribute('alt') || '').trim();
+      allImages[absUrl] = { alt: alt };
+      pendingImages.push({ url: absUrl, alt: alt });
       added++;
     }
     return added;
   }
 
-  // Import a specific list of images (called by flushImages)
-  async function importImageList(urls, api, delay, token) {
-    if (urls.length === 0) return;
 
-    addLog('Importing ' + urls.length + ' images...', 'img');
+
+  function computeImageFolderPath(imageUrl, rootDir) {
+    if (!rootDir) return '';
+    try {
+      var parsed = new URL(imageUrl);
+      var pathname = parsed.pathname;
+      if (!pathname.startsWith('/content/dam/')) return '';  // server handles non-DAM
+      var jcrIdx = pathname.indexOf('/_jcr_content');
+      if (jcrIdx === -1) return '';
+      var cleanPath = pathname.substring(0, jcrIdx);
+
+
+      var rootParts = rootDir.split('/').filter(function(s){return s;});
+      var lastSeg = rootParts[rootParts.length - 1]; // e.g. cwa-ace
+      var stripPrefix = '/content/dam/' + lastSeg;
+
+      var relPath = cleanPath.substring(stripPrefix.length);
+      if (!relPath) return '';
+      return rootDir.replace(/\/+$/, '') + relPath;
+    } catch(e) {
+      return '';
+    }
+  }
+
+
+  /**
+   * Transform canada.ca image paths to /boarding/canadasite/content/dam/... URLs.
+   * This handles images that could not be uploaded, so they still render via proxy.
+   */
+    function transformCanadaCaImagePath(src) {
+    // Handle absolute canada.ca / www.canada.ca URLs
+    if (/^https?:\/\/(www\.)?canada\.ca/i.test(src)) {
+      try {
+        var u = new URL(src);
+        src = u.pathname;
+      } catch(e) { return src; }
+    }
+
+    // Skip non-path things
+    if (!src.startsWith('/') || src.startsWith('data:')) return src;
+    if (src.indexOf('/etc/') !== -1) return src;
+
+    // If already a /boarding/ path without _jcr_content, it's clean
+    if (src.startsWith('/boarding/') && src.indexOf('/_jcr_content') === -1) return src;
+
+    // Save original filename from the full path
+    var filename = src.substring(src.lastIndexOf('/') + 1);
+
+    // Remove /content/canadasite prefix if present
+    if (src.startsWith('/content/canadasite')) {
+      src = src.substring('/content/canadasite'.length);
+    }
+
+    // Strip /_jcr_content and everything after it
+    var jcrIdx = src.indexOf('/_jcr_content');
+    if (jcrIdx !== -1) {
+      src = src.substring(0, jcrIdx);
+    }
+
+    // Re-attach filename if it was part of the _jcr_content path
+    if (!src.endsWith('/' + filename)) {
+      src = src + '/' + filename;
+    }
+
+    // Already /boarding/ ? Just clean _jcr_content, no prefix change
+    if (src.startsWith('/boarding/')) {
+      return src;
+    }
+
+    // Prepend the proxy prefix
+    return '/boarding/canadasite/content/dam' + src;
+  }
+
+  async function importImageList(items, api, delay, token) {
+    var replaceMap = {};
+    if (items.length === 0) return replaceMap;
+
+    addLog('Importing ' + items.length + ' images...', 'img');
     var imgOk = 0, imgFail = 0;
 
-    for (var i = 0; i < urls.length && running; i++) {
-      var imgUrl = urls[i];
-      addLog('Image [' + (i+1) + '/' + urls.length + '] ' + imgUrl, 'img');
+    for (var i = 0; i < items.length && running; i++) {
+      var item = items[i];
+      var imgUrl = item.url;
+      var imgTitle = item.alt || '';
+      addLog('Image [' + (i+1) + '/' + items.length + '] ' + imgUrl, 'img');
 
       try {
         var imgResp = await fetch(imgUrl);
@@ -282,46 +343,59 @@
         var headers = { 'Content-Type': 'application/json' };
         if (token) { headers['Authorization'] = token.startsWith('Bearer ') ? token : 'Bearer ' + token; }
 
+        var folderPath = computeImageFolderPath(imgUrl, $('d_root').value.trim());
+        var payload = { url: imgUrl, html: '', title: imgTitle, is_image: true, image_data: 'data:' + mimeType + ';base64,' + b64 };
+        if (folderPath) { payload.folder_path = folderPath; }
+
         var resp = await fetch(api, {
           method: 'POST',
           headers: headers,
-          body: JSON.stringify({
-            url: imgUrl,
-            html: '',
-            title: '',
-            is_image: true,
-            image_data: 'data:' + mimeType + ';base64,' + b64
-          })
+          body: JSON.stringify(payload)
         });
 
         if (!resp.ok) {
           throw new Error('HTTP ' + resp.status + ': ' + (await resp.text()).slice(0, 80));
         }
 
+        var respJson = await resp.json();
+        if (respJson.stored_filename) {
+          // Strip _jcr_content from stored filename
+          var sf = respJson.stored_filename;
+          var jcrIdx = sf.indexOf('/_jcr_content');
+          if (jcrIdx !== -1) {
+            var filename = sf.substring(sf.lastIndexOf('/') + 1);
+            var cleaned = sf.substring(0, jcrIdx);
+            if (!cleaned.endsWith('/' + filename)) {
+              cleaned = cleaned + '/' + filename;
+            }
+            sf = cleaned;
+          }
+          replaceMap[imgUrl] = '/' + sf;
+        }
+
         imgOk++;
-        addLog('Image saved', 'ok');
+        addLog('Image saved → ' + (replaceMap[imgUrl] || '/?'), 'ok');
       } catch(e) {
         imgFail++;
         addLog('Image error: ' + e.message, 'err');
       }
 
-      if (i < urls.length - 1 && running) {
+      if (i < items.length - 1 && running) {
         await new Promise(function(r) { setTimeout(r, Math.max(delay, 500)); });
       }
     }
 
     addLog('Images done: ' + imgOk + ' ok, ' + imgFail + ' err', imgFail === 0 ? 'ok' : 'info');
+    return replaceMap;
   }
 
-  // Flush pending images (drain the pending queue)
   async function flushImages(api, delay, token) {
-    if (pendingImages.length === 0) return;
+    if (pendingImages.length === 0) return {};
     var batch = pendingImages.slice();
     pendingImages = [];
-    await importImageList(batch, api, delay, token);
+    return await importImageList(batch, api, delay, token);
   }
 
-  // Helper: Blob to base64
   function blobToBase64(blob) {
     return new Promise(function(resolve, reject) {
       var fr = new FileReader();
@@ -339,7 +413,6 @@
     });
   }
 
-  // Close button
   closeBtn.onclick = function() {
     if (running) return addLog('Stop the import first', 'err');
     tool.remove();
@@ -347,7 +420,6 @@
     document.head.removeChild(css);
   };
 
-  // Start
   $('d_start').onclick = async function() {
     if (running) return;
     running = true;
@@ -365,7 +437,7 @@
       var parser = new DOMParser();
       var doc = parser.parseFromString(xml, 'text/xml');
       var urls = [].slice.call(doc.querySelectorAll('loc')).map(function(el) { return el.textContent.trim(); });
-      // Parse lastmod dates from sitemap
+
       var lastmods = {};
       [].slice.call(doc.querySelectorAll('url')).forEach(function(el) {
         var loc = el.querySelector('loc');
@@ -385,18 +457,16 @@
       var delay = parseInt($('d_rate').value) * 1000;
       var skipExisting = $('d_skip').checked;
 
-      // Build auth headers once
       var authHeaders = { 'Content-Type': 'application/json' };
       var tk = $('d_token').value.trim();
       if (tk) { authHeaders['Authorization'] = tk.startsWith('Bearer ') ? tk : 'Bearer ' + tk; }
 
-      // Pre-fetch check cache — batch in chunks of 20 to avoid per-URL HTTP calls
       var checkCache = {};
       var CHECK_BATCH = 10;
       var ensureChecked = async function(url, idx) {
         if (!skipExisting) return null;
         if (checkCache[url] !== undefined) return checkCache[url];
-        // Batch-fetch next 20 URLs
+
         var batch = [];
         for (var bi = idx; bi < Math.min(idx + CHECK_BATCH, urls.length); bi++) {
           if (checkCache[urls[bi]] === undefined) batch.push(urls[bi]);
@@ -420,19 +490,35 @@
         } catch(e) {
           addLog('Check error: ' + e.message, 'err');
         }
-        // On failure, mark all as null so they get imported
+
         for (var bi = 0; bi < batch.length; bi++) {
           checkCache[batch[bi]] = null;
         }
         return null;
       }
 
-      // Step 1: Crawl all HTML pages (no delay when skipping)
       for (var i = 0; i < urls.length && running; i++) {
         var url = urls[i];
         var shouldImport = true;
 
-        // Instant check from cache (batch-fetches silently if needed)
+        // Filter by 'since' datetime FIRST (before API calls)
+        var sinceVal = $('d_since').value.trim();
+        if (sinceVal) {
+          var sinceDate = new Date(sinceVal);
+          if (!isNaN(sinceDate.getTime())) {
+            var pageLastmod = lastmods[url];
+            if (pageLastmod) {
+              var modDate = new Date(pageLastmod);
+              if (!isNaN(modDate.getTime()) && modDate <= sinceDate) {
+                skipped++;
+                addLog('[' + (i+1) + '/' + urls.length + '] Skipped (lastmod ' + pageLastmod + ' ≤ ' + sinceVal + '): ' + url, 'info');
+                updateStats();
+                continue;
+              }
+            }
+          }
+        }
+
         if (skipExisting) {
           var importedAt = await ensureChecked(url, i);
           if (importedAt !== null) {
@@ -459,6 +545,26 @@
             if (imgFound > 0) {
               addLog('+' + imgFound + ' images collected', 'info');
               updateStats();
+
+              var replaceMap = await flushImages(api, delay, $('d_token').value.trim());
+              for (var oldUrl in replaceMap) {
+                html = html.split(oldUrl).join(replaceMap[oldUrl]);
+                addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
+              }
+            }
+
+            // Transform any remaining canada.ca image URLs that weren't uploaded
+            var transformedCount = 0;
+            html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'])/gi, function(m, pre, imgSrc, post) {
+              var result = transformCanadaCaImagePath(imgSrc);
+              if (result !== imgSrc) {
+                transformedCount++;
+                addLog('Transform: ' + imgSrc.slice(-40) + ' → ' + result, 'img');
+              }
+              return pre + result + post;
+            });
+            if (transformedCount > 0) {
+              addLog('Transformed ' + transformedCount + ' remaining image paths', 'info');
             }
 
             var uploadResp = await fetch(api, {
@@ -476,17 +582,12 @@
             addLog('Error: ' + e.message, 'err');
           }
           updateStats();
-          // Flush images every 10 pages, on last page, or on stop
-          if (pendingImages.length > 0 && ((done + updated) % 10 === 0 || i === urls.length - 1 || !running)) {
-            await flushImages(api, delay, $('d_token').value.trim());
-          }
           if (i < urls.length - 1 && running) {
             await new Promise(function(r) { setTimeout(r, delay); });
           }
         }
       }
 
-      // Final flush: import any remaining images after loop exit (e.g. stopped midway)
       if (pendingImages.length > 0) {
         addLog('Importing remaining images...', 'info');
         await flushImages(api, delay, $('d_token').value.trim());
@@ -502,7 +603,6 @@
     $('d_stop').disabled = true;
   };
 
-  // Stop
   $('d_stop').onclick = function() {
     running = false;
     addLog('Stopping...', 'info');

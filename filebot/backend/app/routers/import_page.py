@@ -81,10 +81,278 @@ def extract_title_from_html(html: str) -> str:
     return title
 
 
+def download_and_store_dam_images(html: str, page_url: str, current_user) -> tuple[str, int, int]:
+    """Download ALL canada.ca images from a page and store locally.
+    
+    Fetches the ORIGINAL page from canada.ca to extract real image URLs
+    (the bookmarklet replaces these in the passed HTML with broken bare filenames).
+    Downloads each image, creates a FileBot Document record, and rewrites the
+    fresh copy of the HTML with correct /content/dam/... paths.
+    
+    - /content/dam/... images → stored at original path (served by existing proxy)
+    - Non-DAM images (/content/canadasite/..., AEM adaptive) → stored at
+      /content/dam/{path_before_jcr_content}/{filename}
+      (path hierarchy preserved, only _jcr_content/... stripped)
+    
+    Returns: (rewritten_html, downloaded_count, error_count)
+        rewritten_html: fresh page HTML with all image URLs pointing to
+            locally-served /content/dam/... paths.
+        downloaded_count: number of images successfully processed
+        error_count: number of images that failed
+    """
+    from pathlib import Path
+    
+    data_root = Path(settings.FILE_STORAGE_PATH).resolve()
+    if not data_root.exists():
+        data_root = Path(settings.DATA_ROOT).resolve()
+    
+    db = SessionLocal()
+    downloaded = 0
+    errors = 0
+    
+    # ── Step 1: Fetch original page HTML from canada.ca ──
+    # The bookmarklet-modified req.html has broken image URLs (bare filenames).
+    # We need the original page to get real image URLs.
+    try:
+        orig_resp = http_requests.get(page_url, timeout=30, 
+                                       headers={"User-Agent": "FileBot-Import/1.0"})
+        if orig_resp.status_code != 200:
+            logger.warning(f"  ⚠️  Could not fetch original page (HTTP {orig_resp.status_code}), "
+                           f"falling back to provided HTML")
+            original_html = html
+        else:
+            original_html = orig_resp.text
+            logger.info(f"  📄 Fetched original page ({len(original_html)} bytes)")
+    except Exception as e:
+        logger.warning(f"  ⚠️  Could not fetch original page: {e}, falling back to provided HTML")
+        original_html = html
+    
+    # ── Step 2: Extract ALL image URLs from the ORIGINAL page HTML ──
+    image_urls = {}  # url_rel_path → {remote: str, doc_path: str, needs_rewrite: bool}
+    
+    for m in re.finditer(r'''<img[^>]+src=(["'])([^"']+)\1''', original_html, re.IGNORECASE):
+        src = m.group(2).strip()
+        if not src:
+            continue
+        # Skip data URIs and system /etc/ designs
+        if src.startswith('data:') or '/etc/designs/' in src:
+            continue
+        
+        # Resolve to absolute URL
+        if src.startswith('http'):
+            parsed = urlparse(src)
+            if 'canada.ca' not in parsed.netloc:
+                continue
+            rel_path = parsed.path
+            remote_url = src
+        else:
+            rel_path = src
+            remote_url = f"https://www.canada.ca{src}" if src.startswith('/') else None
+            if not remote_url:
+                continue
+        
+        # Normalize: ensure starts with /
+        if not rel_path.startswith('/'):
+            rel_path = '/' + rel_path
+        
+        # Skip /etc/designs/ (WET template assets, served locally via Vite proxy)
+        if '/etc/designs/' in rel_path:
+            continue
+        
+        if rel_path in image_urls:
+            continue  # Already seen
+        
+        # Determine document path and whether HTML needs rewriting
+        # Strip _jcr_content from ALL paths (both DAM and non-DAM)
+        clean_path = rel_path
+        if '/content/dam/' in rel_path:
+            # DAM image — may contain _jcr_content from adaptive imaging
+            needs_rewrite = False
+        else:
+            # Non-DAM → store under /content/dam/{original_path}
+            needs_rewrite = True
+
+        # Strip /content/canadasite prefix from canada.ca AEM pages
+        if clean_path.startswith('/content/canadasite'):
+            clean_path = clean_path[len('/content/canadasite'):]
+
+        # Check for _jcr_content — indicates AEM rendered/cached image
+        jcr_idx = clean_path.find('/_jcr_content')
+        if jcr_idx != -1:
+            filename_part = clean_path[jcr_idx:]
+            orig_fn = os.path.basename(filename_part.rstrip('/'))
+            if '/content/dam/' in rel_path:
+                # DAM URL: preserve folder structure before _jcr_content
+                # e.g. /content/dam/canadasite/en/_jcr_content/img.jpg → /content/dam/canadasite/en/img.jpg
+                clean_path = clean_path[:jcr_idx]
+                if orig_fn not in ('', '/'):
+                    clean_path = clean_path.rstrip('/') + '/' + orig_fn
+            else:
+                # Non-DAM URL: preserve folder hierarchy before _jcr_content
+                # Same rule as DAM: strip _jcr_content but keep folders & filename
+                # e.g. /en/benefits/_jcr_content/renditions/img.jpg → /en/benefits/img.jpg
+                clean_path = clean_path[:jcr_idx]
+                if orig_fn not in ('', '/'):
+                    clean_path = clean_path.rstrip('/') + '/' + orig_fn
+
+        if '/content/dam/' in rel_path:
+            # DAM image: store at cleaned path under /content/dam/
+            if rel_path != clean_path:
+                doc_path = clean_path
+                needs_rewrite = True
+            else:
+                doc_path = clean_path
+        else:
+            # Non-DAM: preserve path hierarchy under /content/dam/
+            # _jcr_content already stripped above
+            doc_path = f"/content/dam{clean_path}"
+        
+        image_urls[rel_path] = {
+            "remote": remote_url,
+            "doc_path": doc_path,
+            "needs_rewrite": needs_rewrite,
+        }
+    
+    if not image_urls:
+        logger.info("No images found in original page, skipping download")
+        db.close()
+        return (html, 0, 0)
+    
+    logger.info(f"Found {len(image_urls)} images to process")
+    
+    # ── Step 3: Process each image ──
+    # Track what to rewrite: for non-DAM images, replace rel_path with doc_path
+    rewrite_map = {}  # rel_path → doc_path  (only for non-DAM)
+    
+    for rel_path, info in sorted(image_urls.items()):
+        doc_path = info["doc_path"]
+        remote_url = info["remote"]
+        
+        # Skip if document already exists
+        existing = db.query(Document).filter(Document.path == doc_path).first()
+        if existing:
+            logger.info(f"  ⏭️  Image already exists: {doc_path}")
+            if info["needs_rewrite"]:
+                rewrite_map[rel_path] = doc_path
+            continue
+        
+        # Download from canada.ca
+        try:
+            resp = http_requests.get(remote_url, timeout=30,
+                                      headers={"User-Agent": "FileBot-Import/1.0"})
+            if resp.status_code != 200:
+                logger.warning(f"  ⚠️  Failed to download {rel_path} (HTTP {resp.status_code})")
+                errors += 1
+                continue
+        except Exception as e:
+            logger.warning(f"  ⚠️  Failed to download {remote_url}: {e}")
+            errors += 1
+            continue
+        
+        content = resp.content
+        content_type = resp.headers.get("Content-Type", "application/octet-stream")
+        file_size = len(content)
+        
+        # Determine file extension from URL or content type
+        url_path = urlparse(remote_url).path
+        orig_ext = os.path.splitext(url_path)[1].lower()
+        valid_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.tif', '.ico'}
+        if orig_ext in valid_exts:
+            ext = orig_ext
+        else:
+            ext_map = {
+                'image/png': '.png', 'image/jpeg': '.jpg', 'image/jpg': '.jpg',
+                'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.bmp',
+                'image/svg+xml': '.svg', 'image/tiff': '.tiff', 'image/x-icon': '.ico',
+            }
+            ext = ext_map.get(content_type, '.png')
+        
+        # Map to FileType enum
+        ft_map = {
+            '.png': FileType.PNG, '.jpg': FileType.JPEG, '.jpeg': FileType.JPEG,
+            '.gif': FileType.GIF, '.webp': FileType.WEBP, '.bmp': FileType.BMP,
+            '.svg': FileType.SVG, '.tiff': FileType.TIFF, '.tif': FileType.TIFF,
+            '.ico': FileType.OTHER,
+        }
+        file_type = ft_map.get(ext, FileType.PNG)
+        
+        # Build storage path: files/boarding/canadasite/content/dam/...
+        storage_rel = doc_path.lstrip('/')
+        storage_rel = f"files/boarding/canadasite/{storage_rel}"
+        
+        # Save to disk
+        absolute_path = data_root / storage_rel
+        absolute_path.parent.mkdir(parents=True, exist_ok=True)
+        absolute_path.write_bytes(content)
+        
+        # Determine folder_path (parent of doc_path)
+        folder_path = str(Path(doc_path).parent)
+        
+        page_id = str(uuid.uuid4())[:8]
+        timestamp = datetime.now()
+        
+        try:
+            doc = Document(
+                path=doc_path,
+                folder_path=folder_path,
+                document_number=page_id,
+                title=os.path.splitext(os.path.basename(doc_path))[0] or "Imported Image",
+                original_filename=os.path.basename(doc_path),
+                stored_filename=os.path.basename(doc_path),
+                file_size=file_size,
+                file_type=file_type,
+                mime_type=content_type or "image/png",
+                storage_path=storage_rel,
+                status=DocumentStatus.ACTIVE,
+                publish_status=PublishStatus.PUBLISHED,
+                document_metadata={
+                    "source_url": remote_url,
+                    "imported_at": timestamp.isoformat(),
+                    "import_method": "bookmarklet_image_download",
+                    "url": doc_path,
+                },
+                uploaded_by=str(current_user.id),
+                created_at=timestamp,
+                created_by=str(current_user.id),
+            )
+            db.add(doc)
+            db.commit()
+            downloaded += 1
+            logger.info(f"  ✅ Downloaded & stored: {doc_path} ({file_size} bytes, {content_type})")
+            if info["needs_rewrite"]:
+                rewrite_map[rel_path] = doc_path
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"  ❌ Failed to create document for {doc_path}: {e}")
+            errors += 1
+    
+    db.close()
+    logger.info(f"📸 Image download complete: {downloaded} saved, {errors} errors")
+    
+    # ── Step 4: Rewrite HTML ──
+    # Start from the ORIGINAL page HTML (fresh from canada.ca) and replace
+    # non-DAM image URLs with /content/dam/imported/... paths.
+    # /content/dam/ images are left as-is — they already work via the existing proxy.
+    if rewrite_map:
+        rewritten_html = original_html
+        for old_path, new_path in sorted(rewrite_map.items(), key=lambda x: -len(x[0])):
+            rewritten_html = rewritten_html.replace(old_path, new_path)
+        logger.info(f"  ✏️  Rewrote {len(rewrite_map)} image URLs in HTML")
+        return (rewritten_html, downloaded, errors)
+    else:
+        # No non-DAM images to rewrite; use original HTML with /content/dam/ URLs untouched
+        return (original_html, downloaded, errors)
+
 def url_to_path_segments(url: str) -> list[str]:
-    """Convert a URL path to folder/name segments, filtering empty segments."""
+    """Convert a URL path to folder/name segments, filtering empty segments.
+    Preserves language prefix (/en/, /fr/) as part of the content hierarchy.
+    Strips /content/canadasite prefix from canada.ca AEM-style URLs.
+    """
     parsed = urlparse(url)
     path = parsed.path.rstrip('/')
+    # Strip /content/canadasite prefix (canada.ca AEM URLs)
+    if path.startswith('/content/canadasite'):
+        path = path[len('/content/canadasite'):]
     segments = [s for s in path.split('/') if s]
     return segments
 
@@ -338,24 +606,67 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
     }
     file_type = ft_map.get(ext, FileType.OTHER)
 
-    # URL path → folder determination (same logic as HTML pages)
+    # URL path → folder determination
+    # Always extract original filename from the URL first
     parsed = urlparse(req.url)
     url_path = parsed.path.rstrip('/')
-    path_segments = [s for s in url_path.split('/') if s]
+    original_filename = os.path.basename(url_path.rstrip('/'))
+    if original_filename in ('', '/'):
+        original_filename = 'image'
 
-    root = "/boarding/canadasite"
-    if path_segments:
-        target_folder_path = root + '/' + '/'.join(path_segments[:-1]) if len(path_segments) > 1 else root
+    # Save parsed_url_path before any stripping (for DAM check)
+    parsed_url_path = url_path
+
+    # If folder_path explicitly provided, use it directly
+    if req.folder_path:
+        target_folder_path = req.folder_path.rstrip('/')
     else:
-        target_folder_path = root
+        # Strip /content/canadasite prefix (canada.ca AEM pages)
+        if url_path.startswith('/content/canadasite'):
+            url_path = url_path[len('/content/canadasite'):]
 
-    basename = os.path.basename(url_path) if url_path and url_path != '/' else 'image'
+        # Strip _jcr_content and everything after (all paths)
+        jcr_idx = url_path.find('/_jcr_content')
+        had_jcr_content = jcr_idx != -1
+        if had_jcr_content:
+            url_path = url_path[:jcr_idx]
+
+        path_segments = [s for s in url_path.split('/') if s]
+
+        # Use /content/dam/ root so images are served by the proxy
+        root = "/boarding/canadasite/content/dam"
+
+        # For DAM URLs, strip the /content/dam/ prefix from url_path
+        # so we don't get /content/dam/content/dam/...
+        if '/content/dam/' in parsed_url_path:
+            dam_rel = re.sub(r'^/?content/dam/', '', url_path)
+            dam_segs = [s for s in dam_rel.split('/') if s]
+            if dam_segs:
+                if had_jcr_content:
+                    # _jcr_content stripped, ALL segments are folders
+                    target_folder_path = root + '/' + '/'.join(dam_segs)
+                else:
+                    # Last segment is filename
+                    target_folder_path = root + '/' + '/'.join(dam_segs[:-1]) if len(dam_segs) > 1 else root
+            else:
+                target_folder_path = root
+        elif had_jcr_content:
+            # Non-DAM _jcr_content: all remaining segments are folders
+            # original_filename holds the actual filename
+            target_folder_path = root + '/' + '/'.join(path_segments) if path_segments else root
+        elif path_segments:
+            # No _jcr_content: last segment is the filename
+            target_folder_path = root + '/' + '/'.join(path_segments[:-1]) if len(path_segments) > 1 else root
+        else:
+            target_folder_path = root
+
+    # Use the ORIGINAL filename from the URL, not the truncated path
+    basename = original_filename
     # Remove existing extension if any, use our ext
     basename = re.sub(r'\.[^./]+$', '', basename)
-    safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', basename)[:64]
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    image_id = str(uuid.uuid4())[:8]
-    stored_filename = f"{safe_name}_{timestamp}_{image_id}.{ext}"
+    # Keep dots in the base name (e.g. image.img.jpg → image.img)
+    safe_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', basename)[:64]
+    stored_filename = f"{safe_name}.{ext}"
 
     # Save to disk
     doc_rel_dir = target_folder_path.lstrip('/')
@@ -365,6 +676,8 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
     absolute_dir = data_root / doc_rel_dir
     absolute_dir.mkdir(parents=True, exist_ok=True)
     absolute_path = absolute_dir / stored_filename
+    
+    # 同名文件直接覆盖（旧文件应在删除文档记录时同步删除）
     absolute_path.write_bytes(raw_bytes)
 
     doc_path = target_folder_path + '/' + stored_filename
@@ -658,7 +971,7 @@ def import_page(
         url_path = url_path[:-5]
     url_basename = os.path.basename(url_path) if url_path and url_path != '/' else 'index'
     safe_filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', url_basename)[:64]
-    stored_filename = f"{safe_filename}_{timestamp}_{page_id}.html"
+    stored_filename = f"{safe_filename}.html"
 
     doc_rel_dir = target_folder_path.lstrip('/')
     data_root = Path(settings.FILE_STORAGE_PATH).resolve()
@@ -668,8 +981,19 @@ def import_page(
     absolute_dir.mkdir(parents=True, exist_ok=True)
     absolute_path = absolute_dir / stored_filename
 
-    html_bytes = req.html.encode('utf-8')
+    # Download and store /content/dam/ images locally before saving HTML
+    # This ensures images are available from the local file server,
+    # without needing to access canada.ca CDN for image serving.
+    modified_html, dl_count, err_count = download_and_store_dam_images(
+        req.html, req.url, current_user
+    )
+    
+    # Save the rewritten HTML with correct /content/dam/... image paths.
+    # The WebBot /content/dam/{path} proxy handler will find locally
+    # stored images via FileBot's by-path lookup.
+    html_bytes = modified_html.encode('utf-8')
     file_size = len(html_bytes)
+    # 同名文件直接覆盖（旧文件应在删除文档记录时同步删除）
     absolute_path.write_bytes(html_bytes)
 
     logger.info(f"📄 Saved imported page: {absolute_path} ({file_size} bytes)")
@@ -692,7 +1016,10 @@ def import_page(
             db.commit()
 
             # Push to WebBot even for updates
-            _push_to_webbot(req, title, target_folder_path, stored_filename, absolute_path)
+            _push_to_webbot(ImportPageRequest(
+                url=req.url, html=req.html, title=title,
+                folder_path=req.folder_path, is_image=False
+            ), title, target_folder_path, stored_filename, absolute_path)
 
             return ImportPageResponse(
                 success=True,

@@ -10,10 +10,86 @@ import sqlite3
 import hashlib
 from datetime import datetime, timedelta
 import json
+import urllib.request
+import urllib.error
+import time
 
 router = APIRouter(prefix="/api/v1/track", tags=["tracking"])
 
 DB_PATH = "app/webbot.db"
+
+# ── IP Geo-location Cache (in-memory + sqlite fallback) ──
+_GEO_CACHE = {}  # ip_str -> {country, region, ts}
+_GEO_CACHE_MAX_AGE = 86400  # 24h
+_GEO_CACHE_HITS = 0
+_GEO_CACHE_MISS = 0
+
+_GEO_CACHE_DB = "app/geo_cache.db"
+
+
+def _ensure_geo_cache_table():
+    conn = sqlite3.connect(_GEO_CACHE_DB)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS geo_cache (
+            ip TEXT PRIMARY KEY,
+            country TEXT DEFAULT '',
+            region TEXT DEFAULT '',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def _geo_lookup(ip: str) -> dict:
+    """Resolve IP → {country, region}. Uses in-memory cache, then sqlite, then ip-api.com."""
+    global _GEO_CACHE_HITS, _GEO_CACHE_MISS
+
+    # 1. In-memory cache
+    cached = _GEO_CACHE.get(ip)
+    if cached and (time.time() - cached["ts"]) < _GEO_CACHE_MAX_AGE:
+        _GEO_CACHE_HITS += 1
+        return cached
+
+    # 2. SQLite cache
+    _ensure_geo_cache_table()
+    conn = sqlite3.connect(_GEO_CACHE_DB)
+    row = conn.execute("SELECT country, region FROM geo_cache WHERE ip = ?", (ip,)).fetchone()
+    conn.close()
+    if row:
+        result = {"country": row[0] or "", "region": row[1] or "", "ts": time.time()}
+        _GEO_CACHE[ip] = result
+        _GEO_CACHE_HITS += 1
+        return result
+
+    # 3. External API call (ip-api.com, free, no key needed, 45 req/min)
+    _GEO_CACHE_MISS += 1
+    result = {"country": "", "region": "", "ts": time.time()}
+    try:
+        url = f"http://ip-api.com/json/{ip}?fields=country,regionName,status"
+        req = urllib.request.Request(url, headers={"User-Agent": "WebBot/1.0"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+            if data.get("status") == "success":
+                result["country"] = data.get("country", "")
+                result["region"] = data.get("regionName", "")
+    except Exception:
+        pass  # silently fall back to empty location
+
+    # Cache in both memory and sqlite
+    _GEO_CACHE[ip] = result
+    try:
+        conn = sqlite3.connect(_GEO_CACHE_DB)
+        conn.execute(
+            "REPLACE INTO geo_cache (ip, country, region, updated_at) VALUES (?, ?, ?, datetime('now'))",
+            (ip, result["country"], result["region"])
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    return result
 
 TRACKING_SCRIPT = """(function(){
   try {
@@ -44,9 +120,17 @@ def _ensure_table():
             language TEXT DEFAULT '',
             screen_width INTEGER DEFAULT 0,
             screen_height INTEGER DEFAULT 0,
+            country TEXT DEFAULT '',
+            region TEXT DEFAULT '',
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    # Add columns if table already exists (migration)
+    for col in ["country", "region"]:
+        try:
+            conn.execute(f"ALTER TABLE pageview_log ADD COLUMN {col} TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     c.execute("""
         CREATE INDEX IF NOT EXISTS idx_pageview_path ON pageview_log(path)
     """)
@@ -92,13 +176,18 @@ async def track_pageview(data: PageviewData, request: Request):
     ip_raw = request.client.host if request.client and request.client.host else "unknown"
     ip_hash = hashlib.sha256(ip_raw.encode()).hexdigest()[:16]
 
+    # Geo lookup (IP never stored, only location)
+    geo = _geo_lookup(ip_raw)
+    country = geo.get("country", "")
+    region = geo.get("region", "")
+
     user_agent = request.headers.get("user-agent", "")
 
     conn = get_db()
     c = conn.cursor()
     c.execute("""
-        INSERT INTO pageview_log (path, host, ip_hash, user_agent, referrer, language, screen_width, screen_height)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO pageview_log (path, host, ip_hash, user_agent, referrer, language, screen_width, screen_height, country, region)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         data.path,
         data.host,
@@ -108,6 +197,8 @@ async def track_pageview(data: PageviewData, request: Request):
         data.lang,
         data.sw,
         data.sh,
+        country,
+        region,
     ))
     conn.commit()
     conn.close()
@@ -160,6 +251,47 @@ async def get_top_pages(days: int = 30, limit: int = 20):
 
     conn.close()
     return {"days": days, "pages": pages}
+
+
+@router.get("/geo")
+async def get_geo_stats(days: int = 30):
+    """Geographic breakdown: by country and by region (province/state)."""
+    _ensure_table()
+    conn = get_db()
+    c = conn.cursor()
+
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+    # By country
+    c.execute("""
+        SELECT COALESCE(NULLIF(country, ''), 'Unknown') as loc, COUNT(*) as views
+        FROM pageview_log
+        WHERE timestamp >= ?
+        GROUP BY loc
+        ORDER BY views DESC
+    """, (cutoff,))
+    by_country = [{"location": r[0], "views": r[1]} for r in c.fetchall()]
+
+    # By region (province/state) within known countries
+    c.execute("""
+        SELECT COALESCE(NULLIF(country, ''), 'Unknown') as country,
+               COALESCE(NULLIF(region, ''), 'Unknown') as region,
+               COUNT(*) as views
+        FROM pageview_log
+        WHERE timestamp >= ?
+        GROUP BY country, region
+        ORDER BY views DESC
+    """, (cutoff,))
+    by_region = [{"country": r[0], "region": r[1], "views": r[2]} for r in c.fetchall()]
+
+    conn.close()
+    return {
+        "period_days": days,
+        "by_country": by_country,
+        "by_region": by_region,
+        "cache_hits": _GEO_CACHE_HITS,
+        "cache_misses": _GEO_CACHE_MISS,
+    }
 
 
 @router.get("/summary")

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../../services/auth.service';
 import { useCopilot } from '../../contexts/CopilotContext';
+import { changeLanguage, getCurrentLanguage } from '../../i18n';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -9,6 +10,20 @@ const Navbar: React.FC = () => {
   const isAuthenticated = authService.isAuthenticated();
   const user = authService.getUserInfo();
   const { openCopilot } = useCopilot();
+  const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const switchLanguage = (lng: string) => {
+    changeLanguage(lng);
+    setCurrentLang(lng);
+    setShowLangMenu(false);
+  };
+
+  const langLabels: Record<string, string> = {
+    en: 'EN',
+    fr: 'FR',
+    zh: '中文',
+  };
 
   // 页面加载时获取完整用户信息（含 group 成员关系）
   useEffect(() => {
@@ -49,8 +64,37 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          {/* Right Side: User Info + Logout + Chat */}
+          {/* Right Side: Language + User Info + Logout + Chat */}
           <div className="flex items-center space-x-4">
+            {/* Language Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setShowLangMenu(!showLangMenu)}
+                className="flex items-center text-sm text-gray-600 hover:text-blue-600 px-2 py-1 rounded border border-gray-300 hover:border-blue-400 transition-colors"
+                title="Switch language"
+              >
+                <span>{langLabels[currentLang] || 'EN'}</span>
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showLangMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowLangMenu(false)} />
+                  <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[100px]">
+                    {Object.entries(langLabels).map(([code, label]) => (
+                      <button
+                        key={code}
+                        onClick={() => switchLanguage(code)}
+                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-blue-50 first:rounded-t-lg last:rounded-b-lg ${currentLang === code ? 'text-blue-600 font-semibold bg-blue-50' : 'text-gray-700'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {isAuthenticated && user ? (
               <>
                 <span className="text-sm text-gray-700 font-medium hidden sm:inline">

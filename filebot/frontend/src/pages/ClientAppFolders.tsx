@@ -64,6 +64,12 @@ const ClientAppFolders: React.FC = () => {
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
+  // Move folder state
+  const [showMoveFolderModal, setShowMoveFolderModal] = useState(false);
+  const [moveFolderTarget, setMoveFolderTarget] = useState('');
+  const [moveFolderLoading, setMoveFolderLoading] = useState(false);
+  const [moveFolderError, setMoveFolderError] = useState<string | null>(null);
+
   // Open document preview in overlay
   const openPreview = useCallback((url: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -95,8 +101,7 @@ const ClientAppFolders: React.FC = () => {
       try {
         setFoldersLoading(true);
         const data = await folderService.getFolders(appSlug, {
-          path_starts_with: '/' + appSlug,
-          limit: 10000
+          parent_folder_path: '/' + appSlug
         });
         setFolders(data);
       } catch (err) {
@@ -428,7 +433,7 @@ const ClientAppFolders: React.FC = () => {
   };
 
   const handleDeleteFolder = async (folderPath: string) => {
-    if (!window.confirm('Delete this folder? All documents inside will also be deleted.')) return;
+    if (!(await window.wetYesOrNo('Delete this folder? All documents inside will also be deleted.'))) return;
     try {
       await folderService.deleteFolder(folderPath, true);
       // Reload subfolders from parent
@@ -439,6 +444,53 @@ const ClientAppFolders: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to delete folder:', err);
+    }
+  };
+
+  const handleMoveFolder = () => {
+    const path = currentFolder?.path || currentFolderPath || '';
+    if (!path) {
+      wetAlert('Please select a folder first');
+      return;
+    }
+    setMoveFolderTarget('');
+    setMoveFolderError(null);
+    setShowMoveFolderModal(true);
+  };
+
+  const handleMoveFolderConfirm = async () => {
+    const srcPath = currentFolder?.path || currentFolderPath || '';
+    const target = moveFolderTarget.trim().replace(/\/$/, '');
+
+    if (!target) {
+      setMoveFolderError('Please enter a target parent folder path');
+      return;
+    }
+    if (srcPath === target) {
+      setMoveFolderError('Cannot move folder to itself');
+      return;
+    }
+    if (target.startsWith(srcPath + '/')) {
+      setMoveFolderError('Cannot move folder into its own subfolder');
+      return;
+    }
+
+    setMoveFolderLoading(true);
+    setMoveFolderError(null);
+    try {
+      const result = await folderService.moveFolder(srcPath, target);
+      setShowMoveFolderModal(false);
+      // Refresh subfolders
+      if (appSlug) {
+        const parentPath = currentFolder?.parent_folder_path || '';
+        const subs = await folderService.getFolders(appSlug, { parent_folder_path: parentPath });
+        setSubfolders(subs);
+      }
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || error.message || 'Move failed';
+      setMoveFolderError(detail);
+    } finally {
+      setMoveFolderLoading(false);
     }
   };
 
@@ -613,6 +665,13 @@ const ClientAppFolders: React.FC = () => {
                   >
                     <div className="font-medium text-blue-600">Edit Folder</div>
                     <div className="text-sm text-blue-500">Edit folder name and description</div>
+                  </button>
+                  <button
+                    className="p-3 border rounded-lg hover:bg-amber-50 text-left border-amber-200"
+                    onClick={handleMoveFolder}
+                  >
+                    <div className="font-medium text-amber-600">Move Folder</div>
+                    <div className="text-sm text-amber-500">Move this folder to a different parent</div>
                   </button>
                   <button
                     className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
@@ -896,6 +955,83 @@ const ClientAppFolders: React.FC = () => {
           onClose={() => { setShowEditModal(false); setEditingFolder(null); }}
           onSubmit={handleSaveEditFolder}
         />
+      )}
+
+      {/* Move Folder Modal */}
+      {showMoveFolderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-amber-800">Move Folder</h3>
+                <button
+                  onClick={() => setShowMoveFolderModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-600">
+                    <strong>Moving:</strong> {currentFolder?.path || currentFolderPath}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Target Parent Folder Path
+                  </label>
+                  <input
+                    type="text"
+                    value={moveFolderTarget}
+                    onChange={(e) => setMoveFolderTarget(e.target.value)}
+                    placeholder="e.g. /boarding/canadasite/en/new-parent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    disabled={moveFolderLoading}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Enter the full path of the target parent folder
+                  </p>
+                </div>
+
+                {moveFolderError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                    {moveFolderError}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowMoveFolderModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                    disabled={moveFolderLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMoveFolderConfirm}
+                    disabled={moveFolderLoading || !moveFolderTarget.trim()}
+                    className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {moveFolderLoading ? (
+                      <span className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        Moving...
+                      </span>
+                    ) : (
+                      '📦 Move'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

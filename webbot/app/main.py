@@ -6,9 +6,12 @@ WebBot - AI增强的网站内容管理系统
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
 from contextlib import asynccontextmanager
 import sqlite3
 import os
+import mimetypes
 from datetime import datetime
 
 # 导入认证模块（用于中间件保护）
@@ -20,10 +23,10 @@ except ImportError:
 
 # 导入路由
 try:
-    from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, TRANSLATE_ENABLED
+    from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, references_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, REFERENCES_ENABLED, TRANSLATE_ENABLED
 except ImportError:
     # 备用导入方式
-    from routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, TRANSLATE_ENABLED
+    from routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, references_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, REFERENCES_ENABLED, TRANSLATE_ENABLED
 
 # 数据库路径
 WEBBOT_DB_PATH = os.environ.get(
@@ -435,6 +438,10 @@ if TRACK_ENABLED and track_router:
     app.include_router(track_router)
     print("✅ Tracking路由已加载 (/api/v1/track)")
 
+if REFERENCES_ENABLED and references_router:
+    app.include_router(references_router)
+    print("✅ References路由已加载 (/api/v1/pages/.../references)")
+
 if TRANSLATE_ENABLED and translate_router:
     app.include_router(translate_router)
     print("✅ Translate路由已加载 (/api/v1/translate)")
@@ -450,124 +457,240 @@ app.include_router(ai_router)
 # 提供/content/dam/路径访问已发布的FileBot文档
 # 增强安全性：隐藏FileBot API后端，统一访问控制
 
+import asyncio
 import requests
 from fastapi.responses import Response
 from fastapi import HTTPException
 
+# FileBot PostgreSQL 连接（同机直连，不经过 HTTP）
+FILEBOT_PG_URL = os.environ.get(
+    "FILEBOT_PG_URL",
+    "postgresql://filebot:filebot@localhost:5432/filebot"
+)
+
+def _pg_conn():
+    """获取 FileBot PostgreSQL 连接（短连接，自动关闭）"""
+    import psycopg2
+    return psycopg2.connect(FILEBOT_PG_URL, connect_timeout=2)
+
+
+# 1×1 透明 GIF 占位图（所有方式都失败时返回）
+PLACEHOLDER_GIF = (
+    b"GIF89a"
+    b"\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00"
+    b"!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00"
+    b"\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+)
+
+
 @app.get("/content/dam/{path:path}")
 async def proxy_filebot_document(path: str, thumbnail: bool = False):
     """
-    代理访问FileBot发布的文档
-    路径示例: /content/dam/th.jpg → 代理到 → FileBot /api/v1/documents/by-path/th.jpg
-    
-    支持 ?thumbnail=1 参数，返回缩放后的缩略图（最大宽200px）。
-    
-    安全性：
-    1. 隐藏FileBot后端（localhost:8001不直接暴露）
-    2. 统一认证：通过X-WebBot-Access头标识内部请求
-    3. 访问日志：可在代理层记录所有文档访问
-    4. 未来可扩展：基于会话/页面的权限控制
+    代理访问FileBot文档 — 并发极速模式
+    所有URL pattern并发尝试，首次成功即返回，2秒总超时。
+    全失败则返回1×1透明GIF（不阻塞页面）。
     """
+    if not path.startswith('/'):
+        path = '/' + path
+
+    bypass_headers = {"X-WebBot-Access": "true"}
+    short_timeout = 2
+
+    # === 优先尝试直接文件系统读取（同机，毫秒级） ===
+    # FileBot 数据目录结构：{FILEBOT_DATA}/files/boarding/canadasite/content/dam{path}
+    _fb_data = Path("/home/hongb/.openclaw/workspace/filebot/backend/data")
+    _fs_candidates = [
+        _fb_data / "files" / "boarding" / "canadasite" / "content" / "dam" / path.lstrip("/"),
+        _fb_data / "files" / path.lstrip("/"),
+        _fb_data / path.lstrip("/"),
+    ]
+    for _fs_path in _fs_candidates:
+        if _fs_path.is_file():
+            _mime, _ = mimetypes.guess_type(str(_fs_path))
+            return FileResponse(
+                path=str(_fs_path),
+                media_type=_mime or "application/octet-stream",
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
+
+    # === 第二优先级：PostgreSQL 直查（同机，毫秒级） ===
+    # FileBot storage_path 示例：files/boarding/canadasite/content/dam{path}
+    # 用 path 列匹配（/content/dam/... 或 /boarding/... 两种格式）
     try:
-        # 清理路径，确保格式正确
-        if not path.startswith('/'):
-            path = '/' + path
-        
-        def try_fetch(url):
-            headers = {"X-WebBot-Access": "true"}
-            return requests.get(url, headers=headers, timeout=30)
-        
-        # 尝试路径模式列表
-        filebot_urls = [
-            # 1. Direct DAM mount (for images, binary files)
-            f"http://localhost:8001/content/dam{path}",
-            # 2. 原始路径 (document API)
-            f"http://localhost:8001/api/v1/documents/by-path{path}",
-            # 3. 带/boarding/canadasite前缀（AEM导入数据的路径）
-            f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite{path}",
-        ]
-        
-        response = None
-        for url in filebot_urls:
-            response = try_fetch(url)
-            if response.status_code == 200:
-                break
-        
-        if response is None:
-            raise HTTPException(status_code=503, detail="无法连接到FileBot服务")
-        
-        if response.status_code == 200:
-            # 成功获取文档，返回FileBot的响应
-            content_type = response.headers.get("Content-Type", "application/octet-stream")
-            content_data = response.content
-            
-            # 检查是否为文件下载
-            content_disposition = response.headers.get("Content-Disposition", "")
-            is_attachment = "attachment" in content_disposition or "filename=" in content_disposition
-            
-            # 如果是图片请求并需要缩略图，进行缩放
-            raw_headers = dict(response.headers)
-            if thumbnail and not is_attachment:
-                is_image = content_type and content_type.startswith("image/")
-                if is_image:
-                    try:
-                        from PIL import Image
-                        import io
-                        img = Image.open(io.BytesIO(content_data))
-                        # 缩放到最大宽度 200px，保持宽高比
-                        max_w = 200
-                        w, h = img.size
-                        if w > max_w:
-                            ratio = max_w / float(w)
-                            new_h = int(h * ratio)
-                            img = img.resize((max_w, new_h), Image.LANCZOS)
-                        buf = io.BytesIO()
-                        # 保持原格式，JPEG则优化
-                        fmt = img.format or 'JPEG'
-                        if fmt.upper() == 'JPEG':
-                            img.save(buf, format='JPEG', quality=85, optimize=True)
-                        else:
-                            img.save(buf, format=fmt)
-                        content_data = buf.getvalue()
-                        # 移除附件相关的响应头，保留 Content-Type
-                        raw_headers = {"Content-Type": content_type}
-                    except Exception as e:
-                        print(f"Thumbnail generation failed for {path}: {e}")
-            
-            if is_attachment:
-                return Response(
-                    content=content_data,
-                    media_type=content_type,
-                    headers=raw_headers
-                )
+        _conn = _pg_conn()
+        _cur = _conn.cursor()
+        # 匹配多种 path 格式
+        _like_pattern = f"%/content/dam{path}"
+        _cur.execute(
+            "SELECT storage_path FROM documents "
+            "WHERE path = %s OR path LIKE %s OR path = %s "
+            "LIMIT 1",
+            (path, _like_pattern, f"/boarding{path}" if not path.startswith("/boarding") else path)
+        )
+        _row = _cur.fetchone()
+        _cur.close()
+        _conn.close()
+        if _row and _row[0]:
+            # storage_path 可能是相对路径（files/boarding/...）或绝对路径
+            _sp = _row[0]
+            if _sp.startswith("/"):
+                _db_path = Path(_sp)
             else:
-                return Response(
-                    content=content_data,
-                    media_type=content_type,
-                    headers=raw_headers
+                # 相对路径：相对于 FILEBOT_DATA_ROOT
+                _fb_root = Path("/home/hongb/.openclaw/workspace/filebot/backend/data")
+                _db_path = _fb_root / _sp
+            if _db_path.is_file():
+                _mime, _ = mimetypes.guess_type(str(_db_path))
+                return FileResponse(
+                    path=str(_db_path),
+                    media_type=_mime or "application/octet-stream",
+                    headers={"Cache-Control": "public, max-age=86400"}
                 )
-        elif response.status_code == 404:
-            raise HTTPException(status_code=404, detail="文档不存在")
-        else:
-            error_detail = f"FileBot API错误: {response.status_code}"
+    except Exception as _pg_err:
+        print(f"[proxy_filebot_document] PG query failed: {_pg_err}")
+
+    # === URL 并发尝试 ===
+    if thumbnail:
+        # 缩略图：优先 FileBot thumbnail API（6ms 命中）
+        urls_to_try = [
+            f"http://localhost:8001/api/v1/documents/content/dam{path}/thumbnail",
+            f"http://localhost:8001/api/v1/documents/by-path/content/dam{path}/thumbnail",
+            f"http://localhost:8001/api/v1/documents/boarding/canadasite{path}/thumbnail",
+            f"http://localhost:8001/api/v1/documents/boarding/canadasite/content/dam{path}/thumbnail",
+            f"http://localhost:8001/content/dam{path}",
+            f"https://www.canada.ca/content/dam{path}",
+        ]
+    else:
+        # 全图：优先 FileBot 文档API（by-path 可匹配 content/dam 路径）
+        urls_to_try = [
+            f"http://localhost:8001/api/v1/documents/by-path/content/dam{path}",
+            f"http://localhost:8001/content/dam{path}",
+            f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite{path}",
+            f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite/content/dam{path}",
+            f"https://www.canada.ca/content/dam{path}",
+        ]
+
+    # 去重
+    seen = set()
+    unique_urls = [u for u in urls_to_try if u not in seen and not seen.add(u)]
+
+    async def _try_url(url: str):
+        """并发尝试一个URL"""
+        def _fetch():
             try:
-                error_data = response.json()
-                if "detail" in error_data:
-                    error_detail = f"FileBot API错误: {error_data['detail']}"
-            except:
-                pass
-            
-            raise HTTPException(status_code=response.status_code, detail=error_detail)
-            
-    except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="无法连接到FileBot服务")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"代理文档请求失败: {str(e)}")
+                r = requests.get(url, headers=bypass_headers, timeout=short_timeout)
+                return r if r.status_code == 200 else None
+            except Exception:
+                return None
+        return await asyncio.to_thread(_fetch)
+
+    # 并发发起所有请求，最早成功者获胜
+    tasks = {asyncio.create_task(_try_url(u)): u for u in unique_urls}
+    done, pending = await asyncio.wait(
+        tasks.keys(),
+        timeout=short_timeout + 0.5,  # 总超时2.5秒
+        return_when=asyncio.FIRST_COMPLETED
+    )
+
+    # 取消所有未完成的请求
+    for p in pending:
+        p.cancel()
+
+    # 找第一个成功的响应
+    response = None
+    for t in done:
+        resp = t.result()
+        if resp is not None:
+            response = resp
+            break
+    # 取消剩余已完成的（非成功）任务
+    for t in done:
+        result = t.result()
+        if result is not None and result is not response:
+            pass  # ignore non-200 responses
+
+    if response is None:
+        # 所有方式都失败 → 返回透明占位GIF
+        return Response(
+            content=PLACEHOLDER_GIF,
+            media_type="image/gif",
+            status_code=200  # 返回200让浏览器不报错
+        )
+
+    content_type = response.headers.get("Content-Type", "application/octet-stream")
+    content_data = response.content
+
+    # 缩略图缩放
+    if thumbnail and content_type and content_type.startswith("image/"):
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(content_data))
+            max_w = 200
+            w, h = img.size
+            if w > max_w:
+                ratio = max_w / float(w)
+                new_h = int(h * ratio)
+                img = img.resize((max_w, new_h), Image.LANCZOS)
+                buf = io.BytesIO()
+                fmt = img.format or 'JPEG'
+                if fmt.upper() == 'JPEG':
+                    img.save(buf, format='JPEG', quality=85, optimize=True)
+                else:
+                    img.save(buf, format=fmt)
+                content_data = buf.getvalue()
+        except Exception as e:
+            print(f"Thumbnail resize failed for {path}: {e}")
+
+    return Response(content=content_data, media_type=content_type)
 
 
 # ==================== FileBot上传代理路由 ====================
 # 提供/content/upload/路径上传文件到FileBot
 # 隐藏FileBot端口8001，统一通过webbot代理上传
+
+# 提供/boarding/路径访问旧版导入的AEM图片（兼容 bookmarklet 导入的图片）
+# 这些图片的 Document.path = /boarding/canadasite/...
+@app.get("/boarding/{path:path}")
+async def proxy_boarding_file(path: str, thumbnail: bool = False):
+    """代理/boarding路径到FileBot，兼容旧版bookmarklet导入的图片"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"🏠 Boarding proxy request: path=/{path}")
+    
+    import httpx
+    def try_fetch(url):
+        try:
+            resp = httpx.get(url, timeout=15.0)
+            return resp
+        except Exception:
+            return None
+    
+    filebot_urls = [
+        f"http://localhost:8001/api/v1/documents/by-path/boarding/{path}",
+        f"http://localhost:8001/api/v1/documents/by-path/{path}",
+        f"http://localhost:8001/content/dam/{path}",
+    ]
+    
+    response = None
+    for url in filebot_urls:
+        try:
+            resp = try_fetch(url)
+            if resp and resp.status_code == 200:
+                response = resp
+                logger.info(f"  ✅ Boarding proxy success from {url}")
+                break
+        except Exception as e:
+            logger.warning(f"  ⚠️  Boarding proxy failed {url}: {e}")
+            continue
+    
+    if not response:
+        logger.warning(f"  ❌ Boarding proxy all failed for path=/{path}")
+        return Response(status_code=404)
+    
+    ct = response.headers.get("Content-Type", "application/octet-stream")
+    return Response(content=response.content, media_type=ct)
+
 
 import aiohttp
 
@@ -610,13 +733,13 @@ async def proxy_filebot_upload(request: Request):
         raise HTTPException(status_code=500, detail=f"上传代理失败: {str(e)}")
 
 
-# ========== AI Q&A Proxy (port 8002) ==========
+# ========== AI Q&A Proxy (port 8001) ==========
 
 @app.post("/api/v1/search/ai-query")
 @app.post("/api/v1/search/ai-query/save")
 async def proxy_ai_query(request: Request):
     """
-    Proxy AI query requests to FileBot port 8002.
+    Proxy AI query requests to FileBot port 8001.
     Forwarded endpoints:
       POST /api/v1/search/ai-query       - Generate answer
       POST /api/v1/search/ai-query/save   - Save Q&A page
@@ -625,7 +748,7 @@ async def proxy_ai_query(request: Request):
     auth = request.headers.get("authorization", "")
     target_path = request.url.path
     
-    target_url = f"http://localhost:8002{target_path}"
+    target_url = f"http://localhost:8001{target_path}"
     if request.url.query:
         target_url += "?" + request.url.query
     
@@ -647,7 +770,7 @@ async def proxy_ai_query(request: Request):
                     headers=resp_headers
                 )
     except aiohttp.ClientConnectorError:
-        raise HTTPException(status_code=503, detail="Cannot connect to AI query service (port 8002)")
+        raise HTTPException(status_code=503, detail="Cannot connect to AI query service (port 8001)")
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="AI query timed out (Ollama may be overloaded)")
     except Exception as e:

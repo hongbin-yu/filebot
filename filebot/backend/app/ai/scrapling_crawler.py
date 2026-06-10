@@ -874,18 +874,28 @@ class ScraplingCrawler:
     
     def _extract_images(self, soup, page_url: str, folder_path: str, base_url: str = None):
         """
-        提取页面中的图片，特别关注/content/dam文件夹中的图片
-        
-        根据用户反馈：图片应该在/content/dam文件夹中
+        提取页面中的图片，只处理<main>区域中/content/canadasite路径的图片
+        跳过系统文件夹（/etc/）的图片
         """
         try:
             logger.info(f"_extract_images called for page: {page_url}, folder: {folder_path}")
-            img_elements = soup.xpath('//img[@src]')
-            logger.info(f"Found {len(img_elements)} image elements in page")
+            # 只处理<main>标签中的图片
+            img_elements = soup.xpath('//main//img[@src]')
+            logger.info(f"Found {len(img_elements)} image elements in <main>")
             
             for img_element in img_elements:
                 img_src = img_element.get('src')
                 if not img_src:
+                    continue
+                
+                # 跳过系统文件夹（/etc/）中的图片（如WET模板图片、logo等）
+                if img_src.startswith('/etc/') or '/etc/' in img_src:
+                    logger.debug(f"跳过系统文件夹图片: {img_src}")
+                    continue
+                    
+                # 只处理/content/canadasite路径的图片（加拿大政府DAM内容图片）
+                if not img_src.startswith('/content/canadasite'):
+                    logger.debug(f"跳过非/content/canadasite图片: {img_src}")
                     continue
                     
                 img_url = urljoin(page_url, img_src)

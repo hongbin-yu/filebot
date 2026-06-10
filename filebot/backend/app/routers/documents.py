@@ -16,7 +16,7 @@ from pathlib import Path
 from io import BytesIO
 import PyPDF2
 from PIL import Image
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 from app.db.database import get_db
 from app.core.security import get_current_active_user, get_current_active_user_allow_query, get_current_user, oauth2_scheme, has_folder_access
@@ -419,7 +419,8 @@ def get_document_by_identifier(
     
     # Check folder permission (reuse check_document_access logic)
     app = document.folder.app
-    if current_user.is_superuser or current_user.username == "public":
+    # Allow if user is None (webbot proxy bypass) or superuser/public
+    if current_user is None or current_user.is_superuser or current_user.username == "public":
         return document
     
     if app.owner_id != current_user.id:
@@ -2187,12 +2188,17 @@ def batch_delete_documents(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Batch delete documents by identifier (UUID or path)"""
+    """Batch delete documents by identifier (UUID or path)
+    
+    Also deletes associated physical files for each document.
+    """
     deleted_count = 0
+    failed_files = 0
     
     for doc_identifier in document_identifiers:
         try:
             document = get_document_by_identifier(doc_identifier, current_user, db)
+            _delete_document_files(document)
             db.delete(document)
             deleted_count += 1
         except HTTPException:
@@ -2287,27 +2293,57 @@ def download_document_by_path(
                 # If path fully matches or starts with path
                 if url_path == try_path or url_path.endswith(try_path):
                     matched_documents.append((doc, url_path, try_path))
-                    logger.info(f"Document {doc.id} matches path {try_path} via path field (url_path: {url_path})")
+                    logger.info(f"Document {doc.path} matches path {try_path} via path field (url_path: {url_path})")
                     matched = True
                     break  # Stop checking other paths on first match
+        
+        # Method 1.5: try path without AEM timestamp hash suffix
+        # AEM adaptive images have timestamp hash like _20260606_221116_915239a1 appended to filenames.
+        # Page references don't include this hash, so endswith fails.
+        # E.g., doc.path = .../image.img.png/12345_20260606_221116_915239a1.png
+        #       search  = .../image.img.png/12345 (no extension)
+        if not matched and doc.path:
+            # Strip AEM hash suffix: _<8digits>_<6digits>_<alphanum> with optional extension
+            import re
+            stripped_path = re.sub(r'_\d{8}_\d{6}_[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)?$', '', doc.path)
+            if stripped_path != doc.path:
+                for try_path in paths_to_try:
+                    if stripped_path == try_path or stripped_path.endswith(try_path):
+                        matched_documents.append((doc, stripped_path, try_path))
+                        logger.info(f"Document {doc.path} matches path {try_path} via path field (stripped hash, url_path: {stripped_path})")
+                        matched = True
+                        break
         
         # Method 2: fallback to document_metadata.url
         if not matched and doc.document_metadata:
             try:
                 metadata = json.loads(doc.document_metadata) if isinstance(doc.document_metadata, str) else doc.document_metadata
-                url = metadata.get('url') or metadata.get('original_url')
-                if url:
+                
+                # Check multiple metadata fields: url, original_url, source_url
+                metadata_urls = [
+                    metadata.get('url'),
+                    metadata.get('original_url'),
+                    metadata.get('source_url'),
+                ]
+                
+                for url in metadata_urls:
+                    if not url:
+                        continue
                     parsed = urlparse(url)
                     url_path = parsed.path
+                    # URL-decode both paths for matching (handle %20 vs space differences)
+                    url_path_decoded = unquote(url_path)
                     
-                    # Check if any path matches
                     for try_path in paths_to_try:
-                        # If path fully matches or starts with path
-                        if url_path == try_path or url_path.endswith(try_path):
+                        try_path_decoded = unquote(try_path)
+                        # If path fully matches or ends with try path (after URL decode)
+                        if url_path_decoded == try_path_decoded or url_path_decoded.endswith(try_path_decoded):
                             matched_documents.append((doc, url, try_path))
-                            logger.info(f"Document {doc.id} matches path {try_path} (original URL: {url})")
+                            logger.info(f"Document {doc.path} matches path {try_path} (metadata URL: {url})")
                             matched = True
-                            break  # Stop checking other paths on first match
+                            break
+                    if matched:
+                        break
             except (json.JSONDecodeError, TypeError):
                 continue
     
@@ -2618,15 +2654,41 @@ async def serve_file_by_hierarchical_path(
 def get_document_thumbnail(
     request: Request,
     document_identifier: str,
-    current_user: User = Depends(get_current_active_user_allow_query),
     db: Session = Depends(get_db)
 ):
     """Get 128x128 JPEG thumbnail for an image document.
     
     If thumbnail file doesn't exist but the document is an image type,
     generate it on-the-fly so the frontend always gets a response.
+
+    Supports X-WebBot-Access header bypass (for webbot proxy).
+    For normal requests, uses Authorization header or ?token= query param.
     """
-    document = get_document_by_identifier(document_identifier, current_user, db)
+    # Webbot proxy bypass: allow thumbnail access without token
+    is_webbot_request = request.headers.get("X-WebBot-Access") == "true"
+    
+    if is_webbot_request:
+        document = get_document_by_identifier(document_identifier, None, db)
+    else:
+        # Manual auth (same logic as get_current_active_user_allow_query)
+        from fastapi.security.utils import get_authorization_scheme_param
+        
+        authorization = request.headers.get("Authorization")
+        token = None
+        if authorization:
+            scheme, param = get_authorization_scheme_param(authorization)
+            if scheme.lower() == "bearer":
+                token = param
+        if not token:
+            token = request.query_params.get("token")
+        if not token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        current_user = get_current_user(db, token)
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
+        if not current_user.is_active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+        document = get_document_by_identifier(document_identifier, current_user, db)
     
     # If thumbnail already exists on disk, return it
     if document.thumbnail_path:
@@ -2732,6 +2794,39 @@ def update_document(
     return document
 
 
+def _delete_document_files(document):
+    """Delete physical storage files associated with a document.
+    
+    Removes: storage file, full storage file, converted PDF, and thumbnail.
+    Silently skips missing files and logs warnings for permission errors.
+    """
+    file_paths = []
+    
+    # Primary storage path
+    if document.storage_path:
+        file_paths.append(Path(settings.DATA_ROOT) / document.storage_path)
+    
+    # Full storage path (e.g. for oversized uploads)
+    if document.full_storage_path:
+        file_paths.append(Path(settings.DATA_ROOT) / document.full_storage_path)
+    
+    # Converted PDF
+    if document.converted_pdf_path:
+        file_paths.append(Path(settings.DATA_ROOT) / document.converted_pdf_path)
+    
+    # Thumbnail
+    if document.thumbnail_path:
+        file_paths.append(Path(settings.DATA_ROOT) / document.thumbnail_path)
+    
+    for fp in file_paths:
+        try:
+            if fp.exists():
+                fp.unlink()
+                logging.info(f"Deleted file: {fp}")
+        except Exception as e:
+            logging.warning(f"Failed to delete file {fp}: {e}")
+
+
 @router.delete("/{document_identifier:path}")
 def delete_document(
     document_identifier: str,
@@ -2740,21 +2835,13 @@ def delete_document(
 ):
     """Delete document by identifier (UUID or path)
     
-    Also deletes associated pages, conversion tasks, and thumbnail file.
+    Also deletes associated pages, conversion tasks, thumbnail, storage file,
+    converted PDF, and full storage file.
     """
     document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # Delete thumbnail file if exists
-    if document.thumbnail_path:
-        thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
-        try:
-            if thumb_full_path.exists():
-                thumb_full_path.unlink()
-                logging.info(f"Deleted thumbnail: {thumb_full_path}")
-        except Exception as e:
-            logging.warning(f"Failed to delete thumbnail {thumb_full_path}: {e}")
-    
-    # Delete physical file (TODO: configure storage path)
+    # Delete all associated physical files
+    _delete_document_files(document)
     
     db.delete(document)
     db.commit()

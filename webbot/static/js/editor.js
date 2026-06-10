@@ -1,12 +1,13 @@
 
+        // ====== editor.js v20260521-2 : bilingual createNewPage ======
+        const editorjsVersion = '20260522-1';
         // API configuration
         const API_BASE = '/api/v1/pages';
         let currentPageId = null;
         let currentPageData = null;
-        window.allPages = [];
-
         // Breadcrumb titles to skip (root-level home pages)
         var SKIP_BREADCRUMB_TITLES = ['canadasite', 'home', 'accueil'];
+        const SITE_PREFIX = '/canadasite';
 
         // DOM elements
         const pageTreeEl = document.getElementById('page-tree');
@@ -54,51 +55,13 @@
         const savePageTopBtn = document.getElementById('save-page-top');
         const breadcrumbEl = document.getElementById('breadcrumb');
 
-        // Load all pages for path resolution
-        function loadAllPages() {
-            console.log('Loading all pages for path resolution...');
-            fetch('/api/v1/pages/?limit=1000')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(pages => {
-                    console.log('All pages loaded for path resolution:', pages.length, 'pages');
-                    window.allPages = pages;
-                    console.log('allPages array populated with', window.allPages.length, 'pages');
-
-                    // If we have a page to load, try loading it now that we have all pages
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const pageIdFromUrl = urlParams.get('pageId');
-                    const pathFromUrl = urlParams.get('path');
-                    const pageToLoad = pathFromUrl || pageIdFromUrl;
-
-                    if (pageToLoad && window.hasPageBeenLoaded !== true) {
-                        console.log('Re-loading page with all pages available:', pageToLoad);
-                        window.hasPageBeenLoaded = true;
-                        // Give a small delay for any other initialization
-                        setTimeout(() => {
-                            loadPage(pageToLoad);
-                        }, 100);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading all pages:', error);
-                    console.log('Path resolution will use available data');
-                });
-        }
-
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('WebBot Editor initialized');
+            // Setup translate button (register handlers, will hide by default)
+            setupTranslateButton();
             // Initialize components sidebar on page load
             loadComponents();
-            // Load pages for sidebar - only if no page is being loaded from URL
-            // (loadPage will call loadPagesForSidebar with page path if needed)
-            // Load all pages for path resolution (for breadcrumb navigation)
-            loadAllPages();
             // Add CSS styles for component menus
             addTemplateEditStyles();
 
@@ -216,11 +179,12 @@
 
             if (resourceSidebarClose) {
                 resourceSidebarClose.addEventListener('click', function() {
-                    resourceSidebar.classList.add('hidden');
-                    resourceToggleBtn.classList.remove('active');
-                    console.log('Resource sidebar closed via close button');
+                    window.closeResourceSidebar();
                 });
             }
+
+            // Placeholder exposed on window — real implementation lives inside initResourceSidebar IIFE
+            window.closeResourceSidebar = function() { console.warn('closeResourceSidebar not yet initialized'); };
 
             // AI toggle button - controls right panel
             const aiToggleBtn = document.getElementById('ai-toggle-btn');
@@ -739,7 +703,7 @@
                         icon: 'page-break',
                         tooltip: 'Insert Footer Section',
                         onAction: function() {
-                            insertComponent('footer');
+                            insertFooterComponent();
                         }
                     });
 
@@ -1031,96 +995,6 @@
 
 
         // Build page tree from flat list
-        function buildPageTree() {
-            // Group pages by parent_path
-            const pagesByParent = {};
-            window.allPages.forEach(page => {
-                const parentId = page.parent_path || 'root';
-                if (!pagesByParent[parentId]) {
-                    pagesByParent[parentId] = [];
-                }
-                pagesByParent[parentId].push(page);
-            });
-
-            // Build tree for root pages
-            let html = '';
-            const rootPages = pagesByParent['root'] || pagesByParent[null] || [];
-
-            if (rootPages.length === 0) {
-                html = '<div class="loading">No pages found.</div>';
-            } else {
-                // Sort root pages by title
-                if (Array.isArray(rootPages)) {
-                    rootPages.sort((a, b) => a.title.localeCompare(b.title));
-                }
-
-                // Create categories for each root page with children
-                rootPages.forEach(rootPage => {
-                    const children = pagesByParent[rootPage.id] || [];
-                    const hasChildren = children.length > 0;
-
-                    html += `
-                    <div class="tree-category">
-                        <div class="tree-category-header ${hasChildren ? '' : 'no-children'}">
-                            <span class="page-title" data-page-id="${rootPage.id}">${rootPage.title}</span>
-                            ${hasChildren ? '<span class="toggle-icon">▼</span>' : ''}
-                        </div>
-                        ${hasChildren ? `
-                        <div class="tree-category-items">
-                            ${children.map(child => `
-                                <div class="page-item" data-page-id="${child.id}">
-                                    ${child.title}
-                                </div>
-                            `).join('')}
-                        </div>
-                        ` : ''}
-                    </div>
-                    `;
-                });
-            }
-
-            pageTreeEl.innerHTML = html;
-
-            // Add event listeners
-            document.querySelectorAll('.page-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const pageId = this.getAttribute('data-page-id');
-                    loadPage(pageId);
-                });
-            });
-
-            // Add event listeners for category headers
-            document.querySelectorAll('.tree-category-header').forEach(header => {
-                const toggleIcon = header.querySelector('.toggle-icon');
-                if (toggleIcon) {
-                    header.addEventListener('click', function() {
-                        const items = this.nextElementSibling;
-                        if (items && items.classList.contains('tree-category-items')) {
-                            items.classList.toggle('collapsed');
-                            this.classList.toggle('collapsed');
-                        }
-                    });
-                } else {
-                    // No children, make header clickable
-                    header.addEventListener('click', function() {
-                        const pageId = this.querySelector('.page-title').getAttribute('data-page-id');
-                        loadPage(pageId);
-                    });
-                    header.style.cursor = 'pointer';
-                }
-            });
-
-            // Make root page titles clickable
-            document.querySelectorAll('.page-title').forEach(titleEl => {
-                titleEl.style.cursor = 'pointer';
-                titleEl.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const pageId = this.getAttribute('data-page-id');
-                    loadPage(pageId);
-                });
-            });
-        }
-
         // Get effective file_path for a page, with inheritance from parent pages
         async function getEffectiveFilePath(pageId, maxDepth = 10) {
             console.log('getEffectiveFilePath called for page:', pageId, 'maxDepth:', maxDepth);
@@ -1397,6 +1271,11 @@
 
                             // Always use WebBot proxy path /content/dam/ for better security
                             // This hides FileBot backend and provides unified access control
+                            // Avoid duplicate /content/dam if path already contains it
+                            if (path.startsWith('/content/dam')) {
+                                console.log('Using path directly (already has /content/dam):', path);
+                                return path;
+                            }
                             console.log('Using WebBot proxy path:', `/content/dam${path}`);
                             return `/content/dam${path}`;  // Proxy through WebBot for security
                         }
@@ -1696,33 +1575,90 @@
             return 'en';
         }
 
-        function getAvailableLanguages() {
-            const languages = new Set(['en', 'fr']); // Default languages
+        // Setup Translate Button - visible when editor content is empty and other_language_path exists
+        function setupTranslateButton() {
+            const translateBtn = document.getElementById('translate-btn');
+            const editorContent = document.getElementById('editor-content');
+            if (!translateBtn || !editorContent) return;
 
-            // Try to get languages from allPages
-            if (window.allPages && window.allPages.length > 0) {
-                window.allPages.forEach(page => {
-                    if (page.language) {
-                        languages.add(page.language.toLowerCase());
-                    }
-                });
+            function updateVisible() {
+                const content = editorContent.value || '';
+                const otherLangPath = currentPageData && currentPageData.other_language_path;
+                const show = !content.trim() && otherLangPath;
+                console.log('Translate: content_len=' + content.length + ' empty=', !content.trim(), ' otherLangPath=', otherLangPath, ' show=', show);
+                if (!show) {
+                    translateBtn.style.display = 'none';
+                } else {
+                    translateBtn.style.display = 'inline-block';
+                    // Ensure parent editor-actions is visible
+                    const parent = translateBtn.closest('#editor-actions');
+                    if (parent) parent.style.display = 'block';
+                }
             }
 
-            // Also check root pages (pages with parent_path null or empty)
-            if (window.allPages && window.allPages.length > 0) {
-                window.allPages.forEach(page => {
-                    if (!page.parent_path || page.parent_path === '') {
-                        // Try to extract language from path
-                        const path = page.path || '';
-                        const parts = path.split('/').filter(p => p.trim() !== '');
-                        if (parts.length === 1 && /^[a-z]{2,3}$/.test(parts[0].toLowerCase())) {
-                            languages.add(parts[0].toLowerCase());
-                        }
-                    }
-                });
-            }
+            editorContent.addEventListener('input', updateVisible);
 
-            return Array.from(languages).sort();
+            // Poll for visibility changes during page load
+            let pollCount = 0;
+            function pollVisible() {
+                if (pollCount++ > 5) return;
+                if (currentPageData && currentPageData.other_language_path) {
+                    updateVisible();
+                }
+                setTimeout(pollVisible, 1000);
+            }
+            setTimeout(pollVisible, 100);
+
+            translateBtn.addEventListener('click', async function() {
+                const otherPath = currentPageData && currentPageData.other_language_path;
+                const currentLang = (currentPageData && currentPageData.language) || 'en';
+                if (!otherPath) {
+                    alert('No alternate language path configured.');
+                    updateVisible();
+                    return;
+                }
+
+                translateBtn.disabled = true;
+                translateBtn.textContent = 'Translating...';
+
+                try {
+                    const resp = await fetch('/api/v1/pages/by-path?path=' + encodeURIComponent(otherPath));
+                    if (!resp.ok) throw new Error('Failed to fetch source page: ' + resp.statusText);
+                    const sourcePage = await resp.json();
+                    const sourceContent = sourcePage.content || '';
+                    if (!sourceContent.trim()) {
+                        alert('Source page has no content to translate.');
+                        return;
+                    }
+
+                    const sourceLang = otherPath.includes('/fr/') ? 'fr' : 'en';
+                    const targetLang = currentLang.toLowerCase();
+
+                    const translateUrl = '/api/v1/translate/page?path=' + encodeURIComponent(otherPath)
+                        + '&source_lang=' + sourceLang + '&target_lang=' + targetLang;
+                    const tResp = await fetch(translateUrl, { method: 'POST' });
+                    if (!tResp.ok) {
+                        const errData = await tResp.json().catch(() => ({}));
+                        throw new Error(errData.detail || 'Translation failed: ' + tResp.statusText);
+                    }
+                    const result = await tResp.json();
+
+                    editorContent.value = result.translated_content;
+                    try {
+                        if (tinyMceEditor) tinyMceEditor.setContent(result.translated_content);
+                    } catch(e) {}
+                    editorContent.dispatchEvent(new Event('input'));
+                    alert('Translation complete!');
+                } catch (error) {
+                    alert('Translation failed: ' + error.message);
+                } finally {
+                    translateBtn.disabled = false;
+                    translateBtn.innerHTML = '<span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Translate';
+                    updateVisible();
+                }
+            });
+
+            window.updateTranslateBtn = updateVisible;
         }
 
         function populateLanguageSwitcher() {
@@ -1820,6 +1756,10 @@
                 populateLanguageSwitcher();
                 // Update translate button visibility
                 if (window.updateTranslateBtn) window.updateTranslateBtn();
+                // Also update after a short delay to ensure DOM is settled
+                setTimeout(() => {
+                    if (window.updateTranslateBtn) window.updateTranslateBtn();
+                }, 100);
 
                 // Extract language links and metadata from page content head section
                 if (page.content && typeof page.content === 'string') {
@@ -1897,6 +1837,11 @@
                     } catch (e) {
                         console.warn('TinyMCE setContent failed (non-fatal):', e);
                     }
+
+                    // Load template-specific CSS/JS/body class so editor matches published page
+                    loadTemplateAssets(page).catch(function(err) {
+                        console.warn('Template assets load failed (non-fatal):', err);
+                    });
                 }
 
                 // Update page content in currentPageData to cleaned version
@@ -1935,6 +1880,59 @@
                 console.error('Error stack:', error.stack);
                 console.error('Error occurred in loadPage with pageId:', pageId);
                 showError(`Failed to load page: ${error.message}`);
+            }
+        }
+
+        /**
+         * Fetch template-specific CSS/JS/body class and inject into TinyMCE iframe.
+         * Makes WYSIWYG editing match the published page appearance.
+         */
+        async function loadTemplateAssets(page) {
+            if (!tinyMceEditor || !page.path) return;
+
+            try {
+                const apiUrl = '/api/v1/pages/template-assets?path=' + encodeURIComponent(page.path);
+                const resp = await fetch(apiUrl);
+                if (!resp.ok) return;
+                const assets = await resp.json();
+
+                // Inject CSS into TinyMCE iframe head
+                const iframe = tinyMceEditor.getContentAreaContainer().querySelector('iframe');
+                if (!iframe) return;
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                if (!doc) return;
+
+                // Remove previously injected template CSS (marked with data-template-css)
+                const oldLinks = doc.querySelectorAll('link[data-template-css]');
+                oldLinks.forEach(function(el) { el.remove(); });
+
+                // Inject new CSS
+                if (assets.css_urls && assets.css_urls.length) {
+                    assets.css_urls.forEach(function(url) {
+                        var link = doc.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = url;
+                        link.setAttribute('data-template-css', 'true');
+                        doc.head.appendChild(link);
+                    });
+                }
+
+                // Remove previously injected body class
+                if (assets.body_class) {
+                    var body = doc.body;
+                    // Remove old template classes (marked with data-template-body-class)
+                    var oldBody = doc.querySelector('body[data-template-body-class]');
+                    if (oldBody) {
+                        oldBody.removeAttribute('data-template-body-class');
+                    }
+                    body.setAttribute('data-template-body-class', 'true');
+                    // Apply the template's body class (e.g. 'oag-theme' or 'page')
+                    body.className = assets.body_class;
+                }
+
+                console.log('Template assets applied:', assets);
+            } catch (e) {
+                console.warn('loadTemplateAssets error:', e);
             }
         }
 
@@ -1983,11 +1981,12 @@
                     const ancestor = breadcrumbPath[i];
                     // Pass only the path up to this ancestor (slice 0 to i+1)
                     const ancestorPath = buildFullPath(ancestor, breadcrumbPath.slice(0, i + 1));
-                    const editorUrl = getEditorUrl(ancestorPath);
+                    const fullAncestorPath = ancestorPath.startsWith(SITE_PREFIX) ? ancestorPath : SITE_PREFIX + ancestorPath;
+                    const editorUrl = getEditorUrl(fullAncestorPath);
                     const ancestorTitle = cleanTitle(ancestor.title) || ancestor.id;
                     breadcrumbHtml += `
                         <div class="breadcrumb-item">
-                            <a href="${editorUrl}" class="breadcrumb-link" data-page-path="${removeHtmlExtension(ancestorPath)}">${ancestorTitle}</a>
+                            <a href="${editorUrl}" class="breadcrumb-link" data-page-path="${removeHtmlExtension(fullAncestorPath)}">${ancestorTitle}</a>
                         </div>
                     `;
                 }
@@ -2092,54 +2091,6 @@
             return path;
         }
 
-        // Get hierarchical path for a page (like getPathToPage in navigation.html)
-        function getPathToPage(pageObject) {
-            console.log('getPathToPage called with page object:', pageObject?.id);
-            if (!pageObject || !pageObject.id) {
-                console.error('Invalid page object provided to getPathToPage');
-                return [pageObject?.id || 'unknown'];
-            }
-
-            // Check if allPages is available
-            if (!window.allPages || window.allPages.length === 0) {
-                console.log('  getPathToPage: allPages not available, returning page ID only');
-                return [pageObject.id];
-            }
-
-            const path = [];
-            let currentPage = pageObject;
-
-            while (currentPage && currentPage.id) {
-                // Add current page ID to path
-                path.unshift(currentPage.id);
-                console.log(`  getPathToPage: Added ${currentPage.id} to path. Full path:`, path);
-
-                // If this page has no parent, we've reached the root
-                if (!currentPage.parent_path) {
-                    console.log('  getPathToPage: Reached root page (no parent_path)');
-                    break;
-                }
-
-                // Find the parent page in allPages array
-                const parentCandidates = window.allPages.filter(p => p.id === currentPage.parent_path);
-                console.log(`  getPathToPage: Looking for parent page id=${currentPage.parent_path}: ${parentCandidates.length} candidates`);
-
-                if (parentCandidates.length === 0) {
-                    console.log(`  getPathToPage: Parent page ${currentPage.parent_path} not found, stopping`);
-                    break;
-                }
-
-                // Take the first parent candidate
-                const parentPage = parentCandidates[0];
-
-                // Move up to parent
-                currentPage = parentPage;
-            }
-
-            console.log('getPathToPage returning path array:', path);
-            return path;
-        }
-
         // Build full path for a page given its breadcrumb path
         function buildFullPath(page, breadcrumbPath) {
             console.log('buildFullPath called for page:', page.id, 'page.path:', page.path, 'page.language:', page.language, 'breadcrumbPath length:', breadcrumbPath?.length);
@@ -2167,44 +2118,8 @@
                 return path;
             }
 
-            // Priority 2: Use getPathToPage to build hierarchical path from allPages
-            // This ensures each page gets its own correct hierarchical path
-            if (page.language && window.allPages && window.allPages.length > 0) {
-                // Get hierarchical path for this specific page
-                const hierarchicalPath = getPathToPage(page);
-                console.log('  -> getPathToPage returned:', hierarchicalPath);
-
-                if (hierarchicalPath && hierarchicalPath.length > 0) {
-                    let pathParts = [];
-
-                    // Add language as prefix if not already first element
-                    if (hierarchicalPath[0] !== page.language) {
-                        pathParts.push(page.language);
-                    }
-
-                    // Add all path elements
-                    pathParts = pathParts.concat(hierarchicalPath);
-
-                    // Construct full path
-                    const basePath = '/' + pathParts.join('/');
-
-                    // Add .html extension if not already present (lowercase)
-                    let finalPath = basePath;
-                    if (!basePath.toLowerCase().endsWith('.html')) {
-                        finalPath = basePath + '.html';
-                    }
-
-                    // Ensure extension is lowercase
-                    if (finalPath.endsWith('.HTML')) {
-                        finalPath = finalPath.replace(/\.HTML$/, '.html');
-                    }
-
-                    console.log('  -> Priority 2: Built hierarchical path using getPathToPage:', finalPath, 'from parts:', pathParts);
-                    return finalPath;
-                }
-            } else if (page.language) {
-                console.log('  -> Priority 2: Skipped - allPages not available or empty');
-            }
+            // Priority 2: (removed) previously used getPathToPage with allPages.
+            // allPages batch-load removed for performance. Falls through to Priority 3.
 
             // Priority 3: Use page.language and page.id if available (fallback)
             if (page.language) {
@@ -2286,8 +2201,9 @@
                     const ancestor = breadcrumbPath[i];
                     // Pass only the path up to this ancestor (slice 0 to i+1)
                     const ancestorPath = buildFullPath(ancestor, breadcrumbPath.slice(0, i + 1));
+                    const fullAncestorPath = ancestorPath.startsWith(SITE_PREFIX) ? ancestorPath : SITE_PREFIX + ancestorPath;
                     const ancestorTitle = cleanTitle(ancestor.title) || ancestor.id;
-                    breadcrumbHtml += `<li><a href="${ancestorPath}">${escapeHtml(ancestorTitle)}</a></li>`;
+                    breadcrumbHtml += `<li><a href="${fullAncestorPath}">${escapeHtml(ancestorTitle)}</a></li>`;
                 }
 
                 // Add current page as active (last in array)
@@ -3514,84 +3430,127 @@
                                    processedContent.match(/<h2[^>]*>([^<]+)<\/h2>/i);
                 const title = titleMatch ? titleMatch[1].trim() : 'Untitled Page';
 
-                // Build the request body
-                const pageData = {
-                    title: title,
-                    content: processedContent,
-                    language: language,
-                    status: 'draft',
-                    parent_path: newPageParentPath
-                };
-
-                console.log('Sending POST request to create page with data:', {
-                    ...pageData,
-                    content: '(content length: ' + processedContent.length + ' chars)'
-                });
-
-                const response = await fetch(API_BASE + '/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(pageData)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => null);
-                    throw new Error(
-                        (errorData && errorData.detail)
-                            ? errorData.detail
-                            : 'HTTP ' + response.status + ': ' + response.statusText
-                    );
+                // Helper: try to create a page, skip if path already exists
+                async function tryCreatePage(lang, parentPath, linkPath) {
+                    const pageData = {
+                        title: title + (lang !== language ? ' (' + lang.toUpperCase() + ')' : ''),
+                        content: processedContent,
+                        language: lang,
+                        status: 'draft',
+                        parent_path: parentPath,
+                        other_language_path: linkPath || null
+                    };
+                    const resp = await fetch(API_BASE + '/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(pageData)
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        console.log(lang + ' page created:', data.id);
+                        return { created: true, lang: lang, path: data.path || data.id, data: data };
+                    }
+                    const errData = await resp.json().catch(() => null);
+                    const errMsg = (errData && errData.detail) || '';
+                    if (errMsg.includes('already exists')) {
+                        console.log(lang + ' page already exists, skipping');
+                        return { created: false, lang: lang, skipped: true };
+                    }
+                    throw new Error('Failed to create ' + lang + ' page: ' + errMsg);
                 }
 
-                const createdPage = await response.json();
-                console.log('Page created successfully:', createdPage.id, createdPage.path);
+                // Determine other language
+                const otherLang = language === 'en' ? 'fr' : 'en';
+                // Build other language parent_path from current parent_path
+                const parentParts = newPageParentPath.split('/').filter(Boolean);
+                let otherParentPath = newPageParentPath;
+                if (parentParts.length >= 1 && ['en', 'fr'].includes(parentParts[0])) {
+                    const p = [...parentParts];
+                    p[0] = otherLang;
+                    otherParentPath = '/' + p.join('/');
+                }
+
+                console.log('Creating bilingual pair: ' + language + '@' + newPageParentPath + ', ' + otherLang + '@' + otherParentPath);
+
+                // 1) Create primary language page
+                const primary = await tryCreatePage(language, newPageParentPath, null);
+
+                // 2) Create other language page (with link back to primary path if created)
+                const link = primary.created ? primary.path : null;
+                const other = await tryCreatePage(otherLang, otherParentPath, link);
+
+                // 3) If both created, update primary's other_language_path
+                const otherPath = other.created ? other.path : null;
+                if (primary.created && otherPath) {
+                    await fetch(API_BASE + '/' + encodeURIComponent(primary.path), {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ other_language_path: otherPath })
+                    });
+                }
+
+                // Pick the page to display (prefer primary, fall back to other)
+                const pageToDisplay = primary.data || other.data;
+                console.log('Create results - primary:', primary, 'other:', other);
 
                 // Update state to reflect saved page
                 isNewPage = false;
-                currentPageId = createdPage.path || createdPage.id;
-                currentPageData = createdPage;
-                window.currentPageData = createdPage;
-                
-                // Update display
-                pageTitleDisplayEl.textContent = createdPage.title || title;
-                pageIdDisplayEl.textContent = ' | Path: ' + (createdPage.metadata?.file_path || createdPage.id || '');
-                pageLanguageDisplayEl.textContent = ' | Language: ' + (createdPage.language || language).toUpperCase();
-                pageStatusDisplayEl.textContent = ' | Status: ' + (createdPage.status || 'draft');
-                if (createdPage.metadata && createdPage.metadata.file_path) {
-                    filePathDisplayEl.textContent = ' | File Path: ' + createdPage.metadata.file_path;
-                    filePathDisplayEl.style.color = '#007bff';
-                    filePathDisplayEl.style.fontWeight = 'normal';
-                } else {
-                    filePathDisplayEl.textContent = '';
+                if (pageToDisplay) {
+                    currentPageId = pageToDisplay.path || pageToDisplay.id;
+                    currentPageData = pageToDisplay;
+                    window.currentPageData = pageToDisplay;
+
+                    // Update display
+                    pageTitleDisplayEl.textContent = pageToDisplay.title || title;
+                    pageIdDisplayEl.textContent = ' | Path: ' + (pageToDisplay.metadata?.file_path || pageToDisplay.id || '');
+                    pageLanguageDisplayEl.textContent = ' | Language: ' + (pageToDisplay.language || language).toUpperCase();
+                    pageStatusDisplayEl.textContent = ' | Status: ' + (pageToDisplay.status || 'draft');
+                    if (pageToDisplay.metadata && pageToDisplay.metadata.file_path) {
+                        filePathDisplayEl.textContent = ' | File Path: ' + pageToDisplay.metadata.file_path;
+                        filePathDisplayEl.style.color = '#007bff';
+                        filePathDisplayEl.style.fontWeight = 'normal';
+                    } else {
+                        filePathDisplayEl.textContent = '';
+                    }
+                    lastModifiedDisplayEl.textContent = formatLastModified(pageToDisplay.last_modified);
+                    pagePublishedDisplayEl.textContent = formatPublishedAt(pageToDisplay.last_published);
+
+                    // Update URL
+                    const url = new URL(window.location);
+                    url.searchParams.set('pageId', (pageToDisplay.path || pageToDisplay.id));
+                    window.history.replaceState({}, '', url);
+
+                    // Update breadcrumb
+                    try {
+                        await updateBreadcrumb(pageToDisplay);
+                    } catch (e) {
+                        console.log('Breadcrumb update error:', e.message);
+                    }
+
+                    // Reload pages sidebar
+                    setTimeout(() => {
+                        loadPagesForSidebar(pageToDisplay.path || pageToDisplay.id);
+                    }, 100);
                 }
-                lastModifiedDisplayEl.textContent = formatLastModified(createdPage.last_modified);
-                pagePublishedDisplayEl.textContent = formatPublishedAt(createdPage.last_published);
 
-                // Update URL
-                const url = new URL(window.location);
-                url.searchParams.set('pageId', (createdPage.path || createdPage.id));
-                window.history.replaceState({}, '', url);
+                // Show result message
+                const created = [];
+                if (primary.created) created.push(language.toUpperCase());
+                if (other.created) created.push(otherLang.toUpperCase());
+                const skipped = [];
+                if (primary.skipped) skipped.push(language.toUpperCase());
+                if (other.skipped) skipped.push(otherLang.toUpperCase());
 
-                // Update breadcrumb
-                try {
-                    await updateBreadcrumb(createdPage);
-                } catch (e) {
-                    console.log('Breadcrumb update error:', e.message);
-                }
+                let msg = '';
+                if (created.length > 0) msg += '✅ Created: ' + created.join(', ') + '. ';
+                if (skipped.length > 0) msg += '⚠️ Skipped (already exists): ' + skipped.join(', ') + '.';
+                if (!msg) msg = '⚠️ Both pages already exist — nothing to create.';
 
-                // Reload pages sidebar (use timeout to let state settle)
-                setTimeout(() => {
-                    loadPagesForSidebar(createdPage.path || createdPage.id);
-                }, 100);
-
-                // Show success message
-                successMessageEl.textContent = 'Page created successfully!';
+                successMessageEl.textContent = msg;
                 successMessageEl.style.display = 'block';
                 errorAreaEl.style.display = 'none';
 
-                console.log('New page created successfully');
+                console.log('Bilingual page creation complete');
             } catch (error) {
                 console.error('Error creating page:', error);
                 showError('Failed to create page: ' + error.message);
@@ -3600,10 +3559,11 @@
                 savePageBtn.disabled = false;
                 savePageBtn.innerHTML = originalText;
 
-                // Hide success message after 5 seconds
+                // Hide success messages after 8 seconds
                 setTimeout(() => {
                     successMessageEl.style.display = 'none';
-                }, 5000);
+                    errorAreaEl.style.display = 'none';
+                }, 8000);
             }
         }
 
@@ -3734,7 +3694,9 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const errBody = await response.json().catch(() => ({}));
+                    const msg = errBody.detail || response.statusText || `HTTP ${response.status}`;
+                    throw new Error(msg);
                 }
 
                 // Update last modified and current page data
@@ -4558,7 +4520,11 @@
                 `;
 
                 card.addEventListener('click', () => {
-                    insertComponent(component.id);
+                    if (component.id === 'footer') {
+                        insertFooterComponent();
+                    } else {
+                        insertComponent(component.id);
+                    }
                     hideComponentsModal();
                 });
 
@@ -5657,7 +5623,79 @@
                    '</div>';
         }
 
-        async function insertComponent(componentType, options) {
+        /**
+         * Insert the real Canada.ca footer fetched from the API.
+         * Uses server-side mustache rendering first, then falls back to direct API call.
+         * Handles <html><body> stripping via the server's clean_footer_content.
+         */
+        async function insertFooterComponent() {
+            if (!tinyMceEditor) {
+                console.error('TinyMCE editor not initialized');
+                showError('Editor not initialized.');
+                return;
+            }
+
+            // Get current page language and path
+            const lang = currentPageData?.language || 'en';
+            const pagePath = currentPageData?.path || `/${lang}`;
+
+            // Helper: extract inner <footer> from full HTML doc (DB stores with <html><body> wrapper)
+            function _cleanFooterHtml(raw) {
+                var m = raw.match(/<footer[^>]*>[\s\S]*?<\/footer>/i);
+                if (m) return m[0];
+                var b = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (b) return b[1].trim();
+                return raw;
+            }
+
+            try {
+                // Option 1: Server-side mustache rendering
+                try {
+                    const dsUrl = `/api/v1/getfooter?path=${encodeURIComponent(pagePath)}`;
+                    const mustacheResp = await fetch(`/mustache/${lang}/mustache-templates/getfooter?datasource=${encodeURIComponent(dsUrl)}`);
+                    if (mustacheResp.ok) {
+                        var footerHtml = await mustacheResp.text();
+                        tinyMceEditor.insertContent(_cleanFooterHtml(footerHtml));
+                        console.log('✅ Footer inserted via mustache rendering');
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Mustache rendering failed:', e);
+                }
+
+                // Option 2: Direct API call - get institution + language level, wrap in <footer>
+                const resp = await fetch(`/api/v1/getfooter?path=${encodeURIComponent(pagePath)}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    var instContent = _cleanFooterHtml(data.institution_level?.content || '');
+                    var langContent = _cleanFooterHtml(data.language_level?.content || '');
+                    const combinedContent = (instContent + langContent).trim();
+                    if (combinedContent) {
+                        const footerHtml = '<footer id="wb-info" class="webbot-component">\n' + combinedContent + '\n</footer>';
+                        tinyMceEditor.insertContent(footerHtml);
+                        console.log('✅ Footer inserted via direct API');
+                        return;
+                    }
+                }
+
+                // Option 3: Fallback to simple pagedetails if API unavailable
+                console.warn('Footer API unavailable, using fallback pagedetails');
+                const fallbackHtml = '<footer class="pagedetails container">\n' +
+                    '  <h2 class="wb-inv">Page details</h2>\n' +
+                    '  <div class="row">\n' +
+                    '    <div class="col-sm-8 col-md-9 col-lg-9">\n' +
+                    '      <p>Date modified: <span property="dateModified">' + new Date().toISOString().slice(0, 10) + '</span></p>\n' +
+                    '    </div>\n' +
+                    '  </div>\n' +
+                    '</footer>';
+                tinyMceEditor.insertContent(fallbackHtml);
+            } catch (error) {
+                console.error('Error inserting footer:', error);
+                showError('Failed to load footer. Please check your network connection.');
+            }
+        }
+
+        function insertComponent(componentType, options) {
             if (!tinyMceEditor) {
                 console.error('TinyMCE editor not initialized');
                 return false;
@@ -5692,49 +5730,6 @@
             if (match) {
                 parsedType = match[1];
                 parsedColor = match[2];
-            }
-
-            // Helper: extract inner <footer> from full HTML doc (DB stores with <html><body> wrapper)
-            function _cleanFooterHtml(raw) {
-                var m = raw.match(/<footer[^>]*>[\s\S]*?<\/footer>/i);
-                if (m) return m[0];
-                var b = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                if (b) return b[1].trim();
-                return raw;
-            }
-
-            // Special async handling for footer: fetch real Canada.ca footer via mustache API
-            if (parsedType === 'footer') {
-                try {
-                    const currentPagePath = window.currentPageData?.path || '/' + (window.currentPageData?.language || 'en');
-                    const lang = window.currentPageData?.language || 'en';
-                    const dsUrl = '/api/v1/getfooter?path=' + encodeURIComponent(currentPagePath);
-                    const mustacheResp = await fetch('/mustache/' + lang + '/mustache-templates/getfooter?datasource=' + encodeURIComponent(dsUrl));
-                    if (mustacheResp.ok) {
-                        var footerHtml = await mustacheResp.text();
-                        tinyMceEditor.insertContent(_cleanFooterHtml(footerHtml));
-                        return true;
-                    }
-                } catch (e) {
-                    console.error('Footer fetch via mustache failed:', e);
-                }
-                // Fallback: try direct API
-                try {
-                    const currentPagePath = window.currentPageData?.path || '/' + (window.currentPageData?.language || 'en');
-                    const fallbackResp = await fetch('/api/v1/getfooter?path=' + encodeURIComponent(currentPagePath));
-                    if (fallbackResp.ok) {
-                        const fd = await fallbackResp.json();
-                        var footerHtml = _cleanFooterHtml(fd.institution_level?.content || '') + _cleanFooterHtml(fd.language_level?.content || '');
-                        if (footerHtml.trim()) {
-                            tinyMceEditor.insertContent(footerHtml);
-                            return true;
-                        }
-                    }
-                } catch (e2) {
-                    console.error('Footer fallback fetch failed:', e2);
-                }
-                // If async methods failed, fall through to hardcoded fallback
-                console.warn('Footer API fetch failed, using hardcoded fallback');
             }
 
             switch(parsedType) {
@@ -6864,7 +6859,7 @@
                     componentType = 'sidebar';
                 } else if (lowerMsg.includes('footer') || lowerMsg.includes('pied de page')) {
                     response = "Inserting footer section...";
-                    componentType = 'footer';
+                    componentType = 'footer-API'; // Use async footer insertion
                 } else if (lowerMsg.includes('search') || lowerMsg.includes('find') || lowerMsg.includes('rechercher') || lowerMsg.includes('recherche')) {
                     response = "Inserting search box...";
                     componentType = 'search';
@@ -7172,7 +7167,7 @@
 
                 // Insert or delete component if identified
                 if (componentType) {
-                    setTimeout(async () => {
+                    setTimeout(() => {
                         if (componentType === 'delete') {
                             const deleted = deleteComponent();
                             if (deleted) {
@@ -7220,9 +7215,16 @@
                             }
 
                             addAIMessage(appendMessage, 'system');
+                        } else if (componentType === 'footer-API') {
+                            // Async footer insertion
+                            insertFooterComponent().then(() => {
+                                addAIMessage(`✅ Successfully inserted footer section at cursor position.`, 'system');
+                            }).catch(() => {
+                                addAIMessage(`❌ Failed to insert footer. Make sure the editor is initialized and check console for details.`, 'system');
+                            });
                         } else {
                             // Handle regular insert commands
-                            const inserted = await insertComponent(componentType);
+                            const inserted = insertComponent(componentType);
                             if (inserted) {
                                 addAIMessage(`✅ Successfully inserted ${componentType} component at cursor position.`, 'system');
                             } else {
@@ -11949,12 +11951,28 @@
                 if (!document.getElementById('tox-zindex-fix')) {
                     var s = document.createElement('style');
                     s.id = 'tox-zindex-fix';
-                    s.textContent = '.html-edit-modal-open .tox-dialog-wrap,' +
-                        '.html-edit-modal-open .tox-menu,' +
-                        '.html-edit-modal-open .tox-pop,' +
-                        '.html-edit-modal-open .tox-pop__dialog,' +
-                        '.html-edit-modal-open .tox-notifications-container{z-index:2147483647!important}' +
-                        '.html-edit-modal-open #wysiwyg-editor-container .tox-tinymce{display:none!important}';                    document.head.appendChild(s);
+                    s.textContent = '.html-edit-modal-open .tox-tinymce-aux{' +
+                        'z-index:2147483647!important}' +
+                        '.html-edit-modal-open #wysiwyg-editor-container .tox-tinymce{display:none!important}';
+                    document.head.appendChild(s);
+                }
+
+                // Move aux container to body so TinyMCE dialogs escape modal's stacking context
+                // We ONLY move .tox-tinymce-aux (not individual dialogs) to preserve TinyMCE's internal references
+                if (!window._toxModalPoll) {
+                    window._toxModalPoll = setInterval(function() {
+                        var modal = document.querySelector('.html-edit-modal.show');
+                        if (!modal) {
+                            clearInterval(window._toxModalPoll);
+                            window._toxModalPoll = null;
+                            return;
+                        }
+                        var aux = document.querySelector('.html-edit-modal.show .tox-tinymce-aux');
+                        if (aux && aux.parentElement !== document.body) {
+                            document.body.appendChild(aux);
+                            aux.style.setProperty('z-index', '2147483647', 'important');
+                        }
+                    }, 200);
                 }
 
                 tinymce.init({
@@ -11962,7 +11980,6 @@
                     height: 450,
                     menubar: 'edit view insert format table help',
                     base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
-                    zIndex: 100000,
                     contextmenu: 'link image table',
                     plugins: [
                         'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
@@ -12001,26 +12018,24 @@
                         editor.on('init', function() {
                             setTimeout(function() { editor.focus(); }, 200);
                         });
-                        // MutationObserver: catch TinyMCE dialog elements and force z-index
-                        if (!window._toxZobserver) {
-                            window._toxZobserver = new MutationObserver(function(muts) {
-                                muts.forEach(function(m) {
-                                    m.addedNodes.forEach(function(n) {
-                                        if (n.nodeType === 1) {
-                                            if (n.matches && n.matches('.tox-dialog-wrap,.tox-menu,.tox-pop,.tox-pop__dialog,.tox-notifications-container')) {
-                                                n.style.setProperty('z-index', '2147483647', 'important');
-                                            }
-                                            if (n.querySelectorAll) {
-                                                n.querySelectorAll('.tox-dialog-wrap,.tox-menu,.tox-pop,.tox-pop__dialog,.tox-notifications-container').forEach(function(el) {
-                                                    el.style.setProperty('z-index', '2147483647', 'important');
-                                                });
-                                            }
-                                        }
-                                    });
-                                });
-                            });
-                            window._toxZobserver.observe(document.body, { childList: true, subtree: true });
-                        }
+                        // Force dialog to appear above modal
+                        editor.on('OpenWindow', function(e) {
+                            // Move the whole aux container to body — dialogs stay inside aux (TinyMCE happy)
+                            setTimeout(function() {
+                                var aux = document.querySelector('.html-edit-modal.show .tox-tinymce-aux');
+                                if (aux && aux.parentElement !== document.body) {
+                                    document.body.appendChild(aux);
+                                    aux.style.setProperty('z-index', '2147483647', 'important');
+                                }
+                            }, 0);
+                            setTimeout(function() {
+                                var aux = document.querySelector('.tox-tinymce-aux');
+                                if (aux && aux.parentElement !== document.body) {
+                                    document.body.appendChild(aux);
+                                    aux.style.setProperty('z-index', '2147483647', 'important');
+                                }
+                            }, 200);
+                        });
                     }
                 });
             }
@@ -12367,13 +12382,26 @@
                     case 'pages':
                         searchPages(pathVal, titleVal);
                         break;
+                    case 'ai-qa':
+                        searchAIQA();
+                        break;
                 }
             }
 
-            // -------- Images --------
-            async function searchImages(pathVal, titleVal) {
+            // -------- Images (with pagination) --------
+            var _imageSkip = 0;
+            var _imagePathVal = '';
+            var _imageTitleVal = '';
+
+            async function searchImages(pathVal, titleVal, append) {
                 try {
-                    var url = '/api/v1/search/documents?limit=200&mime_type=image%';
+                    _imagePathVal = pathVal || '';
+                    _imageTitleVal = titleVal || '';
+                    if (!append) {
+                        _imageSkip = 0;
+                    }
+
+                    var url = '/api/v1/search/documents?limit=30&skip=' + _imageSkip + '&mime_type=image%';
                     if (pathVal) {
                         // DB paths need /boarding prefix (e.g. /boarding/canadasite/content/dam/...)
                         // metadata.file_path is stored as /canadasite/content/dam/canada
@@ -12398,66 +12426,113 @@
                     var resp = await fetch(url);
                     if (!resp.ok) throw new Error('HTTP ' + resp.status);
                     var data = await resp.json();
-                    renderImageResults(data.documents || []);
+                    var docs = data.documents || [];
+                    renderImageResults(docs, append);
+                    if (docs.length > 0) {
+                        _imageSkip += docs.length;
+                    }
                 } catch (e) {
                     resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
                 }
             }
 
-            function renderImageResults(docs) {
-                if (!docs || docs.length === 0) {
-                    resultsEl.innerHTML = '<div class="resource-empty">🔍 No images found.</div>';
-                    return;
-                }
+            // Load more images (called from Load More button)
+            window.loadMoreImages = function() {
+                searchImages(_imagePathVal, _imageTitleVal, true);
+            };
 
+            function renderImageResults(docs, append) {
                 // Filter to only image-like mime types (extra safety)
-                docs = docs.filter(function(d) {
+                var filtered = (docs || []).filter(function(d) {
                     var mt = (d.mime_type || '').toLowerCase();
                     return mt.indexOf('image') >= 0;
                 });
 
-                if (docs.length === 0) {
+                if (filtered.length === 0 && !append) {
                     resultsEl.innerHTML = '<div class="resource-empty">🔍 No images found.</div>';
                     return;
+                }
+                if (filtered.length === 0 && append) {
+                    // No more results — remove the load-more button
+                    var btn = resultsEl.querySelector('.image-load-more');
+                    if (btn) btn.remove();
+                    return;
+                }
+
+                var existingGrid = resultsEl.querySelector('.image-grid');
+                var containerHtml = '';
+                if (!append || !existingGrid) {
+                    // Start fresh
+                    containerHtml = '<div class="image-grid">';
                 }
 
                 // Helper: convert storage_path to DAM proxy URL
                 function pathToDamUrl(storagePath) {
-                    // storage_path: 'boarding/canadasite/content/dam/canada/...'
-                    // DAM proxy URL: '/content/dam/canada/...'
-                    // Strip 'boarding/canadasite' or just 'boarding/' prefix
+                    // Handles multiple path formats:
+                    //   '/content/dam/canada/doc.png' (DAM proxy path)
+                    //   'boarding/canadasite/content/dam/canada/doc.png' (relative)
+                    //   '/home/.../data/files/boarding/canadasite/content/dam/canada/doc.png' (filesystem)
+                    // Returns: '/content/dam/canada/doc.png'
                     if (!storagePath) return '';
-                    // Find 'canada/' or 'content/dam/canada/' in path
-                    var idx = storagePath.indexOf('canada/');
-                    if (idx >= 0) {
-                        return '/content/dam/' + storagePath.substring(idx);
+                    // If path contains /content/dam/, extract from there (works for all formats)
+                    var damIdx = storagePath.indexOf('/content/dam/');
+                    if (damIdx >= 0) {
+                        return storagePath.substring(damIdx);
                     }
-                    // Fallback: strip leading boarding/canadasite/
-                    return '/content/dam/' + storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
+                    damIdx = storagePath.indexOf('content/dam/');
+                    if (damIdx >= 0) {
+                        return '/' + storagePath.substring(damIdx);
+                    }
+                    // Strip leading prefixes ('boarding/', 'boarding/canadasite/')
+                    var path = storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
+                    // Find 'canada/' segment as marker (works for Canada-site paths)
+                    var idx = path.indexOf('canada/');
+                    if (idx >= 0) {
+                        return '/content/dam/' + path.substring(idx);
+                    }
+                    // Fallback: prepend /content/dam/
+                    return '/content/dam/' + path;
                 }
 
-                let html = '<div class="image-grid">';
-                docs.forEach(function(doc) {
+                // Build card HTML for the new docs
+                var cardsHtml = '';
+                filtered.forEach(function(doc) {
                     var storagePath = doc.storage_path || doc.path || '';
                     var damUrl = pathToDamUrl(storagePath);
                     var filename = doc.original_filename || doc.title || 'image';
                     var fileSize = doc.file_size;
-                    html += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
-                    html += '<div class="image-card-thumb">';
-                    html += '<img src="' + damUrl + '" alt="' + filename + '" loading="lazy">';
-                    html += '</div>';
-                    html += '<div class="image-card-info">';
-                    html += '<span class="image-card-name" title="' + filename + '">' + filename + '</span>';
-                    html += '<span class="image-card-size">' + formatFileSize(fileSize) + '</span>';
-                    html += '</div>';
-                    html += '<button class="image-insert-btn" title="Insert into editor">➕</button>';
-                    html += '</div>';
+                    var hasThumb = doc.thumbnail_status === 'GENERATED';
+                    cardsHtml += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
+                    cardsHtml += '<div class="image-card-thumb">';
+                    if (hasThumb) {
+                        cardsHtml += '<img src="' + damUrl + '?thumbnail=1" alt="' + filename + '" loading="lazy">';
+                    } else {
+                        cardsHtml += '<div class="thumb-placeholder" title="No thumbnail available">🖼️</div>';
+                    }
+                    cardsHtml += '</div>';
+                    cardsHtml += '<div class="image-card-info">';
+                    cardsHtml += '<span class="image-card-name" title="' + filename + '">' + filename + '</span>';
+                    cardsHtml += '<span class="image-card-size">' + formatFileSize(fileSize) + '</span>';
+                    cardsHtml += '</div>';
+                    cardsHtml += '<button class="image-insert-btn" title="Insert into editor">➕</button>';
+                    cardsHtml += '</div>';
                 });
-                html += '</div>';
 
-                resultsEl.innerHTML = html;
+                if (!append || !existingGrid) {
+                    // Fresh render — replace content
+                    resultsEl.innerHTML = containerHtml + cardsHtml + '</div>';
+                } else {
+                    // Append to existing grid — add new cards before the load-more button
+                    existingGrid.insertAdjacentHTML('beforeend', cardsHtml);
+                    // Remove the previous load-more button (if any)
+                    var oldBtn = resultsEl.querySelector('.image-load-more');
+                    if (oldBtn) oldBtn.remove();
+                }
 
-                // Bind click events for insert buttons
+                // Append load-more button
+                resultsEl.insertAdjacentHTML('beforeend', '<div class="image-load-more" style="text-align:center;padding:12px"><button class="btn btn-primary" onclick="window.loadMoreImages()">📦 Load More Images</button></div>');
+
+                // Bind click events for ALL current image insert buttons
                 resultsEl.querySelectorAll('.image-insert-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.stopPropagation();
@@ -12474,6 +12549,23 @@
                         var url = card.dataset.url;
                         var filename = card.dataset.filename;
                         insertImageToEditor(url, filename);
+                    });
+                });
+
+                // Drag-and-drop: intercept native img drag to use original file URL
+                resultsEl.querySelectorAll('.image-card img').forEach(function(img) {
+                    img.addEventListener('dragstart', function(e) {
+                        var card = img.closest('.image-card');
+                        var originalUrl = card ? card.dataset.url : '';
+                        if (originalUrl) {
+                            // Clear native file data (prevents TinyMCE from creating blob URL)
+                            try { e.dataTransfer.clearData('Files'); } catch(ex) {}
+                            // Override drag data with original file URL (not thumbnail src)
+                            e.dataTransfer.setData('text/uri-list', originalUrl);
+                            e.dataTransfer.setData('text/plain', originalUrl);
+                            e.dataTransfer.setData('text/html', '<img src="' + originalUrl + '" />');
+                            e.dataTransfer.effectAllowed = 'copy';
+                        }
                     });
                 });
             }
@@ -12552,6 +12644,15 @@
 
                 function pathToDamUrl(storagePath) {
                     if (!storagePath) return '';
+                    // Extract /content/dam/... from any path format (filesystem or relative)
+                    var damIdx = storagePath.indexOf('/content/dam/');
+                    if (damIdx >= 0) {
+                        return storagePath.substring(damIdx);
+                    }
+                    damIdx = storagePath.indexOf('content/dam/');
+                    if (damIdx >= 0) {
+                        return '/' + storagePath.substring(damIdx);
+                    }
                     var idx = storagePath.indexOf('canada/');
                     if (idx >= 0) {
                         return '/content/dam/' + storagePath.substring(idx);
@@ -12968,6 +13069,8 @@
                 }
 
                 function addHtmlExt(p) { return p ? p + '.html' : p; }
+                // Strip .html extension for navigation
+                function stripHtmlExt(p) { return p ? p.replace(/\.html$/, '') : p; }
 
                 var html = '<div class="resource-info">📁 ' + deptPath + '</div>';
                 html += '<div class="page-list">';
@@ -12976,7 +13079,7 @@
                     var pagePath = page.path || '';
                     var pagePathHtml = addHtmlExt(pagePath);
                     html += '<div class="page-card" data-path="' + pagePathHtml + '">';
-                    html += '<div class="page-card-icon">📄</div>';
+                    html += '<div class="page-card-icon" title="Edit page">📄</div>';
                     html += '<div class="page-card-info">';
                     html += '<div class="page-card-title" title="' + title + '">' + title + '</div>';
                     html += '<div class="page-card-path">' + pagePathHtml + '</div>';
@@ -12988,19 +13091,23 @@
 
                 resultsEl.innerHTML = html;
 
-                // Bind insert buttons
+                // Bind edit icon (📄) — click to navigate/edit the page
+                resultsEl.querySelectorAll('.page-card-icon').forEach(function(icon) {
+                    icon.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = icon.closest('.page-card');
+                        var path = stripHtmlExt(card.dataset.path);
+                        // Close resource sidebar and load page
+                        closeResourceSidebar();
+                        loadPage(path);
+                    });
+                });
+
+                // Bind insert buttons (🔗) — insert link into editor
                 resultsEl.querySelectorAll('.page-insert-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.stopPropagation();
                         var card = btn.closest('.page-card');
-                        var path = card.dataset.path;
-                        var title = card.querySelector('.page-card-title').textContent;
-                        insertPageLink(path, title);
-                    });
-                });
-
-                resultsEl.querySelectorAll('.page-card').forEach(function(card) {
-                    card.addEventListener('click', function() {
                         var path = card.dataset.path;
                         var title = card.querySelector('.page-card-title').textContent;
                         insertPageLink(path, title);
@@ -13076,6 +13183,296 @@
                 setTimeout(doSearch, 100);
             }
 
+            // -------- AI Q&A --------
+            var _aiQuestion = '';
+            var _aiAnswer = '';
+            var _aiSources = [];
+
+            function searchAIQA() {
+                var defaultProvider = 'deepseek';  // default to DeepSeek (faster)
+                // Show question input UI instead of normal search
+                // Check if page has description
+                var hasDescription = currentPageData && currentPageData.description && currentPageData.description.trim();
+
+                resultsEl.innerHTML = '' +
+                    '<div class="ai-qa-section">' +
+                    '  <!-- Insert Title command -->' +
+                    '  <div style="margin-bottom:10px;padding:8px 10px;background:#f0f7ff;border:1px solid #cce5ff;border-radius:4px;">' +
+                    '    <div style="font-size:12px;color:#555;margin-bottom:4px;">⚡ Page Info Commands</div>' +
+                    '    <div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                    '      <button id="ai-insert-title-btn" class="btn btn-sm" style="background:#2780e3;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px;">📝 Insert Title</button>' +
+                    (hasDescription ? '      <button id="ai-insert-title-desc-btn" class="btn btn-sm" style="background:#2780e3;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px;">📄 Insert Title + Description</button>' : '') +
+                    '    </div>' +
+                    '  </div>' +
+                    '  <label for="ai-question-input" style="display:block;font-weight:bold;margin-bottom:6px;">❓ Ask a question</label>' +
+                    '  <textarea id="ai-question-input" class="form-control" rows="4" placeholder="e.g. How to apply for EI in Canada?" style="resize:vertical;width:100%;box-sizing:border-box;">' + escapeHtml(_aiQuestion) + '</textarea>' +
+                    '  <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                    '    <div class="btn-group btn-group-sm" role="group" style="display:inline-flex;">' +
+                    '      <button id="ai-provider-ollama-btn" class="btn btn-sm ai-provider-btn" data-provider="ollama" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:3px 0 0 3px;">🦙 Ollama</button>' +
+                    '      <button id="ai-provider-deepseek-btn" class="btn btn-sm ai-provider-btn" data-provider="deepseek" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:0 3px 3px 0;margin-left:-1px;">🌐 DeepSeek</button>' +
+                    '    </div>' +
+                    '    <button id="ai-ask-btn" class="btn btn-primary btn-sm">🤖 Ask AI</button>' +
+                    '    <button id="ai-insert-btn" class="btn btn-success btn-sm" style="display:' + (_aiAnswer ? 'inline-block' : 'none') + '">📥 Insert into Editor</button>' +
+                    '  </div>' +
+                    '  <div id="ai-answer-section" style="margin-top:12px;' + (_aiAnswer ? '' : 'display:none') + '">' +
+                    '    <h4 style="margin:0 0 8px 0;font-size:14px;color:#333;">📝 Answer</h4>' +
+                    '    <div id="ai-answer-content" class="ai-answer-content" style="white-space:pre-wrap;background:#f9f9f9;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:13px;max-height:400px;overflow-y:auto;">' + escapeHtml(_aiAnswer) + '</div>' +
+                    '    <div id="ai-sources-section" style="margin-top:8px;' + (_aiSources.length ? '' : 'display:none') + '">' +
+                    '      <h4 style="margin:0 0 4px 0;font-size:12px;color:#666;">📚 Sources</h4>' +
+                    '      <ul id="ai-sources-list" style="margin:0;padding-left:18px;font-size:12px;color:#555;">' +
+                            _aiSources.map(function(s) {
+                                return '<li>' + escapeHtml(s.page_title || '') + (s.similarity ? ' (' + Math.round(s.similarity) + '%)' : '') + '</li>';
+                            }).join('') +
+                    '      </ul>' +
+                    '    </div>' +
+                    '  </div>' +
+                    '  <div id="ai-loading" class="resource-loading" style="display:none"><span class="ai-spinner">⏳</span> Working<span class="ai-elapsed"></span></div>'
+                    '  <div id="ai-error" class="resource-error" style="display:none"></div>' +
+                    '</div>'
+                ;
+
+                // Provider toggle styling
+                var _activeProvider = 'ollama';
+                function _setActiveProvider(provider) {
+                    _activeProvider = provider;
+                    document.querySelectorAll('.ai-provider-btn').forEach(function(btn) {
+                        var isActive = btn.getAttribute('data-provider') === provider;
+                        btn.style.background = isActive ? '#2780e3' : '#f0f0f0';
+                        btn.style.color = isActive ? '#fff' : '#333';
+                        btn.style.borderColor = isActive ? '#2780e3' : '#ccc';
+                    });
+                }
+                _setActiveProvider(defaultProvider);
+
+                document.querySelectorAll('.ai-provider-btn').forEach(function(btn) {
+                    btn.onclick = function(e) {
+                        _setActiveProvider(this.getAttribute('data-provider'));
+                    };
+                });
+
+                // Bind Ask AI button
+                var askBtn = document.getElementById('ai-ask-btn');
+                if (askBtn) {
+                    askBtn.onclick = function() {
+                        var q = document.getElementById('ai-question-input');
+                        if (!q || !q.value.trim()) { alert('Please enter a question.'); return; }
+                        _aiQuestion = q.value.trim();
+                        _askAI(_aiQuestion);
+                    };
+                }
+
+                // Bind Insert button
+                var insertBtn = document.getElementById('ai-insert-btn');
+                if (insertBtn) {
+                    insertBtn.onclick = function() { _insertAIAnswer(); };
+                }
+
+
+                // Bind Insert Title buttons
+                var insertTitleBtn = document.getElementById('ai-insert-title-btn');
+                if (insertTitleBtn) {
+                    insertTitleBtn.onclick = function() {
+                        var editor = window.tinyMceEditor;
+                        if (!editor) { alert('Editor not initialized.'); return; }
+                        var page = window.currentPageData || {};
+                        var html = '<h1 id="wb-cont">' + escapeHtml(page.title || 'Untitled') + '</h1>';
+                        editor.insertContent(html);
+                    };
+                }
+                var insertTitleDescBtn = document.getElementById('ai-insert-title-desc-btn');
+                if (insertTitleDescBtn) {
+                    insertTitleDescBtn.onclick = function() {
+                        var editor = window.tinyMceEditor;
+                        if (!editor) { alert('Editor not initialized.'); return; }
+                        var page = window.currentPageData || {};
+                        var html = '<h1 id="wb-cont">' + escapeHtml(page.title || 'Untitled') + '</h1>';
+                        if (page.description && page.description.trim()) {
+                            html += '<p>' + escapeHtml(page.description.trim()) + '</p>';
+                        }
+                        editor.insertContent(html);
+                    };
+                }
+
+                // Allow Enter to submit
+                var qInput = document.getElementById('ai-question-input');
+                if (qInput) {
+                    qInput.onkeydown = function(e) {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            var v = qInput.value.trim();
+                            if (v) { _aiQuestion = v; _askAI(v); }
+                        }
+                    };
+                }
+            }
+
+            async function _askAI(question) {
+                var loadingEl = document.getElementById('ai-loading');
+                var errorEl = document.getElementById('ai-error');
+                var answerSectionEl = document.getElementById('ai-answer-section');
+                var askBtn = document.getElementById('ai-ask-btn');
+                var elapsedEl = document.querySelector('.ai-elapsed');
+
+                if (loadingEl) loadingEl.style.display = 'block';
+                if (errorEl) errorEl.style.display = 'none';
+                if (answerSectionEl) answerSectionEl.style.display = 'none';
+                if (askBtn) askBtn.disabled = true;
+
+                // Get current page language and department section
+                var lang = 'en';
+                var sitePath = '/en';
+                if (currentPageData && currentPageData.path) {
+                    var parts = currentPageData.path.split('/').filter(Boolean);
+                    // Format: /canadasite/en/services/ei...
+                    //  index:   0          1   2       3
+                    if (parts.length >= 2) {
+                        if (parts[1] === 'en' || parts[1] === 'fr') {
+                            lang = parts[1];
+                        }
+                        // Build site path = /{lang}/{department}
+                        // e.g. /en/services, /en/auditor-general
+                        if (parts.length >= 3 && parts[2]) {
+                            sitePath = '/' + lang + '/' + parts[2];
+                        } else {
+                            sitePath = '/' + lang;
+                        }
+                    }
+                }
+
+                var startTime = Date.now();
+                // Poll for elapsed time
+                var timer = setInterval(function() {
+                    if (elapsedEl) elapsedEl.textContent = '(' + Math.round((Date.now() - startTime) / 1000) + 's)';
+                }, 1000);
+
+                // Determine provider from active toggle button
+                var _activeProvider = 'deepseek';
+                var activeBtn = document.querySelector('.ai-provider-btn[style*="background: rgb(39, 128, 227)"]');
+                if (activeBtn) {
+                    _activeProvider = activeBtn.getAttribute('data-provider') || 'deepseek';
+                }
+
+                try {
+                    var body = JSON.stringify({
+                        query: question,
+                        lang: lang,
+                        site: sitePath,
+                        provider: _activeProvider
+                    });
+
+                    var resp = await fetch('/api/v1/search/ai-query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body
+                    });
+
+                    clearInterval(timer);
+
+                    if (!resp.ok) {
+                        var errText = await resp.text();
+                        throw new Error('HTTP ' + resp.status + ': ' + errText.substring(0, 200));
+                    }
+
+                    var data = await resp.json();
+                    _aiAnswer = data.answer || '';
+                    _aiSources = data.sources || [];
+
+                    // Update UI
+                    var contentEl = document.getElementById('ai-answer-content');
+                    if (contentEl) contentEl.textContent = _aiAnswer;
+
+                    var sourcesList = document.getElementById('ai-sources-list');
+                    var sourcesSection = document.getElementById('ai-sources-section');
+                    if (sourcesList) {
+                        sourcesList.innerHTML = _aiSources.map(function(s) {
+                            return '<li>' + escapeHtml(s.page_title || '') +
+                                (s.similarity ? ' (' + Math.round(s.similarity) + '%)' : '') +
+                                (s.source_url ? ' — <a href="' + escapeHtml(s.source_url) + '" target="_blank">source</a>' : '') +
+                                '</li>';
+                        }).join('');
+                    }
+                    if (sourcesSection) {
+                        sourcesSection.style.display = _aiSources.length ? 'block' : 'none';
+                    }
+                    if (answerSectionEl) answerSectionEl.style.display = 'block';
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (errorEl) errorEl.style.display = 'none';
+
+                    // Show insert button
+                    var insertBtn = document.getElementById('ai-insert-btn');
+                    if (insertBtn) insertBtn.style.display = 'inline-block';
+
+                } catch (e) {
+                    clearInterval(timer);
+                    console.error('AI query failed:', e);
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (errorEl) {
+                        errorEl.style.display = 'block';
+                        errorEl.textContent = '❌ Error: ' + e.message;
+                    }
+                } finally {
+                    if (askBtn) askBtn.disabled = false;
+                }
+            }
+
+            function _insertAIAnswer() {
+                var editor = window.tinyMceEditor;
+                if (!editor) {
+                    alert('Editor not initialized. Please focus the editor first.');
+                    return;
+                }
+                if (!_aiAnswer) {
+                    alert('No answer to insert. Ask a question first.');
+                    return;
+                }
+
+                // Build answer HTML with Answer heading, answer body, sources, and disclaimer
+                var html = '';
+
+                // Answer section
+                var answerText = _aiAnswer;
+                if (answerText.indexOf('<') >= 0 && answerText.indexOf('>') >= 0) {
+                    // Answer already has HTML
+                    html = '<h2>Answer:</h2>' + answerText;
+                } else {
+                    // Plain text — split by double newlines into paragraphs
+                    var paragraphs = answerText.split(/\n\n+/);
+                    html = '<h2>Answer:</h2>';
+                    html += paragraphs.map(function(p) {
+                        p = p.trim();
+                        if (!p) return '';
+                        var lines = p.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+                        if (lines.length <= 1) {
+                            return '<p>' + escapeHtml(lines[0]) + '</p>';
+                        }
+                        return '<p>' + lines.join('<br>') + '</p>';
+                    }).join('');
+                }
+
+                // Sources section
+                html += '<h3>Sources</h3>';
+                if (_aiSources && _aiSources.length > 0) {
+                    html += '<ul>';
+                    _aiSources.forEach(function(s) {
+                        var sourceText = escapeHtml(s.page_title || 'Untitled');
+                        if (s.source_url) {
+                            sourceText = '<a href="' + escapeHtml(s.source_url) + '">' + sourceText + '</a>';
+                        }
+                        if (s.similarity) {
+                            sourceText += ' (' + Math.round(s.similarity) + '%)';
+                        }
+                        html += '<li>' + sourceText + '</li>';
+                    });
+                    html += '</ul>';
+                }
+
+                // Disclaimer
+                html += '<p><em>These Q&A are AI-generated and reviewed and edited by content authors</em></p>';
+
+                editor.insertContent(html);
+                console.log('AI answer inserted into editor');
+            }
+
             // -------- Upload button (Images mode) --------
             var uploadBtn = document.getElementById('resource-upload-btn');
             var uploadInput = document.getElementById('resource-upload-input');
@@ -13124,5 +13521,21 @@
                         searchPages(pathVal, titleVal);
                         break;
                 }
+            };
+
+            // Close sidebar and optionally reset to Components
+            var closeResourceSidebar = window.closeResourceSidebar = function(resetToComponents) {
+                var sb = document.getElementById('resource-sidebar');
+                var toggle = document.getElementById('filebot-toggle-btn');
+                if (!sb || !toggle) return;
+                sb.classList.add('hidden');
+                toggle.classList.remove('active');
+                if (resetToComponents !== false) {
+                    resourceTypeSelect.value = 'components';
+                    pathInput.value = '/canadasite/en/components';
+                    searchInput.value = '';
+                    doSearch();
+                }
+                console.log('Resource sidebar closed');
             };
         })();

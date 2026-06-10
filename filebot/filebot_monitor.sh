@@ -71,10 +71,9 @@ restart_service() {
     # 确保端口释放
     sleep 3
     
-    # 启动新进程
+    # 启动新进程（使用start-backend.sh，自动设置LLM API key）
     cd "$BACKEND_ROOT" || exit 1
-    source venv/bin/activate
-    nohup python3 -m uvicorn main:app --host 0.0.0.0 --port 8001 > filebot_run.log 2>&1 &
+    nohup ./start-backend.sh > filebot_run.log 2>&1 &
     new_pid=$!
     
     # 等待服务启动

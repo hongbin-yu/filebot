@@ -214,10 +214,10 @@ const AdminUpload: React.FC = () => {
     const hasRelativePaths = selectedFiles.some(file => 'webkitRelativePath' in file);
     if (!hasRelativePaths) {
       const pathInfoMsg = folder.path ? `\nTarget path: ${folder.path}` : '';
-      const confirmImport = window.confirm(
+      const confirmedImport = await window.wetYesOrNo(
         `The selected files don't contain folder structure info. Continue as regular file upload?${pathInfoMsg}\n\nTo preserve folder structure, use the "Import Folder" option.`
       );
-      if (confirmImport) {
+      if (confirmedImport) {
         handleUpload();
       }
       return;
@@ -458,11 +458,11 @@ const AdminUpload: React.FC = () => {
     try {
       // 显示导入确认信息
       const websitePathInfo = folder.path ? `\n目标路径: ${folder.path}` : '';
-      const confirmImport = window.confirm(
+      const confirmedImport = await window.wetYesOrNo(
         `将要导入整个website:\n\nURL: ${url}\n\n目标文件夹: ${folder.name}${websitePathInfo}\n\n说明：\n• 这是一个后台处理任务，可能需要较长时间\n• 系统将自动抓取网页内容和相关资源\n• 导入过程可以在后台慢慢完成\n• 您可以在任务管理中查看进度\n\n确认开始导入？`
       );
       
-      if (!confirmImport) {
+      if (!confirmedImport) {
         setImportingWebsite(false);
         setWebsiteImportStatus('');
         return;

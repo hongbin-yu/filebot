@@ -243,6 +243,73 @@ def import_to_webbot(
     cursor.execute('SELECT path FROM webbot_page')
     existing_paths = {r['path'] for r in cursor.fetchall()}
 
+    # ── Step 0: Ensure folder hierarchy exists in WebBot ────────────────
+    # Before processing documents, create folder pages in WebBot for
+    # the target folder and all its sub-folders (if recursive).
+    # This ensures folders with 0 documents still get created in WebBot.
+    try:
+        folders_to_sync = [folder]  # target folder itself
+        if req.recursive:
+            subfolders = db.query(Folder).filter(
+                Folder.path.like(folder_path + '/%')
+            ).order_by(Folder.path).all()
+            folders_to_sync.extend(subfolders)
+        else:
+            subfolders = db.query(Folder).filter(
+                Folder.parent_folder_path == folder_path
+            ).order_by(Folder.path).all()
+            folders_to_sync.extend(subfolders)
+
+        for f in folders_to_sync:
+            # Compute WebBot path for this folder
+            f_prefix_parts = prefix.strip('/').split('/')
+            if len(f_prefix_parts) >= 2 and f_prefix_parts[0] == 'boarding':
+                f_effective_prefix = '/boarding/' + f_prefix_parts[1]
+            else:
+                f_effective_prefix = prefix
+
+            if f.path.startswith(f_effective_prefix):
+                f_rel = f.path[len(f_effective_prefix):]
+                if not f_rel.startswith('/'):
+                    f_rel = '/' + f_rel
+                wb_folder_path = req.path_prefix.rstrip('/') + f_rel
+            else:
+                continue
+
+            if wb_folder_path in existing_paths:
+                continue
+
+            # Build the folder hierarchy for this path
+            f_parts = [p for p in wb_folder_path.strip('/').split('/') if p]
+            if not f_parts:
+                continue
+            f_parent_path = ''
+            f_cum = ''
+            f_lang = extract_lang(wb_folder_path)
+            for i, seg in enumerate(f_parts):
+                f_cum += '/' + seg
+                if f_cum in existing_paths:
+                    f_parent_path = f_cum
+                    continue
+                is_lang = seg in LANG_CODES
+                folder_title = f.name if i == len(f_parts) - 1 else seg
+                ok = ensure_page_exists(
+                    cursor, f_cum, f_parent_path, folder_title, '',
+                    f_lang if is_lang else 'dir',
+                    status="draft",
+                    metadata={
+                        "is_folder": True,
+                        "is_language_root": is_lang,
+                        "source": "filebot_import",
+                    },
+                    hide_in_nav=True,
+                )
+                if ok != 'failed':
+                    existing_paths.add(f_cum)
+                f_parent_path = f_cum
+    except Exception as e:
+        logger.warning(f"Folder sync to WebBot failed (non-fatal): {e}")
+
     inserted = 0
     updated_count = 0
     skipped = 0
@@ -270,6 +337,11 @@ def import_to_webbot(
             if not rel_path.startswith('/'):
                 rel_path = '/' + rel_path
             wb_path = req.path_prefix.rstrip('/') + rel_path
+            # Strip .html extension from leaf path
+            if wb_path.endswith('.html'):
+                wb_path = wb_path[:-5]
+            elif wb_path.endswith('.htm'):
+                wb_path = wb_path[:-4]
         else:
             skipped += 1
             continue
@@ -285,12 +357,19 @@ def import_to_webbot(
         # Read file content — use doc path to find the file (stored_filename is just the base name)
         rel_dir = os.path.dirname(doc_path.lstrip('/'))
         full_file_path = os.path.join(FILEBOT_DATA_DIR, rel_dir, storage_path) if storage_path else ''
+        content = None
         if full_file_path and os.path.exists(full_file_path):
             with open(full_file_path, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
         else:
-            # Fallback to old method
-            content = read_file(storage_path)
+            # Fallback: check data/files/ path (for Import Website)
+            files_path = os.path.join(FILEBOT_DATA_DIR, 'files', rel_dir, storage_path) if storage_path else ''
+            if files_path and os.path.exists(files_path):
+                with open(files_path, 'r', encoding='utf-8', errors='replace') as f:
+                    content = f.read()
+            else:
+                # Fallback old method (just filename under data/)
+                content = read_file(storage_path)
         if content is None:
             errors += 1
             continue
@@ -477,6 +556,11 @@ def import_single_to_webbot(
     if not rel_path.startswith('/'):
         rel_path = '/' + rel_path
     wb_path = req.path_prefix.rstrip('/') + rel_path
+    # Strip .html extension from leaf path
+    if wb_path.endswith('.html'):
+        wb_path = wb_path[:-5]
+    elif wb_path.endswith('.htm'):
+        wb_path = wb_path[:-4]
 
     # Parse metadata
     meta = {}
@@ -489,11 +573,18 @@ def import_single_to_webbot(
     # Read file content
     rel_dir = os.path.dirname(doc.path.lstrip('/'))
     full_file_path = os.path.join(FILEBOT_DATA_DIR, rel_dir, storage_path) if storage_path else ''
+    content = None
     if full_file_path and os.path.exists(full_file_path):
         with open(full_file_path, 'r', encoding='utf-8', errors='replace') as f:
             content = f.read()
     else:
-        content = read_file(storage_path)
+        # Fallback: check data/files/ path (for Import Website)
+        files_path = os.path.join(FILEBOT_DATA_DIR, 'files', rel_dir, storage_path) if storage_path else ''
+        if files_path and os.path.exists(files_path):
+            with open(files_path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+        else:
+            content = read_file(storage_path)
     if content is None:
         wb_conn.close()
         return ImportToWebBotResponse(path=doc_path, total=1, inserted=0, updated=0, skipped=0, errors=1,

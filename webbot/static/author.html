@@ -55,6 +55,7 @@
                 <button class="resource-sidebar-close" id="resource-sidebar-close">×</button>
             </div>
             <div class="resource-sidebar-body">
+                <!-- Resource type selector -->
                 <div class="resource-selector-row">
                     <select id="resource-type-select" class="form-control">
                         <option value="components" selected>🧩 Components</option>
@@ -65,6 +66,7 @@
                     </select>
                 </div>
 
+                <!-- Search bar: path (fixed) + title (free search) -->
                 <div class="resource-search-row">
                     <div class="resource-path-field">
                         <span class="resource-path-label">📁 Path</span>
@@ -87,6 +89,7 @@
                     <button id="resource-search-btn" class="btn btn-primary btn-sm">🔍</button>
                 </div>
 
+                <!-- Results area -->
                 <div id="resource-results" class="resource-results">
                     <div class="resource-placeholder">Select a resource type and search.</div>
                 </div>
@@ -121,12 +124,14 @@
                     WebBot Author Editor
                 </h2>
                 <div class="header-actions">
+                    <!-- Login / User Info -->
                     <div id="auth-header-area" style="display: inline-block; vertical-align: middle;">
                         <button id="webbot-login-btn" class="filebot-toggle-btn" title="Login" style="display: inline-block;">🔑 Login</button>
                         <span id="webbot-user-info" class="user-info" style="display: none; font-size: 12px; color: #4CAF50; margin-right: 8px;"></span>
                         <button id="webbot-logout-btn" class="filebot-toggle-btn" title="Logout" style="display: none;">🚪</button>
                     </div>
                     <button id="ai-toggle-btn" class="filebot-toggle-btn" title="AI Assistant">🤖 AI</button>
+                    <!-- Language switcher -->
                     <div id="language-switcher" class="language-switcher" style="display: none;">
                         <a id="language-link" class="btn btn-default" href="#" target="_blank" style="padding: 5px 10px; font-size: 13px;">Other language</a>
                     </div>
@@ -140,29 +145,34 @@
                     <span id="page-lastmodified-display"></span>
                     <span id="page-published-display"></span>
                 </div>
-                <div id="breadcrumb" class="breadcrumb">
+                <!--div id="breadcrumb" class="breadcrumb">
                     <div class="breadcrumb-item">
                         <a href="navigation.html" id="home-link">nav</a>
                     </div>
-                </div>
+                </div-->
             </div>
 
             <div class="editor-content">
+                <!-- Loading state -->
                 <div id="loading-content" class="loading" style="display: none;">
                     Loading page data...
                 </div>
 
+                <!-- Error state -->
                 <div id="error-area" class="error" style="display: none;">
                     Error loading page. Please try again.
                 </div>
 
+                <!-- Success message -->
                 <div id="success-message" class="success" style="display: none;">
                     Page saved successfully!
                 </div>
 
+                <!-- Editor form (initially hidden) -->
                 <div id="editor-form" style="display: none;">
 
 
+                        <!-- Editor mode: WYSIWYG only (no HTML source mode for authors) -->
                         <div class="form-group">
                         <div class="editor-mode-switcher">
                             <button type="button" class="editor-mode-btn active" data-mode="wysiwyg">
@@ -175,6 +185,7 @@
                             </button>
                         </div>
 
+                        <!-- WYSIWYG Editor Container -->
                         <div id="wysiwyg-editor-container" class="wysiwyg-container active">
                             <!-- TinyMCE will be initialized here by editor.js -->
                         </div>
@@ -195,6 +206,7 @@
 
                 </div>
 
+                <!-- No page selected message -->
                 <div id="no-page-selected">
                     <div class="loading">
                         <p>Select a page from the tree to start editing.</p>
@@ -236,10 +248,14 @@
 
     <!-- TinyMCE WYSIWYG Editor JS already loaded in head -->
 
+
+    <!-- jQuery (required by WET-BOEW, moved to footer for performance) -->
     <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"></script>
 
+    <!-- Mustache.js template engine (using jsdelivr CDN for reliability) -->
     <script src="https://cdn.jsdelivr.net/npm/mustache@3.2.1/mustache.min.js" crossorigin="anonymous"></script>
     <script>
+        // Debug: Check Mustache.js loading
         console.log('Mustache.js script tag added');
         window.addEventListener('load', function() {
             console.log('Page loaded, Mustache.js available:', !!window.Mustache);
@@ -249,8 +265,13 @@
         });
     </script>
 
-    <script src="/static/js/editor.js?v=20260513-1553"></script>
+    <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
 
+    <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
+    <script src="/static/js/editor.js?v=20260609-1420"></script>
+
+    <!-- Initialize after all scripts are loaded -->
+    <!-- Simple Metadata Editor (Backend Use Only) -->
     <div id="metadata-modal" class="metadata-modal" style="display: none;">
         <div class="metadata-modal-content">
             <div class="metadata-modal-header">
@@ -376,6 +397,7 @@
 
     <link rel="stylesheet" href="css/metadata-modal.css">
 
+    <!-- HTML Quick Edit Modal (WYSIWYG mode only for authors) -->
     <div id="html-edit-modal" class="html-edit-modal" style="display: none;">
         <div class="html-edit-modal-content">
             <div class="html-edit-modal-header">
@@ -388,7 +410,9 @@
                 <div class="html-edit-controls">
                     <label id="html-edit-mode-label">Edit component visually. Ctrl+Enter to save, Esc to close.</label>
                 </div>
+                <!-- Code mode: raw textarea -->
                 <textarea id="html-edit-textarea" class="html-edit-textarea" spellcheck="false" style="display: none;"></textarea>
+                <!-- WYSIWYG mode: TinyMCE container -->
                 <div id="html-edit-wysiwyg" class="html-edit-wysiwyg" style="display: none;"></div>
             </div>
             <div class="html-edit-modal-footer">

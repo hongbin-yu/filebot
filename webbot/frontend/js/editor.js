@@ -5,8 +5,6 @@
         const API_BASE = '/api/v1/pages';
         let currentPageId = null;
         let currentPageData = null;
-        window.allPages = [];
-
         // Breadcrumb titles to skip (root-level home pages)
         var SKIP_BREADCRUMB_TITLES = ['canadasite', 'home', 'accueil'];
         const SITE_PREFIX = '/canadasite';
@@ -57,42 +55,6 @@
         const savePageTopBtn = document.getElementById('save-page-top');
         const breadcrumbEl = document.getElementById('breadcrumb');
 
-        // Load all pages for path resolution
-        function loadAllPages() {
-            console.log('Loading all pages for path resolution...');
-            fetch('/api/v1/pages/?limit=1000')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(pages => {
-                    console.log('All pages loaded for path resolution:', pages.length, 'pages');
-                    window.allPages = pages;
-                    console.log('allPages array populated with', window.allPages.length, 'pages');
-
-                    // If we have a page to load, try loading it now that we have all pages
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const pageIdFromUrl = urlParams.get('pageId');
-                    const pathFromUrl = urlParams.get('path');
-                    const pageToLoad = pathFromUrl || pageIdFromUrl;
-
-                    if (pageToLoad && window.hasPageBeenLoaded !== true) {
-                        console.log('Re-loading page with all pages available:', pageToLoad);
-                        window.hasPageBeenLoaded = true;
-                        // Give a small delay for any other initialization
-                        setTimeout(() => {
-                            loadPage(pageToLoad);
-                        }, 100);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading all pages:', error);
-                    console.log('Path resolution will use available data');
-                });
-        }
-
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('WebBot Editor initialized');
@@ -100,10 +62,6 @@
             setupTranslateButton();
             // Initialize components sidebar on page load
             loadComponents();
-            // Load pages for sidebar - only if no page is being loaded from URL
-            // (loadPage will call loadPagesForSidebar with page path if needed)
-            // Load all pages for path resolution (for breadcrumb navigation)
-            loadAllPages();
             // Add CSS styles for component menus
             addTemplateEditStyles();
 
@@ -1037,96 +995,6 @@
 
 
         // Build page tree from flat list
-        function buildPageTree() {
-            // Group pages by parent_path
-            const pagesByParent = {};
-            window.allPages.forEach(page => {
-                const parentId = page.parent_path || 'root';
-                if (!pagesByParent[parentId]) {
-                    pagesByParent[parentId] = [];
-                }
-                pagesByParent[parentId].push(page);
-            });
-
-            // Build tree for root pages
-            let html = '';
-            const rootPages = pagesByParent['root'] || pagesByParent[null] || [];
-
-            if (rootPages.length === 0) {
-                html = '<div class="loading">No pages found.</div>';
-            } else {
-                // Sort root pages by title
-                if (Array.isArray(rootPages)) {
-                    rootPages.sort((a, b) => a.title.localeCompare(b.title));
-                }
-
-                // Create categories for each root page with children
-                rootPages.forEach(rootPage => {
-                    const children = pagesByParent[rootPage.id] || [];
-                    const hasChildren = children.length > 0;
-
-                    html += `
-                    <div class="tree-category">
-                        <div class="tree-category-header ${hasChildren ? '' : 'no-children'}">
-                            <span class="page-title" data-page-id="${rootPage.id}">${rootPage.title}</span>
-                            ${hasChildren ? '<span class="toggle-icon">▼</span>' : ''}
-                        </div>
-                        ${hasChildren ? `
-                        <div class="tree-category-items">
-                            ${children.map(child => `
-                                <div class="page-item" data-page-id="${child.id}">
-                                    ${child.title}
-                                </div>
-                            `).join('')}
-                        </div>
-                        ` : ''}
-                    </div>
-                    `;
-                });
-            }
-
-            pageTreeEl.innerHTML = html;
-
-            // Add event listeners
-            document.querySelectorAll('.page-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const pageId = this.getAttribute('data-page-id');
-                    loadPage(pageId);
-                });
-            });
-
-            // Add event listeners for category headers
-            document.querySelectorAll('.tree-category-header').forEach(header => {
-                const toggleIcon = header.querySelector('.toggle-icon');
-                if (toggleIcon) {
-                    header.addEventListener('click', function() {
-                        const items = this.nextElementSibling;
-                        if (items && items.classList.contains('tree-category-items')) {
-                            items.classList.toggle('collapsed');
-                            this.classList.toggle('collapsed');
-                        }
-                    });
-                } else {
-                    // No children, make header clickable
-                    header.addEventListener('click', function() {
-                        const pageId = this.querySelector('.page-title').getAttribute('data-page-id');
-                        loadPage(pageId);
-                    });
-                    header.style.cursor = 'pointer';
-                }
-            });
-
-            // Make root page titles clickable
-            document.querySelectorAll('.page-title').forEach(titleEl => {
-                titleEl.style.cursor = 'pointer';
-                titleEl.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const pageId = this.getAttribute('data-page-id');
-                    loadPage(pageId);
-                });
-            });
-        }
-
         // Get effective file_path for a page, with inheritance from parent pages
         async function getEffectiveFilePath(pageId, maxDepth = 10) {
             console.log('getEffectiveFilePath called for page:', pageId, 'maxDepth:', maxDepth);
@@ -1707,35 +1575,6 @@
             return 'en';
         }
 
-        function getAvailableLanguages() {
-            const languages = new Set(['en', 'fr']); // Default languages
-
-            // Try to get languages from allPages
-            if (window.allPages && window.allPages.length > 0) {
-                window.allPages.forEach(page => {
-                    if (page.language) {
-                        languages.add(page.language.toLowerCase());
-                    }
-                });
-            }
-
-            // Also check root pages (pages with parent_path null or empty)
-            if (window.allPages && window.allPages.length > 0) {
-                window.allPages.forEach(page => {
-                    if (!page.parent_path || page.parent_path === '') {
-                        // Try to extract language from path
-                        const path = page.path || '';
-                        const parts = path.split('/').filter(p => p.trim() !== '');
-                        if (parts.length === 1 && /^[a-z]{2,3}$/.test(parts[0].toLowerCase())) {
-                            languages.add(parts[0].toLowerCase());
-                        }
-                    }
-                });
-            }
-
-            return Array.from(languages).sort();
-        }
-
         // Setup Translate Button - visible when editor content is empty and other_language_path exists
         function setupTranslateButton() {
             const translateBtn = document.getElementById('translate-btn');
@@ -2252,54 +2091,6 @@
             return path;
         }
 
-        // Get hierarchical path for a page (like getPathToPage in navigation.html)
-        function getPathToPage(pageObject) {
-            console.log('getPathToPage called with page object:', pageObject?.id);
-            if (!pageObject || !pageObject.id) {
-                console.error('Invalid page object provided to getPathToPage');
-                return [pageObject?.id || 'unknown'];
-            }
-
-            // Check if allPages is available
-            if (!window.allPages || window.allPages.length === 0) {
-                console.log('  getPathToPage: allPages not available, returning page ID only');
-                return [pageObject.id];
-            }
-
-            const path = [];
-            let currentPage = pageObject;
-
-            while (currentPage && currentPage.id) {
-                // Add current page ID to path
-                path.unshift(currentPage.id);
-                console.log(`  getPathToPage: Added ${currentPage.id} to path. Full path:`, path);
-
-                // If this page has no parent, we've reached the root
-                if (!currentPage.parent_path) {
-                    console.log('  getPathToPage: Reached root page (no parent_path)');
-                    break;
-                }
-
-                // Find the parent page in allPages array
-                const parentCandidates = window.allPages.filter(p => p.id === currentPage.parent_path);
-                console.log(`  getPathToPage: Looking for parent page id=${currentPage.parent_path}: ${parentCandidates.length} candidates`);
-
-                if (parentCandidates.length === 0) {
-                    console.log(`  getPathToPage: Parent page ${currentPage.parent_path} not found, stopping`);
-                    break;
-                }
-
-                // Take the first parent candidate
-                const parentPage = parentCandidates[0];
-
-                // Move up to parent
-                currentPage = parentPage;
-            }
-
-            console.log('getPathToPage returning path array:', path);
-            return path;
-        }
-
         // Build full path for a page given its breadcrumb path
         function buildFullPath(page, breadcrumbPath) {
             console.log('buildFullPath called for page:', page.id, 'page.path:', page.path, 'page.language:', page.language, 'breadcrumbPath length:', breadcrumbPath?.length);
@@ -2327,44 +2118,8 @@
                 return path;
             }
 
-            // Priority 2: Use getPathToPage to build hierarchical path from allPages
-            // This ensures each page gets its own correct hierarchical path
-            if (page.language && window.allPages && window.allPages.length > 0) {
-                // Get hierarchical path for this specific page
-                const hierarchicalPath = getPathToPage(page);
-                console.log('  -> getPathToPage returned:', hierarchicalPath);
-
-                if (hierarchicalPath && hierarchicalPath.length > 0) {
-                    let pathParts = [];
-
-                    // Add language as prefix if not already first element
-                    if (hierarchicalPath[0] !== page.language) {
-                        pathParts.push(page.language);
-                    }
-
-                    // Add all path elements
-                    pathParts = pathParts.concat(hierarchicalPath);
-
-                    // Construct full path
-                    const basePath = '/' + pathParts.join('/');
-
-                    // Add .html extension if not already present (lowercase)
-                    let finalPath = basePath;
-                    if (!basePath.toLowerCase().endsWith('.html')) {
-                        finalPath = basePath + '.html';
-                    }
-
-                    // Ensure extension is lowercase
-                    if (finalPath.endsWith('.HTML')) {
-                        finalPath = finalPath.replace(/\.HTML$/, '.html');
-                    }
-
-                    console.log('  -> Priority 2: Built hierarchical path using getPathToPage:', finalPath, 'from parts:', pathParts);
-                    return finalPath;
-                }
-            } else if (page.language) {
-                console.log('  -> Priority 2: Skipped - allPages not available or empty');
-            }
+            // Priority 2: (removed) previously used getPathToPage with allPages.
+            // allPages batch-load removed for performance. Falls through to Priority 3.
 
             // Priority 3: Use page.language and page.id if available (fallback)
             if (page.language) {
@@ -12713,17 +12468,24 @@
 
                 // Helper: convert storage_path to DAM proxy URL
                 function pathToDamUrl(storagePath) {
-                    // storage_path: 'boarding/canadasite/content/dam/canada/...'
-                    // or 'boarding/canadasite/content/dam/esdc-edsc/...' (no 'canada/' segment)
-                    // DAM proxy URL: '/content/dam/canada/...' or '/content/dam/esdc-edsc/...'
+                    // Handles multiple path formats:
+                    //   '/content/dam/canada/doc.png' (DAM proxy path)
+                    //   'boarding/canadasite/content/dam/canada/doc.png' (relative)
+                    //   '/home/.../data/files/boarding/canadasite/content/dam/canada/doc.png' (filesystem)
+                    // Returns: '/content/dam/canada/doc.png'
                     if (!storagePath) return '';
+                    // If path contains /content/dam/, extract from there (works for all formats)
+                    var damIdx = storagePath.indexOf('/content/dam/');
+                    if (damIdx >= 0) {
+                        return storagePath.substring(damIdx);
+                    }
+                    damIdx = storagePath.indexOf('content/dam/');
+                    if (damIdx >= 0) {
+                        return '/' + storagePath.substring(damIdx);
+                    }
                     // Strip leading prefixes ('boarding/', 'boarding/canadasite/')
                     var path = storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
-                    // If path already has /content/dam/, use it as-is (with leading /)
-                    if (path.startsWith('content/dam/') || path.startsWith('/content/dam/')) {
-                        return '/' + path.replace(/^\/+/, '');
-                    }
-                    // Find 'canada/' segment as marker
+                    // Find 'canada/' segment as marker (works for Canada-site paths)
                     var idx = path.indexOf('canada/');
                     if (idx >= 0) {
                         return '/content/dam/' + path.substring(idx);
@@ -12737,12 +12499,16 @@
                 filtered.forEach(function(doc) {
                     var storagePath = doc.storage_path || doc.path || '';
                     var damUrl = pathToDamUrl(storagePath);
-                    var thumbUrl = damUrl + '?thumbnail=1';  // 缩略图（后端缩放）
                     var filename = doc.original_filename || doc.title || 'image';
                     var fileSize = doc.file_size;
+                    var hasThumb = doc.thumbnail_status === 'GENERATED';
                     cardsHtml += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
                     cardsHtml += '<div class="image-card-thumb">';
-                    cardsHtml += '<img src="' + thumbUrl + '" alt="' + filename + '" loading="lazy">';
+                    if (hasThumb) {
+                        cardsHtml += '<img src="' + damUrl + '?thumbnail=1" alt="' + filename + '" loading="lazy">';
+                    } else {
+                        cardsHtml += '<div class="thumb-placeholder" title="No thumbnail available">🖼️</div>';
+                    }
                     cardsHtml += '</div>';
                     cardsHtml += '<div class="image-card-info">';
                     cardsHtml += '<span class="image-card-name" title="' + filename + '">' + filename + '</span>';
@@ -12878,6 +12644,15 @@
 
                 function pathToDamUrl(storagePath) {
                     if (!storagePath) return '';
+                    // Extract /content/dam/... from any path format (filesystem or relative)
+                    var damIdx = storagePath.indexOf('/content/dam/');
+                    if (damIdx >= 0) {
+                        return storagePath.substring(damIdx);
+                    }
+                    damIdx = storagePath.indexOf('content/dam/');
+                    if (damIdx >= 0) {
+                        return '/' + storagePath.substring(damIdx);
+                    }
                     var idx = storagePath.indexOf('canada/');
                     if (idx >= 0) {
                         return '/content/dam/' + storagePath.substring(idx);

@@ -32,7 +32,7 @@ logging.basicConfig(
 logger = logging.getLogger("publish-server")
 
 # 内网 FileBot API 地址（AI Search）
-FILEBOT_API_URL = "http://localhost:8002/api/v1"
+FILEBOT_API_URL = "http://localhost:8001/api/v1"
 
 # 内网 Webbot 追踪 API
 WEBBOT_TRACK_URL = "http://localhost:8000/api/v1/track"
@@ -130,10 +130,10 @@ async def ensure_service_token():
 
 
 async def proxy_mustache(request):
-    """Proxy mustache template rendering to FileBot backend (port 8002)."""
+    """Proxy mustache template rendering to FileBot backend (port 8001)."""
     path = request.url.path  # e.g. /mustache/mustache-templates/page-list
     qs = request.url.query  # e.g. datasource=...
-    target = f"http://localhost:8002{path}"
+    target = f"http://localhost:8001{path}"
     if qs:
         target += "?" + qs
     try:
@@ -141,7 +141,7 @@ async def proxy_mustache(request):
             resp = await client.get(target)
             return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "text/html"))
     except httpx.ConnectError:
-        logger.warning("Mustache proxy: FileBot 8002 unreachable")
+        logger.warning("Mustache proxy: FileBot 8001 unreachable")
         return PlainTextResponse("Mustache service unavailable", status_code=502)
     except Exception as e:
         logger.warning(f"Mustache proxy failed: {e}")

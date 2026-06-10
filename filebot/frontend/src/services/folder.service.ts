@@ -42,10 +42,6 @@ export interface FolderUpdateRequest {
   parent_folder_path?: string;
 }
 
-export interface MoveFolderRequest {
-  target_parent_folder_path?: string;  // 同应用内改变父文件夹
-}
-
 export interface FolderTreeItem extends Folder {
   children?: FolderTreeItem[];
   level: number;
@@ -194,26 +190,22 @@ class FolderService {
    */
   async getFolderTree(appSlug: string): Promise<FolderTreeItem[]> {
     console.log('🔍 [DEBUG] folderService.getFolderTree:', appSlug);
-    const response = await api.get(`/folders/app/${appSlug}/tree`);
+    const response = await api.get(`/folders/tree/${appSlug}`);
     return response.data;
   }
 
   /**
-   * 移动文件夹（同应用内移动）
-   * @param folderPath 要移动的文件夹路径
-   * @param targetParentFolderId 目标父文件夹ID（可选）
-   * @returns 移动后的文件夹
+   * 移动文件夹到另一父目录（递归更新所有子路径）
+   * @param folderPath 要移动的文件夹路径（如 /boarding/canadasite/en/old-parent/subfolder）
+   * @param targetParentPath 目标父文件夹路径（如 /boarding/canadasite/en/new-parent）
+   * @returns 移动结果
    */
-  async moveFolder(folderPath: string, targetParentFolderId?: string): Promise<Folder> {
-    const request: MoveFolderRequest = {};
-    
-    if (targetParentFolderId) {
-      request.target_parent_folder_id = targetParentFolderId;
-    }
-    
-    console.log('🔍 [DEBUG] folderService.moveFolder:', { folderPath, request });
-    const response = await api.patch(`/folders/${encodeURIComponent(folderPath)}/move`, request);
-    return response.data;
+  async moveFolder(folderPath: string, targetParentPath: string): Promise<Folder> {
+    console.log('🔍 [DEBUG] folderService.moveFolder:', { folderPath, targetParentPath });
+    const response = await api.post(`/folders/${encodeURIComponent(folderPath)}/move`, null, {
+      params: { target_parent_path: targetParentPath }
+    });
+    return response.data.folder;
   }
 
   /**

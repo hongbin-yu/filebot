@@ -103,6 +103,14 @@ except ImportError as e:
     track_router = None
 
 try:
+    from .references import router as references_router
+    REFERENCES_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  References route import failed: {e}")
+    REFERENCES_ENABLED = False
+    references_router = None
+
+try:
     from .translate import router as translate_router
     TRANSLATE_ENABLED = True
 except ImportError as e:
@@ -110,4 +118,4 @@ except ImportError as e:
     TRANSLATE_ENABLED = False
     translate_router = None
 
-__all__ = ["pages_router", "pages_v1_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "tags_router", "analytics_router", "versions_router", "schedule_router", "mail_router", "feedback_router", "track_router", "translate_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED", "TAGS_ENABLED", "ANALYTICS_ENABLED", "VERSIONS_ENABLED", "SCHEDULE_ENABLED", "MAIL_ENABLED", "FEEDBACK_ENABLED", "TRACK_ENABLED", "TRANSLATE_ENABLED"]
+__all__ = ["pages_router", "pages_v1_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "tags_router", "analytics_router", "versions_router", "schedule_router", "mail_router", "feedback_router", "track_router", "references_router", "translate_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED", "TAGS_ENABLED", "ANALYTICS_ENABLED", "VERSIONS_ENABLED", "SCHEDULE_ENABLED", "MAIL_ENABLED", "FEEDBACK_ENABLED", "TRACK_ENABLED", "REFERENCES_ENABLED", "TRANSLATE_ENABLED"]

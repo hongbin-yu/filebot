@@ -150,11 +150,7 @@
         }
 
         .page-info {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
-            width: 100%;
-            order: 3; /* Ensure it appears after the header and actions */
+            /* (styles removed - moved to Resource menu) */
         }
 
         .editor-content {
@@ -563,6 +559,22 @@
             color: #5bc0de;
         }
 
+        /* AI Q&A section */
+        .ai-answer-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .ai-answer-content p {
+            margin: 0 0 6px 0;
+        }
+        .ai-qa-section textarea:focus {
+            border-color: #2780e3;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(39,128,227,0.15);
+        }
+
         /* Image grid */
         .image-grid {
             display: flex;
@@ -601,6 +613,16 @@
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+        }
+
+        .thumb-placeholder {
+            font-size: 28px;
+            opacity: 0.35;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
 
         .image-card-info {
@@ -774,6 +796,13 @@
         .page-card-icon {
             font-size: 18px;
             flex-shrink: 0;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .page-card-icon:hover {
+            background: #e3f2fd;
         }
 
         .page-card-info {
@@ -1454,7 +1483,7 @@
         }
 
         .components-modal.show {
-            display: flex;
+            display: flex !important;
         }
 
         .components-modal-content {
@@ -2003,3 +2032,103 @@
             padding: 4px 10px;
             border-radius: 3px;
         }
+
+/* ============================================================
+   Tag Tree Lightbox Styles (shared with navigation)
+   ============================================================ */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1040;
+    background-color: #000;
+    opacity: 0.5;
+}
+
+.tag-selection-display {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fafafa;
+    min-height: 32px;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 4px;
+}
+
+.tag-selection-item {
+    display: inline-block;
+    background: #e8f4fd;
+    border: 1px solid #bcd9f0;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 2px 3px;
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+.tag-selection-item .remove-tag {
+    cursor: pointer;
+    color: #c00;
+    margin-left: 4px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.tag-selection-item .remove-tag:hover {
+    color: #800;
+}
+
+.ttm-tag-list .ttm-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    border-bottom: 1px solid #eee;
+    cursor: default;
+    transition: background 0.1s;
+}
+
+.ttm-tag-list .ttm-item:hover {
+    background: #f0f7ff;
+}
+
+.ttm-tag-list .ttm-item .ttm-check {
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.ttm-tag-list .ttm-item .ttm-label {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.ttm-tag-list .ttm-item .ttm-label .ttm-title {
+    font-size: 13px;
+    color: #333;
+}
+
+.ttm-tag-list .ttm-item .ttm-label .ttm-path {
+    font-size: 11px;
+    color: #999;
+    display: block;
+}
+
+.ttm-tag-list .ttm-item .ttm-has-children {
+    color: #2572b4;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.ttm-tag-list .ttm-item .ttm-has-children:hover {
+    background: #e0ecf7;
+}
+
+.ttm-tag-list .ttm-item.selected {
+    background: #d4edda;
+}

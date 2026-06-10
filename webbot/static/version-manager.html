@@ -270,6 +270,7 @@
         }
     </style>
 <script src="/static/js/webbot-auth.js"></script>
+<script src="/static/js/wet-alert.js?v=20260605"></script>
 </head>
 <body>
     <div style="max-width:1100px;margin:0 auto;">
@@ -468,7 +469,7 @@
                                             onclick="event.stopPropagation(); viewRawHTML('${pagePath}', ${v.version})">
                                             🔍 HTML
                                         </button>
-                                        <span>${formatBytes(v.html_size)}</span>
+                                        <span>${formatBytes(v.content_size || v.html_size)}</span>
                                     </span>
                                 </div>
                             `).join('')}
@@ -519,7 +520,7 @@
         /* ── Compare ── */
         async function doCompare() {
             if (compareSelections.size < 2) {
-                alert('Select exactly 2 versions to compare (checkboxes on the left).');
+                showWetAlert('Select exactly 2 versions to compare (checkboxes on the left).');
                 return;
             }
             const versions = Array.from(compareSelections).sort((a, b) => a - b);
@@ -560,8 +561,7 @@
                     const win = window.open('', '_blank');
                     win.document.write('<!DOCTYPE html><html><head><title>Raw HTML v' + version + '</title>');
                     win.document.write('<style>body{font-family:monospace;padding:20px;white-space:pre-wrap;word-break:break-word;background:#fff;color:#333;max-width:1200px;margin:0 auto;}</style>');
-                    win.document.write('<script src="/static/js/webbot-auth.js"></script>
-</head><body>');
+                    win.document.write('<script src="/static/js/webbot-auth.js"><' + '/script></head><body>');
                     win.document.write('<div style="background:#f0f4f8;padding:12px;border-radius:8px;margin-bottom:20px;font-family:sans-serif;font-size:14px;">');
                     win.document.write('<strong>📄 ' + escHtml(pagePath) + '</strong> · v' + version + ' · ' + formatDate(data.created_at));
                     win.document.write('<br><span style="color:#888;">Raw HTML content (' + formatBytes((data.content || '').length) + ')</span>');
@@ -573,7 +573,7 @@
                     win.document.close();
                 }
             } catch (e) {
-                alert('Error loading version: ' + e.message);
+                showWetAlert('Error loading version: ' + e.message);
             }
         }
 
@@ -590,7 +590,7 @@
             if (!version && currentVersions.length > 0) {
                 version = currentVersions[0].version; // latest
             }
-            if (!version) return alert('Select a version to rollback to.');
+            if (!version) return showWetAlert('Select a version to rollback to.');
 
             if (!confirm('⏪ Rollback ' + currentPagePath + ' to v' + version + '?\n\nThis will:\n1. Restore historical content\n2. Re-render with current templates\n3. Re-publish via FileBot\n\nProceed?')) return;
 
@@ -599,13 +599,13 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        alert('✅ Rolled back to v' + version + ' successfully!');
+                        showWetAlert('✅ Rolled back to v' + version + ' successfully!');
                         viewPageHistory(currentPagePath);
                     } else {
-                        alert('❌ Rollback failed: ' + (data.detail || 'Unknown error'));
+                        showWetAlert('❌ Rollback failed: ' + (data.detail || 'Unknown error'));
                     }
                 })
-                .catch(e => alert('❌ Error: ' + e.message));
+                .catch(e => showWetAlert('❌ Error: ' + e.message));
         }
 
         function closeDetail() {
@@ -630,5 +630,31 @@
             setTimeout(function() { viewPageHistory(initPath); }, 500);
         }
     </script>
+
+    <!-- WET-compatible alert & confirm modals -->
+    <section id="wet-alert-modal" class="modal-dialog modal-content overlay-def mfp-hide" aria-hidden="true" role="dialog">
+        <div class="modal-header">
+            <h2 class="modal-title">Alert</h2>
+        </div>
+        <div class="modal-body">
+            <p id="wet-alert-message"></p>
+        </div>
+        <div class="modal-footer">
+        </div>
+    </section>
+
+    <section id="wet-confirm-modal" class="modal-dialog modal-content overlay-def mfp-hide" aria-hidden="true" role="dialog">
+        <div class="modal-header">
+            <h2 class="modal-title">Confirm</h2>
+        </div>
+        <div class="modal-body">
+            <p id="wet-confirm-message"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="wet-confirm-yes">Yes</button>
+            <button type="button" class="btn btn-default" id="wet-confirm-no">No</button>
+        </div>
+    </section>
+
 </body>
 </html>

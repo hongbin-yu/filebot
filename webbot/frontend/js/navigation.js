@@ -785,7 +785,7 @@ function setupButtons() {
     // ============================================================================
     btnEdit.addEventListener('click', function() {
         if (selectedPageData) {
-            window.open('/static/editor.html?pageId=' + encodePath(selectedPageData.path), '_blank');
+            window.open('/static/editor.html?pageId=' + encodePath(selectedPageData.path), 'editor');
         }
     });
 
@@ -1568,7 +1568,7 @@ function setupButtons() {
             // Open English page editor in new tab (if EN was created)
             if (enResult.created || enResult.path) {
                 var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
-                window.open(editorUrl, '_blank');
+                window.open(editorUrl, 'editor');
             }
 
             // Close the Create dialog
@@ -2061,7 +2061,7 @@ function viewRawHTML() {
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
             if (!data || !data.versions || data.versions.length === 0) {
-                alert('No versions available');
+                showWetAlert('No versions available');
                 return;
             }
             var latest = data.versions[0];
@@ -2084,9 +2084,9 @@ function viewRawHTML() {
                         win.document.close();
                     }
                 })
-                .catch(function(e) { alert('Error: ' + e.message); });
+                .catch(function(e) { showWetAlert('Error: ' + e.message); });
         })
-        .catch(function(e) { alert('Error: ' + e.message); });
+        .catch(function(e) { showWetAlert('Error: ' + e.message); });
 }
 
 // Open version manager compare mode
@@ -2136,7 +2136,7 @@ function setSchedule() {
     if (!path) return;
     const dtValue = document.getElementById('prop-schedule-dt').value;
     if (!dtValue) {
-        alert('Please select a date and time');
+        showWetAlert('Please select a date and time');
         return;
     }
     // Convert local datetime to ISO format
@@ -2154,7 +2154,7 @@ function setSchedule() {
                 '✅ Set for ' + isoStr;
         }
     })
-    .catch(() => alert('Failed to set schedule'));
+    .catch(() => showWetAlert('Failed to set schedule'));
 }
 
 function cancelSchedule() {
@@ -2170,7 +2170,7 @@ function cancelSchedule() {
             document.getElementById('prop-schedule-status').textContent = '❌ Cancelled';
         }
     })
-    .catch(() => alert('Failed to cancel schedule'));
+    .catch(() => showWetAlert('Failed to cancel schedule'));
 }
 
 /* ✅ Approval */
@@ -2221,7 +2221,7 @@ function approvePage() {
             loadApprovalInfo(path);
         }
     })
-    .catch(() => alert('Failed to approve page'));
+    .catch(() => showWetAlert('Failed to approve page'));
 }
 
 function unapprovePage() {
@@ -2237,7 +2237,7 @@ function unapprovePage() {
             loadApprovalInfo(path);
         }
     })
-    .catch(() => alert('Failed to revoke approval'));
+    .catch(() => showWetAlert('Failed to revoke approval'));
 }
 
 console.log('Navigation Module loaded.');

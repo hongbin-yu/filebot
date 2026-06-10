@@ -785,3 +785,90 @@
 .tag-editor-row .btn-save-tag {
     margin-right: 4px;
 }
+
+/* Tag selection display in properties modal */
+.tag-selection-display {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fafafa;
+    min-height: 32px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.tag-selection-item {
+    display: inline-block;
+    background: #e8f4fd;
+    border: 1px solid #bcd9f0;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 2px 3px;
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+.tag-selection-item .remove-tag {
+    cursor: pointer;
+    color: #c00;
+    margin-left: 4px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.tag-selection-item .remove-tag:hover {
+    color: #800;
+}
+
+/* Tag tree modal */
+.ttm-tag-list .ttm-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    border-bottom: 1px solid #eee;
+    cursor: default;
+    transition: background 0.1s;
+}
+
+.ttm-tag-list .ttm-item:hover {
+    background: #f0f7ff;
+}
+
+.ttm-tag-list .ttm-item .ttm-check {
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.ttm-tag-list .ttm-item .ttm-label {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.ttm-tag-list .ttm-item .ttm-label .ttm-title {
+    font-size: 13px;
+    color: #333;
+}
+
+.ttm-tag-list .ttm-item .ttm-label .ttm-path {
+    font-size: 11px;
+    color: #999;
+    display: block;
+}
+
+.ttm-tag-list .ttm-item .ttm-has-children {
+    color: #2572b4;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.ttm-tag-list .ttm-item .ttm-has-children:hover {
+    background: #e0ecf7;
+}
+
+.ttm-tag-list .ttm-item.selected {
+    background: #d4edda;
+}

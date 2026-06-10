@@ -74,7 +74,7 @@ const AdminUsers: React.FC = () => {
 
   // Delete user
   const handleDelete = async (user: User) => {
-    const confirmed = window.confirm(
+    const confirmed = await window.wetYesOrNo(
       `Are you sure you want to delete user "${user.username}"? This action cannot be undone.`
     );
     if (!confirmed) return;
@@ -93,7 +93,7 @@ const AdminUsers: React.FC = () => {
   const handleToggleActive = async (user: User) => {
     try {
       const action = user.is_active ? 'deactivate' : 'activate';
-      const confirmed = window.confirm(`Are you sure you want to ${action} user "${user.username}"?`);
+      const confirmed = await window.wetYesOrNo(`Are you sure you want to ${action} user "${user.username}"?`);
       if (!confirmed) return;
 
       const updated = await userService.toggleActive(user.id);

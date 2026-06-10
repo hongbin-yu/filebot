@@ -66,7 +66,7 @@ const AdminAppsDashboard: React.FC = () => {
 
   // Handle delete application
   const handleDeleteApp = async (appId: string, appName: string) => {
-    const confirmed = window.confirm(`Are you sure you want to delete the application "${appName}"? This action will delete all associated folders and documents and cannot be undone.`);
+    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete the application "${appName}"? This action will delete all associated folders and documents and cannot be undone.`);
     if (!confirmed) {
       return;
     }

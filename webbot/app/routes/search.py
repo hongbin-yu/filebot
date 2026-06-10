@@ -83,6 +83,7 @@ def search_documents(
                 conditions.append("title ILIKE %s")
                 params.append(f"%{title}%")
 
+
             if status:
                 conditions.append("status = %s")
                 params.append(status)
@@ -130,6 +131,19 @@ def search_documents(
             rows = cur.fetchall()
 
             documents = [dict(row) for row in rows]
+
+            # Strip /boarding/canadasite prefix from path fields for frontend convenience
+            # Frontend doesn't need to know about this FileBot internal path structure
+            PREFIX = "/boarding/canadasite"
+            for doc in documents:
+                for field in ("path", "folder_path"):
+                    val = doc.get(field)
+                    if val and val.startswith(PREFIX):
+                        doc[field] = val[len(PREFIX):] or "/"
+                # Also handle storage_path if it starts with the prefix
+                sp = doc.get("storage_path")
+                if sp and sp.startswith(PREFIX):
+                    doc["storage_path"] = sp[len(PREFIX):] or "/"
 
             return {
                 "total": total,

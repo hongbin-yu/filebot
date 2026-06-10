@@ -131,6 +131,8 @@
         }
         .tag-row .tag-label .tag-meta { font-size: 11px; color: #aaa; margin-left: 6px; }
         .tag-row .tag-label .tag-desc { display: block; color: #aaa; font-size: 11px; margin-top: 1px; }
+        .tag-row .tag-label .tag-title-line { font-size: 13px; line-height: 1.4; }
+        .tag-row .tag-label .tag-path-line { font-size: 11px; color: #999; line-height: 1.3; word-break: break-all; }
         .tag-row .tag-actions {
             display: flex; gap: 3px; flex-shrink: 0;
             opacity: 0; transition: opacity 0.15s;
@@ -224,10 +226,10 @@
             <button class="btn btn-primary" id="add-child-btn" style="padding:3px 10px;font-size:12px;display:none;">+ Add Child</button>
         </div>
         <div class="toolbar" id="right-toolbar" style="display:none;">
-            <button onclick="expandAllChildren()">▶ Expand All</button>
-            <button onclick="collapseAllChildren()">▼ Collapse All</button>
-            <button onclick="editRootTag()">✏️ Edit Root</button>
-            <button onclick="deleteRootTag()" class="btn-danger" style="margin-left:auto">🗑️ Delete Root</button>
+            <button id="btn-up-level" onclick="navigateUp()" style="display:none;">← Up</button>
+            <span id="breadcrumb-trail" style="font-size:12px;color:#666;margin-left:8px;"></span>
+            <button onclick="editRootTag()" style="margin-left:auto">✏️ Edit Root</button>
+            <button onclick="deleteRootTag()" class="btn-danger">🗑️ Delete Root</button>
         </div>
         <div class="panel-body" id="right-body">
             <div class="right-placeholder">
@@ -242,10 +244,37 @@
 
 <script>
 const API = '/api/v1/tags';
+const TAG_ROOT = '/canadasite/tags';
 
-var allTags = [];
+// Per-level loading: only fetch the tags needed for the current view
+var rootTags = [];            // root-level tags (direct children of TAG_ROOT)
+var currentChildren = [];     // children of the currently-focused tag
+var tagIdx = {};              // all loaded tags indexed by id AND by path
 var selectedRootId = null;
-var expandedMap = {};
+var currentTagId = null;      // null = root level of namespace
+
+function getTag(id) {
+    return tagIdx[id] || null;
+}
+
+function addTags(tags) {
+    tags.forEach(function(t) {
+        tagIdx[t.id] = t;
+        tagIdx[t.path] = t;
+    });
+}
+
+function allLoadedTags() {
+    var seen = {}, r = [];
+    for (var k in tagIdx) {
+        var t = tagIdx[k];
+        if (t && typeof t === 'object' && t.id && k === t.id && !seen[t.id]) {
+            seen[t.id] = true;
+            r.push(t);
+        }
+    }
+    return r;
+}
 
 function showToast(msg, type) {
     var t = document.createElement('div');
@@ -255,34 +284,57 @@ function showToast(msg, type) {
     setTimeout(function() { t.remove(); }, 3000);
 }
 
+// ===== Data Loading =====
+
 function loadTags() {
-    fetch(API + '?flat=true')
+    // Fetch only root-level tags (direct children of TAG_ROOT)
+    fetch(API + '?parent_path=' + encodeURIComponent(TAG_ROOT))
         .then(function(r) { return r.ok ? r.json() : []; })
         .then(function(tags) {
-            allTags = tags;
-            renderRootList(tags);
+            rootTags = tags;
+            addTags(tags);
+            renderRootList();
             if (selectedRootId) {
                 var stillExists = tags.some(function(t) { return t.id === selectedRootId; });
-                if (stillExists) renderChildren(selectedRootId, tags);
+                if (stillExists) loadLevel();
                 else selectRoot(null);
             }
         })
         .catch(function(err) { showToast('Failed to load tags: ' + err.message, 'error'); });
 }
 
+function loadLevel(callback) {
+    if (!selectedRootId) return;
+    var rootTag = getTag(selectedRootId);
+    if (!rootTag) return;
+
+    var parentPath = rootTag.path;
+    if (currentTagId) {
+        var ct = getTag(currentTagId);
+        if (ct) parentPath = ct.path;
+    }
+
+    fetch(API + '?parent_path=' + encodeURIComponent(parentPath))
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(children) {
+            currentChildren = children;
+            addTags(children);
+            renderDirectChildren();
+            if (callback) callback();
+        })
+        .catch(function(err) { showToast('Failed to load children: ' + err.message, 'error'); });
+}
+
 // ===== Left Panel: Root Tags =====
-function renderRootList(tags) {
-    // Show root tags that ARE their own type (category tags like subject, audience, departments)
-    // A tag is a 'category root' if id === type — it's the category itself, not data within it
-    var roots = tags.filter(function(t) { return !t.parent_id && t.type && t.id === t.type; });
+function renderRootList() {
+    var roots = rootTags.filter(function(t) { return t.parent_path === TAG_ROOT; });
     roots.sort(function(a,b) { return a.id < b.id ? -1 : 1; });
 
     document.getElementById('root-count').textContent = roots.length;
 
     if (!roots.length) {
-        // Check if subject and audience already exist as non-root tags
-        var hasSubject = tags.some(function(t) { return t.id === 'subject'; });
-        var hasAudience = tags.some(function(t) { return t.id === 'audience'; });
+        var hasSubject = rootTags.some(function(t) { return t.id === 'subject'; });
+        var hasAudience = rootTags.some(function(t) { return t.id === 'audience'; });
         document.getElementById('root-list-container').innerHTML =
             '<div class="empty-root">Root tags missing.<br>' +
             '<button class="btn btn-primary" style="margin-top:8px;font-size:12px;padding:4px 12px;" ' +
@@ -292,7 +344,7 @@ function renderRootList(tags) {
 
     var html = '<ul class="root-list">';
     roots.forEach(function(t) {
-        var childCount = tags.filter(function(c) { return c.parent_id === t.id; }).length;
+        var childCount = t.children_count || 0;
         var pageCount = t.page_count || 0;
         var meta = [];
         if (childCount > 0) meta.push(childCount + ' child');
@@ -302,7 +354,7 @@ function renderRootList(tags) {
             '<span class="root-icon">📂</span>' +
             '<div class="root-info">' +
                 '<div class="root-id">' + esc(t.id) + '</div>' +
-                '<div class="root-meta">' + meta.join(' · ') + '</div>' +
+                '<div class="root-meta">' + esc(t.title_en || t.id) + ' · ' + meta.join(' · ') + '</div>' +
             '</div>' +
             '<span class="root-chevron">›</span>' +
         '</li>';
@@ -313,9 +365,10 @@ function renderRootList(tags) {
 
 function selectRoot(rootId) {
     selectedRootId = rootId;
-    renderRootList(allTags);
+    currentTagId = null;
+    renderRootList();
     if (rootId) {
-        renderChildren(rootId, allTags);
+        loadLevel();
     } else {
         document.getElementById('right-title').innerHTML = '<span class="current-type" style="color:#999">Select a root tag</span>';
         document.getElementById('right-body').innerHTML =
@@ -325,89 +378,63 @@ function selectRoot(rootId) {
     }
 }
 
-// ===== Right Panel: Children (flat tree under selected root) =====
-function renderChildren(rootId, tags) {
-    // rootId is 'subject' or 'audience'
-    // Find all tags with matching type (excluding the category meta-tag itself)
-    var typeTags = tags.filter(function(t) {
-        return t.type === rootId && t.id !== rootId;
-    });
+// ===== Right Panel: Breadcrumb + Direct Children =====
+function renderDirectChildren() {
+    if (!selectedRootId) return;
+    var rootTag = getTag(selectedRootId);
+    if (!rootTag) return;
 
+    var rootTitle = rootTag.title_en || selectedRootId;
     document.getElementById('right-title').innerHTML =
-        '<span class="current-type" style="color:#2572b4">' + esc(rootId) + '</span> tags';
+        '<span class="current-type" style="color:#2572b4">' + esc(rootTitle) + '</span>';
     document.getElementById('right-toolbar').style.display = 'flex';
     document.getElementById('add-child-btn').style.display = 'inline-block';
-    document.getElementById('add-child-btn').onclick = function() { addChild(rootId); };
 
-    // Build nested tree using parent_id for nesting within the type
-    var tree = buildTypeTree(typeTags, tags);
+    var currentTag = currentTagId ? getTag(currentTagId) : null;
+    var parentPath = currentTag ? currentTag.path : rootTag.path;
 
-    if (tree.length === 0) {
+    document.getElementById('add-child-btn').onclick = function() {
+        addChild(currentTagId || selectedRootId);
+    };
+
+    // currentChildren already contains direct children of parentPath
+    var directChildren = currentChildren.filter(function(t) {
+        return t.parent_path === parentPath && t.id !== selectedRootId && t.id !== currentTagId;
+    });
+    directChildren.sort(function(a,b) { return a.id < b.id ? -1 : 1; });
+
+    // Breadcrumb
+    renderBreadcrumb(rootTag, currentTag);
+
+    // Up button visibility
+    document.getElementById('btn-up-level').style.display = currentTagId ? 'inline-block' : 'none';
+
+    if (directChildren.length === 0 && !document.querySelector('.tag-editor')) {
+        var contextLabel = currentTag ? esc(currentTag.title_en || currentTag.id) : esc(selectedRootId);
         document.getElementById('right-body').innerHTML =
-            '<div class="empty-children">No ' + esc(rootId) + ' tags yet.<br>Click "+ Add Child" to add one.</div>';
+            '<div class="empty-children">No child tags under ' + contextLabel + '.<br>Click "+ Add Child" to add one.</div>';
         return;
     }
 
-    document.getElementById('right-body').innerHTML = renderChildRows(tree, 0);
-}
-
-function buildTypeTree(typeTags, allTags) {
-    // typeTags: tags filtered by the selected type
-    // Build a tree from parent_id relationships among typeTags
-    var map = {};
-    var roots = [];
-
-    // Initialize all typeTags in map
-    typeTags.forEach(function(t) { map[t.id] = t; t._children = []; });
-
-    // Build parent-child relationships using parent_id
-    typeTags.forEach(function(t) {
-        var pid = t.parent_id;
-        if (pid && map[pid]) {
-            // Has a valid parent within this type
-            map[pid]._children.push(t);
-        } else {
-            // No parent, or parent not in this type → root-level within this type
-            roots.push(t);
-        }
-    });
-
-    // Sort
-    Object.values(map).forEach(function(n) {
-        n._children.sort(function(a,b) { return a.id < b.id ? -1 : 1; });
-    });
-    roots.sort(function(a,b) { return a.id < b.id ? -1 : 1; });
-
-    return roots;
-}
-
-function renderChildRows(nodes, depth) {
     var html = '';
-    nodes.forEach(function(tag) {
-        var key = tag.id;
-        var hasChildren = tag._children && tag._children.length > 0;
-        var isExpanded = expandedMap[key];
-
-        var toggleBtn = hasChildren
-            ? '<span class="toggle-btn" onclick="toggleChildExpand(\'' + key + '\')">' + (isExpanded ? '▼' : '▶') + '</span>'
-            : '<span class="toggle-btn" style="visibility:hidden">▶</span>';
-
+    directChildren.forEach(function(tag) {
+        var childCount = tag.children_count || 0;
+        var pageCount = tag.page_count || 0;
         var counts = [];
-        if (tag.children_count > 0) counts.push(tag.children_count + ' sub');
-        if (tag.page_count > 0) counts.push(tag.page_count + ' pages');
+        if (childCount > 0) counts.push(childCount + ' sub');
+        if (pageCount > 0) counts.push(pageCount + ' pages');
         var countStr = counts.length ? ' <span class="tag-meta">(' + counts.join(', ') + ')</span>' : '';
+        var typeBadge = tag.type && tag.type !== selectedRootId ? ' <span class="tag-type">' + esc(tag.type) + '</span>' : '';
 
-        var typeBadge = tag.type ? ' <span class="tag-type">' + esc(tag.type) + '</span>' : '';
+        var titleLine = esc(tag.title_en || tag.id) +
+            (tag.title_fr ? ' <span style="color:#888;">/ ' + esc(tag.title_fr) + '</span>' : '');
 
-        html += '<div class="tag-row" style="--depth:' + depth + '">' +
+        html += '<div class="tag-row" onclick="navigateToTag(\'' + tag.id + '\')" data-tag-id="' + tag.id + '">' +
             '<div class="tag-indent"></div>' +
-            toggleBtn +
+            (childCount > 0 ? '<span class="toggle-btn">▶</span>' : '<span class="toggle-btn" style="visibility:hidden">▶</span>') +
             '<div class="tag-label">' +
-                '<span class="tag-id">' + esc(tag.id) + '</span>' +
-                (tag.label_fr ? '<span class="tag-fr">(' + esc(tag.label_fr) + ')</span>' : '') +
-                typeBadge +
-                countStr +
-                (tag.description ? '<span class="tag-desc">' + esc(tag.description) + '</span>' : '') +
+                '<div class="tag-title-line">' + titleLine + '</div>' +
+                '<div class="tag-path-line">' + esc(tag.path || (TAG_ROOT + '/' + tag.id)) + countStr + '</div>' +
             '</div>' +
             '<div class="tag-actions">' +
                 '<button class="btn-add-child" onclick="event.stopPropagation(); addChild(\'' + tag.id + '\')" title="Add child">+</button>' +
@@ -415,49 +442,72 @@ function renderChildRows(nodes, depth) {
                 '<button class="btn-del" onclick="event.stopPropagation(); deleteTag(\'' + tag.id + '\')" title="Delete">🗑️</button>' +
             '</div>' +
         '</div>';
-
-        if (hasChildren && isExpanded) {
-            html += renderChildRows(tag._children, depth + 1);
-        }
     });
-    return html;
+    document.getElementById('right-body').innerHTML = html;
 }
 
-// ===== Expand / Collapse =====
-function toggleChildExpand(key) {
-    if (expandedMap[key]) { delete expandedMap[key]; }
-    else { expandedMap[key] = true; }
-    if (selectedRootId) renderChildren(selectedRootId, allTags);
-}
-
-function expandAllChildren() {
-    if (!selectedRootId) return;
-    // Expand all descendants
-    var rootTag = allTags.find(function(t) { return t.id === selectedRootId; });
-    function expandRecursive(parentId) {
-        allTags.forEach(function(t) {
-            if (t.parent_id === parentId) {
-                expandedMap[t.id] = true;
-                expandRecursive(t.id);
-            }
-        });
+function renderBreadcrumb(rootTag, currentTag) {
+    var trail = document.getElementById('breadcrumb-trail');
+    if (!currentTag) {
+        trail.innerHTML = '<strong>' + esc(rootTag.title_en || rootTag.id) + ' › all child tags</strong>';
+        return;
     }
-    expandRecursive(selectedRootId);
-    renderChildren(selectedRootId, allTags);
+
+    var crumbs = [];
+    var tag = currentTag;
+    while (tag) {
+        crumbs.unshift({ id: tag.id, title: tag.title_en || tag.id });
+        if (tag.parent_path === rootTag.path) break;
+        tag = getTag(tag.parent_path) || null;
+    }
+
+    var rootCrumb = { id: rootTag.id, title: rootTag.title_en || rootTag.id };
+    if (!crumbs.length || crumbs[0].id !== rootTag.id) {
+        crumbs.unshift(rootCrumb);
+    }
+
+    var html = crumbs.map(function(c, i) {
+        var isLast = i === crumbs.length - 1;
+        var label = esc(c.title);
+        if (isLast) {
+            return '<strong style="color:#333">' + label + '</strong>';
+        }
+        return '<a href="#" onclick="navigateToTag(\'' + c.id + '\');return false;" style="color:#2572b4;text-decoration:none;">' + label + '</a>';
+    });
+    trail.innerHTML = html.join(' › ');
 }
 
-function collapseAllChildren() {
+// ===== Navigation =====
+function navigateToTag(tagId) {
     if (!selectedRootId) return;
-    // Only collapse children of the selected root
-    allTags.forEach(function(t) {
-        var p = t.parent_id;
-        while (p) {
-            if (p === selectedRootId) { delete expandedMap[t.id]; break; }
-            var pt = allTags.find(function(x) { return x.id === p; });
-            p = pt ? pt.parent_id : null;
-        }
-    });
-    renderChildren(selectedRootId, allTags);
+    var tag = getTag(tagId);
+    if (!tag) return;
+
+    closeAllEditors();
+    currentTagId = tagId;
+    loadLevel();
+    renderRootList();
+}
+
+function navigateUp() {
+    if (!selectedRootId || !currentTagId) return;
+    var currentTag = getTag(currentTagId);
+    if (!currentTag) {
+        currentTagId = null;
+        loadLevel();
+        renderRootList();
+        return;
+    }
+    var parentPath = currentTag.parent_path;
+    if (parentPath === TAG_ROOT || !parentPath) {
+        currentTagId = null;
+    } else {
+        var parentTag = getTag(parentPath);
+        currentTagId = parentTag ? parentTag.id : null;
+    }
+    closeAllEditors();
+    loadLevel();
+    renderRootList();
 }
 
 // ===== Root Tag Actions =====
@@ -474,11 +524,10 @@ function deleteRootTag() {
 // ===== Inline Editor =====
 function openEditTag(tagId) {
     closeAllEditors();
-    var tag = allTags.find(function(t) { return t.id === tagId; });
+    var tag = getTag(tagId);
     if (!tag) return;
 
     var container = document.getElementById('right-body');
-
     var editor = document.createElement('div');
     editor.className = 'tag-editor';
     editor.setAttribute('data-edit-id', tagId);
@@ -488,9 +537,6 @@ function openEditTag(tagId) {
 
 function addChild(parentId) {
     closeAllEditors();
-    expandedMap[parentId] = true;
-    if (selectedRootId) renderChildren(selectedRootId, allTags);
-
     var container = document.getElementById('right-body');
     var editor = document.createElement('div');
     editor.className = 'tag-editor';
@@ -500,17 +546,20 @@ function addChild(parentId) {
 }
 
 function buildEditForm(tag) {
+    var loaded = allLoadedTags();
     var parentOpts = '<option value="">(none — root level)</option>';
-    allTags.forEach(function(t) {
-        if (t.id === tag.id) return;
-        parentOpts += '<option value="' + t.id + '"' + (t.id === tag.parent_id ? ' selected' : '') + '>' + t.id + '</option>';
+    loaded.forEach(function(t) {
+        if (t.path === tag.path) return;
+        parentOpts += '<option value="' + t.path + '"' + (t.path === tag.parent_path ? ' selected' : '') + '>' + esc(t.path) + '</option>';
     });
     return '<div class="row"><label>ID:</label><input class="ed-id" value="' + esc(tag.id) + '" readonly style="background:#f5f5f5;"></div>' +
+        '<div class="row"><label>Path:</label><input class="ed-path" value="' + esc(tag.path || '') + '" readonly style="background:#f5f5f5;"></div>' +
         '<div class="row"><label>Type:</label><input class="ed-type" value="' + esc(tag.type || '') + '" placeholder="e.g. subject, audience"></div>' +
-        '<div class="row"><label>FR Label:</label><input class="ed-fr" value="' + esc(tag.label_fr || '') + '"></div>' +
+        '<div class="row"><label>English Title:</label><input class="ed-title-en" value="' + esc(tag.title_en || tag.id || '') + '"></div>' +
+        '<div class="row"><label>French Title:</label><input class="ed-title-fr" value="' + esc(tag.title_fr || tag.label_fr || '') + '"></div>' +
         '<div class="row"><label>Description:</label><input class="ed-desc" value="' + esc(tag.description || '') + '"></div>' +
         '<div class="row"><label>Desc FR:</label><input class="ed-desc-fr" value="' + esc(tag.description_fr || '') + '"></div>' +
-        '<div class="row"><label>Parent:</label><select class="ed-parent">' + parentOpts + '</select></div>' +
+        '<div class="row"><label>Parent Path:</label><select class="ed-parent-path">' + parentOpts + '</select></div>' +
         '<div class="btn-row">' +
             '<button class="btn btn-success" onclick="saveEdit(\'' + tag.id + '\')">💾 Save</button>' +
             '<button class="btn btn-default" onclick="closeEditor()">Cancel</button>' +
@@ -518,26 +567,30 @@ function buildEditForm(tag) {
 }
 
 function buildNewForm(parentId) {
-    var parentTag = allTags.find(function(t) { return t.id === parentId; });
+    var parentTag = parentId ? getTag(parentId) : null;
+    var parentPath = parentTag ? parentTag.path : (parentId ? (TAG_ROOT + '/' + parentId) : TAG_ROOT);
     var defaultType = parentTag ? (parentTag.type || '') : '';
 
+    var loaded = allLoadedTags();
     var parentOpts = '';
     if (!parentId) {
         parentOpts = '<option value="">(none — root level)</option>';
-        allTags.forEach(function(t) {
-            parentOpts += '<option value="' + t.id + '">' + t.id + '</option>';
+        loaded.forEach(function(t) {
+            parentOpts += '<option value="' + t.path + '">' + esc(t.path) + '</option>';
         });
     } else {
-        parentOpts = '<option value="" disabled>Child of ' + parentId + '</option>' +
-            '<option value="' + parentId + '" selected hidden>' + parentId + '</option>';
+        parentOpts = '<option value="" disabled>Child of ' + parentPath + '</option>' +
+            '<option value="' + parentPath + '" selected hidden>' + parentPath + '</option>';
     }
 
     return '<div class="row"><label>Tag ID:</label><input class="ed-id" placeholder="english-slug" style="font-family:monospace"></div>' +
+        '<div class="row"><label>Path:</label><input class="ed-path" value="' + parentPath + '/[id]" readonly style="background:#f5f5f5;"></div>' +
         (parentId ? '' : '<div class="row"><label>Type:</label><input class="ed-type" value="' + defaultType + '" placeholder="e.g. subject, audience"></div>') +
-        '<div class="row"><label>FR Label:</label><input class="ed-fr" placeholder="Étiquette française"></div>' +
+        '<div class="row"><label>EN Title:</label><input class="ed-title-en" placeholder="English title"></div>' +
+        '<div class="row"><label>FR Title:</label><input class="ed-title-fr" placeholder="Titre français"></div>' +
         '<div class="row"><label>Description:</label><input class="ed-desc" placeholder="English description (optional)"></div>' +
         '<div class="row"><label>Desc FR:</label><input class="ed-desc-fr" placeholder="Description française (optional)"></div>' +
-        (parentId ? '' : '<div class="row"><label>Parent:</label><select class="ed-parent">' + parentOpts + '</select></div>') +
+        (parentId ? '' : '<div class="row"><label>Parent:</label><select class="ed-parent-path">' + parentOpts + '</select></div>') +
         '<div class="btn-row">' +
             '<button class="btn btn-primary" onclick="createTag(\'' + (parentId || '') + '\')">➕ Create</button>' +
             '<button class="btn btn-default" onclick="closeEditor()">Cancel</button>' +
@@ -557,15 +610,19 @@ function saveEdit(tagId) {
     var editor = document.querySelector('.tag-editor[data-edit-id="' + tagId + '"]');
     if (!editor) return;
 
+    var tag = getTag(tagId);
+    var tagPath = tag ? tag.path : (TAG_ROOT + '/' + tagId);
+
     var payload = {
         type: (editor.querySelector('.ed-type') || {}).value || null,
-        label_fr: (editor.querySelector('.ed-fr') || {}).value || '',
+        title_en: (editor.querySelector('.ed-title-en') || {}).value || tagId,
+        title_fr: (editor.querySelector('.ed-title-fr') || {}).value || '',
         description: (editor.querySelector('.ed-desc') || {}).value || '',
         description_fr: (editor.querySelector('.ed-desc-fr') || {}).value || '',
-        parent_id: (editor.querySelector('.ed-parent') || {}).value || null
+        parent_path: (editor.querySelector('.ed-parent-path') || {}).value || null
     };
 
-    fetch(API + '/' + encodeURIComponent(tagId), {
+    fetch(API + '?path=' + encodeURIComponent(tagPath), {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
@@ -583,7 +640,9 @@ function saveEdit(tagId) {
 }
 
 function deleteTag(tagId) {
-    var tag = allTags.find(function(t) { return t.id === tagId; });
+    var tag = getTag(tagId);
+    if (!tag) return;
+    var tagPath = tag.path || (TAG_ROOT + '/' + tagId);
     var msg = 'Delete tag "' + tagId + '"?';
     if (tag && tag.children_count > 0) {
         msg += '\n\n⚠️ This tag has ' + tag.children_count + ' child tag(s) — they will NOT be deleted but will become orphaned.';
@@ -593,7 +652,6 @@ function deleteTag(tagId) {
     }
     if (!confirm(msg)) return;
 
-    var tagPath = tag ? tag.path : tagId;
     fetch(API + '?path=' + encodeURIComponent(tagPath), { method: 'DELETE' })
     .then(function(r) {
         if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Delete failed'); });
@@ -601,8 +659,8 @@ function deleteTag(tagId) {
     })
     .then(function() {
         showToast('🗑️ Deleted: ' + tagId, 'info');
-        delete expandedMap[tagId];
         if (selectedRootId === tagId) selectedRootId = null;
+        if (currentTagId === tagId) currentTagId = null;
         loadTags();
     })
     .catch(function(err) { showToast('❌ ' + err.message, 'error'); });
@@ -614,10 +672,11 @@ function createTag(parentId) {
 
     var idVal = (editor.querySelector('.ed-id') || {}).value || '';
     var typeVal = (editor.querySelector('.ed-type') || {}).value || '';
-    var frVal = (editor.querySelector('.ed-fr') || {}).value || '';
+    var titleEnVal = (editor.querySelector('.ed-title-en') || {}).value || '';
+    var titleFrVal = (editor.querySelector('.ed-title-fr') || {}).value || '';
     var descVal = (editor.querySelector('.ed-desc') || {}).value || '';
     var descFrVal = (editor.querySelector('.ed-desc-fr') || {}).value || '';
-    var parentVal = (editor.querySelector('.ed-parent') || {}).value || null;
+    var parentPathVal = (editor.querySelector('.ed-parent-path') || {}).value || null;
 
     if (!idVal.trim()) { showToast('❌ Tag ID is required', 'error'); return; }
     if (!/^[a-z0-9][a-z0-9-]*$/.test(idVal.trim())) {
@@ -626,26 +685,37 @@ function createTag(parentId) {
     }
 
     var tid = idVal.trim();
+    var parentPath;
+    if (parentPathVal) {
+        parentPath = parentPathVal;
+    } else if (parentId) {
+        var parentTag = getTag(parentId);
+        parentPath = parentTag ? parentTag.path : (TAG_ROOT + '/' + parentId);
+    }
+
+    // Build full path
+    var tagPath = parentPath ? (parentPath + '/' + tid) : (TAG_ROOT + '/' + tid);
+
     var payload = {
-        id: tid,
+        path: tagPath,
         type: typeVal.trim() || null,
-        label_fr: frVal.trim() || tid,
+        title_en: titleEnVal.trim() || tid,
+        title_fr: titleFrVal.trim() || tid,
         description: descVal.trim(),
         description_fr: descFrVal.trim()
     };
-    if (parentVal) {
-        payload.parent_id = parentVal;
-    } else if (parentId) {
-        // Adding child under a root category
-        var parentTag = allTags.find(function(t) { return t.id === parentId; });
-        if (parentTag && !parentTag.parent_id) {
-            // Root tag as parent → set type, not parent_id
+    if (parentPath) {
+        payload.parent_path = parentPath;
+    }
+    if (parentId && !parentPathVal) {
+        // Root tag as parent → set type if not specified
+        var parentTag = getTag(parentId);
+        if (parentTag && parentTag.parent_path === TAG_ROOT) {
             if (!payload.type) payload.type = parentId;
-        } else {
-            payload.parent_id = parentId;
         }
-    } else {
-        // Creating a new root tag — auto-set type = id if not specified
+    }
+    if (!parentId && !parentPathVal) {
+        // New root tag — auto-set type = id
         if (!payload.type) payload.type = tid;
     }
 
@@ -659,7 +729,7 @@ function createTag(parentId) {
         return r.json();
     })
     .then(function() {
-        showToast('✅ Created: ' + idVal.trim(), 'success');
+        showToast('✅ Created: ' + tid, 'success');
         closeEditor();
         loadTags();
     })
@@ -668,8 +738,8 @@ function createTag(parentId) {
 
 function createDefaultRoots() {
     var payloads = [
-        { id: 'subject', type: 'subject', label_fr: 'Sujets' },
-        { id: 'audience', type: 'audience', label_fr: 'Publics' }
+        { id: 'subject', path: TAG_ROOT + '/subject', type: 'subject', title_en: 'Subject', title_fr: 'Sujets' },
+        { id: 'audience', path: TAG_ROOT + '/audience', type: 'audience', title_en: 'Audience', title_fr: 'Publics' }
     ];
     var pending = payloads.length;
     payloads.forEach(function(p) {
