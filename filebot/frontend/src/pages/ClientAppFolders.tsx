@@ -6,6 +6,7 @@ import folderService, { Folder } from '../services/folder.service';
 import documentService, { Document } from '../services/document.service';
 import PreviewOverlay from '../components/PreviewOverlay';
 import CreateFolderModal from '../components/folders/CreateFolderModal';
+import { showToast } from '../components/common/ToastNotification';
 
 // Format file size
 function formatSize(bytes: number): string {
@@ -309,6 +310,39 @@ const ClientAppFolders: React.FC = () => {
       navigate(`/apps/${appSlug}`, { replace: false });
     } else {
       navigate(`/apps/${appSlug}/${cleanPath}`, { replace: false });
+    }
+  };
+
+  // Import single document to WebBot
+  const handleImportToWebBot = async (doc: Document) => {
+    const docPath = doc.path || doc.storage_path || doc.id;
+    const docName = doc.title || doc.original_filename || docPath;
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/v1/import-to-webbot/single', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ document_path: docPath }),
+      });
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.detail || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.inserted > 0) {
+        showToast(`✅ "${docName}" imported to WebBot`, 'success');
+      } else if (result.updated > 0) {
+        showToast(`🔄 "${docName}" updated in WebBot`, 'success');
+      } else {
+        showToast(`⚠️ "${docName}" skipped`, 'info');
+      }
+    } catch (err: any) {
+      console.error('Import to WebBot failed:', err);
+      showToast(`Import failed: ${err.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -733,6 +767,7 @@ const ClientAppFolders: React.FC = () => {
                       <th>Size</th>
                       <th>Created</th>
                       <th>Status</th>
+                      <th style={{width:'90px'}}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -831,6 +866,15 @@ const ClientAppFolders: React.FC = () => {
                           }`}>
                             {doc.conversion_status || 'pending'}
                           </span>
+                        </td>
+                        <td className="text-center">
+                          <button type="button"
+                            onClick={() => handleImportToWebBot(doc)}
+                            className="text-emerald-600 hover:text-emerald-800 text-xs font-medium bg-transparent border-0 p-0 cursor-pointer"
+                            title="Import this page to WebBot"
+                          >
+                            WebBot
+                          </button>
                         </td>
                       </tr>
                     );
