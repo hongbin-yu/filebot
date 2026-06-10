@@ -1118,14 +1118,13 @@ const AdminAppFolders: React.FC = () => {
                                   >
                                     Preview
                                   </button>
-                                  {doc.file_type === 'HTML' && (
-                                    <button type="button"
-                                      className="text-purple-600 hover:text-purple-900 mr-3"
-                                      onClick={() => handleWebbotPush(doc)}
-                                    >
-                                      Webbot
-                                    </button>
-                                  )}
+                                  <button type="button"
+                                    className="text-emerald-600 hover:text-emerald-800 mr-3 text-sm font-medium bg-transparent border-0"
+                                    onClick={() => handleWebbotPush(doc)}
+                                    title="Import this page to WebBot"
+                                  >
+                                    WebBot
+                                  </button>
                                   <button 
                                     className="text-red-600 hover:text-red-900"
                                     onClick={() => handleDeleteDocument(doc)}
