@@ -185,86 +185,86 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
   if (!isOpen || !app) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div style={{position:"fixed",top:0,right:0,bottom:0,left:0,zIndex:50,overflowY:"auto"}}>
       {/* 背景遮罩 */}
-      <div className="fixed inset-0 bg-black opacity-30" onClick={handleCancel}></div>
+      <div style={{opacity:0.3,position:"fixed",top:0,right:0,bottom:0,left:0,backgroundColor:"#000"}} onClick={handleCancel}></div>
       
       {/* 模态框 */}
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md">
+      <div className="fb-d-flex fb-align-center fb-page-bg" style={{justifyContent:"center",padding:16}}>
+        <div style={{position:"relative",backgroundColor:"#fff",borderRadius:8,boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)",width:"100%",maxWidth:448}}>
           {/* 标题 */}
-          <div className="px-6 py-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-900">{t('appModal.editApp')}</h3>
-            <p className="text-sm text-gray-600 mt-1">{t('appModal.editAppSubtitle')}</p>
+          <div style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,borderBottom:"1px solid #e5e7eb"}}>
+            <h3 style={{fontSize:"1.125rem",lineHeight:"1.75rem",fontWeight:600,color:"#111827"}}>{t('appModal.editApp')}</h3>
+            <p className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",marginTop:4}}>{t('appModal.editAppSubtitle')}</p>
           </div>
 
           {/* 表单 */}
           <form onSubmit={handleSubmit}>
-            <div className="px-6 py-4 space-y-4">
+            <div style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,display:"flex",flexDirection:"column",gap:16}}>
               {/* 错误提示 */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm text-red-800">{error}</p>
+                <div style={{backgroundColor:"#fef2f2",border:"1px solid #ddd",borderColor:"#fecaca",borderRadius:8,padding:12}}>
+                  <p style={{fontSize:"0.875rem",lineHeight:"1.25rem",color:"#991b1b"}}>{error}</p>
                 </div>
               )}
 
               {/* 应用ID显示（只读） */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                   {t('appModal.appId')}
                 </label>
                 <input
                   type="text"
                   value={app.id}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                  className="text-muted" style={{width:"100%",paddingLeft:12,paddingRight:12,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:6,backgroundColor:"#f9fafb"}}
                   readOnly
                   disabled
                 />
-                <p className="text-xs text-gray-500 mt-1">{t('appModal.appIdDescription')}</p>
+                <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>{t('appModal.appIdDescription')}</p>
               </div>
 
               {/* 应用名称 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('appModal.appNameLabel')} <span className="text-red-500">*</span>
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
+                  {t('appModal.appNameLabel')} <span style={{color:"#ef4444"}}>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={handleNameChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-control"
                   placeholder={t('appModal.appNamePlaceholder')}
                   disabled={loading}
                   autoFocus
                 />
-                <p className="text-xs text-gray-500 mt-1">{t('appModal.appDisplayName')}</p>
+                <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>{t('appModal.appDisplayName')}</p>
               </div>
 
               {/* 应用标识 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('appModal.appSlugLabel')} <span className="text-red-500">*</span>
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
+                  {t('appModal.appSlugLabel')} <span style={{color:"#ef4444"}}>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={handleSlugChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-control"
                   placeholder={t('appModal.slugPlaceholder')}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">{t('appModal.slugUsageHint')}</p>
+                <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>{t('appModal.slugUsageHint')}</p>
               </div>
 
               {/* 应用描述 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                   {t('appModal.appDescriptionLabel')}
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={handleDescriptionChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-control"
                   placeholder={t('appModal.appDescriptionPlaceholder')}
                   rows={3}
                   disabled={loading}
@@ -273,90 +273,90 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ isOpen, onClose, onSuccess,
 
               {/* 索引字段 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                   {t('appModal.documentIndexFields')}
                 </label>
                 <input
                   type="text"
                   value={formData.settings.indices?.join(',') || ''}
                   onChange={handleIndicesChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-control"
                   placeholder={t('appModal.indexFieldsPlaceholder')}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">{t('appModal.indexFieldsHint')}</p>
+                <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>{t('appModal.indexFieldsHint')}</p>
               </div>
 
               {/* 重定向URL - 用于统一仪表板 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                   {t('appModal.redirectUrlLabel')}
                 </label>
                 <input
                   type="text"
                   value={formData.redirect_url}
                   onChange={handleRedirectUrlChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-control"
                   placeholder={t('appModal.redirectUrlPlaceholder')}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                   {t('appModal.redirectUrlHint')}
                 </p>
               </div>
 
               {/* Default Entry Path */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
 Default Entry Path
                 </label>
                 <input
                   type="text"
                   value={formData.default_entry}
                   onChange={handleDefaultEntryChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-control"
                   placeholder="e.g. canadasite"
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
 Optional default entry path. When set, clicking this app goes directly to /apps/:slug/:path
                 </p>
               </div>
 
               {/* Icon */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                   {t('appModal.iconLabel')}
                 </label>
-                <div className="flex items-center space-x-2">
+                <div className="fb-d-flex fb-align-center" style={{display:"flex",gap:8}}>
                   <input
                     type="text"
                     value={formData.icon}
                     onChange={handleIconChange}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    style={{flex:1,paddingLeft:12,paddingRight:12,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:6}}
                     placeholder={t('appModal.iconPlaceholder')}
                     disabled={loading}
                   />
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-lg">{formData.icon || '📄'}</span>
+                  <div className="fb-d-flex fb-align-center" style={{width:40,height:40,backgroundColor:"#f3f4f6",borderRadius:8,justifyContent:"center"}}>
+                    <span style={{fontSize:"1.125rem",lineHeight:"1.75rem"}}>{formData.icon || '📄'}</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                   {t('appModal.iconHint')}
                 </p>
-                <div className="text-xs text-gray-500 mt-1">
-                  <span className="font-medium">{t('appModal.examples')}</span>
-                  <span className="mx-2">📁 {t('appModal.documentManagement')}</span>
-                  <span className="mx-2">🌐 {t('appModal.webBotApp')}</span>
-                  <span className="mx-2">🏛️ {t('appModal.governmentServices')}</span>
-                  <span className="mx-2">🧾 {t('appModal.invoiceSystem')}</span>
-                  <span className="mx-2">🔍 {t('appModal.dataAnalysis')}</span>
+                <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
+                  <span style={{fontWeight:500}}>{t('appModal.examples')}</span>
+                  <span style={{marginLeft:8,marginRight:8}}>📁 {t('appModal.documentManagement')}</span>
+                  <span style={{marginLeft:8,marginRight:8}}>🌐 {t('appModal.webBotApp')}</span>
+                  <span style={{marginLeft:8,marginRight:8}}>🏛️ {t('appModal.governmentServices')}</span>
+                  <span style={{marginLeft:8,marginRight:8}}>🧾 {t('appModal.invoiceSystem')}</span>
+                  <span style={{marginLeft:8,marginRight:8}}>🔍 {t('appModal.dataAnalysis')}</span>
                 </div>
               </div>
 
               {/* 创建信息（只读） */}
-              <div className="pt-4 border-t border-gray-100">
-                <div className="text-sm text-gray-500">
+              <div style={{borderColor:"#f3f4f6",paddingTop:16,borderTop:"1px solid #e5e7eb"}}>
+                <div className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem"}}>
                   <p>{t('appModal.creator')}: {app.created_by || t('common.unknown')}</p>
                   <p>{t('appModal.creationTime')}: {app.created_at ? new Date(app.created_at).toLocaleString() : t('common.unknown')}</p>
                   {app.updated_at && (
@@ -367,23 +367,23 @@ Optional default entry path. When set, clicking this app goes directly to /apps/
             </div>
 
             {/* 底部按钮 */}
-            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-3">
+            <div className="fb-d-flex" style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,borderTop:"1px solid #e5e7eb",backgroundColor:"#f9fafb",justifyContent:"flex-end",display:"flex",gap:12}}>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                style={{paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,color:"#374151",backgroundColor:"#e5e7eb",borderRadius:6}}
                 disabled={loading}
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                style={{paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,backgroundColor:"#2563eb",color:"#fff",borderRadius:6}}
                 disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                    <span className="fb-spinner" style={{display:"inline-block",borderRadius:9999,height:16,width:16,borderBottomWidth:2,borderColor:"#fff",marginRight:8}}></span>
                     {t('appModal.saving')}
                   </>
                 ) : t('appModal.saveChanges')}

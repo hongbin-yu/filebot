@@ -233,20 +233,20 @@ const AdminPathView: React.FC = () => {
   // 错误状态
   if (error) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-red-800 mb-2">Load Failed</h3>
-          <p className="text-red-700 mb-4">{error}</p>
-          <div className="flex justify-center space-x-3">
+      <div style={{padding:24}}>
+        <div  style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:24}}>
+          <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#991b1b",marginBottom:8}}>Load Failed</h3>
+          <p style={{ color:"#b91c1c", marginBottom:16 }}>{error}</p>
+          <div className="fb-d-flex fb-justify-center fb-gap-2">
             <button 
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="btn btn-danger"
             >
               Reload
             </button>
             <Link 
               to="/admin/apps"
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+              className="btn btn-default"
             >
               Back to Apps
             </Link>
@@ -259,11 +259,11 @@ const AdminPathView: React.FC = () => {
   // 加载状态
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading path contents...</p>
+      <div style={{padding:24}}>
+        <div className="fb-d-flex fb-justify-center fb-align-center" style={{height:256}}>
+          <div >
+            <div className="fb-spinner" style={{height:48,width:48,borderWidth:2,borderColor:"#2563eb",borderRadius:"50%"}}></div>
+            <p  style={{ marginTop:16 }}>Loading path contents...</p>
           </div>
         </div>
       </div>
@@ -273,13 +273,13 @@ const AdminPathView: React.FC = () => {
   // 确保应用数据已加载
   if (!app) {
     return (
-      <div className="p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-yellow-800 mb-2">Missing App Info</h3>
-          <p className="text-yellow-700 mb-4">Failed to load app info. Please go back to the app list.</p>
+      <div style={{padding:24}}>
+        <div  style={{background:"#fefce8",border:"1px solid #fef08a",borderRadius:8,padding:24}}>
+          <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#854d0e",marginBottom:8}}>Missing App Info</h3>
+          <p style={{ color:"#a16207", marginBottom:16 }}>Failed to load app info. Please go back to the app list.</p>
           <Link 
             to="/admin/apps"
-            className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+            className="btn btn-warning"
           >
             Back to Apps
           </Link>
@@ -293,20 +293,20 @@ const AdminPathView: React.FC = () => {
     // 错误状态
     if (error) {
       return (
-        <div className="p-6">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <h3 className="text-lg font-medium text-red-800 mb-2">Document Load Failed</h3>
-            <p className="text-red-700 mb-4">{error}</p>
-            <div className="flex justify-center space-x-3">
+        <div style={{padding:24}}>
+          <div  style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:24}}>
+            <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#991b1b",marginBottom:8}}>Document Load Failed</h3>
+            <p style={{ color:"#b91c1c", marginBottom:16 }}>{error}</p>
+            <div className="fb-d-flex fb-justify-center fb-gap-2">
               <button 
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                className="btn btn-danger"
               >
                 Reload
               </button>
               <button 
                 onClick={handleNavigateUp}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="btn btn-default"
               >
                 Go Up
               </button>
@@ -319,11 +319,11 @@ const AdminPathView: React.FC = () => {
     // 加载状态
     if (loading) {
       return (
-        <div className="p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Loading document details...</p>
+        <div style={{padding:24}}>
+          <div className="fb-d-flex fb-justify-center fb-align-center" style={{height:256}}>
+            <div >
+              <div className="fb-spinner" style={{height:48,width:48,borderWidth:2,borderColor:"#2563eb",borderRadius:"50%"}}></div>
+              <p  style={{ marginTop:16 }}>Loading document details...</p>
             </div>
           </div>
         </div>
@@ -332,32 +332,32 @@ const AdminPathView: React.FC = () => {
     
     // 文档详情显示
     return (
-      <div className="p-6">
-        <div className="mb-6">
-          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-            <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
+      <div style={{padding:24}}>
+        <div style={{marginBottom:24}}>
+          <div className="fb-d-flex fb-align-center" style={{gap:8,fontSize:"0.875rem",marginBottom:8}}>
+            <Link to="/admin/apps" className="fb-link">Apps</Link>
             <span>›</span>
-            <Link to={`/admin/${appSlug}`} className="hover:text-blue-600">{app.name}</Link>
+            <Link to={`/admin/${appSlug}`} className="fb-link">{app.name}</Link>
             <span>›</span>
-            <span className="text-gray-700">Document Details</span>
+            <span style={{color:"#374151"}}>Document Details</span>
           </div>
-          <div className="flex justify-between items-center">
+          <div className="fb-d-flex fb-justify-between fb-align-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">
+              <h1 style={{fontSize:"1.5rem",fontWeight:700,color:"#1f2937"}}>
                 {documentDetail?.title || documentDetail?.original_filename || 'Document Details'}
               </h1>
-              <p className="text-gray-600 mt-1">Path: {getFullPath()}</p>
+              <p  style={{ marginTop:4 }}>Path: {getFullPath()}</p>
             </div>
-            <div className="flex space-x-3">
+            <div className="fb-d-flex fb-gap-2">
               <button 
                 onClick={handleNavigateUp}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="btn btn-default"
               >
                 Go Up
               </button>
               <Link 
                 to={`/admin/documents/${(documentDetail?.path || documentDetail?.storage_path || documentDetail?.id).replace(/^\//, '')}`}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="btn btn-primary"
               >
                 Full Details
               </Link>
@@ -366,30 +366,30 @@ const AdminPathView: React.FC = () => {
         </div>
         
         {/* 文档详情卡片 */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="panel panel-default" style={{overflow:"hidden"}}>
+          <div style={{padding:24}}>
+            <div className="row">
               {/* 基本信息 */}
               <div>
-                <h3 className="font-medium text-gray-700 mb-3">Basic Info</h3>
-                <div className="space-y-3">
+                <h3 className="fb-label" style={{ color:"#374151", marginBottom:12 }}>Basic Info</h3>
+                <div className="fb-space-y" style={{gap:12}}>
                   <div>
-                    <div className="text-sm text-gray-500">File Name</div>
-                    <div className="font-medium">{documentDetail?.original_filename}</div>
+                    <div  style={{fontSize:"0.875rem"}}>File Name</div>
+                    <div style={{fontWeight:500}}>{documentDetail?.original_filename}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">File Type</div>
-                    <div className="font-medium">{documentDetail?.file_type?.toUpperCase()}</div>
+                    <div  style={{fontSize:"0.875rem"}}>File Type</div>
+                    <div style={{fontWeight:500}}>{documentDetail?.file_type?.toUpperCase()}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">File Size</div>
-                    <div className="font-medium">
+                    <div  style={{fontSize:"0.875rem"}}>File Size</div>
+                    <div style={{fontWeight:500}}>
                       {(documentDetail?.file_size ? documentDetail.file_size / 1024 / 1024 : 0).toFixed(2)} MB
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Created</div>
-                    <div className="font-medium">
+                    <div  style={{fontSize:"0.875rem"}}>Created</div>
+                    <div style={{fontWeight:500}}>
                       {documentDetail?.created_at ? new Date(documentDetail.created_at).toLocaleString() : 'Unknown'}
                     </div>
                   </div>
@@ -398,11 +398,11 @@ const AdminPathView: React.FC = () => {
               
               {/* 状态信息 */}
               <div>
-                <h3 className="font-medium text-gray-700 mb-3">Status</h3>
-                <div className="space-y-3">
+                <h3 className="fb-label" style={{ color:"#374151", marginBottom:12 }}>Status</h3>
+                <div className="fb-space-y" style={{gap:12}}>
                   <div>
-                    <div className="text-sm text-gray-500">Conversion</div>
-                    <div className="font-medium">
+                    <div  style={{fontSize:"0.875rem"}}>Conversion</div>
+                    <div style={{fontWeight:500}}>
                       <span className={`px-2 py-1 rounded text-xs ${
                         documentDetail?.conversion_status === 'completed' ? 'bg-green-100 text-green-800' :
                         documentDetail?.conversion_status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
@@ -414,8 +414,8 @@ const AdminPathView: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Published</div>
-                    <div className="font-medium">
+                    <div  style={{fontSize:"0.875rem"}}>Published</div>
+                    <div style={{fontWeight:500}}>
                       <span className={`px-2 py-1 rounded text-xs ${
                         documentDetail?.publish_status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
                         'bg-gray-100 text-gray-800'
@@ -425,12 +425,12 @@ const AdminPathView: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Document ID</div>
-                    <div className="font-mono text-sm">{documentDetail?.id}</div>
+                    <div  style={{fontSize:"0.875rem"}}>Document ID</div>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.875rem" }}>{documentDetail?.id}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500">Storage Path</div>
-                    <div className="font-mono text-sm truncate">{documentDetail?.storage_path || 'Not set'}</div>
+                    <div  style={{fontSize:"0.875rem"}}>Storage Path</div>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.875rem", overflow:"hidden" }}>{documentDetail?.storage_path || 'Not set'}</div>
                   </div>
                 </div>
               </div>
@@ -438,16 +438,16 @@ const AdminPathView: React.FC = () => {
             
             {/* 描述 */}
             {documentDetail?.description && (
-              <div className="mt-6 pt-6 border-t">
-                <h3 className="font-medium text-gray-700 mb-2">Description</h3>
-                <p className="text-gray-600">{documentDetail.description}</p>
+              <div style={{  paddingTop:24 ,  marginTop:24, borderTop:"1px solid #e5e7eb"  }}>
+                <h3 className="fb-label" style={{ color:"#374151", marginBottom:8 }}>Description</h3>
+                <p >{documentDetail.description}</p>
               </div>
             )}
             
             {/* 操作按钮 */}
-            <div className="mt-6 pt-6 border-t flex justify-end space-x-3">
+            <div className="fb-justify-end" style={{  paddingTop:24 ,  marginTop:24, borderTop:"1px solid #e5e7eb", display:"flex", columnGap:12  }}>
               <button 
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="btn btn-default"
                 onClick={() => {
                   if (documentDetail?.id) {
                     documentService.downloadDocument(documentDetail.id, 'original')
@@ -471,7 +471,7 @@ const AdminPathView: React.FC = () => {
                 Download Original
               </button>
               <button 
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="btn btn-primary"
                 onClick={() => {
                   if (documentDetail?.id) {
                     const docNav = (documentDetail.path || documentDetail.storage_path || documentDetail.id).replace(/^\//, '');
@@ -486,14 +486,14 @@ const AdminPathView: React.FC = () => {
         </div>
         
         {/* 路径信息卡片 */}
-        <div className="mt-6 bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-          <div className="flex items-center">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <div  style={{ marginTop:24, background:"#f9fafb", borderRadius:8, padding:16, fontSize:"0.875rem" }}>
+          <div className="fb-d-flex fb-align-center">
+            <svg style={{ width:16, height:16, marginRight:8 }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span>Path: <code className="bg-gray-100 px-1 rounded">{getFullPath()}</code></span>
+            <span>Path: <code style={{ background:"#f3f4f6", paddingLeft:4, borderRadius:4 }}>{getFullPath()}</code></span>
           </div>
-          <div className="mt-2">
+          <div style={{marginTop:8}}>
             This page uses the new path URL pattern to access documents. Click "Full Details" to view the complete document info page.
           </div>
         </div>
@@ -503,13 +503,13 @@ const AdminPathView: React.FC = () => {
   
   // 文件夹模式
   return (
-    <div className="p-6">
+    <div style={{padding:24}}>
       {/* 面包屑导航 */}
-      <div className="mb-6">
-        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-          <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
+      <div style={{marginBottom:24}}>
+        <div className="fb-d-flex fb-align-center" style={{gap:8,fontSize:"0.875rem",marginBottom:8}}>
+          <Link to="/admin/apps" className="fb-link">Apps</Link>
           <span>›</span>
-          <Link to={`/admin/${appSlug}`} className="hover:text-blue-600">{app.name}</Link>
+          <Link to={`/admin/${appSlug}`} className="fb-link">{app.name}</Link>
           
           {/* 动态路径面包屑 */}
           {pathParam && pathParam.split('/').filter(Boolean).map((segment, index, array) => {
@@ -519,7 +519,7 @@ const AdminPathView: React.FC = () => {
                 <span>›</span>
                 <Link 
                   to={`/admin/${appSlug}/${pathSoFar}`}
-                  className="hover:text-blue-600"
+                  className="fb-link"
                 >
                   {segment}
                 </Link>
@@ -528,35 +528,35 @@ const AdminPathView: React.FC = () => {
           })}
         </div>
         
-        <div className="flex justify-between items-center">
+        <div className="fb-d-flex fb-justify-between fb-align-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1 style={{fontSize:"1.5rem",fontWeight:700,color:"#1f2937"}}>
               {currentFolder?.name || app.name}
             </h1>
             {currentFolder?.description && (
-              <p className="text-gray-600 mt-1">{currentFolder.description}</p>
+              <p  style={{ marginTop:4 }}>{currentFolder.description}</p>
             )}
-            <p className="text-sm text-gray-500 mt-1">Path: {getFullPath()}</p>
+            <p  style={{ fontSize:"0.875rem", marginTop:4 }}>Path: {getFullPath()}</p>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="fb-d-flex fb-gap-2">
             {pathParam && (
               <button 
                 onClick={handleNavigateUp}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="btn btn-default"
               >
                 Go Up
               </button>
             )}
             <button 
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+              className="btn btn-default"
               onClick={() => window.location.reload()}
             >
               Refresh
             </button>
             <Link 
               to={`/admin/apps/${appSlug}?folder=${encodeURIComponent(getFullPath())}`}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="btn btn-primary"
             >
               Classic View
             </Link>
@@ -565,43 +565,43 @@ const AdminPathView: React.FC = () => {
       </div>
       
       {/* 内容区域 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(1, minmax(0, 1fr))", gap:24 }}>
         {/* 左侧：子文件夹列表 */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="font-medium">Subfolders ({subfolders.length})</h3>
+        <div >
+          <div className="panel panel-default" style={{overflow:"hidden"}}>
+            <div style={{padding:16,borderBottom:"1px solid #e5e7eb"}}>
+              <h3 style={{fontWeight:500}}>Subfolders ({subfolders.length})</h3>
             </div>
             
             {subfolders.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <div  style={{ padding:32 }}>
+                <svg  style={{ width:48, height:48, color:"#d1d5db", marginBottom:12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                 </svg>
                 <p>No subfolders</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div style={{borderTop:"1px solid #e5e7eb"}}>
                 {subfolders.map(folder => (
                   <div 
                     key={folder.path || folder.name} 
-                    className="p-4 hover:bg-gray-50 cursor-pointer"
+                    style={{ padding:16, cursor:"pointer" }}
                     onClick={() => handleFolderClick(folder.path || `/${appSlug}/${folder.name}`)}
                   >
-                    <div className="flex items-center">
-                      <svg className="w-5 h-5 text-yellow-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <div className="fb-d-flex fb-align-center">
+                      <svg style={{  marginRight:12 ,  width:20, height:20, color:"#eab308"  }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                       </svg>
-                      <div className="flex-1">
-                        <div className="font-medium">{folder.name}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:500}}>{folder.name}</div>
                         {folder.description && (
-                          <div className="text-sm text-gray-500">{folder.description}</div>
+                          <div  style={{fontSize:"0.875rem"}}>{folder.description}</div>
                         )}
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div style={{ fontSize:"0.75rem", color:"#9ca3af", marginTop:4 }}>
                           Path: {folder.path || 'Not set'}
                         </div>
                       </div>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <svg style={{ width:20, height:20, color:"#9ca3af" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
                       </svg>
                     </div>
@@ -614,33 +614,33 @@ const AdminPathView: React.FC = () => {
         
         {/* 右侧：文档列表 */}
         <div>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="font-medium">Documents ({documents.length})</h3>
+          <div className="panel panel-default" style={{overflow:"hidden"}}>
+            <div style={{padding:16,borderBottom:"1px solid #e5e7eb"}}>
+              <h3 style={{fontWeight:500}}>Documents ({documents.length})</h3>
             </div>
             
             {documents.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <div  style={{ padding:32 }}>
+                <svg  style={{ width:48, height:48, color:"#d1d5db", marginBottom:12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
                 <p>No documents</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div style={{borderTop:"1px solid #e5e7eb"}}>
                 {documents.slice(0, 10).map(doc => (
                   <div 
                     key={doc.path || doc.storage_path || doc.name} 
-                    className="p-4 hover:bg-gray-50 cursor-pointer"
+                    style={{ padding:16, cursor:"pointer" }}
                     onClick={() => handleDocumentClick(doc)}
                   >
-                    <div className="flex items-center">
-                      <svg className="w-5 h-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <div className="fb-d-flex fb-align-center">
+                      <svg style={{  marginRight:12 ,  width:20, height:20, color:"#3b82f6"  }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                       </svg>
-                      <div className="flex-1">
-                        <div className="font-medium truncate">{doc.title || doc.original_filename}</div>
-                        <div className="text-sm text-gray-500">
+                      <div style={{flex:1}}>
+                        <div style={{ fontWeight:500, overflow:"hidden" }}>{doc.title || doc.original_filename}</div>
+                        <div  style={{fontSize:"0.875rem"}}>
                           {doc.file_type.toUpperCase()} • {(doc.file_size / 1024 / 1024).toFixed(2)} MB
                         </div>
                       </div>
@@ -649,10 +649,10 @@ const AdminPathView: React.FC = () => {
                 ))}
                 
                 {documents.length > 10 && (
-                  <div className="p-4 text-center border-t">
+                  <div  style={{ padding:16, borderTop:"1px solid #e5e7eb" }}>
                     <Link 
                       to={`/admin/apps/${appSlug}/folders/${encodeURIComponent(getFullPath())}/documents`}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
+                      className="fb-link" style={{fontSize:"0.875rem",color:"#2563eb"}}
                     >
                       View all {documents.length} documents →
                     </Link>
@@ -663,17 +663,17 @@ const AdminPathView: React.FC = () => {
           </div>
           
           {/* 快速操作 */}
-          <div className="mt-6 bg-white rounded-lg shadow p-4">
-            <h4 className="font-medium mb-3">Quick Actions</h4>
-            <div className="space-y-2">
+          <div style={{ marginTop:24, background:"#ffffff", borderRadius:8, boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)", padding:16 }}>
+            <h4 style={{ fontWeight:500, marginBottom:12 }}>Quick Actions</h4>
+            <div className="fb-space-y" style={{gap:8}}>
               <button 
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                style={{ width:"100%", paddingLeft:16, paddingTop:8, background:"#2563eb", color:"#ffffff", borderRadius:4, fontSize:"0.875rem" }}
                 onClick={() => navigate(`/admin/apps/${appSlug}/upload?folder=${encodeURIComponent(getFullPath())}`)}
               >
                 Upload Documents
               </button>
               <button 
-                className="w-full px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm"
+                style={{ width:"100%", paddingLeft:16, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:4, fontSize:"0.875rem" }}
                 onClick={() => setShowCreateFolderModal(true)}
               >
                 Create Subfolder
@@ -684,14 +684,14 @@ const AdminPathView: React.FC = () => {
       </div>
       
       {/* 路径信息卡片 */}
-      <div className="mt-6 bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-        <div className="flex items-center">
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <div  style={{ marginTop:24, background:"#f9fafb", borderRadius:8, padding:16, fontSize:"0.875rem" }}>
+        <div className="fb-d-flex fb-align-center">
+          <svg style={{ width:16, height:16, marginRight:8 }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          <span>New URL Pattern: <code className="bg-gray-100 px-1 rounded">/admin/{appSlug}/{pathParam || ''}</code></span>
+          <span>New URL Pattern: <code style={{ background:"#f3f4f6", paddingLeft:4, borderRadius:4 }}>/admin/{appSlug}/{pathParam || ''}</code></span>
         </div>
-        <div className="mt-2">
+        <div style={{marginTop:8}}>
           This page uses the new path URL pattern. Click "Classic View" to switch back.
         </div>
       </div>

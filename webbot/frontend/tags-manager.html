@@ -1,1 +1,791 @@
-tag-manager.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tag Manager - Canada.ca</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            padding: 20px 30px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #2572b4;
+        }
+        .header h1 { font-size: 22px; color: #2572b4; }
+        .header h1 small { font-size: 13px; color: #999; font-weight: normal; margin-left: 10px; }
+
+        .main-container { display: flex; gap: 20px; height: calc(100vh - 100px); }
+
+        /* ===== Left Panel — Root Tags ===== */
+        .left-panel {
+            width: 300px;
+            flex-shrink: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        .left-panel .panel-header {
+            padding: 12px 16px;
+            background: #fafafa;
+            border-bottom: 1px solid #e0e0e0;
+            border-radius: 6px 6px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .left-panel .panel-header h2 { font-size: 15px; font-weight: 600; }
+        .left-panel .panel-header .badge { background: #2572b4; color: white; padding: 1px 8px; border-radius: 10px; font-size: 11px; }
+        .left-panel .panel-body { flex: 1; overflow-y: auto; padding: 0; }
+        .root-list { list-style: none; margin: 0; padding: 0; }
+        .root-list .root-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.1s;
+        }
+        .root-list .root-item:hover { background: #f0f7ff; }
+        .root-list .root-item.selected { background: #e6f2ff; border-left: 3px solid #2572b4; }
+        .root-list .root-item .root-icon { font-size: 18px; flex-shrink: 0; }
+        .root-list .root-item .root-info { flex: 1; min-width: 0; }
+        .root-list .root-item .root-info .root-id { font-weight: 600; font-size: 13px; color: #333; }
+        .root-list .root-item .root-info .root-meta { font-size: 11px; color: #aaa; margin-top: 1px; }
+        .root-list .root-item .root-chevron { color: #ccc; font-size: 14px; }
+        .empty-root {
+            text-align: center; color: #bbb; padding: 40px 20px; font-size: 14px;
+        }
+
+        /* ===== Right Panel — Children & Editor ===== */
+        .right-panel {
+            flex: 1;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        .right-panel .panel-header {
+            padding: 12px 16px;
+            background: #fafafa;
+            border-bottom: 1px solid #e0e0e0;
+            border-radius: 6px 6px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .right-panel .panel-header h2 { font-size: 15px; font-weight: 600; }
+        .right-panel .panel-header h2 .current-type { color: #2572b4; }
+        .right-panel .panel-body { flex: 1; overflow-y: auto; padding: 0; }
+
+        .right-placeholder {
+            display: flex; align-items: center; justify-content: center;
+            height: 100%; color: #bbb; font-size: 16px;
+            flex-direction: column; gap: 10px;
+        }
+        .right-placeholder .big-icon { font-size: 40px; }
+
+        /* Tag row in children panel */
+        .tag-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .tag-row:hover { background: #f9fbff; }
+        .tag-row .tag-indent { width: calc(var(--depth, 0) * 20px); flex-shrink: 0; }
+        .tag-row .toggle-btn {
+            width: 18px; height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #aaa;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-right: 4px;
+            user-select: none;
+        }
+        .tag-row .toggle-btn:hover { color: #555; }
+        .tag-row .tag-label { flex: 1; min-width: 0; }
+        .tag-row .tag-label .tag-id { font-weight: 600; font-size: 13px; color: #333; }
+        .tag-row .tag-label .tag-fr { color: #888; font-size: 12px; margin-left: 5px; }
+        .tag-row .tag-label .tag-type {
+            display: inline-block;
+            font-size: 10px; color: #fff; background: #2572b4;
+            border-radius: 3px; padding: 0 5px; margin-left: 4px; vertical-align: middle;
+        }
+        .tag-row .tag-label .tag-meta { font-size: 11px; color: #aaa; margin-left: 6px; }
+        .tag-row .tag-label .tag-desc { display: block; color: #aaa; font-size: 11px; margin-top: 1px; }
+        .tag-row .tag-label .tag-title-line { font-size: 13px; line-height: 1.4; }
+        .tag-row .tag-label .tag-path-line { font-size: 11px; color: #999; line-height: 1.3; word-break: break-all; }
+        .tag-row .tag-actions {
+            display: flex; gap: 3px; flex-shrink: 0;
+            opacity: 0; transition: opacity 0.15s;
+        }
+        .tag-row:hover .tag-actions { opacity: 1; }
+        .tag-row .tag-actions button {
+            padding: 1px 6px; font-size: 11px;
+            border: 1px solid #ddd; border-radius: 3px; background: white; cursor: pointer;
+        }
+        .tag-row .tag-actions button:hover { background: #f5f5f5; }
+        .tag-row .tag-actions .btn-add-child:hover { border-color: #5cb85c; color: #4cae4c; }
+        .tag-row .tag-actions .btn-edit:hover { border-color: #5bc0de; color: #31708f; }
+        .tag-row .tag-actions .btn-del:hover { border-color: #d9534f; color: #c9302c; }
+
+        .empty-children {
+            text-align: center; color: #bbb; padding: 40px 20px; font-size: 14px;
+        }
+
+        /* ===== Toolbar ===== */
+        .toolbar {
+            display: flex; gap: 6px; align-items: center;
+            padding: 8px 14px; border-bottom: 1px solid #eee; background: #fcfcfc;
+        }
+        .toolbar button {
+            padding: 4px 12px; font-size: 12px;
+            border: 1px solid #ddd; border-radius: 4px;
+            background: white; cursor: pointer;
+        }
+        .toolbar button:hover { background: #f0f0f0; }
+
+        .btn-primary { background: #2572b4; color: white; border: 1px solid #1a5a8c; }
+        .btn-primary:hover { background: #1a5a8c; }
+        .btn-success { background: #28a745; color: white; border: 1px solid #1e7e34; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-danger { background: #dc3545; color: white; border: 1px solid #b52d3a; }
+        .btn-danger:hover { background: #b52d3a; }
+        .btn-default { background: #f8f8f8; color: #333; border: 1px solid #ddd; }
+        .btn-default:hover { background: #eee; }
+
+        /* ===== Inline Editor ===== */
+        .tag-editor {
+            padding: 10px 14px;
+            margin: 6px 10px;
+            background: #fffef5;
+            border: 1px solid #e6d9a0;
+            border-radius: 4px;
+        }
+        .tag-editor .row { display: flex; gap: 10px; margin-bottom: 6px; align-items: center; }
+        .tag-editor .row label { width: 80px; font-size: 12px; font-weight: 600; color: #555; flex-shrink: 0; }
+        .tag-editor .row input, .tag-editor .row select {
+            flex: 1; padding: 4px 8px;
+            border: 1px solid #ccc; border-radius: 3px; font-size: 13px;
+        }
+        .tag-editor .btn-row { margin-top: 6px; display: flex; gap: 6px; }
+        .tag-editor .btn-row button { padding: 4px 12px; font-size: 12px; border-radius: 3px; cursor: pointer; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast {
+            padding: 10px 18px; border-radius: 4px; margin-bottom: 6px; font-size: 13px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); animation: fadeIn 0.3s;
+        }
+        .toast.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .toast.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .toast.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; } }
+    </style>
+<script src="/static/js/webbot-auth.js"></script>
+</head>
+<body>
+
+<div class="header">
+    <h1>🏷️ Tag Manager <small>subject · audience · any child tags</small></h1>
+</div>
+
+<div class="main-container">
+    <!-- Left: Root tags -->
+    <div class="left-panel">
+        <div class="panel-header">
+            <h2>Root Tags <span class="badge" id="root-count">0</span></h2>
+            <button class="btn btn-primary" id="add-root-btn" style="padding:3px 10px;font-size:12px;">+ Add</button>
+        </div>
+        <div class="panel-body">
+            <div id="root-list-container"><div class="empty-root">Loading...</div></div>
+        </div>
+    </div>
+
+    <!-- Right: Children of selected root -->
+    <div class="right-panel">
+        <div class="panel-header">
+            <h2 id="right-title">Select a root tag to view <span class="current-type"></span></h2>
+            <button class="btn btn-primary" id="add-child-btn" style="padding:3px 10px;font-size:12px;display:none;">+ Add Child</button>
+        </div>
+        <div class="toolbar" id="right-toolbar" style="display:none;">
+            <button id="btn-up-level" onclick="navigateUp()" style="display:none;">← Up</button>
+            <span id="breadcrumb-trail" style="font-size:12px;color:#666;margin-left:8px;"></span>
+            <button onclick="editRootTag()" style="margin-left:auto">✏️ Edit Root</button>
+            <button onclick="deleteRootTag()" class="btn-danger">🗑️ Delete Root</button>
+        </div>
+        <div class="panel-body" id="right-body">
+            <div class="right-placeholder">
+                <div class="big-icon">👈</div>
+                <div>Select a root tag from the left panel</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+const API = '/api/v1/tags';
+const TAG_ROOT = '/canadasite/tags';
+
+// Per-level loading: only fetch the tags needed for the current view
+var rootTags = [];            // root-level tags (direct children of TAG_ROOT)
+var currentChildren = [];     // children of the currently-focused tag
+var tagIdx = {};              // all loaded tags indexed by id AND by path
+var selectedRootId = null;
+var currentTagId = null;      // null = root level of namespace
+
+function getTag(id) {
+    return tagIdx[id] || null;
+}
+
+function addTags(tags) {
+    tags.forEach(function(t) {
+        tagIdx[t.id] = t;
+        tagIdx[t.path] = t;
+    });
+}
+
+function allLoadedTags() {
+    var seen = {}, r = [];
+    for (var k in tagIdx) {
+        var t = tagIdx[k];
+        if (t && typeof t === 'object' && t.id && k === t.id && !seen[t.id]) {
+            seen[t.id] = true;
+            r.push(t);
+        }
+    }
+    return r;
+}
+
+function showToast(msg, type) {
+    var t = document.createElement('div');
+    t.className = 'toast ' + (type || 'info');
+    t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(function() { t.remove(); }, 3000);
+}
+
+// ===== Data Loading =====
+
+function loadTags() {
+    // Fetch only root-level tags (direct children of TAG_ROOT)
+    fetch(API + '?parent_path=' + encodeURIComponent(TAG_ROOT))
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(tags) {
+            rootTags = tags;
+            addTags(tags);
+            renderRootList();
+            if (selectedRootId) {
+                var stillExists = tags.some(function(t) { return t.id === selectedRootId; });
+                if (stillExists) loadLevel();
+                else selectRoot(null);
+            }
+        })
+        .catch(function(err) { showToast('Failed to load tags: ' + err.message, 'error'); });
+}
+
+function loadLevel(callback) {
+    if (!selectedRootId) return;
+    var rootTag = getTag(selectedRootId);
+    if (!rootTag) return;
+
+    var parentPath = rootTag.path;
+    if (currentTagId) {
+        var ct = getTag(currentTagId);
+        if (ct) parentPath = ct.path;
+    }
+
+    fetch(API + '?parent_path=' + encodeURIComponent(parentPath))
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(children) {
+            currentChildren = children;
+            addTags(children);
+            renderDirectChildren();
+            if (callback) callback();
+        })
+        .catch(function(err) { showToast('Failed to load children: ' + err.message, 'error'); });
+}
+
+// ===== Left Panel: Root Tags =====
+function renderRootList() {
+    var roots = rootTags.filter(function(t) { return t.parent_path === TAG_ROOT; });
+    roots.sort(function(a,b) { return a.id < b.id ? -1 : 1; });
+
+    document.getElementById('root-count').textContent = roots.length;
+
+    if (!roots.length) {
+        var hasSubject = rootTags.some(function(t) { return t.id === 'subject'; });
+        var hasAudience = rootTags.some(function(t) { return t.id === 'audience'; });
+        document.getElementById('root-list-container').innerHTML =
+            '<div class="empty-root">Root tags missing.<br>' +
+            '<button class="btn btn-primary" style="margin-top:8px;font-size:12px;padding:4px 12px;" ' +
+            'onclick="createDefaultRoots()">Initialize subject + audience</button></div>';
+        return;
+    }
+
+    var html = '<ul class="root-list">';
+    roots.forEach(function(t) {
+        var childCount = t.children_count || 0;
+        var pageCount = t.page_count || 0;
+        var meta = [];
+        if (childCount > 0) meta.push(childCount + ' child');
+        if (pageCount > 0) meta.push(pageCount + ' pages');
+        html += '<li class="root-item' + (t.id === selectedRootId ? ' selected' : '') +
+                '" onclick="selectRoot(\'' + t.id + '\')" data-root-id="' + t.id + '">' +
+            '<span class="root-icon">📂</span>' +
+            '<div class="root-info">' +
+                '<div class="root-id">' + esc(t.id) + '</div>' +
+                '<div class="root-meta">' + esc(t.title_en || t.id) + ' · ' + meta.join(' · ') + '</div>' +
+            '</div>' +
+            '<span class="root-chevron">›</span>' +
+        '</li>';
+    });
+    html += '</ul>';
+    document.getElementById('root-list-container').innerHTML = html;
+}
+
+function selectRoot(rootId) {
+    selectedRootId = rootId;
+    currentTagId = null;
+    renderRootList();
+    if (rootId) {
+        loadLevel();
+    } else {
+        document.getElementById('right-title').innerHTML = '<span class="current-type" style="color:#999">Select a root tag</span>';
+        document.getElementById('right-body').innerHTML =
+            '<div class="right-placeholder"><div class="big-icon">👈</div><div>Select a root tag from the left panel</div></div>';
+        document.getElementById('right-toolbar').style.display = 'none';
+        document.getElementById('add-child-btn').style.display = 'none';
+    }
+}
+
+// ===== Right Panel: Breadcrumb + Direct Children =====
+function renderDirectChildren() {
+    if (!selectedRootId) return;
+    var rootTag = getTag(selectedRootId);
+    if (!rootTag) return;
+
+    var rootTitle = rootTag.title_en || selectedRootId;
+    document.getElementById('right-title').innerHTML =
+        '<span class="current-type" style="color:#2572b4">' + esc(rootTitle) + '</span>';
+    document.getElementById('right-toolbar').style.display = 'flex';
+    document.getElementById('add-child-btn').style.display = 'inline-block';
+
+    var currentTag = currentTagId ? getTag(currentTagId) : null;
+    var parentPath = currentTag ? currentTag.path : rootTag.path;
+
+    document.getElementById('add-child-btn').onclick = function() {
+        addChild(currentTagId || selectedRootId);
+    };
+
+    // currentChildren already contains direct children of parentPath
+    var directChildren = currentChildren.filter(function(t) {
+        return t.parent_path === parentPath && t.id !== selectedRootId && t.id !== currentTagId;
+    });
+    directChildren.sort(function(a,b) { return a.id < b.id ? -1 : 1; });
+
+    // Breadcrumb
+    renderBreadcrumb(rootTag, currentTag);
+
+    // Up button visibility
+    document.getElementById('btn-up-level').style.display = currentTagId ? 'inline-block' : 'none';
+
+    if (directChildren.length === 0 && !document.querySelector('.tag-editor')) {
+        var contextLabel = currentTag ? esc(currentTag.title_en || currentTag.id) : esc(selectedRootId);
+        document.getElementById('right-body').innerHTML =
+            '<div class="empty-children">No child tags under ' + contextLabel + '.<br>Click "+ Add Child" to add one.</div>';
+        return;
+    }
+
+    var html = '';
+    directChildren.forEach(function(tag) {
+        var childCount = tag.children_count || 0;
+        var pageCount = tag.page_count || 0;
+        var counts = [];
+        if (childCount > 0) counts.push(childCount + ' sub');
+        if (pageCount > 0) counts.push(pageCount + ' pages');
+        var countStr = counts.length ? ' <span class="tag-meta">(' + counts.join(', ') + ')</span>' : '';
+        var typeBadge = tag.type && tag.type !== selectedRootId ? ' <span class="tag-type">' + esc(tag.type) + '</span>' : '';
+
+        var titleLine = esc(tag.title_en || tag.id) +
+            (tag.title_fr ? ' <span style="color:#888;">/ ' + esc(tag.title_fr) + '</span>' : '');
+
+        html += '<div class="tag-row" onclick="navigateToTag(\'' + tag.id + '\')" data-tag-id="' + tag.id + '">' +
+            '<div class="tag-indent"></div>' +
+            (childCount > 0 ? '<span class="toggle-btn">▶</span>' : '<span class="toggle-btn" style="visibility:hidden">▶</span>') +
+            '<div class="tag-label">' +
+                '<div class="tag-title-line">' + titleLine + '</div>' +
+                '<div class="tag-path-line">' + esc(tag.path || (TAG_ROOT + '/' + tag.id)) + countStr + '</div>' +
+            '</div>' +
+            '<div class="tag-actions">' +
+                '<button class="btn-add-child" onclick="event.stopPropagation(); addChild(\'' + tag.id + '\')" title="Add child">+</button>' +
+                '<button class="btn-edit" onclick="event.stopPropagation(); openEditTag(\'' + tag.id + '\')" title="Edit">✏️</button>' +
+                '<button class="btn-del" onclick="event.stopPropagation(); deleteTag(\'' + tag.id + '\')" title="Delete">🗑️</button>' +
+            '</div>' +
+        '</div>';
+    });
+    document.getElementById('right-body').innerHTML = html;
+}
+
+function renderBreadcrumb(rootTag, currentTag) {
+    var trail = document.getElementById('breadcrumb-trail');
+    if (!currentTag) {
+        trail.innerHTML = '<strong>' + esc(rootTag.title_en || rootTag.id) + ' › all child tags</strong>';
+        return;
+    }
+
+    var crumbs = [];
+    var tag = currentTag;
+    while (tag) {
+        crumbs.unshift({ id: tag.id, title: tag.title_en || tag.id });
+        if (tag.parent_path === rootTag.path) break;
+        tag = getTag(tag.parent_path) || null;
+    }
+
+    var rootCrumb = { id: rootTag.id, title: rootTag.title_en || rootTag.id };
+    if (!crumbs.length || crumbs[0].id !== rootTag.id) {
+        crumbs.unshift(rootCrumb);
+    }
+
+    var html = crumbs.map(function(c, i) {
+        var isLast = i === crumbs.length - 1;
+        var label = esc(c.title);
+        if (isLast) {
+            return '<strong style="color:#333">' + label + '</strong>';
+        }
+        return '<a href="#" onclick="navigateToTag(\'' + c.id + '\');return false;" style="color:#2572b4;text-decoration:none;">' + label + '</a>';
+    });
+    trail.innerHTML = html.join(' › ');
+}
+
+// ===== Navigation =====
+function navigateToTag(tagId) {
+    if (!selectedRootId) return;
+    var tag = getTag(tagId);
+    if (!tag) return;
+
+    closeAllEditors();
+    currentTagId = tagId;
+    loadLevel();
+    renderRootList();
+}
+
+function navigateUp() {
+    if (!selectedRootId || !currentTagId) return;
+    var currentTag = getTag(currentTagId);
+    if (!currentTag) {
+        currentTagId = null;
+        loadLevel();
+        renderRootList();
+        return;
+    }
+    var parentPath = currentTag.parent_path;
+    if (parentPath === TAG_ROOT || !parentPath) {
+        currentTagId = null;
+    } else {
+        var parentTag = getTag(parentPath);
+        currentTagId = parentTag ? parentTag.id : null;
+    }
+    closeAllEditors();
+    loadLevel();
+    renderRootList();
+}
+
+// ===== Root Tag Actions =====
+function editRootTag() {
+    if (!selectedRootId) return;
+    openEditTag(selectedRootId);
+}
+
+function deleteRootTag() {
+    if (!selectedRootId) return;
+    deleteTag(selectedRootId);
+}
+
+// ===== Inline Editor =====
+function openEditTag(tagId) {
+    closeAllEditors();
+    var tag = getTag(tagId);
+    if (!tag) return;
+
+    var container = document.getElementById('right-body');
+    var editor = document.createElement('div');
+    editor.className = 'tag-editor';
+    editor.setAttribute('data-edit-id', tagId);
+    editor.innerHTML = buildEditForm(tag);
+    container.insertBefore(editor, container.firstChild);
+}
+
+function addChild(parentId) {
+    closeAllEditors();
+    var container = document.getElementById('right-body');
+    var editor = document.createElement('div');
+    editor.className = 'tag-editor';
+    editor.setAttribute('data-edit-id', '__new__');
+    editor.innerHTML = buildNewForm(parentId);
+    container.insertBefore(editor, container.firstChild);
+}
+
+function buildEditForm(tag) {
+    var loaded = allLoadedTags();
+    var parentOpts = '<option value="">(none — root level)</option>';
+    loaded.forEach(function(t) {
+        if (t.path === tag.path) return;
+        parentOpts += '<option value="' + t.path + '"' + (t.path === tag.parent_path ? ' selected' : '') + '>' + esc(t.path) + '</option>';
+    });
+    return '<div class="row"><label>ID:</label><input class="ed-id" value="' + esc(tag.id) + '" readonly style="background:#f5f5f5;"></div>' +
+        '<div class="row"><label>Path:</label><input class="ed-path" value="' + esc(tag.path || '') + '" readonly style="background:#f5f5f5;"></div>' +
+        '<div class="row"><label>Type:</label><input class="ed-type" value="' + esc(tag.type || '') + '" placeholder="e.g. subject, audience"></div>' +
+        '<div class="row"><label>English Title:</label><input class="ed-title-en" value="' + esc(tag.title_en || tag.id || '') + '"></div>' +
+        '<div class="row"><label>French Title:</label><input class="ed-title-fr" value="' + esc(tag.title_fr || tag.label_fr || '') + '"></div>' +
+        '<div class="row"><label>Description:</label><input class="ed-desc" value="' + esc(tag.description || '') + '"></div>' +
+        '<div class="row"><label>Desc FR:</label><input class="ed-desc-fr" value="' + esc(tag.description_fr || '') + '"></div>' +
+        '<div class="row"><label>Parent Path:</label><select class="ed-parent-path">' + parentOpts + '</select></div>' +
+        '<div class="btn-row">' +
+            '<button class="btn btn-success" onclick="saveEdit(\'' + tag.id + '\')">💾 Save</button>' +
+            '<button class="btn btn-default" onclick="closeEditor()">Cancel</button>' +
+        '</div>';
+}
+
+function buildNewForm(parentId) {
+    var parentTag = parentId ? getTag(parentId) : null;
+    var parentPath = parentTag ? parentTag.path : (parentId ? (TAG_ROOT + '/' + parentId) : TAG_ROOT);
+    var defaultType = parentTag ? (parentTag.type || '') : '';
+
+    var loaded = allLoadedTags();
+    var parentOpts = '';
+    if (!parentId) {
+        parentOpts = '<option value="">(none — root level)</option>';
+        loaded.forEach(function(t) {
+            parentOpts += '<option value="' + t.path + '">' + esc(t.path) + '</option>';
+        });
+    } else {
+        parentOpts = '<option value="" disabled>Child of ' + parentPath + '</option>' +
+            '<option value="' + parentPath + '" selected hidden>' + parentPath + '</option>';
+    }
+
+    return '<div class="row"><label>Tag ID:</label><input class="ed-id" placeholder="english-slug" style="font-family:monospace"></div>' +
+        '<div class="row"><label>Path:</label><input class="ed-path" value="' + parentPath + '/[id]" readonly style="background:#f5f5f5;"></div>' +
+        (parentId ? '' : '<div class="row"><label>Type:</label><input class="ed-type" value="' + defaultType + '" placeholder="e.g. subject, audience"></div>') +
+        '<div class="row"><label>EN Title:</label><input class="ed-title-en" placeholder="English title"></div>' +
+        '<div class="row"><label>FR Title:</label><input class="ed-title-fr" placeholder="Titre français"></div>' +
+        '<div class="row"><label>Description:</label><input class="ed-desc" placeholder="English description (optional)"></div>' +
+        '<div class="row"><label>Desc FR:</label><input class="ed-desc-fr" placeholder="Description française (optional)"></div>' +
+        (parentId ? '' : '<div class="row"><label>Parent:</label><select class="ed-parent-path">' + parentOpts + '</select></div>') +
+        '<div class="btn-row">' +
+            '<button class="btn btn-primary" onclick="createTag(\'' + (parentId || '') + '\')">➕ Create</button>' +
+            '<button class="btn btn-default" onclick="closeEditor()">Cancel</button>' +
+        '</div>';
+}
+
+function closeAllEditors() {
+    document.querySelectorAll('.tag-editor').forEach(function(el) { el.remove(); });
+}
+
+function closeEditor() {
+    document.querySelectorAll('.tag-editor').forEach(function(el) { el.remove(); });
+}
+
+// ===== CRUD =====
+function saveEdit(tagId) {
+    var editor = document.querySelector('.tag-editor[data-edit-id="' + tagId + '"]');
+    if (!editor) return;
+
+    var tag = getTag(tagId);
+    var tagPath = tag ? tag.path : (TAG_ROOT + '/' + tagId);
+
+    var payload = {
+        type: (editor.querySelector('.ed-type') || {}).value || null,
+        title_en: (editor.querySelector('.ed-title-en') || {}).value || tagId,
+        title_fr: (editor.querySelector('.ed-title-fr') || {}).value || '',
+        description: (editor.querySelector('.ed-desc') || {}).value || '',
+        description_fr: (editor.querySelector('.ed-desc-fr') || {}).value || '',
+        parent_path: (editor.querySelector('.ed-parent-path') || {}).value || null
+    };
+
+    fetch(API + '?path=' + encodeURIComponent(tagPath), {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Save failed'); });
+        return r.json();
+    })
+    .then(function() {
+        showToast('✅ Saved: ' + tagId, 'success');
+        closeEditor();
+        loadTags();
+    })
+    .catch(function(err) { showToast('❌ ' + err.message, 'error'); });
+}
+
+function deleteTag(tagId) {
+    var tag = getTag(tagId);
+    if (!tag) return;
+    var tagPath = tag.path || (TAG_ROOT + '/' + tagId);
+    var msg = 'Delete tag "' + tagId + '"?';
+    if (tag && tag.children_count > 0) {
+        msg += '\n\n⚠️ This tag has ' + tag.children_count + ' child tag(s) — they will NOT be deleted but will become orphaned.';
+    }
+    if (tag && tag.page_count > 0) {
+        msg += '\n\n⚠️ Used by ' + tag.page_count + ' page(s) — tag will be removed from those pages.';
+    }
+    if (!confirm(msg)) return;
+
+    fetch(API + '?path=' + encodeURIComponent(tagPath), { method: 'DELETE' })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Delete failed'); });
+        return r.json();
+    })
+    .then(function() {
+        showToast('🗑️ Deleted: ' + tagId, 'info');
+        if (selectedRootId === tagId) selectedRootId = null;
+        if (currentTagId === tagId) currentTagId = null;
+        loadTags();
+    })
+    .catch(function(err) { showToast('❌ ' + err.message, 'error'); });
+}
+
+function createTag(parentId) {
+    var editor = document.querySelector('.tag-editor[data-edit-id="__new__"]');
+    if (!editor) { showToast('❌ No create form open', 'error'); return; }
+
+    var idVal = (editor.querySelector('.ed-id') || {}).value || '';
+    var typeVal = (editor.querySelector('.ed-type') || {}).value || '';
+    var titleEnVal = (editor.querySelector('.ed-title-en') || {}).value || '';
+    var titleFrVal = (editor.querySelector('.ed-title-fr') || {}).value || '';
+    var descVal = (editor.querySelector('.ed-desc') || {}).value || '';
+    var descFrVal = (editor.querySelector('.ed-desc-fr') || {}).value || '';
+    var parentPathVal = (editor.querySelector('.ed-parent-path') || {}).value || null;
+
+    if (!idVal.trim()) { showToast('❌ Tag ID is required', 'error'); return; }
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(idVal.trim())) {
+        showToast('❌ Tag ID must be lowercase alphanumeric with hyphens', 'error');
+        return;
+    }
+
+    var tid = idVal.trim();
+    var parentPath;
+    if (parentPathVal) {
+        parentPath = parentPathVal;
+    } else if (parentId) {
+        var parentTag = getTag(parentId);
+        parentPath = parentTag ? parentTag.path : (TAG_ROOT + '/' + parentId);
+    }
+
+    // Build full path
+    var tagPath = parentPath ? (parentPath + '/' + tid) : (TAG_ROOT + '/' + tid);
+
+    var payload = {
+        path: tagPath,
+        type: typeVal.trim() || null,
+        title_en: titleEnVal.trim() || tid,
+        title_fr: titleFrVal.trim() || tid,
+        description: descVal.trim(),
+        description_fr: descFrVal.trim()
+    };
+    if (parentPath) {
+        payload.parent_path = parentPath;
+    }
+    if (parentId && !parentPathVal) {
+        // Root tag as parent → set type if not specified
+        var parentTag = getTag(parentId);
+        if (parentTag && parentTag.parent_path === TAG_ROOT) {
+            if (!payload.type) payload.type = parentId;
+        }
+    }
+    if (!parentId && !parentPathVal) {
+        // New root tag — auto-set type = id
+        if (!payload.type) payload.type = tid;
+    }
+
+    fetch(API, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Create failed'); });
+        return r.json();
+    })
+    .then(function() {
+        showToast('✅ Created: ' + tid, 'success');
+        closeEditor();
+        loadTags();
+    })
+    .catch(function(err) { showToast('❌ ' + err.message, 'error'); });
+}
+
+function createDefaultRoots() {
+    var payloads = [
+        { id: 'subject', path: TAG_ROOT + '/subject', type: 'subject', title_en: 'Subject', title_fr: 'Sujets' },
+        { id: 'audience', path: TAG_ROOT + '/audience', type: 'audience', title_en: 'Audience', title_fr: 'Publics' }
+    ];
+    var pending = payloads.length;
+    payloads.forEach(function(p) {
+        fetch(API, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(p)
+        })
+        .then(function(r) {
+            if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Create failed'); });
+            return r.json();
+        })
+        .then(function() {
+            showToast('✅ Created: ' + p.id, 'success');
+            pending--;
+            if (pending === 0) loadTags();
+        })
+        .catch(function(err) {
+            showToast('❌ ' + err.message, 'error');
+            pending--;
+        });
+    });
+}
+
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', function() {
+    loadTags();
+
+    document.getElementById('add-root-btn').addEventListener('click', function() {
+        closeAllEditors();
+        selectRoot(null);
+        // Insert editor after selectRoot clears the placeholder
+        var container = document.getElementById('right-body');
+        container.innerHTML = '';
+        var editor = document.createElement('div');
+        editor.className = 'tag-editor';
+        editor.setAttribute('data-edit-id', '__new__');
+        editor.innerHTML = buildNewForm(null);
+        container.appendChild(editor);
+    });
+});
+</script>
+</body>
+</html>

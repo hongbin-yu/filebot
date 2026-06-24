@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from typing import List, Optional, Dict, Any
 import uuid
 import os
+import re
 import logging
 import shutil
+import subprocess
 import tempfile
 
 logger = logging.getLogger(__name__)
@@ -418,7 +420,15 @@ def get_document_by_identifier(
         )
     
     # Check folder permission (reuse check_document_access logic)
+    # If document.folder is None (e.g. WebBot-uploaded docs with no folder record),
+    # skip permission check — allow access
+    if document.folder is None:
+        return document
+
     app = document.folder.app
+    if app is None:
+        return document
+
     # Allow if user is None (webbot proxy bypass) or superuser/public
     if current_user is None or current_user.is_superuser or current_user.username == "public":
         return document
@@ -497,6 +507,111 @@ def get_document_pdf_path(document: Document, settings) -> Optional[Path]:
     return None
 
 
+def _get_effective_thumbnail_size_for_document(document: Document, db: Session) -> int:
+    """
+    按父链向上查找文档所在文件夹的生效缩略图尺寸。
+    解析 "256x256" -> 256，默认返回 128。
+    """
+    if not document.folder_path:
+        return 128
+    current_path = document.folder_path
+    while current_path:
+        folder = db.query(Folder).filter(Folder.path == current_path).first()
+        if folder and folder.thumbnail_size:
+            parts = folder.thumbnail_size.lower().split('x')
+            if len(parts) == 2:
+                try:
+                    return int(parts[0])
+                except (ValueError, TypeError):
+                    pass
+            return 128
+        # 向上走父路径
+        if current_path == '/':
+            break
+        parent = current_path.rstrip('/').rsplit('/', 1)
+        current_path = parent[0] if len(parent) > 1 and parent[0] else '/'
+    return 128
+
+def generate_thumbnail_for_video_document(
+    document: Document,
+    db: Session,
+    settings
+) -> bool:
+    """
+    Extract a thumbnail frame from a video document using ffmpeg.
+    
+    Captures a frame at 1 second or 10% of duration (whichever is earlier),
+    resizes to the folder-configured thumbnail size (default 256x256),
+    and saves as JPEG on disk.
+    """
+    THUMBNAIL_QUALITY = 85
+
+    try:
+        file_path = get_document_file_path(document, settings)
+        if not file_path or not file_path.exists():
+            logging.error(f"Video file not found: {document.path}")
+            return False
+
+        # Use folder-configured size, or 256 for video (matching user preference)
+        effective_size = _get_effective_thumbnail_size_for_document(document, db)
+        if effective_size == 128:
+            effective_size = 256  # video default, user wants 256x256
+        thumbnail_size = effective_size
+
+        # Determine thumbnail filename and output path
+        thumb_filename = f"{document.stored_filename}_{thumbnail_size}.jpg"
+        thumb_rel_path = f"thumbnails/{thumbnail_size}/{thumb_filename}"
+        thumb_full_path = Path(settings.DATA_ROOT) / thumb_rel_path
+        thumb_full_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Extract a frame at ~1 second or 10% of duration (whichever is shorter)
+        # using ffmpeg: -ss before -i for fast seeking, -vframes 1 for single frame,
+        # -vf scale to fit within thumbnail_size maintaining aspect ratio
+        cmd = [
+            "ffmpeg", "-y",
+            "-ss", "1",                         # seek to 1 second
+            "-i", str(file_path),
+            "-vframes", "1",                     # extract only 1 frame
+            "-update", "1",                      # overwrite output file (single image)
+            "-vf", f"scale={thumbnail_size}:{thumbnail_size}:force_original_aspect_ratio=decrease:force_divisible_by=2",
+            "-q:v", str(int((100 - THUMBNAIL_QUALITY) / 100 * 31)),  # JPEG quality for ffmpeg
+            str(thumb_full_path)
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+        if not thumb_full_path.exists() or thumb_full_path.stat().st_size == 0:
+            logging.error(f"ffmpeg failed to generate thumbnail: {result.stderr[:500]}")
+            return False
+
+        # Update document metadata
+        if not document.document_metadata:
+            document.document_metadata = {}
+
+        document.thumbnail_path = thumb_rel_path
+        document.thumbnail_status = ThumbnailStatus.GENERATED
+        document.thumbnail_generated_at = datetime.utcnow()
+        document.conversion_status = ConversionStatus.COMPLETED
+
+        document.document_metadata["thumbnail_generated"] = True
+        document.document_metadata["thumbnail_size"] = f"{thumbnail_size}x{thumbnail_size}"
+        document.document_metadata["thumbnail_format"] = "JPEG"
+
+        db.add(document)
+        db.commit()
+
+        logging.info(f"Generated {thumbnail_size}x{thumbnail_size} video thumbnail for {document.path}")
+        return True
+
+    except Exception as e:
+        logging.error(f"Failed to generate video thumbnail: {str(e)}", exc_info=True)
+        document.thumbnail_status = ThumbnailStatus.FAILED
+        document.thumbnail_error = str(e)[:1000]
+        db.add(document)
+        db.commit()
+        return False
+
+
 def generate_thumbnail_for_image_document(
     document: Document,
     db: Session,
@@ -505,8 +620,9 @@ def generate_thumbnail_for_image_document(
     """
     为图像文档生成缩略图并更新元数据
     
-    Generate 128x128 JPEG thumbnail, save as file on disk,
-    and set conversion_status to COMPLETED.
+    缩略图尺寸来自文件夹的 thumbnail_size 属性（支持父链继承），
+    如果未设置则默认 128x128。
+    保存为 JPEG 文件到磁盘，设置 conversion_status 为 COMPLETED。
     
     Args:
         document: Document object
@@ -516,10 +632,12 @@ def generate_thumbnail_for_image_document(
     Returns:
         bool: whether successful
     """
-    THUMBNAIL_SIZE = 128
     THUMBNAIL_QUALITY = 85
 
     try:
+        # 读取文件夹的缩略图尺寸
+        thumbnail_size = _get_effective_thumbnail_size_for_document(document, db)
+
         # Get document file path
         file_path = get_document_file_path(document, settings)
         if not file_path or not file_path.exists():
@@ -532,8 +650,8 @@ def generate_thumbnail_for_image_document(
             if img.mode not in ["RGB", "RGBA", "L"]:
                 img = img.convert("RGB")
             
-            # Generate 128x128 thumbnail (maintain aspect ratio)
-            img.thumbnail((THUMBNAIL_SIZE, THUMBNAIL_SIZE), Image.Resampling.LANCZOS)
+            # Generate thumbnail at folder-configured size (maintain aspect ratio)
+            img.thumbnail((thumbnail_size, thumbnail_size), Image.Resampling.LANCZOS)
             
             # If image is RGBA mode, add white background
             if img.mode == "RGBA":
@@ -542,8 +660,8 @@ def generate_thumbnail_for_image_document(
                 img = background
             
             # Determine thumbnail filename and ensure directory exists
-            thumb_filename = f"{document.stored_filename}_{THUMBNAIL_SIZE}.jpg"
-            thumb_rel_path = f"thumbnails/{THUMBNAIL_SIZE}/{thumb_filename}"
+            thumb_filename = f"{document.stored_filename}_{thumbnail_size}.jpg"
+            thumb_rel_path = f"thumbnails/{thumbnail_size}/{thumb_filename}"
             thumb_full_path = Path(settings.DATA_ROOT) / thumb_rel_path
             thumb_full_path.parent.mkdir(parents=True, exist_ok=True)
             
@@ -560,14 +678,14 @@ def generate_thumbnail_for_image_document(
             document.conversion_status = ConversionStatus.COMPLETED
             
             document.document_metadata["thumbnail_generated"] = True
-            document.document_metadata["thumbnail_size"] = f"{THUMBNAIL_SIZE}x{THUMBNAIL_SIZE}"
+            document.document_metadata["thumbnail_size"] = f"{thumbnail_size}x{thumbnail_size}"
             document.document_metadata["thumbnail_format"] = "JPEG"
             
             # Save changes to database
             db.add(document)
             db.commit()
             
-            logging.info(f"Generated {THUMBNAIL_SIZE}x{THUMBNAIL_SIZE} thumbnail for {document.path} -> {thumb_rel_path}")
+            logging.info(f"Generated {thumbnail_size}x{thumbnail_size} thumbnail for {document.path} -> {thumb_rel_path}")
             return True
             
     except Exception as e:
@@ -1071,6 +1189,7 @@ async def upload_document(
     document_type: DocumentType = Form(DocumentType.GENERAL),
     naming_rule_id: Optional[uuid.UUID] = Form(None),
     device_id: Optional[uuid.UUID] = Form(None),
+    skip_if_exists: bool = Form(False, description="Skip upload if a document with the same path already exists"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -1172,7 +1291,13 @@ async def upload_document(
             'pcl': FileType.PCL,
             'ps': FileType.PS,
             'txt': FileType.TXT,
-            'html': FileType.HTML, 'htm': FileType.HTML
+            'html': FileType.HTML, 'htm': FileType.HTML,
+            'mp4': FileType.VIDEO, 'mov': FileType.VIDEO, 'avi': FileType.VIDEO,
+            'mkv': FileType.VIDEO, 'webm': FileType.VIDEO, 'flv': FileType.VIDEO,
+            'wmv': FileType.VIDEO, 'm4v': FileType.VIDEO, '3gp': FileType.VIDEO,
+            'mp3': FileType.AUDIO, 'wav': FileType.AUDIO, 'flac': FileType.AUDIO,
+            'ogg': FileType.AUDIO, 'oga': FileType.AUDIO, 'aac': FileType.AUDIO,
+            'wma': FileType.AUDIO, 'm4a': FileType.AUDIO
         }
         
         # Remove dot from extension
@@ -1190,7 +1315,11 @@ async def upload_document(
             'gif': 'image/gif',
             'svg': 'image/svg+xml',
             'tiff': 'image/tiff', 'tif': 'image/tiff',
-            'txt': 'text/plain'
+            'txt': 'text/plain',
+            'mp4': 'video/mp4', 'mov': 'video/mp4', 'avi': 'video/x-msvideo',
+            'mkv': 'video/x-matroska', 'webm': 'video/webm', 'm4v': 'video/mp4',
+            'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'flac': 'audio/flac',
+            'ogg': 'audio/ogg', 'aac': 'audio/aac', 'm4a': 'audio/mp4'
         }
         if from_mime in ('application/octet-stream', '') and ext_without_dot in extension_to_mime:
             mime_type = extension_to_mime[ext_without_dot]
@@ -1295,6 +1424,36 @@ async def upload_document(
                 detail="Cannot determine app info, unable to generate storage path"
             )
         
+        # === Skip-if-exists: pre-compute expected path BEFORE uniquification ===
+        # We must check BEFORE generate_storage_paths() because that function
+        # adds -N suffixes to avoid filesystem conflicts, which would mismatch
+        # the stored document.path in the database.
+        if skip_if_exists:
+            from ..core.path_utils import make_filename_safe
+            # Compute expected URL path using same logic as generate_storage_paths
+            # but WITHOUT uniquification (no -1 suffix)
+            _skip_folder = folder.path
+            if not _skip_folder.startswith('/'):
+                _skip_folder = '/' + _skip_folder
+            _skip_folder = _skip_folder.rstrip('/')
+            if _skip_folder.startswith(f'/{app.slug}'):
+                _skip_folder = _skip_folder[len(app.slug)+1:]
+                if _skip_folder and not _skip_folder.startswith('/'):
+                    _skip_folder = '/' + _skip_folder
+            base_safe_filename = make_filename_safe(original_filename)
+            expected_url = f"/{app.slug}{_skip_folder}/{base_safe_filename}"
+            expected_url = re.sub(r'\.html?$', '', expected_url)
+            
+            existing_doc = db.query(Document).filter(Document.path == expected_url).first()
+            if existing_doc:
+                logger.info(f"⏭️ skip_if_exists: document already exists at path={expected_url}, skipping upload")
+                print(f"[DEBUG] skip_if_exists: existing doc found path={expected_url}, returning existing")
+                return {
+                    **DocumentResponse.from_orm(existing_doc).dict(),
+                    "skipped": True,
+                    "message": "Document already exists, upload skipped"
+                }
+        
         # Generate storage path and URL path
         data_root = Path(settings.DATA_ROOT)
         storage_path_obj, url_path, safe_filename = generate_storage_paths(
@@ -1326,8 +1485,6 @@ async def upload_document(
         print(f"  URL path: {url_path}")
         print(f"  Safe filename: {safe_filename}")
         print(f"  Stored filename: {stored_filename}")
-        
-        # ========== End Path System Restructuring ==========
         
         # Create document record
         document = Document(
@@ -1410,11 +1567,24 @@ async def upload_document(
         
         # Define supported image file types
         image_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF}
+        video_file_types = {FileType.VIDEO}
         
         conversion_task = None
         
+        # If video file, generate frame thumbnail
+        if document.file_type in video_file_types:
+            print(f"[Video Processing] Detected video file: {document.file_type}, generating frame thumbnail")
+            success = generate_thumbnail_for_video_document(document, db, settings)
+            if success:
+                print(f"[Video Processing] Thumbnail generated successfully for {document.path}")
+                conversion_task = None
+            else:
+                print(f"[Video Processing] Thumbnail generation failed, still creating PDF conversion task")
+                conversion_task = create_conversion_task_for_document(
+                    db, document.path, target_format="pdf"
+                )
         # If image file, generate thumbnail and mark complete
-        if document.file_type in image_file_types:
+        elif document.file_type in image_file_types:
             print(f"[Image Processing] Detected image file: {document.file_type}, generating thumbnail")
             success = generate_thumbnail_for_image_document(document, db, settings)
             if success:
@@ -1530,6 +1700,12 @@ def download_document(
             media_type = "image/png"
         elif filename.lower().endswith('.tiff') or filename.lower().endswith('.tif'):
             media_type = "image/tiff"
+
+    # Override video/quicktime → video/mp4 for browser compatibility
+    # Modern browsers (Chrome, Firefox, Edge) don't support video/quicktime MIME type
+    # even when the file contains H.264/AAC codecs that are widely supported
+    if media_type == "video/quicktime" and filename.lower().endswith('.mov'):
+        media_type = "video/mp4"
     
     return FileResponse(
         path=file_path,
@@ -2690,24 +2866,51 @@ def get_document_thumbnail(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
         document = get_document_by_identifier(document_identifier, current_user, db)
     
-    # If thumbnail already exists on disk, return it
+    # Image and video file types eligible for thumbnail generation
+    image_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF}
+    thumbnail_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF, FileType.VIDEO}
+    
+    if document.file_type not in thumbnail_file_types:
+        raise HTTPException(status_code=404, detail="Thumbnail not available for this document type")
+
+    # 检测文件夹配置的缩略图尺寸，与已有缩略图对比 —— 若尺寸变化则重新生成
+    expected_size = _get_effective_thumbnail_size_for_document(document, db)
+    should_regenerate = False
+
     if document.thumbnail_path:
         thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
         if thumb_full_path.exists():
-            return FileResponse(str(thumb_full_path), media_type="image/jpeg")
+            # 从路径提取当前尺寸（例如 thumbnails/128/xxx_128.jpg -> 128）
+            import re
+            m = re.search(r'thumbnails/(\d+)/', document.thumbnail_path)
+            if m:
+                current_size = int(m.group(1))
+                if current_size != expected_size:
+                    should_regenerate = True
+        else:
+            should_regenerate = True
+    else:
+        should_regenerate = True
+
+    if should_regenerate:
+        if document.file_type in image_file_types:
+            success = generate_thumbnail_for_image_document(document, db, settings)
+        else:
+            success = generate_thumbnail_for_video_document(document, db, settings)
+        if not success or not document.thumbnail_path:
+            raise HTTPException(status_code=500, detail="Failed to generate thumbnail")
+        thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
+        if not thumb_full_path.exists():
+            raise HTTPException(status_code=500, detail="Thumbnail file not found after generation")
     
-    # Image file types eligible for thumbnail generation
-    image_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF}
-    
-    # If document is an image type and thumbnail doesn't exist, generate on the fly
-    if document.file_type in image_file_types:
-        success = generate_thumbnail_for_image_document(document, db, settings)
-        if success and document.thumbnail_path:
-            thumb_full_path = Path(settings.DATA_ROOT) / document.thumbnail_path
-            if thumb_full_path.exists():
-                return FileResponse(str(thumb_full_path), media_type="image/jpeg")
-    
-    raise HTTPException(status_code=404, detail="Thumbnail not available for this document")
+    # 拒绝缓存，确保尺寸变化后立即生效
+    from fastapi.responses import Response
+    headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+    return FileResponse(str(thumb_full_path), media_type="image/jpeg", headers=headers)
 
 
 @router.get("/{document_identifier:path}", response_model=DocumentResponse)

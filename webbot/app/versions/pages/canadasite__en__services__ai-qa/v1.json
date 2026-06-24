@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "page_id": "/canadasite/en/services/ai-qa",
+  "page_path": "/canadasite/en/services/ai-qa",
+  "page_title": "AI Question and answer",
+  "language": "en",
+  "content_size": 220,
+  "created_at": "2026-06-01T22:29:07.459202Z",
+  "author": null,
+  "notes": "Published via WebBot",
+  "content": "<h1 id=\"wb-cont\">AI Question and answer</h1>\n<p></p>\n<ul class=\"wb-filter\" data-ajax-replace=\"/mustache/mustache-templates/page-list?datasource=/api/v1/pages?path=/canadasite/en/services/ai-qa\">\n<li>Loading...</li>\n</ul>"
+}

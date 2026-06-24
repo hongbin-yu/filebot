@@ -45,7 +45,7 @@ WEBBOT_API_BASE = os.environ.get("WEBBOT_API_BASE", "http://localhost:8000")
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["import"])
+router = APIRouter()
 
 # Max path segments for folder depth
 MAX_PATH_DEPTH = 10
@@ -287,7 +287,38 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
         
         # Determine folder_path (parent of doc_path)
         folder_path = str(Path(doc_path).parent)
-        
+
+        # ── Ensure folder hierarchy exists in DB ──
+        # The folder may not have a corresponding record in the folders table,
+        # which would violate FK constraint (documents.folder_path → folders.path).
+        # Recursively create all parent folder records.
+        try:
+            boarding_app = db.query(App).filter(App.slug == 'boarding').first()
+            root_app_id = boarding_app.id if boarding_app else None
+            _parts = folder_path.strip('/').split('/')
+            _cur = ''
+            for _part in _parts:
+                _cur = _cur + '/' + _part if _cur else '/' + _part
+                _exist = db.query(Folder).filter(Folder.path == _cur).first()
+                if not _exist:
+                    _parent = '/'.join(_cur.split('/')[:-1]) or None
+                    _folder_app_id = root_app_id
+                    if _parent:
+                        _pf = db.query(Folder).filter(Folder.path == _parent).first()
+                        if _pf and _pf.app_id:
+                            _folder_app_id = _pf.app_id
+                    _f = Folder(
+                        path=_cur,
+                        parent_folder_path=_parent,
+                        name=_part,
+                        app_id=_folder_app_id,
+                        created_by=str(current_user.id),
+                    )
+                    db.add(_f)
+                    db.flush()
+        except Exception as e:
+            logger.warning(f"  ⚠️  Folder creation warning for {folder_path}: {e}")
+
         page_id = str(uuid.uuid4())[:8]
         timestamp = datetime.now()
         
@@ -922,24 +953,30 @@ def import_page(
     try:
         folder = db.query(Folder).filter(Folder.path == folder_path).first()
         if not folder:
-            parent_path = str(Path(folder_path).parent)
-            last_segment = os.path.basename(folder_path)
-            # Find app_id from parent folder chain
-            leaf_app_id = None
-            probe = db.query(Folder).filter(Folder.path == parent_path).first()
-            if probe and probe.app_id:
-                leaf_app_id = probe.app_id
-            if not leaf_app_id:
-                boarding_app = db.query(App).filter(App.slug == 'boarding').first()
-                leaf_app_id = boarding_app.id if boarding_app else None
-            leaf_folder = Folder(
-                path=folder_path,
-                parent_folder_path=parent_path if parent_path != folder_path else None,
-                name=last_segment,
-                app_id=leaf_app_id,
-                created_by=str(current_user.id),
-            )
-            db.add(leaf_folder)
+            # Recursively create all parent folders from root to leaf
+            boarding_app = db.query(App).filter(App.slug == 'boarding').first()
+            root_app_id = boarding_app.id if boarding_app else None
+            _parts = folder_path.strip('/').split('/')
+            _cur = ''
+            for _part in _parts:
+                _cur = _cur + '/' + _part if _cur else '/' + _part
+                _exist = db.query(Folder).filter(Folder.path == _cur).first()
+                if not _exist:
+                    _parent = '/'.join(_cur.split('/')[:-1]) or None
+                    _folder_app_id = root_app_id
+                    if _parent:
+                        _pf = db.query(Folder).filter(Folder.path == _parent).first()
+                        if _pf and _pf.app_id:
+                            _folder_app_id = _pf.app_id
+                    _f = Folder(
+                        path=_cur,
+                        parent_folder_path=_parent,
+                        name=_part,
+                        app_id=_folder_app_id,
+                        created_by=str(current_user.id),
+                    )
+                    db.add(_f)
+                    db.flush()
             db.commit()
     finally:
         db.close()
@@ -994,6 +1031,11 @@ def import_page(
     html_bytes = modified_html.encode('utf-8')
     file_size = len(html_bytes)
     # 同名文件直接覆盖（旧文件应在删除文档记录时同步删除）
+    # 如果路径是一个目录（历史遗留问题），先移除
+    if absolute_path.is_dir():
+        import shutil
+        logger.warning(f"Path exists as directory, removing: {absolute_path}")
+        shutil.rmtree(absolute_path)
     absolute_path.write_bytes(html_bytes)
 
     logger.info(f"📄 Saved imported page: {absolute_path} ({file_size} bytes)")

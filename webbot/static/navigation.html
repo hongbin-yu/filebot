@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html class="no-js" lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv=0260616-1321"X-UA-Compatible" content="IE=edge">
     <title>WebBot Page Navigation</title>
     <link rel="shortcut icon" href="/static/icons/webbot_favicon.png" type="image/png">
     <link rel="icon" href="/static/icons/webbot_favicon.png" sizes="32x32">
@@ -12,7 +13,7 @@
     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
     <!-- AEM Style Navigation CSS -->
-    <link rel="stylesheet" href="css/navigation.css">
+    <link rel="stylesheet" href="css/navigation.css?v=2">
 <script src="/static/js/webbot-auth.js"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
@@ -27,23 +28,23 @@
         <div class="aem-navigation-container">
             <!-- Header -->
             <div class="navigation-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <h1 style="margin:0;">
+                <div class="nav-header-row">
+                    <div class="nav-header-left">
+                        <h1 class="nav-title">
                             <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
                                 <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
                             </button>
                             <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
-                            WebBot Page Navigation
+                            <span class="nav-title-text">WebBot Page Navigation</span>
                         </h1>
-                        <div id="page-stats" class="text-muted" style="font-size:13px;white-space:nowrap;">
+                        <div id="page-stats" class="text-muted nav-stats">
                             Loading pages...
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <span id="webbot-user-info" style="font-size:13px;color:#335075;font-weight:500;"></span>
-                        <button id="webbot-login-btn" style="display:none;padding:4px 10px;font-size:12px;border:1px solid #2563eb;color:#2563eb;border-radius:4px;cursor:pointer;background:white;">🔑 Login</button>
-                        <button id="webbot-logout-btn" class="btn btn-sm" style="font-size:12px;padding:4px 10px;display:none;">🚪 Logout</button>
+                    <div class="nav-header-right">
+                        <span id="webbot-user-info" class="nav-user-info"></span>
+                        <button id="webbot-login-btn" class="nav-login-btn" style="display:none;">🔑 Login</button>
+                        <button id="webbot-logout-btn" class="btn btn-sm nav-logout-btn" style="font-size:12px;padding:4px 10px;display:none;">🚪 Logout</button>
                     </div>
                 </div>
             </div>
@@ -80,11 +81,13 @@
                 </button>
             </div>
 
-            <!-- Breadcrumb navigation -->
-            <nav aria-label="breadcrumb" id="breadcrumb-container">
-                <div class="aem-breadcrumb">
-                    <span class="breadcrumb-item"><a href="#" id="breadcrumb-home">Canada site</a></span>
-                    <!-- Dynamic breadcrumb items will be added here -->
+            <!-- Breadcrumb navigation (WET theme) -->
+            <nav id="wb-bc" property="breadcrumb">
+                <h2 class="wb-inv">You are here:</h2>
+                <div class="container">
+                    <ol class="breadcrumb">
+                        <li><a href="#" id="breadcrumb-home">Root</a></li>
+                    </ol>
                 </div>
             </nav>
 
@@ -268,6 +271,14 @@
                         <input type="text" id="prop-filepath" class="form-control" placeholder="/canadasite/images/en/...">
                         <small class="form-text text-muted">Path for FileBot image storage. Leave empty to inherit from ancestor.</small>
                     </div>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="prop-auto-image">
+                            <strong>Set Image location at page path level</strong>
+                            <br>
+                            <small class="text-muted" style="font-weight:normal;">Auto-populate as <code>/content/dam/{lang}/{page-path}</code> matching this page's content path.</small>
+                        </label>
+                    </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -379,6 +390,16 @@
                             <span id="prop-approval-status" style="font-size:14px;font-weight:500;">—</span>
                             <button type="button" class="btn btn-sm btn-success" id="btn-approve" onclick="approvePage()" disabled>✅ Approve</button>
                             <button type="button" class="btn btn-sm btn-warning" id="btn-unapprove" onclick="unapprovePage()" disabled>⛔ Revoke</button>
+                        </div>
+                    </div>
+
+                    <!-- 🔒 Lock Status -->
+                    <div class="form-group" id="lock-section">
+                        <label>🔒 Lock Status</label>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span id="prop-lock-status" style="font-size:14px;font-weight:500;">—</span>
+                            <button type="button" class="btn btn-sm btn-danger" id="btn-lock" onclick="lockPage()" disabled>🔒 Lock</button>
+                            <button type="button" class="btn btn-sm btn-success" id="btn-unlock" onclick="unlockPage()" disabled>🔓 Unlock</button>
                         </div>
                     </div>
 
@@ -516,13 +537,13 @@
     <script src="/etc/designs/canada/wet-boew/js/theme.min.js"></script>
 
     <!-- Navigation JavaScript -->
-    <script src="js/wet-alert.js?v=20260605"></script>
-    <script src="js/navigation.js?v=20260605"></script>
+    <script src="js/wet-alert.js?v=0260616-1321"></script>
+    <script src="js/navigation.js?v=20260617-1"></script>
     <script>
         // Hide WET-BOEW/GCWeb dynamically-injected header/footer
         (function() {
             function hideWetBoewElements() {
-                var ids = ['wb-bnr', 'wb-sm', 'wb-info', 'wb-srch', 'wb-lng', 'gcwu-sig', 'wb-bar', 'wb-tphp', 'wb-glb', 'wb-sec', 'wb-bc'];
+                var ids = ['wb-bnr', 'wb-sm', 'wb-info', 'wb-srch', 'wb-lng', 'gcwu-sig', 'wb-bar', 'wb-tphp', 'wb-glb', 'wb-sec'];
                 ids.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.setProperty('display', 'none', 'important');

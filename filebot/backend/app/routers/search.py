@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func, cast, String
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import os
@@ -297,6 +297,10 @@ def search_documents(
     # Path filter
     path: Optional[str] = Query(None, description="Path prefix match (LIKE 'path%')"),
     
+    # AI image tag filters
+    ai_category: Optional[str] = Query(None, description="Filter by AI image category (exact match)"),
+    ai_tags: Optional[str] = Query(None, description="Filter by AI tags (fuzzy match on JSON field)"),
+    
     # Pagination
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
@@ -384,6 +388,17 @@ def search_documents(
         if is_archived is not None:
             query = query.filter(Document.is_archived == is_archived)
     
+        # ===== AI category filter =====
+        if ai_category:
+            query = query.filter(Document.ai_category.ilike(ai_category))
+    
+        # ===== AI tags filter (fuzzy match on JSON) =====
+        if ai_tags:
+            # Cast JSON to text and do fuzzy match
+            query = query.filter(
+                cast(Document.ai_tags, String).ilike(f"%{ai_tags}%")
+            )
+    
         # ===== Sorting =====
         sort_field_map = {
             "created_at": Document.created_at,
@@ -437,6 +452,9 @@ def search_pages(
     width_max: Optional[int] = Query(None, ge=0, description="Maximum width"),
     height_min: Optional[int] = Query(None, ge=0, description="Minimum height"),
     height_max: Optional[int] = Query(None, ge=0, description="Maximum height"),
+    
+    # AI image tag filters (uses parent document's ai fields)
+    ai_category: Optional[str] = Query(None, description="Filter by parent document's AI image category"),
     
     # Pagination
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -512,6 +530,10 @@ def search_pages(
     
     if height_max:
         query = query.filter(Page.height <= height_max)
+    
+    # ===== AI category filter (on parent document) =====
+    if ai_category:
+        query = query.filter(Document.ai_category.ilike(ai_category))
     
     # ===== Sort and paginate =====
     query = query.order_by(Page.document_path, Page.page_number)
@@ -751,4 +773,121 @@ def advanced_search(
             "limit": limit,
             "has_more": (skip + limit) < total
         }
+    }
+
+
+# ── AI Category endpoints ──────────────────────────────────────────────
+
+class AICategoryItem(BaseModel):
+    category: str
+    count: int
+
+
+class AICategoriesResponse(BaseModel):
+    categories: List[AICategoryItem]
+    total_tagged: int
+    total_untagged: int
+
+
+@router.get("/categories", response_model=AICategoriesResponse)
+def get_ai_categories(
+    path: Optional[str] = Query(None, description="Filter by folder path prefix (LIKE 'path%')"),
+    from_: Optional[str] = Query(None, alias="from", description="Category source: clip (ai_category field) or ai (ai_tags field)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get AI image categories with document counts.
+    
+    Supports optional filtering by folder path and category source.
+    - path: filter documents under a specific folder path prefix
+    - from=clip (default): counts from ai_category column
+    - from=ai: counts from ai_tags JSON array (each tag becomes a category)
+    
+    Frontend can use this to build a category filter dropdown scoped to a directory.
+    """
+    # Default to clip (ai_category)
+    use_tags = from_ == "ai"
+
+    if use_tags:
+        # from=ai: use PostgreSQL JSON functions to unnest ai_tags array
+        # Count each tag value as a category
+        from sqlalchemy import text
+        # ai_tags is JSON array of objects like [{"tag": "contract", "score": 0.22}]
+        # Extract tag field from each object
+        base_sql = """
+            SELECT item->>'tag' AS tag, COUNT(*) as cnt
+            FROM documents,
+                 json_array_elements(
+                     CASE WHEN ai_tags IS NULL THEN '[]'::json
+                          WHEN json_typeof(ai_tags) = 'array' THEN ai_tags
+                          ELSE '[]'::json
+                     END
+                 ) AS item
+            WHERE item->>'tag' IS NOT NULL AND item->>'tag' != ''
+        """
+        if path:
+            base_sql += " AND path LIKE :p"
+        base_sql += " GROUP BY tag ORDER BY cnt DESC"
+        params = {"p": f"{path}%"} if path else {}
+        results = db.execute(text(base_sql), params).fetchall()
+
+        categories = [
+            AICategoryItem(category=r[0], count=r[1])
+            for r in results
+        ]
+
+        # Count total tagged/untagged (ai_tags has data)
+        tagged_q = db.query(func.count(Document.path)).filter(
+            Document.ai_tags.isnot(None)
+        )
+        untagged_q = db.query(func.count(Document.path)).filter(
+            Document.ai_tags.is_(None)
+        )
+        if path:
+            tagged_q = tagged_q.filter(Document.path.like(f"{path}%"))
+            untagged_q = untagged_q.filter(Document.path.like(f"{path}%"))
+        total_tagged = tagged_q.scalar() or 0
+        total_untagged = untagged_q.scalar() or 0
+    else:
+        # from=clip (default): count from ai_category column, excluding nulls
+        base_q = db.query(
+            Document.ai_category,
+            func.count(Document.path)
+        ).filter(
+            Document.ai_category.isnot(None),
+            Document.ai_category != ""
+        )
+        if path:
+            base_q = base_q.filter(Document.path.like(f"{path}%"))
+        results = base_q.group_by(
+            Document.ai_category
+        ).order_by(
+            func.count(Document.path).desc()
+        ).all()
+
+        categories = [
+            AICategoryItem(category=r[0], count=r[1])
+            for r in results
+        ]
+
+        tagged_q = db.query(func.count(Document.path)).filter(
+            Document.ai_category.isnot(None),
+            Document.ai_category != ""
+        )
+        untagged_q = db.query(func.count(Document.path)).filter(
+            or_(
+                Document.ai_category.is_(None),
+                Document.ai_category == ""
+            )
+        )
+        if path:
+            tagged_q = tagged_q.filter(Document.path.like(f"{path}%"))
+            untagged_q = untagged_q.filter(Document.path.like(f"{path}%"))
+        total_tagged = tagged_q.scalar() or 0
+        total_untagged = untagged_q.scalar() or 0
+
+    return {
+        "categories": categories,
+        "total_tagged": total_tagged,
+        "total_untagged": total_untagged
     }

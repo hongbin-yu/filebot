@@ -57,6 +57,7 @@ export interface DocumentUploadRequest {
   folder_path?: string;  // 推荐使用路径
   title?: string;
   description?: string;
+  skip_if_exists?: boolean;
 }
 
 class DocumentService {
@@ -319,6 +320,9 @@ class DocumentService {
     }
     if (data.description) {
       formData.append('description', data.description);
+    }
+    if (data.skip_if_exists) {
+      formData.append('skip_if_exists', 'true');
     }
     
     console.log('🔍 [DEBUG] documentService.uploadDocument:', {

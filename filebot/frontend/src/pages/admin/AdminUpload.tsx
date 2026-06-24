@@ -24,6 +24,7 @@ const AdminUpload: React.FC = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [websiteImportProgress, setWebsiteImportProgress] = useState(0);
   const [websiteImportStatus, setWebsiteImportStatus] = useState<string>('');
+  const [skipIfExists, setSkipIfExists] = useState(false);
 
   // 获取查询参数
   const [searchParams] = useSearchParams();
@@ -148,6 +149,7 @@ const AdminUpload: React.FC = () => {
         const uploadRequest: any = {
           file,
           title: file.name.replace(/\.[^/.]+$/, ''), // 使用文件名（不含扩展名）作为标题
+          skip_if_exists: skipIfExists,
         };
         
         // 路径优先：如果文件夹有path，使用folder_path；否则使用folder_id（向后兼容）
@@ -167,7 +169,9 @@ const AdminUpload: React.FC = () => {
       });
 
       // 等待所有文件上传完成
-      const uploadedDocuments = await Promise.all(uploadPromises);
+      const results = await Promise.all(uploadPromises);
+      const uploadedCount = results.filter((r: any) => !r.skipped).length;
+      const skippedCount = results.filter((r: any) => r.skipped).length;
       
       // 更新进度到100%
       setProgress(100);
@@ -179,7 +183,11 @@ const AdminUpload: React.FC = () => {
         
         // 显示成功消息并导航回文档列表
         const pathInfo_ = folder?.path ? `\nTarget path: ${folder.path}` : "";
-        showToast(`Successfully uploaded ${uploadedDocuments.length} documents!${pathInfo_}`, 'success');
+        let msg = `Uploaded ${uploadedCount} documents!`;
+        if (skippedCount > 0) {
+          msg += ` (${skippedCount} skipped - already exists)`;
+        }
+        showToast(msg + pathInfo_, 'success');
         if (appSlug && folder?.path) {
           const navPath = encodeURIComponent(folder.path);
           navigate(`/admin/apps/${appSlug}?folder=${navPath}`);
@@ -231,13 +239,7 @@ const AdminUpload: React.FC = () => {
       // 步骤1：分析文件夹结构
       setImportStatus('Analyzing folder structure...');
       
-      // 使用Map来存储文件夹路径到文件夹ID的映射
-      const folderMap = new Map<string, string>();
-      // 根文件夹就是当前目标文件夹
-      folderMap.set('', folder.path);
-      
-      // 分析所有文件的路径，提取所有文件夹
-      const folderPaths = new Set<string>();
+      // 分析所有文件的路径，提取文件信息
       const fileList = selectedFiles.map(file => {
         // 获取文件的相对路径（相对于选择的根文件夹）
         const relativePath = (file as any).webkitRelativePath || file.name;
@@ -247,11 +249,6 @@ const AdminUpload: React.FC = () => {
         const fileName = pathParts.pop() || ''; // 文件名
         const dirPath = pathParts.join('/'); // 目录路径
         
-        // 添加到文件夹路径集合
-        if (dirPath) {
-          folderPaths.add(dirPath);
-        }
-        
         return {
           file,
           fileName,
@@ -260,98 +257,18 @@ const AdminUpload: React.FC = () => {
         };
       });
 
-      // 步骤2：创建所有需要的子文件夹
-      setImportStatus(`Creating ${folderPaths.size} sub-folders...`);
-      let foldersCreated = 0;
-      
-      // 按路径深度排序，确保先创建父文件夹
-      const sortedFolderPaths = Array.from(folderPaths).sort((a, b) => {
-        const depthA = a.split('/').length;
-        const depthB = b.split('/').length;
-        return depthA - depthB;
-      });
-
-      for (const folderPath of sortedFolderPaths) {
-        try {
-          // 检查父文件夹是否存在
-          const pathParts = folderPath.split('/');
-          let parentFolderIdentifier = folder.path || folder.id;
-          
-          // 逐级查找或创建父文件夹
-          for (let i = 0; i < pathParts.length; i++) {
-            const currentPath = pathParts.slice(0, i + 1).join('/');
-            const currentName = pathParts[i];
-            
-            if (!folderMap.has(currentPath)) {
-              // 创建文件夹
-              const parentPath = pathParts.slice(0, i).join('/');
-              const parentIdentifier = folderMap.get(parentPath) || (folder.path || folder.id);
-              
-              setImportStatus(`Creating folder: ${currentPath}`);
-              
-              const newFolder = await folderService.createFolder({
-                name: currentName,
-                description: `Folder imported from ${app.name}`,
-                parent_folder_id: parentIdentifier, // 可以是路径或ID
-                app_id: app.id
-              });
-              
-              // 存储文件夹标识符（路径优先）
-              const folderIdentifier = newFolder.path || newFolder.id;
-              folderMap.set(currentPath, folderIdentifier);
-              foldersCreated++;
-            }
-            
-            // 更新父文件夹标识符用于下一级
-            parentFolderIdentifier = folderMap.get(currentPath)!;
-          }
-        } catch (error: any) {
-          console.error(`创建文件夹失败 ${folderPath}:`, error);
-          // 如果文件夹已存在（400错误），尝试通过路径查找现有文件夹
-          if (error?.response?.status === 400 && error?.response?.data?.detail?.includes('已存在同名的文件夹')) {
-            // 通过路径计算这个文件夹应该存在的路径，尝试查找
-            const fullPath = folder.path ? `${folder.path}/${folderPath}` : `/${app.slug}/${folderPath}`;
-            try {
-              const existingFolder = await folderService.getFolderByPath(fullPath);
-              if (existingFolder) {
-                const folderIdentifier = existingFolder.path || existingFolder.id;
-                // 为此路径下的所有层级更新 folderMap
-                const pathParts = folderPath.split('/');
-                for (let j = 1; j <= pathParts.length; j++) {
-                  const subPath = pathParts.slice(0, j).join('/');
-                  const subFullPath = folder.path ? `${folder.path}/${subPath}` : `/${app.slug}/${subPath}`;
-                  const subFolder = await folderService.getFolderByPath(subFullPath);
-                  if (subFolder) {
-                    const subId = subFolder.path || subFolder.id;
-                    folderMap.set(subPath, subId);
-                    console.log(`📁 已加载现有文件夹: ${subFullPath} -> ${subId}`);
-                  }
-                }
-              }
-            } catch (lookupError) {
-              console.warn(`无法查找现有文件夹 ${fullPath}:`, lookupError);
-            }
-          }
-          // 继续尝试创建其他文件夹
-        }
-        
-        // 更新进度
-        setImportProgress(Math.round((foldersCreated / sortedFolderPaths.length) * 40));
+      // 步骤1.5：弹窗确认导入（使用 wetYesOrNo 替代浏览器原生 alert）
+      const confirmed = await window.wetYesOrNo(
+        `Import ${fileList.length} files to:\n${folder.path}\n\nSub-folders will be auto-created.`,
+        'Confirm Folder Import'
+      );
+      if (!confirmed) {
+        setImporting(false);
+        setImportProgress(0);
+        return;
       }
 
-      // === 🐛 DEBUG: Print folderMap contents ===
-      console.log('🔍 [DEBUG] === folderMap dump ===');
-      folderMap.forEach((value, key) => {
-        const resolved = value.startsWith('/') ? 'path' : 'UUID';
-        console.log(`  folderMap[${JSON.stringify(key)}] = ${value} (${resolved})`);
-      });
-      console.log('🔍 [DEBUG] === Root folder info ===');
-      console.log(`  folder.path = ${folder.path}`);
-      console.log(`  app.id      = ${app.id}`);
-      console.log(`  app.slug    = ${app.slug}`);
-      // ======================================
-
-      // 步骤3：上传所有文件到对应的文件夹
+      // 步骤2：上传所有文件（后端自动创建子文件夹）
       setImportStatus(`Uploading ${fileList.length} files...`);
       let filesUploaded = 0;
       let successfulUploads = 0;
@@ -360,32 +277,21 @@ const AdminUpload: React.FC = () => {
         try {
           setImportStatus(`Uploading: ${fileInfo.fullPath} (${filesUploaded + 1}/${fileList.length})`);
           
-          // 获取文件对应的文件夹标识符（路径优先）
-          const targetFolderIdentifier = fileInfo.dirPath ? folderMap.get(fileInfo.dirPath) || (folder.path || folder.id) : (folder.path || folder.id);
+          // 直接根据文件相对路径构造目标 folder_path
+          // 后端 get_folder_by_identifier_or_path(create_if_not_exists=True) 会自动创建
+          const targetFolderPath = fileInfo.dirPath
+            ? `${folder.path}/${fileInfo.dirPath}`
+            : folder.path;
           
-          // 🐛 DEBUG: Show what target was resolved to
-          const lookupKey = fileInfo.dirPath || '(root)';
-          const mapValue = fileInfo.dirPath ? folderMap.get(fileInfo.dirPath) : undefined;
-          console.log(`🔍 [DEBUG] File: ${fileInfo.fullPath}`);
-          console.log(`  dirPath = ${JSON.stringify(fileInfo.dirPath)}`);
-          console.log(`  folderMap.get(${JSON.stringify(lookupKey)}) = ${mapValue === undefined ? 'UNDEFINED ❌' : mapValue}`);
-          console.log(`  → targetFolderIdentifier = ${targetFolderIdentifier}`);
-          // ======================================
+          console.log(`📁 File: ${fileInfo.fullPath} → folder_path: ${targetFolderPath}`);
           
           // 上传文件
           const uploadRequest: any = {
             file: fileInfo.file,
-            title: fileInfo.fileName.replace(/\.[^/.]+$/, '') // 使用文件名（不含扩展名）作为标题
+            title: fileInfo.fileName.replace(/\.[^/.]+$/, ''),
+            skip_if_exists: skipIfExists,
+            folder_path: targetFolderPath,
           };
-          
-          // 路径优先：如果是路径，使用folder_path；否则使用folder_id（向后兼容）
-          if (targetFolderIdentifier.startsWith('/')) {
-            uploadRequest.folder_path = targetFolderIdentifier;
-            console.log('🔍 [DEBUG] AdminUpload batch import: using folder_path:', targetFolderIdentifier);
-          } else {
-            uploadRequest.folder_path = targetFolderIdentifier;
-            console.warn('⚠️ AdminUpload batch import: treating non-path as folder_path:', targetFolderIdentifier);
-          }
 
           await documentService.uploadDocument(uploadRequest);
           successfulUploads++;
@@ -396,12 +302,12 @@ const AdminUpload: React.FC = () => {
         }
         
         filesUploaded++;
-        setImportProgress(40 + Math.round((filesUploaded / fileList.length) * 60));
+        setImportProgress(Math.round((filesUploaded / fileList.length) * 100));
       }
 
       // 步骤4：完成导入
       setImportProgress(100);
-      setImportStatus(`Import complete! Uploaded ${successfulUploads}/${fileList.length} files, created ${foldersCreated} sub-folders`);
+      setImportStatus(`Import complete! Uploaded ${successfulUploads}/${fileList.length} files`);
       
       // 延迟一下让进度条完成动画
       setTimeout(() => {
@@ -411,7 +317,7 @@ const AdminUpload: React.FC = () => {
         
         // 显示成功消息并导航回文档列表
         const folderPathInfo = folder.path ? `\nTarget path: ${folder.path}` : '';
-        showToast(`Folder import complete!${folderPathInfo}\n• Created ${foldersCreated} sub-folders\n• Uploaded ${successfulUploads}/${fileList.length} files`, 'success');
+        showToast(`Folder import complete!${folderPathInfo}\n• Uploaded ${successfulUploads}/${fileList.length} files`, 'success');
         if (appSlug && folder?.path) {
           const navPath = encodeURIComponent(folder.path);
           navigate(`/admin/apps/${appSlug}?folder=${navPath}`);
@@ -515,235 +421,182 @@ const AdminUpload: React.FC = () => {
   // 加载状态
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading app and folder info...</p>
-          </div>
+      <main property="mainContentOfPage" className="container">
+        <div className="text-center mrgn-tp-xl mrgn-bttm-xl">
+          <p>Loading app and folder info...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   // 错误状态
   if (error) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-red-800 mb-2">Loading Failed</h3>
-          <p className="text-red-700 mb-4">{error}</p>
-          <div className="flex justify-center space-x-3">
-            <button 
-              onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              重试
-            </button>
-            <Link 
-              to="/admin/apps"
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-            >
-              Back to Apps
-            </Link>
-          </div>
+      <main property="mainContentOfPage" className="container">
+        <div className="alert alert-danger">
+          <h3>Loading Failed</h3>
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()} className="btn btn-danger">重试</button>
+          {' '}
+          <Link to="/admin/apps" className="btn btn-default">Back to Apps</Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   // 数据不完整状态
   if (!app || !folder) {
     return (
-      <div className="p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-yellow-800 mb-2">Incomplete Data</h3>
-          <p className="text-yellow-700 mb-4">Unable to find the app or folder</p>
-          <Link 
-            to="/admin/apps"
-            className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-          >
-            返回应用列表
-          </Link>
+      <main property="mainContentOfPage" className="container">
+        <div className="alert alert-warning">
+          <h3>Incomplete Data</h3>
+          <p>Unable to find the app or folder</p>
+          <Link to="/admin/apps" className="btn btn-warning">返回应用列表</Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="p-6">
-      {/* 面包屑导航 */}
-      <div className="mb-6">
-        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-          <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
-          <span>›</span>
-          <Link to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}`} className="hover:text-blue-600">{app.name}</Link>
-          <span>›</span>
-          <Link to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}?folder=${encodeURIComponent(folder.path)}`} className="hover:text-blue-600">{folder.name} Documents</Link>
-          <span>›</span>
-          <span className="text-gray-700">Upload Documents</span>
+    <main property="mainContentOfPage" className="container">
+      {/* WET Breadcrumb */}
+      <nav id="wb-bc" property="breadcrumb">
+        <h2 className="wb-inv">You are here:</h2>
+        <div className="container">
+          <ol className="breadcrumb">
+            <li><Link to="/admin/apps">Apps</Link></li>
+            <li><Link to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}`}>{app.name}</Link></li>
+            <li><Link to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}?folder=${encodeURIComponent(folder.path)}`}>{folder.name} Documents</Link></li>
+            <li>Upload Documents</li>
+          </ol>
         </div>
-        
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Upload Documents to {folder.name}</h1>
-            <p className="text-gray-600 mt-1">App: {app.name} • Folder: {folder.name}</p>
-            {folder.description && (
-              <p className="text-gray-500 text-sm mt-1">{folder.description}</p>
-            )}
-          </div>
-          <Link 
-            to={`/admin/apps/${appSlug || (app && (app.slug || app.id)) || ''}?folder=${encodeURIComponent(folder.path)}`}
-            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-          >
-            Back to Documents
-          </Link>
-        </div>
-      </div>
+      </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Title */}
+      <h1>Upload Documents to {folder.name}</h1>
+      <p>App: {app.name} • Folder: {folder.name}</p>
+      {folder.description && <p>{folder.description}</p>}
+
+      <div className="row">
         {/* 左侧：上传区域 */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Select Files</h2>
+        <div className="col-md-8">
+          <div className="panel panel-default">
+          <div className="panel-body">
+            <h2 className="h3">Select Files</h2>
             
             {/* 选项1：普通文件上传 */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Upload Single or Multiple Files</h3>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                <div className="text-gray-400 mb-3">
-                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <div className="mb-5">
+              <h3 className="fb-upload-subtitle">Upload Single or Multiple Files</h3>
+              <div className="fb-upload-dropzone">
+                <div className="fb-text-gray-400 mb-3">
+                  <svg className="where-48" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                   </svg>
                 </div>
-                <p className="text-gray-600 mb-4">Select one or more files to upload</p>
-                <input 
-                  type="file" 
-                  id="file-upload" 
-                  multiple 
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <label 
-                  htmlFor="file-upload"
-                  className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer inline-block"
-                >
+                <p className="mb-4">Select one or more files to upload</p>
+                <input type="file" id="file-upload" multiple onChange={handleFileSelect} className="hidden" />
+                <label htmlFor="file-upload" className="fb-upload-label fb-bg-blue-600 fb-text-white fb-rounded">
                   Select Files
                 </label>
-                <p className="text-sm text-gray-500 mt-3">Supports PDF, DOCX, XLSX, PPTX, JPG, PNG, TIFF</p>
+                <p className="fb-text-sm mt-3">Supports PDF, DOCX, XLSX, PPTX, JPG, PNG, TIFF</p>
               </div>
             </div>
 
             {/* 分隔线 */}
-            <div className="flex items-center my-6">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <div className="mx-4 text-sm text-gray-500">or</div>
-              <div className="flex-grow border-t border-gray-300"></div>
+            <div className="fb-d-flex fb-align-center mb-4">
+              <div className="fb-flex-1 fb-border-t"></div>
+              <span className="fb-text-sm">or</span>
+              <div className="fb-flex-1 fb-border-t"></div>
             </div>
 
             {/* 选项2：文件夹导入 */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <div className="mb-5">
+              <h3 className="fb-d-flex fb-align-center fb-upload-subtitle">
+                <svg className="where-20 mr-2" style={{color: '#16a34a'}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                 </svg>
                 Import Entire Folder (Preserve Structure)
               </h3>
               {highlightImport && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-lg">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <div className="mb-4 p-3 fb-bg-green-100">
+                  <div className="fb-d-flex fb-align-center">
+                    <svg className="where-20 mr-2" style={{color: '#16a34a'}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    <span className="font-medium text-green-800">Import Mode Activated</span>
+                    <span className="fb-text-green-800" style={{fontWeight: 500}}>Import Mode Activated</span>
                   </div>
-                  <p className="text-sm text-green-700 mt-1 ml-7">
+                  <p className="fb-text-sm fb-text-green-700 mt-1">
                     Click "Select Folder" to import an entire local folder. The system will automatically create sub-directories and upload all files.
                   </p>
                 </div>
               )}
               <div className={`${highlightImport ? 'border-4 border-green-500' : 'border-2 border-dashed border-green-300'} rounded-lg p-6 text-center hover:border-green-500 transition-colors bg-green-50 ${highlightImport ? 'animate-pulse' : ''}`}>
-                <div className="text-green-400 mb-3">
-                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <div className="mb-3" style={{color: '#4ade80'}}>
+                  <svg className="where-48" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                   </svg>
                 </div>
-                <p className="text-gray-600 mb-4">Choose a local folder to auto-create sub-directories and upload all files</p>
-                <input 
-                  type="file" 
-                  id="folder-upload" 
-                  // @ts-ignore - webkitdirectory is not in TypeScript's HTMLInputElement type
-                  webkitdirectory="true"
-                  directory="true"
-                  multiple 
-                  onChange={handleFolderSelect}
-                  className="hidden"
-                />
-                <label 
-                  htmlFor="folder-upload"
-                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer inline-block"
-                >
+                <p className="mb-4">Choose a local folder to auto-create sub-directories and upload all files</p>
+                <input type="file" id="folder-upload" webkitdirectory="true" directory="true" multiple onChange={handleFolderSelect} className="hidden" />
+                <label htmlFor="folder-upload" className="fb-upload-label fb-bg-green-600 fb-text-white fb-rounded">
                   Select Folder
                 </label>
-                <div className="mt-4 text-sm text-gray-600">
-                  <div className="flex items-center justify-center">
-                    <svg className="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <div className="fb-text-sm mt-4">
+                  <div className="fb-d-flex fb-align-center fb-justify-center">
+                    <svg className="where-20 mr-1" style={{color: '#22c55e'}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                     Auto-create sub-folders
                   </div>
-                  <div className="flex items-center justify-center mt-1">
-                    <svg className="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <div className="fb-d-flex fb-align-center fb-justify-center mt-1">
+                    <svg className="where-20 mr-1" style={{color: '#22c55e'}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                     Preserve original directory structure
                   </div>
-                  <div className="flex items-center justify-center mt-1">
-                    <svg className="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <div className="fb-d-flex fb-align-center fb-justify-center mt-1">
+                    <svg className="where-20 mr-1" style={{color: '#22c55e'}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                     Batch upload all files
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-4">Compatible with Chrome, Edge, Safari</p>
+                <p className="fb-text-xs mt-4">Compatible with Chrome, Edge, Safari</p>
               </div>
             </div>
 
             {/* 文件列表 */}
             {selectedFiles.length > 0 && (
-              <div className="mt-6">
-                <h3 className="font-medium mb-3">
+              <div className="mt-5">
+                <h3 style={{fontWeight: 500}} className="mb-3">
                   Selected Items ({selectedFiles.length})
                   {importFileCount > 0 && (
-                    <span className="ml-2 text-sm font-normal text-blue-600">
+                    <span className="ml-2 fb-text-sm fb-text-link" style={{fontWeight: 400}}>
                       from folder import ({importFileCount} files)
                     </span>
                   )}
                 </h3>
-                <div className="space-y-3">
+                <div className="fb-flex-col fb-gap-2">
                   {selectedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded">
-                      <div className="flex items-center">
-                        <div className="text-blue-500 mr-3">
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <div key={index} className="fb-d-flex fb-align-center fb-justify-between p-3" style={{border: '1px solid #e5e7eb', borderRadius: 4}}>
+                      <div className="fb-d-flex fb-align-center">
+                        <div className="mr-3" style={{color: '#3b82f6'}}>
+                          <svg className="where-20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                           </svg>
                         </div>
                         <div>
-                          <div className="font-medium">{file.name}</div>
-                          <div className="text-sm text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                          <div style={{fontWeight: 500}}>{file.name}</div>
+                          <div className="fb-text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
                           {(file as any).webkitRelativePath && (
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="fb-text-xs fb-text-gray-400 mt-1">
                             Path: {(file as any).webkitRelativePath}
                             </div>
                           )}
                         </div>
                       </div>
-                      <button 
-                        onClick={() => removeFile(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <button onClick={() => removeFile(index)} style={{color: '#ef4444'}}>
+                        <svg className="where-20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                       </button>
@@ -755,21 +608,18 @@ const AdminUpload: React.FC = () => {
 
             {/* 文件夹导入进度 */}
             {importing && (
-              <div className="mt-6">
-                <h3 className="font-medium mb-3">Folder Import Progress</h3>
-                <div className="bg-gray-100 rounded-full h-4 overflow-hidden">
-                  <div 
-                    className="bg-green-600 h-full transition-all duration-300"
-                    style={{ width: `${importProgress}%` }}
-                  ></div>
+              <div className="mt-5">
+                <h3 style={{fontWeight: 500}} className="mb-3">Folder Import Progress</h3>
+                <div className="progress">
+                  <div className="progress-bar progress-bar-success" style={{width: `${importProgress}%`}}></div>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600 mt-2">
+                <div className="fb-d-flex fb-justify-between fb-text-sm mt-2">
                   <span>{importStatus}</span>
                   <span>{importProgress}%</span>
                 </div>
-                <div className="mt-3 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <div className="fb-text-sm mt-3">
+                  <div className="fb-d-flex fb-align-center">
+                    <svg className="where-20 mr-2" style={{color: '#22c55e'}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     Creating sub-folders and uploading files...
@@ -780,26 +630,23 @@ const AdminUpload: React.FC = () => {
 
             {/* website导入进度 */}
             {importingWebsite && (
-              <div className="mt-6">
-                <h3 className="font-medium mb-3">Website Import Progress</h3>
-                <div className="bg-gray-100 rounded-full h-4 overflow-hidden">
-                  <div 
-                    className="bg-purple-600 h-full transition-all duration-300"
-                    style={{ width: `${websiteImportProgress}%` }}
-                  ></div>
+              <div className="mt-5">
+                <h3 style={{fontWeight: 500}} className="mb-3">Website Import Progress</h3>
+                <div className="progress">
+                  <div className="progress-bar progress-bar-info" style={{width: `${websiteImportProgress}%`}}></div>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600 mt-2">
+                <div className="fb-d-flex fb-justify-between fb-text-sm mt-2">
                   <span>{websiteImportStatus}</span>
                   <span>{websiteImportProgress}%</span>
                 </div>
-                <div className="mt-3 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <div className="fb-text-sm mt-3">
+                  <div className="fb-d-flex fb-align-center">
+                    <svg className="where-20 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     Importing website: {websiteUrl}
                   </div>
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="fb-text-xs mt-2">
                     This is a background task that will complete gradually.
                   </div>
                 </div>
@@ -808,15 +655,12 @@ const AdminUpload: React.FC = () => {
 
             {/* 上传进度 */}
             {uploading && (
-              <div className="mt-6">
-                <h3 className="font-medium mb-3">Upload Progress</h3>
-                <div className="bg-gray-100 rounded-full h-4 overflow-hidden">
-                  <div 
-                    className="bg-blue-600 h-full transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  ></div>
+              <div className="mt-5">
+                <h3 style={{fontWeight: 500}} className="mb-3">Upload Progress</h3>
+                <div className="progress">
+                  <div className="progress-bar progress-bar-info" style={{width: `${progress}%`}}></div>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600 mt-2">
+                <div className="fb-d-flex fb-justify-between fb-text-sm mt-2">
                   <span>Uploading...</span>
                   <span>{progress}%</span>
                 </div>
@@ -824,96 +668,58 @@ const AdminUpload: React.FC = () => {
             )}
 
             {/* 操作按钮 */}
-            <div className="mt-8 flex justify-end space-x-3">
-              <button 
-                onClick={() => setSelectedFiles([])}
-                disabled={selectedFiles.length === 0 || uploading || importing || importingWebsite}
-                className="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Clear List
-              </button>
-              <button 
-                onClick={handleUpload}
-                disabled={selectedFiles.length === 0 || uploading || importing || importingWebsite}
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {uploading ? 'Uploading...' : 'Upload'}
-              </button>
-              <button 
-                onClick={handleImportFolder}
-                disabled={selectedFiles.length === 0 || uploading || importing || importingWebsite}
-                className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {importing ? 'Importing...' : 'Import Folder'}
-              </button>
-              <button 
-                onClick={handleImportWebsite}
-                disabled={uploading || importing || importingWebsite}
-                className="px-6 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {importingWebsite ? 'Importing Website...' : 'Import Website'}
-              </button>
+            <div className="mrgn-tp-xl">
+              <div className="checkbox mrgn-bttm-md">
+                <label>
+                  <input type="checkbox" checked={skipIfExists} onChange={(e) => setSkipIfExists(e.target.checked)} /> Skip if document exists
+                </label>
+              </div>
+              <button onClick={() => setSelectedFiles([])} disabled={selectedFiles.length === 0 || uploading || importing || importingWebsite} className="btn btn-default">Clear List</button>
+              {' '}
+              <button onClick={handleUpload} disabled={selectedFiles.length === 0 || uploading || importing || importingWebsite} className="btn btn-primary">{uploading ? 'Uploading...' : 'Upload'}</button>
+              {' '}
+              <button onClick={handleImportFolder} disabled={selectedFiles.length === 0 || uploading || importing || importingWebsite} className="btn btn-success">{importing ? 'Importing...' : 'Import Folder'}</button>
+              {' '}
+              <button onClick={handleImportWebsite} disabled={uploading || importing || importingWebsite} className="btn btn-info">{importingWebsite ? 'Importing Website...' : 'Import Website'}</button>
             </div>
+          </div>
           </div>
         </div>
 
         {/* 右侧：信息面板 */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Upload Info</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm text-gray-500">Target App</div>
-                <div className="font-medium">{app.name}</div>
-                {app.description && (
-                  <div className="text-sm text-gray-500 mt-1">{app.description}</div>
-                )}
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Target Folder</div>
-                <div className="font-medium">{folder.name}</div>
-                {folder.description && (
-                  <div className="text-sm text-gray-500 mt-1">{folder.description}</div>
-                )}
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Folder Path</div>
-                <div className="font-mono text-sm bg-gray-50 p-2 rounded mt-1">{folder.path}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Created</div>
-                <div className="text-sm text-gray-600">
-                  <p>By: {folder.created_by || 'Unknown'}</p>
-                  <p>At: {new Date(folder.created_at).toLocaleString()}</p>
-                </div>
-              </div>
+        <div className="col-md-4">
+          <div className="panel panel-default">
+            <div className="panel-heading"><h2 className="panel-title">Upload Info</h2></div>
+            <div className="panel-body" style={{ overflow: 'hidden' }}>
+            <dl className="dl-horizontal">
+              <dt>Target App</dt><dd><strong>{app.name}</strong>{app.description && <><br/>{app.description}</>}</dd>
+              <dt>Target Folder</dt><dd><strong>{folder.name}</strong>{folder.description && <><br/>{folder.description}</>}</dd>
+              <dt>Folder Path</dt><dd><code style={{ wordBreak: 'break-all' }}>{folder.path}</code></dd>
+              <dt>Created</dt><dd>By: {folder.created_by || 'Unknown'}<br/>At: {new Date(folder.created_at).toLocaleString()}</dd>
+            </dl>
             </div>
           </div>
 
-          <div className="bg-blue-50 rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 text-blue-800">New Architecture</h2>
-            <div className="space-y-3 text-blue-700">
-              <p className="text-sm">• Drawer layer removed, now uploading directly to app folder</p>
-              <p className="text-sm">• URL structure: <code>/admin/apps/:appSlug/folders/:folderId/upload</code></p>
-              <p className="text-sm">• Supports batch upload of multiple files</p>
-              <p className="text-sm">• Documents auto-enter conversion queue (if needed)</p>
-              <p className="text-sm">• <span className="font-medium text-purple-700">New: Import entire website (async background)</span></p>
-            </div>
-            
-            <div className="mt-6 pt-4 border-t border-blue-200">
-              <h3 className="font-medium text-blue-800 mb-2">Supported Formats</h3>
-              <div className="flex flex-wrap gap-2">
-                {['PDF', 'DOCX', 'XLSX', 'PPTX', 'JPG', 'PNG', 'TIFF', 'TIF'].map(format => (
-                  <span key={format} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                    {format}
-                  </span>
+          <div className="panel panel-info">
+            <div className="panel-heading"><h2 className="panel-title">New Architecture</h2></div>
+            <div className="panel-body" style={{ overflow: 'hidden' }}>
+              <ul>
+                <li>Drawer layer removed, now uploading directly to app folder</li>
+                <li>URL structure: <code>/admin/apps/:appSlug/folders/:folderId/upload</code></li>
+                <li>Supports batch upload of multiple files</li>
+                <li>Documents auto-enter conversion queue (if needed)</li>
+                <li><strong>New:</strong> Import entire website (async background)</li>
+              </ul>
+              <p><strong>Supported Formats:</strong>{' '}
+                {['PDF', 'DOCX', 'XLSX', 'PPTX', 'JPG', 'PNG', 'TIFF', 'TIF'].map(f => (
+                  <span key={f} className="label label-info mrgn-rght-sm">{f}</span>
                 ))}
-              </div>
+              </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

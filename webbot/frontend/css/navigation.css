@@ -21,6 +21,60 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
+        .nav-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .nav-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .nav-header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .nav-title {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 24px;
+        }
+
+        .nav-stats {
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .nav-user-info {
+            font-size: 13px;
+            color: #335075;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .nav-login-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            border: 1px solid #2563eb;
+            color: #2563eb;
+            border-radius: 4px;
+            cursor: pointer;
+            background: white;
+            white-space: nowrap;
+        }
+
         .navigation-header h1 {
             margin: 0 0 10px 0;
             color: #333;
@@ -126,42 +180,9 @@
             cursor: not-allowed;
         }
 
-        /* Breadcrumb */
-        .aem-breadcrumb {
-            background: white;
-            padding: 10px 15px;
-            border-radius: 4px;
-            border: 1px solid #dee2e6;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-        }
 
-        .breadcrumb-item {
-            display: inline-flex;
-            align-items: center;
-        }
 
-        .breadcrumb-item + .breadcrumb-item::before {
-            content: "›";
-            color: #6c757d;
-            padding: 0 8px;
-        }
-
-        .breadcrumb-item a {
-            color: #007bff;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .breadcrumb-item a:hover {
-            text-decoration: underline;
-        }
-
-        .breadcrumb-item.active {
-            color: #495057;
-            font-weight: 500;
-        }
+        /* Breadcrumb — now using WET theme #wb-bc (native responsive wrapping) */
 
         /* Multi-column navigation grid */
                 .aem-columns-grid {
@@ -358,22 +379,112 @@
 
         @media (max-width: 768px) {
             .aem-columns-grid {
-                grid-auto-flow: row;
-                grid-auto-columns: unset;
-                grid-template-columns: 1fr;
+                flex-direction: column;
                 overflow-x: visible;
+                overflow-y: auto;
+                max-height: 700px;
             }
 
             .aem-navigation-container {
                 padding: 10px;
             }
+
+            .navigation-header {
+                padding: 12px;
+            }
+
+            .nav-header-row {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .nav-header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+
+            .nav-header-right {
+                width: 100%;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .nav-title {
+                font-size: 18px;
+            }
+
+            .nav-title-text {
+                font-size: 16px;
+            }
+
+            .nav-stats {
+                font-size: 12px;
+                white-space: normal;
+                max-width: 100%;
+            }
+
+            .top-functional-block {
+                padding: 8px 10px;
+                gap: 6px;
+            }
+
+            .top-functional-block .btn {
+                padding: 6px 10px;
+                font-size: 12px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navigation-header {
+                padding: 10px;
+            }
+
+            .nav-title {
+                font-size: 15px;
+            }
+
+            .nav-title-text {
+                font-size: 14px;
+            }
+
+            .nav-stats {
+                font-size: 11px;
+            }
+
+            .nav-user-info {
+                font-size: 11px;
+            }
+
+            .nav-login-btn, .nav-logout-btn {
+                font-size: 11px;
+            }
+
+
+                padding: 3px 8px;
+            }
+
+            .top-functional-block {
+                padding: 6px 8px;
+                gap: 4px;
+            }
+
+            .top-functional-block .btn {
+                padding: 5px 8px;
+                font-size: 11px;
+            }
+
+            .filebot-toggle-btn {
+                width: 30px;
+                height: 30px;
+            }
         }
 
         /* Deep navigation mode (10+ levels) */
         .aem-columns-grid.deep-navigation {
-            grid-auto-flow: row;
-            grid-auto-columns: unset;
-            grid-template-columns: 1fr;
+            flex-direction: column;
             overflow-x: visible;
             max-height: 700px;
             overflow-y: auto;

@@ -54,6 +54,7 @@ const DocumentDetail: React.FC = () => {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imagePreviewLoading, setImagePreviewLoading] = useState(false);
   const [imagePreviewError, setImagePreviewError] = useState<string | null>(null);
+  const [imageZoomed, setImageZoomed] = useState(false);
 
   // 根据文档类型计算布尔值（支持document为null的情况）
   // 文档标识符：优先path，回退到UUID（用于后续API操作）
@@ -287,6 +288,7 @@ const DocumentDetail: React.FC = () => {
       // 清除状态中的URL和错误
       setImagePreviewUrl(null);
       setImagePreviewError(null);
+      setImageZoomed(false);
 
       setImagePreviewLoading(true);
       
@@ -734,7 +736,7 @@ const DocumentDetail: React.FC = () => {
               {isTiffFile ? (
                 <TiffPreview documentId={docApiIdentifier} />
               ) : (
-                <Box sx={{ textAlign: 'center', p: 4 }}>
+                <Box sx={{ textAlign: 'center', p: 4, overflow: imageZoomed ? 'auto' : 'hidden', maxHeight: imageZoomed ? '80vh' : 'none' }}>
                   {imagePreviewLoading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
                       <CircularProgress />
@@ -745,8 +747,19 @@ const DocumentDetail: React.FC = () => {
                       <img 
                         src={imagePreviewUrl}
                         alt={document.original_filename}
-                        style={{ maxWidth: '100%', maxHeight: '600px', objectFit: 'contain' }}
+                        onClick={() => setImageZoomed(!imageZoomed)}
+                        style={{ 
+                          maxWidth: imageZoomed ? 'none' : '100%',
+                          maxHeight: imageZoomed ? 'none' : '80vh',
+                          cursor: imageZoomed ? 'zoom-out' : 'zoom-in',
+                          display: 'block',
+                          margin: '0 auto',
+                          height: imageZoomed ? 'auto' : 'auto',
+                        }}
                       />
+                      <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>
+                        {imageZoomed ? 'Click image to fit screen • Scroll to pan' : 'Click image to zoom to full size'}
+                      </Typography>
                       <Box sx={{ mt: 2 }}>
                         <Button 
                           variant="contained" 

@@ -181,6 +181,44 @@ def get_ancestor_file_path(page_path: Optional[str], conn) -> Optional[str]:
 
     return None
 
+def get_ancestor_auto_image_path(page_path: Optional[str], conn) -> Optional[bool]:
+    """
+    Get auto_image_path from ancestor pages.
+    Walk up from the current page until auto_image_path is found or root is reached.
+    Returns None if no ancestor has auto_image_path set.
+    """
+    if not page_path:
+        return None
+
+    current_path = page_path
+    visited = set()
+
+    while current_path and current_path not in visited:
+        visited.add(current_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT metadata FROM webbot_page WHERE path = ?", (current_path,))
+        row = cursor.fetchone()
+
+        if not row:
+            break
+
+        metadata_str = row["metadata"]
+        if metadata_str:
+            try:
+                metadata = json.loads(metadata_str)
+                if metadata and "auto_image_path" in metadata:
+                    val = metadata.get("auto_image_path")
+                    if val is not None:
+                        return bool(val)
+            except json.JSONDecodeError:
+                pass
+
+        # 继续向上查询父page
+        current_path = extract_parent_path_from_path(current_path)
+
+    return None
+
+
 def normalize_path(path: str) -> str:
     """Normalize path: ensure it starts with / and does not end with /"""
     if not path:
@@ -608,8 +646,8 @@ async def get_pages_by_path(
     try:
         normalized_path = path.rstrip('/')
         if normalized_path == '':
-            # Root path:查找所有parent_path为NULL的page
-            cursor.execute("SELECT * FROM webbot_page WHERE parent_path IS NULL ORDER BY title ASC")
+            # Root path: parent_path = '/' OR IS NULL (backward compatible)
+            cursor.execute("SELECT * FROM webbot_page WHERE parent_path = '/' OR parent_path IS NULL ORDER BY title ASC")
         else:
             # 查找parent_path等于指定路径的page
             cursor.execute("SELECT * FROM webbot_page WHERE parent_path = ? ORDER BY title ASC", (normalized_path,))
@@ -620,13 +658,16 @@ async def get_pages_by_path(
         for page in pages:
             page_dict = dict(page)
             # 解析metadata field(数据库存储为JSON字符串)
+            meta = {}
             if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
                 try:
-                    page_dict["metadata"] = json.loads(page_dict["metadata"])
+                    meta = json.loads(page_dict["metadata"])
                 except json.JSONDecodeError:
-                    page_dict["metadata"] = {}
-            elif page_dict.get("metadata") is None:
-                page_dict["metadata"] = {}
+                    meta = {}
+            elif isinstance(page_dict.get("metadata"), dict):
+                meta = page_dict["metadata"]
+            # Extract lock_status from metadata
+            page_dict["lock_status"] = meta.get("lock_status", "unlocked")
             result.append(PageListItem(**page_dict))
 
         # Filter by user's app permissions
@@ -671,19 +712,20 @@ async def list_pages(
         params = []
 
         if prefix is not None:
-            # Prefix filter: recursive path match (LIKE 'prefix%')
+            # Prefix filter: use range query (>= / <) instead of LIKE to utilize path index
             normalized_prefix = prefix.rstrip('/') + '/'
-            query += " WHERE path LIKE ?"
-            params.append(normalized_prefix + '%')
+            query += " WHERE path >= ? AND path < printf('%s~', ?)"
+            params.append(normalized_prefix)
+            params.append(normalized_prefix)
         elif path is not None:
             normalized_path = path.rstrip('/')
             if normalized_path == '':
-                query += " WHERE parent_path IS NULL"
+                query += " WHERE parent_path = '/' OR parent_path IS NULL"
             else:
                 query += " WHERE parent_path = ?"
                 params.append(normalized_path)
 
-        # AddSort和Pagination
+        # Add Sort and Pagination
         query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
         params.extend([limit, skip])
 
@@ -695,13 +737,16 @@ async def list_pages(
         for page in pages:
             page_dict = dict(page)
             # 解析metadata field(数据库存储为JSON字符串)
+            meta = {}
             if page_dict.get("metadata") and isinstance(page_dict["metadata"], str):
                 try:
-                    page_dict["metadata"] = json.loads(page_dict["metadata"])
+                    meta = json.loads(page_dict["metadata"])
                 except json.JSONDecodeError:
-                    page_dict["metadata"] = {}
-            elif page_dict.get("metadata") is None:
-                page_dict["metadata"] = {}
+                    meta = {}
+            elif isinstance(page_dict.get("metadata"), dict):
+                meta = page_dict["metadata"]
+            # Extract lock_status from metadata
+            page_dict["lock_status"] = meta.get("lock_status", "unlocked")
             result.append(PageListItem(**page_dict))
 
         # Filter by user's app permissions
@@ -1079,23 +1124,24 @@ async def get_page_children_by_path(path: str = "", title: Optional[str] = Query
                 cursor.execute("""
                     SELECT * FROM webbot_page
                     WHERE title LIKE ?
-                    ORDER BY title ASC
+                    ORDER BY last_modified DESC, title ASC
                     LIMIT ?
                 """, (f"%{title}%", limit))
             else:
+                # Use range query (>= / <) instead of LIKE for path prefix to utilize index
                 cursor.execute("""
                     SELECT * FROM webbot_page
-                    WHERE path LIKE ? AND title LIKE ?
-                    ORDER BY title ASC
+                    WHERE path >= ? AND path < printf('%s~', ?) AND title LIKE ?
+                    ORDER BY last_modified DESC, title ASC
                     LIMIT ?
-                """, (f"{normalized_path}%", f"%{title}%", limit))
+                """, (normalized_path, normalized_path, f"%{title}%", limit))
         else:
             # No title filter: direct children only (existing behavior)
             if normalized_path == '/' or normalized_path == '':
                 cursor.execute("""
                     SELECT * FROM webbot_page
-                    WHERE parent_path IS NULL
-                    ORDER BY title ASC
+                    WHERE parent_path = '/' OR parent_path IS NULL
+                    ORDER BY last_modified DESC, title ASC
                 """)
             else:
                 # 直接通过 path 列查找page(支持任意层级的路径)
@@ -1108,7 +1154,7 @@ async def get_page_children_by_path(path: str = "", title: Optional[str] = Query
                 cursor.execute("""
                     SELECT * FROM webbot_page
                     WHERE parent_path = ?
-                    ORDER BY title ASC
+                    ORDER BY last_modified DESC, title ASC
                 """, (parent_id,))
 
         children = cursor.fetchall()
@@ -1117,13 +1163,16 @@ async def get_page_children_by_path(path: str = "", title: Optional[str] = Query
         for child in children:
             child_dict = dict(child)
             # 解析metadata field
+            meta = {}
             if child_dict.get("metadata") and isinstance(child_dict["metadata"], str):
                 try:
-                    child_dict["metadata"] = json.loads(child_dict["metadata"])
+                    meta = json.loads(child_dict["metadata"])
                 except json.JSONDecodeError:
-                    child_dict["metadata"] = {}
-            elif child_dict.get("metadata") is None:
-                child_dict["metadata"] = {}
+                    meta = {}
+            elif isinstance(child_dict.get("metadata"), dict):
+                meta = child_dict["metadata"]
+            # Extract lock_status from metadata
+            child_dict["lock_status"] = meta.get("lock_status", "unlocked")
             result.append(PageListItem(**child_dict))
 
         print(f"DEBUG: Returning {len(result)} child pages", file=sys.stderr)
@@ -1421,30 +1470,40 @@ async def get_parent_pages(path: str = Query(..., description="Full page path. R
     try:
         normalized = normalize_path(path)
         path_parts = normalized.strip("/").split("/")
+        depth = len(path_parts)
+        
+        # Build all ancestor paths in one list
+        ancestor_paths = []
+        for d in range(2, depth + 1):
+            ancestor_paths.append("/" + "/".join(path_parts[:d]))
+        
+        # Single query: fetch all ancestors at once (uses path index)
+        placeholders = ",".join(["?"] * len(ancestor_paths))
+        cursor.execute(f"SELECT * FROM webbot_page WHERE path IN ({placeholders}) ORDER BY LENGTH(path)", ancestor_paths)
+        rows = cursor.fetchall()
+        
+        # Map rows by path
+        row_map = {r["path"]: r for r in rows}
         
         parents = []
         page = None
         
-        for depth in range(2, len(path_parts) + 1):
-            ancestor_path = "/" + "/".join(path_parts[:depth])
-            cursor.execute("SELECT * FROM webbot_page WHERE path = ?", (ancestor_path,))
-            row = cursor.fetchone()
+        for d in range(2, depth + 1):
+            ancestor_path = "/" + "/".join(path_parts[:d])
+            row = row_map.get(ancestor_path)
             if row:
                 page_dict = dict(row)
                 _parse_page_dict(page_dict)
                 item = PageListItem(**page_dict)
-                if depth == len(path_parts):
-                    # Strip the site prefix (e.g. /canadasite) from breadcrumb path
-                    stripped_parts = path_parts[1:depth]
-                    item.path = "/" + "/".join(stripped_parts)
+                # Strip the site prefix (e.g. /canadasite) from breadcrumb path
+                stripped_parts = path_parts[1:d]
+                item.path = "/" + "/".join(stripped_parts)
+                if d == depth:
                     page = item
                 else:
                     # Always include root (Home), but skip other pages with hide_in_navigation
-                    is_root = depth == 2
+                    is_root = d == 2
                     if is_root or not page_dict.get('hide_in_navigation', False):
-                        # Strip the site prefix (e.g. /canadasite) from breadcrumb path
-                        stripped_parts = path_parts[1:depth]
-                        item.path = "/" + "/".join(stripped_parts)
                         parents.append(item)
         
         # ─── Fetch header ──────────────────────────────────────────────
@@ -1595,13 +1654,16 @@ async def get_page_children(page_id: str,
         for child in children:
             child_dict = dict(child)
             # 解析metadata field
+            meta = {}
             if child_dict.get("metadata") and isinstance(child_dict["metadata"], str):
                 try:
-                    child_dict["metadata"] = json.loads(child_dict["metadata"])
+                    meta = json.loads(child_dict["metadata"])
                 except json.JSONDecodeError:
-                    child_dict["metadata"] = {}
-            elif child_dict.get("metadata") is None:
-                child_dict["metadata"] = {}
+                    meta = {}
+            elif isinstance(child_dict.get("metadata"), dict):
+                meta = child_dict["metadata"]
+            # Extract lock_status from metadata
+            child_dict["lock_status"] = meta.get("lock_status", "unlocked")
             result.append(PageListItem(**child_dict))
 
         return result
@@ -1697,6 +1759,13 @@ async def get_page_properties(page_id: str,
             page_dict["metadata"] = {}
         # 移除content字段,因为它可能很大
         page_dict.pop("content", None)
+
+        # auto_image_path 继承: 当前页未设置时向上查找
+        if page_dict["metadata"].get("auto_image_path") is None:
+            inherited = get_ancestor_auto_image_path(page_dict["path"], conn)
+            if inherited is not None:
+                page_dict["metadata"]["auto_image_path"] = inherited
+
         # 映射字段名: DB用last_modified/last_published, 响应模型用updated_at/published_at
         if "last_modified" in page_dict and "updated_at" not in page_dict:
             page_dict["updated_at"] = page_dict.pop("last_modified")

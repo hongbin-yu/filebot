@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "page_id": "/canadasite/index",
+  "page_path": "/canadasite/index",
+  "page_title": "Canada.ca",
+  "language": "en",
+  "content_size": 1386,
+  "created_at": "2026-06-13T14:37:31.355965Z",
+  "author": "system",
+  "notes": "Published via WebBot",
+  "content": "<div class=\"sp-hb\">\n<div class=\"sp-bx col-xs-12\">\n<h1 property=\"name\" class=\"wb-inv\">Canada.ca</h1>\n<div class=\"row\">\n<div class=\"col-xs-11 col-md-8\" property=\"publisher\" resource=\"#wb-publisher\" typeof=\"GovernmentOrganization\"><img src=\"/etc/designs/canada/wet-boew/assets/sig-blk-en.svg\" alt=\"Government of Canada\" property=\"logo\" width=\"283\" /><span class=\"wb-inv\"> / <span lang=\"fr\">Gouvernement du Canada</span></span></div>\n</div>\n<div class=\"row\">\n<section class=\"col-xs-6 text-right\">\n<h2 class=\"wb-inv\">Government of Canada</h2>\n<p><a href=\"/en.html\" class=\"btn btn-primary\" translate=\"no\">English</a></p>\n</section>\n<section class=\"col-xs-6\" lang=\"fr\">\n<h2 class=\"wb-inv\">Gouvernement du Canada</h2>\n<p><a href=\"/fr.html\" class=\"btn btn-primary\" translate=\"no\">Français</a></p>\n</section>\n</div>\n</div>\n<div class=\"sp-bx-bt col-xs-12\">\n<div class=\"row\">\n<div class=\"col-xs-7 col-md-8\"><a href=\"/en/transparency/terms.html\" class=\"sp-lk\">Terms &amp; conditions</a> <span class=\"glyphicon glyphicon-asterisk\"></span> <a href=\"/fr/transparence/avis.html\" class=\"sp-lk\" lang=\"fr\">Avis</a></div>\n<div class=\"col-xs-5 col-md-4 text-right mrgn-bttm-md\"><img src=\"/etc/designs/canada/wet-boew/assets/wmms-blk.svg\" width=\"127\" alt=\"Symbol of the Government of Canada\" /><span class=\"wb-inv\"> / <span lang=\"fr\">Symbole du gouvernement du Canada</span></span></div>\n</div>\n</div>\n</div>"
+}

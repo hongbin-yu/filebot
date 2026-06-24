@@ -74,6 +74,8 @@ class PermissionResponse(PermissionBase):
     id: str
     user_id: Optional[str] = None
     group_id: Optional[str] = None
+    institution_id: Optional[str] = Field(None, description="所属机构ID（直接从 user/group 继承）")
+    institution_name: Optional[str] = Field(None, description="所属机构名称")
     created_at: datetime
     updated_at: Optional[datetime] = None
 

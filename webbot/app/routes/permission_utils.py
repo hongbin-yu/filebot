@@ -20,11 +20,18 @@ Path mapping:
 
 import sqlite3
 import os
+import psycopg2
 from typing import Set, Optional, List, Dict, Tuple, Any
 
 FILEBOT_DB_PATH = os.environ.get(
     "FILEBOT_DB_PATH",
     "/home/hongb/.openclaw/workspace/filebot/backend/filebot.db"
+)
+
+# PostgreSQL database URL (same as auth_security.py)
+FILEBOT_DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://filebot:filebot@localhost:5432/filebot"
 )
 
 
@@ -64,12 +71,27 @@ def get_user_folder_permissions(user_id: str) -> Dict[str, str]:
         conn = get_filebot_db_connection()
         cursor = conn.cursor()
 
-        # 1. Superuser check — shortcut
+        # 1. Superuser check — shortcut (check both SQLite and PostgreSQL)
         cursor.execute("SELECT is_superuser FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         if user and user["is_superuser"]:
             conn.close()
             return {"*": "owner"}  # Wildcard marker
+
+        # Fallback: check PostgreSQL for superuser (authoritative user store)
+        if not user:
+            try:
+                pg_conn = psycopg2.connect(FILEBOT_DATABASE_URL)
+                pg_cur = pg_conn.cursor()
+                pg_cur.execute("SELECT is_superuser FROM users WHERE id = %s", (user_id,))
+                pg_user = pg_cur.fetchone()
+                pg_cur.close()
+                pg_conn.close()
+                if pg_user and pg_user[0]:
+                    conn.close()
+                    return {"*": "owner"}
+            except Exception:
+                pass  # Silently fall through if PG is unavailable
 
         # 2. Direct user → folder permissions
         cursor.execute("""

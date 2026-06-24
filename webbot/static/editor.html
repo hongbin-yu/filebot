@@ -15,11 +15,11 @@
     <!-- Using TinyMCE Cloud with valid API key -->
     <!--script src="https://cdn.tiny.cloud/1/68matgqcnaoa96gx7x6cn8u8ur4thooph25rnufw2sa9oq8e/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script-->
     <!-- TinyMCE WYSIWYG Editor (local installation) -->
-	<script src="/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
+	<script src="/etc/designs/canada/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
     <!-- Simple custom styles for editor -->
     <link rel="stylesheet" href="css/editor.css">
 <script src="/static/js/webbot-auth.js"></script>
-<script src="/static/js/wet-alert.js?v=20260605"></script>
+<script src="/static/js/wet-alert.js?v=0260605"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="">
     <div class="editor-container">
@@ -146,15 +146,20 @@
                     <span id="page-id-display"></span>
                     <span id="page-language-display"></span>
                     <span id="page-status-display"></span>
+                    <span id="page-approval-display"></span>
+                    <span id="page-lock-display"></span>
                     <span id="file-path-display"></span>
                     <span id="page-lastmodified-display"></span>
                     <span id="page-published-display"></span>
                 </div>
-                <div id="breadcrumb" class="breadcrumb">
-                    <div class="breadcrumb-item">
-                        <a href="navigation.html" id="home-link">nav</a>
+                <nav id="wb-bc" property="breadcrumb">
+                    <h2 class="wb-inv">You are here:</h2>
+                    <div class="container">
+                        <ol class="breadcrumb">
+                            <li><a href="navigation.html" id="home-link">nav</a></li>
+                        </ol>
                     </div>
-                </div>
+                </nav>
             </div>
 
             <div class="editor-content">
@@ -277,7 +282,7 @@
     <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
 
     <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
-    <script src="/static/js/editor.js?v=20260609-1420"></script>
+    <script src="/static/js/editor.js?v=20260622-lock"></script>
 
     <!-- Initialize after all scripts are loaded -->
     <!-- Simple Metadata Editor (Backend Use Only) -->
@@ -358,6 +363,28 @@
                             <input type="text" id="metadata-nav-title" class="form-control"
                                    placeholder="Custom title for navigation menu">
                             <small class="form-text text-muted">Overrides the page title in navigation menus</small>
+                        </div>
+
+                        <hr>
+                        <h5>Page State</h5>
+
+                        <div class="form-group">
+                            <label for="metadata-approval-status">Approval Status:</label>
+                            <select id="metadata-approval-status" class="form-control">
+                                <option value="">-- None --</option>
+                                <option value="pending">📋 Pending</option>
+                                <option value="approved">✅ Approved</option>
+                                <option value="rejected">❌ Rejected</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-lock-status">Lock Status:</label>
+                            <select id="metadata-lock-status" class="form-control">
+                                <option value="">-- Unlocked --</option>
+                                <option value="locked">🔒 Locked (read-only)</option>
+                            </select>
+                            <small class="form-text text-muted" style="color: #d9534f;">⚠ When locked, the page becomes read-only. Editing, saving, and publishing are disabled.</small>
                         </div>
 
                         <hr>
@@ -445,7 +472,7 @@
     })();
     </script>
 
-    <script src="/static/js/component-params.js?v=202604121740"></script>
+    <script src="/static/js/component-params.js?v=02604121740"></script>
     <script src="/static/js/component-color-manager.js"></script>
 
     <!-- WET-compatible alert & confirm modals -->

@@ -213,8 +213,26 @@ async def render_mustache(path: str, request: Request):
     if query_datasource:
         datasource = query_datasource
     
+    # 将 request 的所有 query params 替换 datasource 的整个 query string
+    # 保留的 params (datasource, token) 不传递给 datasource
+    passthrough_params = {
+        k: v for k, v in request.query_params.items()
+        if k not in ("datasource", "token")
+    }
+    if datasource and passthrough_params:
+        # 去掉 datasource 中现有的 ?...，用 request params 替换
+        base = datasource.split("?", 1)[0]
+        datasource = f"{base}?{urllib.parse.urlencode(passthrough_params)}"
+    
+    # 将 query params 也注入模板数据，方便模板直接引用
+    data["query"] = dict(request.query_params)
+    
+    # 从 config data 中读取输出设置
+    output_content_type = data.get("Content-type", "text/html;charset=utf-8")
+    output_extension = data.get("extension", "")
+    
     # 从数据源获取数据
-    if datasource:
+    if datasource and datasource.strip():
         try:
             import aiohttp
             
@@ -282,11 +300,14 @@ async def render_mustache(path: str, request: Request):
     # 渲染模板
     try:
         result = chevron.render(template, data)
+        # Use config's Content-type if non-default, otherwise let FastAPI use default HTML
+        if output_content_type != "text/html;charset=utf-8":
+            return Response(content=result, headers={"Content-Type": output_content_type}, status_code=200)
         return HTMLResponse(content=result, status_code=200)
     except Exception as e:
-        return HTMLResponse(
-            content=f"<div class='alert alert-danger'>Render error: {str(e)}</div>",
-            status_code=200
+        return Response(
+            content=f"Render error: {str(e)}",
+            status_code=500
         )
 
 

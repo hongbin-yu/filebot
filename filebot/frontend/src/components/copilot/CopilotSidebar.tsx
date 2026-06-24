@@ -67,64 +67,61 @@ const CopilotSidebar: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full bg-white flex flex-col">
+    <div className="fb-d-flex" style={{width:"100%",height:"100%",backgroundColor:"#fff",flexDirection:"column"}}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-blue-50">
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-            <span className="text-white font-bold">F</span>
+      <div className="fb-d-flex fb-align-center fb-justify-between" style={{padding:16,borderBottom:"1px solid #e5e7eb",backgroundColor:"#eff6ff"}}>
+        <div className="fb-d-flex fb-align-center">
+          <div className="fb-d-flex fb-align-center" style={{width:32,height:32,backgroundColor:"#2563eb",borderRadius:9999,justifyContent:"center",marginRight:12}}>
+            <span style={{color:"#fff",fontWeight:700}}>F</span>
           </div>
           <div>
-            <h3 className="font-bold text-gray-800">FileBot Assistant</h3>
-            <p className="text-xs text-gray-500">Powered by OpenClaw</p>
+            <h3 style={{fontWeight:700,color:"#1f2937"}}>FileBot Assistant</h3>
+            <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem"}}>Powered by OpenClaw</p>
           </div>
         </div>
         <button
           onClick={closeCopilot}
-          className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+          className="text-muted fb-link" style={{padding:8,borderRadius:9999}}
           aria-label="Close"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg style={{width:20,height:20}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-4">
+      <div style={{flex:1,overflowY:"auto",padding:16}}>
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className="fb-d-flex" style={{justifyContent:message.role === 'user' ? 'flex-end' : 'flex-start'}}
             >
               <div
-                className={`max-w-[80%] rounded-2xl p-4 ${message.role === 'user' 
-                  ? 'bg-blue-100 text-blue-900 rounded-tr-none' 
-                  : 'bg-gray-100 text-gray-900 rounded-tl-none'
-                }`}
+              style={{maxWidth:"80%",borderRadius:16,padding:16,...(message.role === 'user' ? {backgroundColor:'#dbeafe',color:'#1e3a5f',borderTopRightRadius:0} : {backgroundColor:'#f3f4f6',color:'#111827',borderTopLeftRadius:0})}}
               >
-                <div className="text-sm mb-1">
-                  <span className="font-semibold">
+                <div style={{fontSize:"0.875rem",lineHeight:"1.25rem",marginBottom:4}}>
+                  <span style={{fontWeight:600}}>
                     {message.role === 'user' ? 'You' : 'FileBot Assistant'}
                   </span>
-                  <span className="text-gray-500 ml-2 text-xs">
+                  <span className="text-muted" style={{marginLeft:8,fontSize:"0.75rem",lineHeight:"1rem"}}>
                     {formatTime(message.timestamp)}
                   </span>
                 </div>
-                <div className="whitespace-pre-wrap">{message.content}</div>
+                <div style={{whiteSpace:"pre-wrap"}}>{message.content}</div>
                 
                 {message.files && message.files.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-300 border-opacity-50">
-                    <div className="text-xs font-medium text-gray-700 mb-1">Attached Files:</div>
-                    <div className="space-y-1">
+                  <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #e5e7eb",borderColor:"rgba(209,213,219,0.5)"}}>
+                    <div style={{fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,color:"#374151",marginBottom:4}}>Attached Files:</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
                       {message.files.map((file, index) => (
-                        <div key={index} className="flex items-center text-xs text-gray-600 bg-white bg-opacity-50 p-2 rounded">
-                          <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div key={index} className="fb-d-flex fb-align-center text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",backgroundColor:"#fff",padding:8,borderRadius:4}}>
+                          <svg style={{width:16,height:16,marginRight:8,flexShrink:0}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
-                          <div className="truncate flex-1">{file.name}</div>
-                          <div className="text-gray-500 ml-2">{formatFileSize(file.size)}</div>
+                          <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{file.name}</div>
+                          <div className="text-muted" style={{marginLeft:8}}>{formatFileSize(file.size)}</div>
                         </div>
                       ))}
                     </div>
@@ -139,28 +136,24 @@ const CopilotSidebar: React.FC = () => {
       {/* File Drop Zone */}
       {selectedFiles.length === 0 && (
         <div
-          className={`mx-4 mb-4 p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
-            isDragging 
-              ? 'border-blue-400 bg-blue-50' 
-              : 'border-gray-300 hover:border-blue-300 hover:bg-blue-50'
-          }`}
+          className="text-center" style={{...(!isDragging && {borderColor:'#d1d5db'}),marginLeft:16,marginRight:16,marginBottom:16,padding:24,borderWidth:2,borderStyle:"dashed",borderRadius:12,cursor:"pointer",transitionProperty:"colors",...(isDragging ? {borderColor:'#60a5fa',backgroundColor:'#eff6ff'} : {})}}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
         >
-          <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg style={{width:48,height:48,marginLeft:"auto",marginRight:"auto",color:"#9ca3af",marginBottom:12}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <p className="text-sm text-gray-600 mb-1">
+          <p className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",marginBottom:4}}>
             {isDragging ? 'Drop files here' : 'Drag & drop files here'}
           </p>
-          <p className="text-xs text-gray-500">or click to browse</p>
+          <p className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem"}}>or click to browse</p>
           <input
             ref={fileInputRef}
             type="file"
             multiple
-            className="hidden"
+            style={{display:"none"}}
             onChange={handleFileSelect}
           />
         </div>
@@ -168,35 +161,35 @@ const CopilotSidebar: React.FC = () => {
 
       {/* Selected Files Preview */}
       {selectedFiles.length > 0 && (
-        <div className="mx-4 mb-4 p-4 bg-blue-50 rounded-xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-700">
+        <div style={{marginLeft:16,marginRight:16,marginBottom:16,padding:16,backgroundColor:"#eff6ff",borderRadius:12}}>
+          <div className="fb-d-flex fb-align-center fb-justify-between" style={{marginBottom:8}}>
+            <div style={{fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151"}}>
               {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
             </div>
             <button
               onClick={() => setSelectedFiles([])}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-muted fb-link" style={{fontSize:"0.75rem",lineHeight:"1rem"}}
             >
               Clear all
             </button>
           </div>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:128,overflowY:"auto"}}>
             {selectedFiles.map((file, index) => (
-              <div key={index} className="flex items-center justify-between bg-white p-2 rounded">
-                <div className="flex items-center flex-1 min-w-0">
-                  <svg className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div key={index} className="fb-d-flex fb-align-center fb-justify-between" style={{backgroundColor:"#fff",padding:8,borderRadius:4}}>
+                <div className="fb-d-flex fb-align-center" style={{flex:1,minWidth:0}}>
+                  <svg className="text-muted" style={{width:16,height:16,marginRight:8,flexShrink:0}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <div className="truncate text-sm">{file.name}</div>
+                  <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:"0.875rem",lineHeight:"1.25rem"}}>{file.name}</div>
                 </div>
-                <div className="flex items-center ml-2">
-                  <div className="text-xs text-gray-500 mr-2">{formatFileSize(file.size)}</div>
+                <div className="fb-d-flex fb-align-center" style={{marginLeft:8}}>
+                  <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginRight:8}}>{formatFileSize(file.size)}</div>
                   <button
                     onClick={() => handleRemoveFile(index)}
-                    className="text-gray-400 hover:text-red-500 p-1"
+                    style={{color:"#9ca3af",padding:4}}
                     aria-label="Remove file"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -208,27 +201,27 @@ const CopilotSidebar: React.FC = () => {
       )}
 
       {/* Input Area */}
-      <div className="border-t p-4">
-        <div className="flex space-x-2">
+      <div style={{borderTop:"1px solid #e5e7eb",padding:16}}>
+        <div className="fb-d-flex" style={{display:"flex",gap:8}}>
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="form-control" style={{flex:1,resize:"none",borderRadius:8}}
             rows={2}
           />
           <button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() && selectedFiles.length === 0}
-            className="self-end px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{alignSelf:"flex-end",paddingLeft:24,paddingRight:24,paddingTop:12,paddingBottom:12,backgroundColor:"#2563eb",color:"#fff",borderRadius:8}}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style={{width:20,height:20}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </button>
         </div>
-        <div className="text-xs text-gray-500 mt-2 text-center">
+        <div className="text-muted text-center" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:8}}>
           This assistant connects to OpenClaw backend for intelligent file management and automation.
         </div>
       </div>

@@ -8,6 +8,7 @@ export interface User {
   role: string;
   is_active: boolean;
   is_superuser: boolean;
+  institution_id?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -17,9 +18,15 @@ export interface UserUpdate {
   full_name?: string;
   password?: string;
   is_active?: boolean;
+  institution_id?: string;
 }
 
 class UserService {
+  async createUser(data: any): Promise<User> {
+    const response = await api.post('/users/', data);
+    return response.data;
+  }
+
   async getUsers(): Promise<User[]> {
     const response = await api.get('/users/');
     return response.data;
@@ -41,6 +48,16 @@ class UserService {
 
   async toggleActive(id: string): Promise<User> {
     const response = await api.put(`/users/${id}/toggle-active`);
+    return response.data;
+  }
+
+  async getMe(): Promise<User> {
+    const response = await api.get('/auth/me');
+    return response.data;
+  }
+
+  async getUserGroups(userId: string): Promise<{id: string; name: string}[]> {
+    const response = await api.get(`/users/${userId}/groups`);
     return response.data;
   }
 }

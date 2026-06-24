@@ -219,6 +219,7 @@ def create_folder(
         parent_folder_path=folder_data.parent_folder_path or None,
         is_system_folder=folder_data.is_system_folder,
         order_index=folder_data.order_index,
+        thumbnail_size=folder_data.thumbnail_size,
         created_by=current_user.username
     )
 
@@ -336,6 +337,8 @@ def update_folder(
         folder.description = update_data['description']
     if 'parent_folder_path' in update_data:
         folder.parent_folder_path = update_data['parent_folder_path']
+    if 'thumbnail_size' in update_data:
+        folder.thumbnail_size = update_data['thumbnail_size']
 
     folder.updated_by = current_user.username
     db.commit()
@@ -371,6 +374,35 @@ def delete_folder(
 
     db.commit()
     return {"message": "Folder deleted successfully"}
+
+
+@router.get("/effective-thumbnail-size")
+def get_effective_thumbnail_size(
+    path: str = Query(..., description="Folder path, e.g. /boarding/canadasite/fr/some-folder"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取文件夹的生效缩略图尺寸。
+    如果文件夹自身设置了 thumbnail_size 则使用自身值，
+    否则沿父链向上查找，直到找到非空值或到达根节点。
+    默认值: "128x128"
+    """
+    folder = get_folder_or_404(path, db)
+    check_folder_permission(folder, current_user, db)
+
+    current_path = folder.path
+    while current_path:
+        f = db.query(Folder).filter(Folder.path == current_path).first()
+        if f and f.thumbnail_size:
+            return {"path": path, "thumbnail_size": f.thumbnail_size}
+        # 向上走父路径
+        if current_path == '/':
+            break
+        parent = current_path.rstrip('/').rsplit('/', 1)
+        current_path = parent[0] if len(parent) > 1 and parent[0] else '/'
+
+    return {"path": path, "thumbnail_size": "128x128"}
 
 
 def _recursive_delete(folder_path: str, db: Session):

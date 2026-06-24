@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebFileBot — Plateforme Intelligente de Gestion de Contenu</title>
+<meta name="description" content="WebFileBot offre des solutions de gestion de contenu, d'édition web et de publication numérique pour les gouvernements et les grandes organisations.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; background: #fff; line-height: 1.6; }
+nav { position: fixed; top: 0; width: 100%; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.06); }
+.nav-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.nav-logo { font-weight: 800; font-size: 1.3rem; color: #1a1a2e; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+.nav-logo span { color: #2563eb; }
+.nav-links { display: flex; gap: 32px; align-items: center; }
+.nav-links a { text-decoration: none; color: #4b5563; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover { color: #2563eb; }
+.lang-switch { background: #f3f4f6; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; color: #374151; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+.lang-switch:hover { background: #2563eb; color: #fff; }
+.hero { padding: 160px 24px 100px; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #2563eb 100%); color: #fff; text-align: center; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 50%, rgba(37,99,235,0.3) 0%, transparent 60%), radial-gradient(circle at 70% 80%, rgba(59,130,246,0.2) 0%, transparent 50%); }
+.hero * { position: relative; z-index: 1; }
+.hero h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 24px; }
+.hero h1 span { background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero p { font-size: clamp(1.05rem, 2vw, 1.25rem); color: rgba(255,255,255,0.75); max-width: 680px; margin: 0 auto 40px; }
+.hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.btn-primary { display: inline-flex; align-items: center; gap: 8px; background: #2563eb; color: #fff; border: none; padding: 14px 32px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+.btn-primary:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,0.35); }
+.btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 14px 32px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+.btn-secondary:hover { background: rgba(255,255,255,0.18); transform: translateY(-2px); }
+.bg-grid { position: absolute; inset: 0; z-index: 0; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 60px 60px; }
+section { padding: 100px 24px; }
+.section-inner { max-width: 1100px; margin: 0 auto; }
+.section-label { font-size: 0.85rem; font-weight: 600; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+.section-title { font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; color: #0f172a; }
+.section-desc { color: #6b7280; max-width: 600px; margin-bottom: 48px; font-size: 1.05rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; transition: all 0.3s; }
+.card:hover { border-color: #2563eb; box-shadow: 0 8px 30px rgba(37,99,235,0.1); transform: translateY(-4px); }
+.card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 20px; }
+.card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; color: #0f172a; }
+.card p { color: #6b7280; font-size: 0.9rem; }
+.card ul { list-style: none; margin-top: 16px; }
+.card ul li { padding: 6px 0; color: #4b5563; font-size: 0.88rem; }
+.card ul li::before { content: '→ '; color: #2563eb; font-weight: 600; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 32px; }
+.feature { display: flex; gap: 20px; align-items: flex-start; }
+.feature-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.feature h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: #0f172a; }
+.feature p { color: #6b7280; font-size: 0.88rem; line-height: 1.6; }
+.dark-section { background: #0f172a; color: #fff; }
+.dark-section .section-title { color: #fff; }
+.dark-section .section-desc { color: rgba(255,255,255,0.6); }
+.dark-section .card { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+.dark-section .card:hover { border-color: #2563eb; background: rgba(37,99,235,0.08); }
+.dark-section .card h3 { color: #fff; }
+.dark-section .card p { color: rgba(255,255,255,0.6); }
+.dark-section .card ul li { color: rgba(255,255,255,0.65); }
+.tech-grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 40px; }
+.tech-tag { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 20px; font-size: 0.85rem; font-weight: 500; color: rgba(255,255,255,0.8); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; text-align: center; margin-top: 48px; }
+.stat-value { font-size: 2.8rem; font-weight: 800; color: #2563eb; }
+.stat-label { color: #6b7280; font-size: 0.9rem; margin-top: 4px; }
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+@media (max-width: 768px) { .contact-grid { grid-template-columns: 1fr; } }
+.contact-info h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 16px; color: #0f172a; }
+.contact-info p { color: #6b7280; margin-bottom: 12px; font-size: 0.92rem; }
+.contact-info a { color: #2563eb; text-decoration: none; font-weight: 500; }
+.contact-info a:hover { text-decoration: underline; }
+footer { background: #0f172a; color: rgba(255,255,255,0.5); padding: 48px 24px; text-align: center; font-size: 0.85rem; }
+footer a { color: rgba(255,255,255,0.7); text-decoration: none; }
+footer a:hover { color: #fff; }
+.fade-in { opacity: 0; transform: translateY(24px); transition: all 0.6s ease-out; }
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">⚡ <span>WebFileBot</span></a>
+    <div class="nav-links">
+      <a href="#produits">Produits</a>
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#contact">Contact</a>
+      <a href="/" class="lang-switch">EN</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="bg-grid"></div>
+  <div class="section-inner">
+    <h1>Plateforme Intelligente<br><span>de Gestion de Contenu</span></h1>
+    <p>WebFileBot aide les gouvernements et les grandes entreprises à explorer, éditer, gérer et publier du contenu web à grande échelle — avec des flux de travail assistés par IA, le contrôle de version et une intégration transparente avec Canada.ca.</p>
+    <div class="hero-actions">
+      <a href="#produits" class="btn-primary">Découvrir les Produits ↓</a>
+      <a href="#contact" class="btn-secondary">Nous Contacter</a>
+    </div>
+  </div>
+</section>
+
+<section id="produits">
+  <div class="section-inner">
+    <div class="section-label">Nos Produits</div>
+    <h2 class="section-title">Deux Plateformes, Un Écosystème</h2>
+    <p class="section-desc">WebFileBot offre une solution complète pour le cycle de vie du contenu — de l'ingestion et l'édition à la publication et la surveillance.</p>
+    <div class="cards">
+      <div class="card fade-in">
+        <div class="card-icon" style="background:#eff6ff;color:#2563eb;">🌐</div>
+        <h3>WebBot — Moteur de Contenu</h3>
+        <p>Une suite puissante de gestion et d'édition de contenu web conçue pour Canada.ca et les normes de publication gouvernementales.</p>
+        <ul>
+          <li>Exploration web intelligente et ingestion en masse</li>
+          <li>Éditeur visuel conforme aux normes WET4</li>
+          <li>Gestion des balises et métadonnées avec arbres hiérarchiques</li>
+          <li>Contrôle de version avec restauration et diff</li>
+          <li>Remplacement en masse assisté par IA</li>
+        </ul>
+      </div>
+      <div class="card fade-in">
+        <div class="card-icon" style="background:#faf5ff;color:#7c3aed;">📁</div>
+        <h3>FileBot — Backend Documentaire</h3>
+        <p>Un backend de gestion documentaire haute performance qui alimente le stockage, la recherche et la livraison de tout le contenu.</p>
+        <ul>
+          <li>Stockage de documents sur PostgreSQL</li>
+          <li>Recherche plein texte dans tous les documents</li>
+          <li>API REST avec client TypeScript auto-généré</li>
+          <li>Génération de vignettes et repli CDN</li>
+          <li>Intégrations d'applications et flux de travail personnalisés</li>
+        </ul>
+      </div>
+      <div class="card fade-in">
+        <div class="card-icon" style="background:#ecfdf5;color:#059669;">⚡</div>
+        <h3>Proxy et Livraison Unifiés</h3>
+        <p>Une couche proxy haute performance qui sert le contenu depuis le disque, la base de données ou le CDN amont avec des temps de réponse de l'ordre de la milliseconde.</p>
+        <ul>
+          <li>Lectures directes du disque (moins de 10ms)</li>
+          <li>Requêtes PostgreSQL directes — sans surcharge HTTP</li>
+          <li>Chaîne de repli asynchrone concurrente</li>
+          <li>Repli vers le CDN de Canada.ca pour les ressources manquantes</li>
+          <li>Accès public sécurisé via Cloudflare Tunnel</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="dark-section" id="fonctionnalites">
+  <div class="section-inner">
+    <div class="section-label">Capacités</div>
+    <h2 class="section-title">Conçu pour la Publication Gouvernementale</h2>
+    <p class="section-desc">Conçu dès le départ pour gérer la complexité des opérations web gouvernementales à grande échelle.</p>
+    <div class="features-grid">
+      <div class="feature fade-in">
+        <div class="feature-icon" style="background:rgba(37,99,235,0.15);color:#60a5fa;">🕸️</div>
+        <div>
+          <h4>Exploration Web Intelligente</h4>
+          <p>Robot alimenté par IA qui découvre, récupère et importe automatiquement des pages web avec préservation de la structure et analyse des liens.</p>
+        </div>
+      </div>
+      <div class="feature fade-in">
+        <div class="feature-icon" style="background:rgba(139,92,246,0.15);color:#a78bfa;">✏️</div>
+        <div>
+          <h4>Éditeur Visuel WET4</h4>
+          <p>Éditeur complet avec glisser-déposer, WYSIWYG intégré, gestion des balises/propriétés et aperçu en direct — conforme aux normes du gouvernement du Canada.</p>
+        </div>
+      </div>
+      <div class="feature fade-in">
+        <div class="feature-icon" style="background:rgba(16,185,129,0.15);color:#34d399;">🔗</div>
+        <div>
+          <h4>Suivi Intelligent des Références</h4>
+          <p>Analyse les liens entrants et sortants entre les pages, détecte les références brisées avant le déploiement et avertit des modifications en cascade.</p>
+        </div>
+      </div>
+      <div class="feature fade-in">
+        <div class="feature-icon" style="background:rgba(245,158,11,0.15);color:#fbbf24;">🤖</div>
+        <div>
+          <h4>Flux de Travail Assistés par IA</h4>
+          <p>Remplacement en masse dans des centaines de pages, recherche et recommandations de contenu alimentées par IA, composants et modèles automatisés.</p>
+        </div>
+      </div>
+      <div class="feature fade-in">
+        <div class="feature-icon" style="background:rgba(239,68,68,0.15);color:#f87171;">🔄</div>
+        <div>
+          <h4>Contrôle de Version</h4>
+          <p>Chaque modification est suivie. Comparez les versions, annulez les changements et conservez une piste d'audit complète de toutes les modifications de contenu.</p>
+        </div>
+      </div>
+      <div class="feature fade-in">
+        <div class="feature-icon" style="background:rgba(59,130,246,0.15);color:#93c5fd;">🔒</div>
+        <div>
+          <h4>Sécurisé par Conception</h4>
+          <p>Accès sur liste blanche IP, authentification JWT, Cloudflare Tunnel sans exposition d'IP publique et permissions basées sur les rôles.</p>
+        </div>
+      </div>
+    </div>
+    <div class="tech-grid">
+      <span class="tech-tag">Python / FastAPI</span>
+      <span class="tech-tag">TypeScript / React</span>
+      <span class="tech-tag">PostgreSQL</span>
+      <span class="tech-tag">Cloudflare</span>
+      <span class="tech-tag">WET4 / Bootstrap 3</span>
+      <span class="tech-tag">Docker-ready</span>
+      <span class="tech-tag">IA / LLM</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-inner">
+    <div class="section-label">Impact</div>
+    <h2 class="section-title">Approuvé par des Équipes qui Ont Besoin d'Échelle</h2>
+    <p class="section-desc">Des éditeurs individuels aux déploiements d'entreprise, WebFileBot offre des gains de productivité mesurables.</p>
+    <div class="stats">
+      <div class="fade-in">
+        <div class="stat-value">10K+</div>
+        <div class="stat-label">Pages Gérées</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-value">&lt;10ms</div>
+        <div class="stat-label">Livraison de Contenu</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-value">100%</div>
+        <div class="stat-label">Compatible WET4</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-value">24/7</div>
+        <div class="stat-label">Opérations Automatisées</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="section-inner">
+    <div class="section-label">Contact</div>
+    <h2 class="section-title">Travaillons Ensemble</h2>
+    <p class="section-desc">Intéressé par ce que WebFileBot peut faire pour votre organisation ? Nous sommes là pour vous aider.</p>
+    <div class="contact-grid">
+      <div class="contact-info fade-in">
+        <h3>Contactez-Nous</h3>
+        <p>Que vous cherchiez à rationaliser vos opérations de contenu, à migrer vers un CMS moderne ou à créer des flux de publication personnalisés — nous serions ravis de vous entendre.</p>
+        <p style="margin-top:20px;">📧 <a href="mailto:contact@webfilebot.com">contact@webfilebot.com</a></p>
+        <p>🌐 <a href="https://www.webfilebot.com">www.webfilebot.com</a></p>
+      </div>
+      <div class="contact-info fade-in">
+        <h3>Notre Approche</h3>
+        <p>Nous croyons en une technologie pratique et axée sur les résultats. Chaque fonctionnalité que nous construisons résout un vrai problème — sans fioritures, sans mots à la mode, juste un logiciel qui fonctionne comme votre équipe en a besoin.</p>
+        <p style="margin-top:16px;">Construit avec ❤️ pour l'excellence numérique du secteur public.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 WebFileBot. Tous droits réservés. | <a href="/">Accueil</a> | <a href="/fr/">Français</a></p>
+  <p style="margin-top:8px;">Propulsé par WebBot et FileBot</p>
+</footer>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

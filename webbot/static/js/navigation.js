@@ -9,6 +9,62 @@ function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/**
+ * Auto-derive FileBot image path from page path.
+ * Page path: /canadasite/en/section/subsection/...
+ * Result:    /content/dam/en/section/subsection/...
+ */
+/**
+ * Derive DAM image path from a WebBot page path.
+ * e.g. /canadasite/en/contact → /canadasite/content/dam/en/contact
+ */
+function deriveImagePathFromPagePath(pagePath) {
+    if (!pagePath) return '';
+    // Insert /content/dam/ right after /canadasite/
+    return pagePath.replace('/canadasite/', '/canadasite/content/dam/');
+}
+
+/**
+ * Setup auto-image checkbox with listener for auto-fill.
+ */
+function setupAutoImageCheckbox(pagePath) {
+    var chk = document.getElementById('prop-auto-image');
+    if (!chk) return;
+    // Remove previous listener to avoid duplicates
+    var newChk = chk.cloneNode(true);
+    chk.parentNode.replaceChild(newChk, chk);
+    newChk.addEventListener('change', function() {
+        if (newChk.checked && pagePath) {
+            // Auto-fill filepath input from page path
+            var derived = deriveImagePathFromPagePath(pagePath);
+            setPropVal('prop-filepath', derived);
+        }
+        // When unchecked, leave filepath as-is (user may want to keep manual path)
+    });
+}
+
+/**
+ * Sync auto-image checkbox from saved auto_image_path metadata.
+ * Checkbox is ON when auto_image_path was saved as true.
+ * When checked, also auto-fill filepath if not already set.
+ * @param {object} [pageData] - API response with metadata
+ * @param {string} [pagePath] - current page path for derivation
+ */
+function syncAutoImageCheckbox(pageData, pagePath) {
+    var chk = document.getElementById('prop-auto-image');
+    if (!chk) return;
+    var isChecked = !!(pageData && pageData.metadata && pageData.metadata.auto_image_path);
+    chk.checked = isChecked;
+    // When auto from ancestor, also fill filepath if empty
+    if (isChecked && pagePath) {
+        var existingFp = getPropVal('prop-filepath');
+        if (!existingFp) {
+            var derived = deriveImagePathFromPagePath(pagePath);
+            setPropVal('prop-filepath', derived);
+        }
+    }
+}
+
 // ============================================================================
 // 1. CONSTANTS
 // ============================================================================
@@ -45,7 +101,15 @@ function initDom() {
     loadingEl = $('#loading-columns');
     errorContainer = $('#error-container');
     pageStats = $('#page-stats');
-    breadcrumbNav = $('#breadcrumb-container');
+    breadcrumbNav = $('#wb-bc .breadcrumb');
+    // Home breadcrumb click → navigateHome
+    var homeLink = document.getElementById('breadcrumb-home');
+    if (homeLink) {
+        homeLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            navigateHome();
+        });
+    }
     btnCreate = $('#btn-top-create');
     btnEdit = $('#btn-top-edit');
     btnPreview = $('#btn-top-preview');
@@ -55,6 +119,18 @@ function initDom() {
     btnDelete = $('#btn-top-delete');
     btnRefresh = $('#btn-top-refresh');
     btnProperties = $('#btn-top-properties');
+}
+
+// Helper: set input value
+function setPropVal(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.value = (val != null) ? val : '—';
+}
+
+// Helper: get input value
+function getPropVal(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : '';
 }
 
 // ============================================================================
@@ -436,7 +512,12 @@ function renderColumn(columnIndex, title, pages, parentPath) {
         // Publish status icon
         var statusIcon = document.createElement('span');
         statusIcon.className = 'publish-status-icon';
-        if (page.status === 'published') {
+        // Locked pages get red indicator regardless of publish status
+        if (page.lock_status === 'locked') {
+            statusIcon.textContent = page.status === 'published' ? '●' : '○';
+            statusIcon.style.color = '#c62828';
+            statusIcon.title = page.status === 'published' ? 'Published (Locked)' : 'Draft (Locked)';
+        } else if (page.status === 'published') {
             statusIcon.textContent = '●';
             statusIcon.style.color = '#28a745';
             statusIcon.title = 'Published';
@@ -580,34 +661,23 @@ function navigateHome() {
     selectedPageId = null;
     selectedPageData = null;
     currentPath = [];
-    lastActivePath = ROOT_PATH;
-    initNavigation();
+    lastActivePath = '/';
+    initNavigation('/');
 }
 
 // ============================================================================
 // 8. BREADCRUMB
 // ============================================================================
 function updateBreadcrumb() {
-    var container = breadcrumbNav.querySelector('.aem-breadcrumb') || breadcrumbNav;
+    var container = breadcrumbNav;  /* #wb-bc .breadcrumb (WET theme) */
+    // Keep the home <li> from HTML template
+    var homeLi = container.querySelector('#breadcrumb-home').parentElement;
     container.innerHTML = '';
-
-    // Home item
-    var homeSpan = document.createElement('span');
-    homeSpan.className = 'breadcrumb-item';
-    var homeLink = document.createElement('a');
-    homeLink.href = '#';
-    homeLink.textContent = 'Canada site';
-    homeLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        navigateHome();
-    });
-    homeSpan.appendChild(homeLink);
-    container.appendChild(homeSpan);
+    container.appendChild(homeLi);
 
     // Path items
     currentPath.forEach(function(page, idx) {
-        var span = document.createElement('span');
-        span.className = 'breadcrumb-item';
+        var li = document.createElement('li');
 
         if (idx < currentPath.length - 1) {
             var link = document.createElement('a');
@@ -617,13 +687,12 @@ function updateBreadcrumb() {
                 e.preventDefault();
                 goToPath(idx);
             });
-            span.appendChild(link);
+            li.appendChild(link);
         } else {
-            span.textContent = pageTitle(page);
-            span.className += ' active';
+            li.textContent = pageTitle(page);
         }
 
-        container.appendChild(span);
+        container.appendChild(li);
     });
 }
 
@@ -770,13 +839,20 @@ function setupButtons() {
     // CREATE button (fix #1 - root node check, fix #9 - state retention)
     // ============================================================================
     btnCreate.addEventListener('click', function() {
-        var parentPath = selectedPageData ? selectedPageData.path : ROOT_PATH;
-
-        if (parentPath === ROOT_PATH) {
-            showToast('Cannot create page directly under root. Select a sub-folder first.', 'warning');
+        // If no page is selected, confirm before creating at root
+        if (!selectedPageId && (!columnsCache.length || !columnsCache[columnsCache.length - 1].parentPath)) {
+            showConfirmDialog(
+                'No parent page selected. Create new page under <strong>Root</strong>?',
+                'Yes, create at Root',
+                'Cancel'
+            ).then(function(confirmed) {
+                if (confirmed) {
+                    showCreatePageModal('/');
+                }
+            });
             return;
         }
-
+        var parentPath = selectedPageData ? selectedPageData.path : (columnsCache.length > 0 ? columnsCache[columnsCache.length - 1].parentPath : ROOT_PATH);
         showCreatePageModal(parentPath);
     });
 
@@ -911,10 +987,17 @@ function setupButtons() {
                 var filePath = data.file_path || (data.metadata && data.metadata.file_path) || '';
                 setPropVal('prop-filepath', filePath);
 
+                // Auto-image checkbox: setup first (clone), then sync state
+                setTimeout(function() {
+                    setupAutoImageCheckbox(thePath);
+                    syncAutoImageCheckbox(data, thePath);
+                }, 0);
+
                 // Version info
                 loadVersionInfo(thePath);
                 loadScheduleInfo(thePath);
                 loadApprovalInfo(thePath);
+                loadLockStatus(thePath);
 
                 // Has children
                 var childEl = document.getElementById('prop-has-children');
@@ -952,18 +1035,6 @@ function setupButtons() {
                 console.error('Properties load error:', err);
                 showToast('Failed to load properties: ' + err.message, 'danger');
             });
-    }
-
-    // Helper: set input value
-    function setPropVal(id, val) {
-        var el = document.getElementById(id);
-        if (el) el.value = (val != null) ? val : '—';
-    }
-
-    // Helper: get input value
-    function getPropVal(id) {
-        var el = document.getElementById(id);
-        return el ? el.value.trim() : '';
     }
 
     // Populate template dropdown
@@ -1046,10 +1117,12 @@ function setupButtons() {
                 return;
             }
 
+            var autoImageChk = document.getElementById('prop-auto-image');
             var payload = {
                 title: getPropVal('prop-title') || undefined,
                 status: document.getElementById('prop-status') ? document.getElementById('prop-status').value : undefined,
                 file_path: filePath || undefined,
+                metadata: { auto_image_path: !!(autoImageChk && autoImageChk.checked) },
                 other_language_path: otherLang.trim(),
                 hide_in_navigation: document.getElementById('prop-hide-nav') ? document.getElementById('prop-hide-nav').checked : undefined,
                 publish_template: document.getElementById('prop-template') ? document.getElementById('prop-template').value || undefined : undefined
@@ -1441,13 +1514,6 @@ function setupButtons() {
         }
 
         var parentPath = newPageParent.value;
-
-        // Extra safety: check root path again (fix #1)
-        if (parentPath === ROOT_PATH) {
-            hideModal(createPageModal);
-            showToast('Cannot create page directly under root. Select a sub-folder first.', 'warning');
-            return;
-        }
 
         // Generate path from title using Chinese-friendly slug (fix #4)
         // Use user-editable name field if non-empty, otherwise fallback to auto-generated
@@ -1959,24 +2025,32 @@ async function updateStats() {
 // ============================================================================
 // 11. INIT
 // ============================================================================
-async function initNavigation() {
+async function initNavigation(initialPath) {
     showLoading();
     try {
-        var children = await fetchChildren(ROOT_PATH);
+        var pathToUse = initialPath || ROOT_PATH;
+        var columnTitle = initialPath ? (initialPath === '/' ? 'Root' : initialPath.split('/').filter(Boolean).pop() || 'Root') : 'Canada.ca';
+        var children = await fetchChildren(pathToUse);
         columnsCache = [{
-            title: 'Canada.ca',
+            title: columnTitle,
             pages: children,
-            parentPath: ROOT_PATH
+            parentPath: pathToUse
         }];
         selectedPageId = null;
         selectedPageData = null;
-        currentPath = [];
+        // Breadcrumb: Home link already represents '/'.
+        // Only add a crumb for sub-paths (e.g. /canadasite).
+        currentPath = (pathToUse === '/') ? [] : [{
+            path: pathToUse,
+            title: columnTitle,
+            id: pathToUse
+        }];
 
         renderColumns();
         hideLoading();
 
         updateStats();
-        console.log('Navigation initialized: ' + children.length + ' root pages');
+        console.log('Navigation initialized: ' + children.length + ' pages at ' + pathToUse);
     } catch (err) {
         console.error('Navigation init failed:', err);
         showError('Failed to load navigation: ' + err.message + '. Please try refreshing.');
@@ -1986,12 +2060,68 @@ async function initNavigation() {
 // ============================================================================
 // 12. BOOT
 // ============================================================================
+function getUrlParam(name) {
+    var params = new URLSearchParams(window.location.search);
+    return params.get(name);
+}
+
+// ============================================================================
+// Hash-based navigation: #/path → navigate to that path
+// ============================================================================
+function getHashPath() {
+    var hash = window.location.hash;
+    if (hash && hash.startsWith('#/')) return decodeURIComponent(hash.substring(1)); // '/canadasite/en'
+    return null;
+}
+
+function navigateToHashPath(hashPath) {
+    if (!hashPath || hashPath === '/') {
+        navigateHome();
+        return;
+    }
+    var parts = hashPath.split('/').filter(Boolean);
+    if (parts.length === 0) {
+        navigateHome();
+        return;
+    }
+    // Navigate to the last segment as initial path
+    // For deeper paths like /canadasite/en/contact, we go to /canadasite first
+    // then the user can drill down naturally
+    var initialPath = '/' + parts[0];
+    if (parts.length > 1) {
+        // Store the rest for lazy navigation after first column loads
+        lastActivePath = hashPath;
+    }
+    initNavigation(initialPath);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM ready - initializing navigation');
     initDom();
     initToast();
     setupButtons();
-    initNavigation();
+
+    // Priority: ?path= URL param > # hash > default
+    var pathParam = getUrlParam('path');
+    var hashPath = getHashPath();
+    if (pathParam) {
+        console.log('URL path param:', pathParam);
+        initNavigation(pathParam);
+    } else if (hashPath) {
+        console.log('URL hash path:', hashPath);
+        navigateToHashPath(hashPath);
+    } else {
+        initNavigation();
+    }
+
+    // Handle hash changes (user clicks breadcrumb or navigates)
+    window.addEventListener('hashchange', function() {
+        var newHash = getHashPath();
+        if (newHash && newHash !== lastActivePath) {
+            console.log('Hash changed:', newHash);
+            navigateToHashPath(newHash);
+        }
+    });
 });
 
 // Version info loading for properties modal
@@ -2239,5 +2369,111 @@ function unapprovePage() {
     })
     .catch(() => showWetAlert('Failed to revoke approval'));
 }
+
+// ============================================================================
+// Lock / Unlock page management
+// ============================================================================
+function loadLockStatus(pagePath) {
+    var statusEl = document.getElementById('prop-lock-status');
+    var btnLock = document.getElementById('btn-lock');
+    var btnUnlock = document.getElementById('btn-unlock');
+    
+    if (!pagePath) {
+        if (statusEl) statusEl.textContent = '—';
+        if (btnLock) btnLock.disabled = true;
+        if (btnUnlock) btnUnlock.disabled = true;
+        return;
+    }
+
+    // Store for use by lock/unlock buttons
+    currentPagePathForVersion = pagePath;
+
+    fetch('/api/v1/pages/lock-status?path=' + encodeURIComponent(pagePath))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.locked) {
+                var by = data.locked_by ? ' by ' + data.locked_by : '';
+                var at = data.locked_at ? ' since ' + data.locked_at.slice(0, 16) : '';
+                if (statusEl) {
+                    statusEl.textContent = '🔒 Locked' + by + at;
+                    statusEl.style.color = '#c62828';
+                }
+                if (btnLock) btnLock.disabled = true;
+                if (btnUnlock) btnUnlock.disabled = false;
+            } else {
+                if (statusEl) {
+                    statusEl.textContent = '🔓 Unlocked';
+                    statusEl.style.color = '#2e7d32';
+                }
+                if (btnLock) btnLock.disabled = false;
+                if (btnUnlock) btnUnlock.disabled = true;
+            }
+        })
+        .catch(function() {
+            if (statusEl) statusEl.textContent = '⚠️ Could not load';
+            if (btnLock) btnLock.disabled = true;
+            if (btnUnlock) btnUnlock.disabled = true;
+        });
+}
+
+function lockPage() {
+    var path = currentPagePathForVersion;
+    if (!path) return;
+    showConfirmDialog(
+        'Lock this page to prevent editing and publishing?',
+        'Lock', 'Cancel'
+    ).then(function(confirmed) {
+        if (!confirmed) return;
+        var token = localStorage.getItem('access_token');
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        fetch('/api/v1/pages/lock?path=' + encodeURIComponent(path) + '&locked_by=admin', {
+            method: 'POST',
+            headers: headers
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                loadLockStatus(path);
+                showWetAlert('Page locked successfully. Editing and publishing are now blocked.');
+            }
+        })
+        .catch(function() { showWetAlert('Failed to lock page'); });
+    });
+}
+
+function unlockPage() {
+    var path = currentPagePathForVersion;
+    if (!path) return;
+    showConfirmDialog(
+        'Unlock this page to allow editing and publishing?',
+        'Unlock', 'Cancel'
+    ).then(function(confirmed) {
+        if (!confirmed) return;
+        var token = localStorage.getItem('access_token');
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        fetch('/api/v1/pages/unlock?path=' + encodeURIComponent(path), {
+            method: 'POST',
+            headers: headers
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                loadLockStatus(path);
+                showWetAlert('Page unlocked. Editing and publishing are now allowed.');
+            }
+        })
+        .catch(function() { showWetAlert('Failed to unlock page'); });
+    });
+}
+
+// ============================================================================
+// Global compatibility: window.loadRootPages() for external callers
+// ============================================================================
+window.loadRootPages = async function loadRootPages() {
+    console.log('loadRootPages called — navigating to root /');
+    return initNavigation('/');
+};
 
 console.log('Navigation Module loaded.');

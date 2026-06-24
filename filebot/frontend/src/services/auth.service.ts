@@ -110,11 +110,15 @@ class AuthService {
   }
 
   // 退出登录
-  logout(): void {
+  async logout(): Promise<void> {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_info');
-    // 可以调用后端logout接口，但非必需
-    // api.post('/auth/logout');
+    // 调用后端logout接口以清除跨子域 cookie (filebot_token)
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // 即使后端不可用也要清除本地状态
+    }
   }
 
   // 检查是否已登录

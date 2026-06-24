@@ -49,11 +49,13 @@
         const pageIdDisplayEl = document.querySelector('#page-id-display');
         const pageLanguageDisplayEl = document.querySelector('#page-language-display');
         const pageStatusDisplayEl = document.querySelector('#page-status-display');
+        const pageApprovalDisplayEl = document.querySelector('#page-approval-display');
+        const pageLockDisplayEl = document.querySelector('#page-lock-display');
         const filePathDisplayEl = document.querySelector('#file-path-display');
         const lastModifiedDisplayEl = document.querySelector('#page-lastmodified-display');
         const pagePublishedDisplayEl = document.querySelector('#page-published-display');
         const savePageTopBtn = document.getElementById('save-page-top');
-        const breadcrumbEl = document.getElementById('breadcrumb');
+        const breadcrumbEl = document.querySelector('#wb-bc .breadcrumb');
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -600,7 +602,7 @@
                 selector: '#wysiwyg-editor-container',
                 height: 1500,
                 menubar: 'file edit view insert format tools table help',
-                base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
+                base_url: '/etc/designs/canada/gcweb/external/tinymce/tinymce/js/tinymce/',
                 plugins: [
                     'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                     'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
@@ -630,6 +632,67 @@
                 image_title: true,
                 image_caption: true,
                 object_resizing: 'img',
+                // 允许直接拖入/粘贴图片
+                paste_data_images: true,
+                block_unsupported_drop: true,
+                automatic_uploads: true, // TinyMCE 原生上传
+                images_upload_handler: function(blobInfo, progress) {
+                    console.log('小米 TinyMCE images_upload_handler 触发');
+                    return new Promise(function(resolve, reject) {
+                        var xhr = new XMLHttpRequest();
+                        xhr.withCredentials = false;
+                        xhr.open('POST', URL_CONFIG.filebot.upload);
+
+                        if (progress) {
+                            xhr.upload.onprogress = function(e) {
+                                if (e.lengthComputable) progress(e.loaded / e.total * 100);
+                            };
+                        }
+
+                        xhr.onload = function() {
+                            if (xhr.status < 200 || xhr.status >= 300) {
+                                reject('HTTP Error: ' + xhr.status);
+                                return;
+                            }
+                            try {
+                                var json = JSON.parse(xhr.responseText);
+                                if (!json || !json.stored_filename) {
+                                    reject('Invalid response: no stored_filename');
+                                    return;
+                                }
+                                // 构建包含文件夹路径的 URL
+                                var folderPath = json.folder_path || '';
+                                var subPath = '';
+                                if (folderPath) {
+                                    var damIdx = folderPath.indexOf('/content/dam/');
+                                    if (damIdx >= 0) {
+                                        subPath = folderPath.substring(damIdx + '/content/dam/'.length);
+                                    }
+                                }
+                                var url = subPath
+                                    ? '/content/dam/' + subPath + '/' + json.stored_filename
+                                    : '/content/dam/' + json.stored_filename;
+                                console.log('小米 upload complete, URL:', url);
+                                // 刷新左侧资源列表
+                                if (typeof loadFiles === 'function') setTimeout(loadFiles, 500);
+                                resolve(url);
+                            } catch(e) {
+                                reject('JSON parse error: ' + e.message);
+                            }
+                        };
+
+                        xhr.onerror = function() {
+                            reject('Image upload failed due to a XHR Transport error.');
+                        };
+
+                        var formData = new FormData();
+                        formData.append('file', blobInfo.blob(), blobInfo.filename());
+                        var fp = window.currentFileBotFolder;
+                        if (fp) formData.append('folder_path', fp);
+
+                        xhr.send(formData);
+                    });
+                },
                 // Preserve root-relative URLs (e.g. /en/contact.html) as-is
                 relative_urls: false,
                 remove_script_host: true,
@@ -867,9 +930,75 @@
                         }
                     });
 
+                    // 🎯 图片上传引擎:拦截 drop(捕获阶段)获取文件对象 + MutationObserver 后备
+                    var iframeWin = editor.getWin();
+                    var editorBody = editor.getBody();
+
+                    // ---- B. MutationObserver:处理 paste 或 TinyMCE 自身创建的 blob 图片 ----
+                    if (iframeWin && editorBody) {
+                        try {
+                            var imgObserver = new iframeWin.MutationObserver(function(muts) {
+                                for (var mi = 0; mi < muts.length; mi++) {
+                                    var mut = muts[mi];
+                                    if (mut.addedNodes) {
+                                        for (var ni = 0; ni < mut.addedNodes.length; ni++) {
+                                            var nd = mut.addedNodes[ni];
+                                            if (nd.nodeName === 'IMG') tryProcessImg(nd);
+                                            if (nd.querySelectorAll) {
+                                                var subImgs = nd.querySelectorAll('img[src^="blob:"], img[src^="data:image/"]');
+                                                for (var si = 0; si < subImgs.length; si++) tryProcessImg(subImgs[si]);
+                                            }
+                                        }
+                                    }
+                                    if (mut.type === 'attributes' && mut.attributeName === 'src') {
+                                        var t = mut.target;
+                                        if (t.nodeName === 'IMG' && (t.src.startsWith('blob:') || t.src.startsWith('data:image/'))) {
+                                            tryProcessImg(t);
+                                        }
+                                    }
+                                }
+                            });
+                            imgObserver.observe(editorBody, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+                        } catch(e) {}
+
+                        function tryProcessImg(imgEl) {
+                            var src = imgEl.getAttribute('src') || imgEl.src;
+                            if (!src || (!src.startsWith('blob:') && !src.startsWith('data:image/'))) return;
+                            if (imgEl.getAttribute('data-iu')) return;
+                            imgEl.setAttribute('data-iu', '1');
+                            var fname = imgEl.getAttribute('alt') || ('image-' + Date.now() + '.png');
+                            iframeWin.fetch(src).then(function(r) {
+                                if (!r.ok) throw new Error('fetch'); return r.blob();
+                            }).then(function(blob) {
+                                var fd = new FormData();
+                                fd.append('file', blob, fname);
+                                var fp = window.currentFileBotFolder;
+                                if (fp) fd.append('folder_path', fp.startsWith('/boarding') ? fp : '/boarding' + fp);
+                                return fetch(URL_CONFIG.filebot.upload, { method: 'POST', body: fd });
+                            }).then(function(r) {
+                                if (!r.ok) throw new Error('HTTP ' + r.status); return r.json();
+                            }).then(function(ud) {
+                                return publishDocumentAndSetPublicUrl(ud.id, ud.stored_filename, fname);
+                            }).then(function(pd) {
+                                if (!pd) return;
+                                var pu = getPublicUrlFromDocument(pd);
+                                if (pu) { editor.dom.setAttrib(imgEl, 'src', pu); imgEl.removeAttribute('data-iu'); }
+                            }).catch(function() { imgEl.removeAttribute('data-iu'); });
+                        }
+
+                        // 后备定时巡检
+                        setInterval(function() {
+                            try {
+                                var bd = editor.getBody();
+                                if (!bd) return;
+                                var imgs = bd.querySelectorAll('img[src^="blob:"], img[src^="data:image/"]');
+                                for (var si = 0; si < imgs.length; si++) tryProcessImg(imgs[si]);
+                            } catch(e) {}
+                        }, 3000);
+                    }
+
                     // Also sync when textarea content changes (for HTML mode)
                     editorContentEl.addEventListener('input', function() {
-                        // Only update TinyMCE if we're in HTML mode
                         if (htmlSourceContainer.classList.contains('active')) {
                             editor.setContent(this.value);
                         }
@@ -962,9 +1091,14 @@
             pageIdDisplayEl.textContent = ' | New Page (unsaved)';
             pageLanguageDisplayEl.textContent = ' | Language: ' + language.toUpperCase();
             pageStatusDisplayEl.textContent = ' | Status: DRAFT';
+            pageApprovalDisplayEl.textContent = '';
+            pageLockDisplayEl.textContent = '';
             filePathDisplayEl.textContent = '';
             lastModifiedDisplayEl.textContent = '';
             pagePublishedDisplayEl.textContent = '';
+
+            // Apply lock state (new pages are never locked)
+            applyLockState();
 
             // Populate editor with empty content
             editorContentEl.value = '';
@@ -995,6 +1129,12 @@
 
 
         // Build page tree from flat list
+        // Derive image path from page path: /site/en/page → /site/content/dam/en/page
+        function deriveImagePathFromPagePath(pagePath) {
+            if (!pagePath) return '';
+            return pagePath.replace(/^\/([^\/]+)\//, '/$1/content/dam/');
+        }
+
         // Get effective file_path for a page, with inheritance from parent pages
         async function getEffectiveFilePath(pageId, maxDepth = 10) {
             console.log('getEffectiveFilePath called for page:', pageId, 'maxDepth:', maxDepth);
@@ -1022,7 +1162,16 @@
                     }
                     const page = await response.json();
 
-                    // Check if this language root page has file_path
+                    // Check auto_image_path first for language root
+                    if (page.metadata && page.metadata.auto_image_path === true) {
+                        var derivedPath = deriveImagePathFromPagePath('/' + pageId);
+                        console.log('auto_image_path=true on language root, derived:', derivedPath);
+                        return {
+                            file_path: derivedPath,
+                            source: `language root (/${pageId}, auto)`
+                        };
+                    }
+                    // Then check explicit file_path
                     if (page.metadata && page.metadata.file_path) {
                         console.log('Found file_path in language root:', page.metadata.file_path);
                         return {
@@ -1060,12 +1209,22 @@
                     page = await response.json();
                 }
 
-                // Check if this page has file_path
+                // Check auto_image_path first: if set, derive from page path
+                if (page.metadata && page.metadata.auto_image_path === true) {
+                    var derivedPath = deriveImagePathFromPagePath(pageId);
+                    console.log('auto_image_path=true, derived from page path:', derivedPath);
+                    return {
+                        file_path: derivedPath,
+                        source: 'page path level (auto)'
+                    };
+                }
+
+                // Check if this page has file_path (explicit Image Location)
                 if (page.metadata && page.metadata.file_path) {
                     console.log('Found file_path in current page:', page.metadata.file_path);
                     return {
                         file_path: page.metadata.file_path,
-                        source: 'current page'
+                        source: 'current page (explicit)'
                     };
                 }
 
@@ -1180,6 +1339,7 @@
 
                 // Clear current folder and load documents from root
                 window.currentFileBotFolder = null;
+
                 loadRecentDocumentsFromTargetFolder(null);
             }
         }
@@ -1195,14 +1355,15 @@
 
                 // 尝试直接通过路径获取文件夹信息
                 // 使用新的文件夹路径端点
-                const response = await fetch(`${URL_CONFIG.filebot.folders}/by-path/${encodeURIComponent(folderPath)}`, {
+                const response = await fetch(`${URL_CONFIG.filebot.folders}?path=${encodeURIComponent(folderPath)}`, {
                     headers: {
                         'Authorization': `Bearer ${FILEBOT_JWT_TOKEN}`
                     }
                 });
 
                 if (response.ok) {
-                    const folder = await response.json();
+                    const data = await response.json();
+                    const folder = data.folder || data;
                     console.log(`Found folder ID ${folder.id} for path: ${folderPath}`);
                     return folder.id;
                 } else if (response.status === 404) {
@@ -1752,6 +1913,10 @@
                 lastModifiedDisplayEl.textContent = formatLastModified(page.last_modified);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(page.last_published);
 
+                // Update approval and lock display
+                updateApprovalLockDisplay(page);
+                applyLockState();
+
                 // Update language switcher
                 populateLanguageSwitcher();
                 // Update translate button visibility
@@ -1809,6 +1974,29 @@
 
                     // Store the effective file_path for upload operations
                     window.currentFileBotFolder = effectiveFilePathInfo.file_path;
+                    // Normalize: prepend site root if file_path doesn't already include it
+                    if (window.currentFileBotFolder && page.path) {
+                        var siteRoot = '/' + page.path.split('/').filter(Boolean)[0];
+                        if (siteRoot && !window.currentFileBotFolder.startsWith(siteRoot)) {
+                            window.currentFileBotFolder = siteRoot + window.currentFileBotFolder;
+                            console.log('Normalized file_path with site root:', window.currentFileBotFolder);
+                        }
+                    }
+
+                    // Ensure Resources sidebar path reflects the effective file_path
+                    var rpInput = document.getElementById('resource-path-input');
+                    var pageLocationDAM = effectiveFilePathInfo.file_path || (page.path ? page.path.replace('/canadasite/', '/canadasite/content/dam/') : '');
+                    if (rpInput && pageLocationDAM) {
+                        rpInput.value = pageLocationDAM;
+                        // Trigger re-search if sidebar is open
+                        var rs = document.getElementById('resource-sidebar');
+                        if (rs && !rs.classList.contains('hidden')) {
+                            setTimeout(function() {
+                                var rBtn = document.getElementById('resource-search-btn');
+                                if (rBtn) rBtn.click();
+                            }, 50);
+                        }
+                    }
 
                 } catch (error) {
                     console.error('Error updating FileBot target folder:', error);
@@ -1943,21 +2131,19 @@
             return `editor.html?pageId=${encodeURIComponent(cleanPath)}`;
         }
 
-        // Update breadcrumb navigation
+        // Update breadcrumb navigation (WET theme #wb-bc .breadcrumb)
         async function updateBreadcrumb(page) {
             console.log('updateBreadcrumb called for page:', page.id, 'title:', page.title);
 
             // Show loading state in breadcrumb
             breadcrumbEl.innerHTML = `
-                <div class="breadcrumb-item">
-                    <a href="navigation.html?path=${encodeURIComponent(page.path)}" id="home-link">Canadasite</a>
-                </div>
-                <div class="breadcrumb-item">Loading breadcrumb...</div>
+                <li><a href="navigation.html?path=${encodeURIComponent(page.path)}" id="home-link">Canadasite</a></li>
+                <li>Loading breadcrumb...</li>
             `;
 
             try {
                 // Build breadcrumb path by traversing up the hierarchy
-                const breadcrumbPath = await buildBreadcrumbPath(page);
+                const { path: breadcrumbPath } = await buildBreadcrumbPath(page);
 
                 // Debug: log breadcrumb path details
                 console.log('breadcrumbPath length:', breadcrumbPath.length);
@@ -1967,9 +2153,7 @@
 
                 // Render breadcrumb
                 let breadcrumbHtml = `
-                    <div class="breadcrumb-item">
-                        <a href="navigation.html?path=${encodeURIComponent(page.path)}" id="home-link">Canadasite</a>
-                    </div>
+                    <li><a href="navigation.html?path=${encodeURIComponent(page.path)}" id="home-link">Canadasite</a></li>
                 `;
 
                 // Add intermediate pages (except the current page which will be added as active)
@@ -1985,9 +2169,9 @@
                     const editorUrl = getEditorUrl(fullAncestorPath);
                     const ancestorTitle = cleanTitle(ancestor.title) || ancestor.id;
                     breadcrumbHtml += `
-                        <div class="breadcrumb-item">
+                        <li>
                             <a href="${editorUrl}" class="breadcrumb-link" data-page-path="${removeHtmlExtension(fullAncestorPath)}">${ancestorTitle}</a>
-                        </div>
+                        </li>
                     `;
                 }
 
@@ -1996,12 +2180,12 @@
                     const currentPage = breadcrumbPath[breadcrumbPath.length - 1];
                     const currentPagePath = buildFullPath(currentPage, breadcrumbPath);
                     breadcrumbHtml += `
-                        <div class="breadcrumb-item active">${cleanTitle(currentPage.title) || currentPage.id}</div>
+                        <li class="active">${cleanTitle(currentPage.title) || currentPage.id}</li>
                     `;
                 } else {
                     // Fallback if no breadcrumb path (shouldn't happen)
                     breadcrumbHtml += `
-                        <div class="breadcrumb-item active">${cleanTitle(page.title) || page.id}</div>
+                        <li class="active">${cleanTitle(page.title) || page.id}</li>
                     `;
                 }
 
@@ -2036,59 +2220,34 @@
             }
         }
 
-        // Build breadcrumb path by traversing up the page hierarchy
+        // Build breadcrumb path — single API call via /parents endpoint
+        // Returns {path: [...parents, page], header, megamenu} for reuse
         async function buildBreadcrumbPath(startPage) {
-            // Use the parents endpoint for a single API call
-            if (startPage && startPage.path) {
-                try {
-                    const resp = await fetch(`${API_BASE}/parents?path=${encodeURIComponent(startPage.path)}`);
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        const parents = data.parents || [];
-                        const page = data.page;
-                        if (page) {
-                            const path = [...parents, page];
-                            console.log('Built breadcrumb path via /parents endpoint:', path.length, 'pages:', path.map(p => p.id));
-                            return path;
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Parents endpoint failed, falling back to manual traversal:', e);
-                }
+            if (!startPage || !startPage.path) {
+                console.warn('buildBreadcrumbPath: no page or path, returning empty');
+                return { path: [startPage].filter(Boolean), header: null, megamenu: null };
             }
-
-            // Fallback: manual traversal
-            const path = [startPage];
-            let currentPage = startPage;
-            while (currentPage && currentPage.parent_path) {
-                try {
-                    let parentPage = null;
-                    if (currentPage.path) {
-                        const currentPath = currentPage.path;
-                        const lastSlashIndex = currentPath.lastIndexOf('/');
-                        if (lastSlashIndex > 0) {
-                            const parentPath = currentPath.substring(0, lastSlashIndex) || '/';
-                            const parentResponse = await fetch(`${API_BASE}/by-path?path=${encodeURIComponent(parentPath)}`);
-                            if (parentResponse.ok) {
-                                parentPage = await parentResponse.json();
-                            }
-                        }
-                    }
-                    if (!parentPage) {
-                        console.warn(`Unable to fetch parent page ${currentPage.parent_path}, stopping breadcrumb`);
-                        break;
-                    }
-                    if (parentPage.hide_in_navigation !== true) {
-                        path.unshift(parentPage);
-                    }
-                    currentPage = parentPage;
-                } catch (error) {
-                    console.error(`Error fetching parent ${currentPage.parent_path}:`, error);
-                    break;
-                }
+            
+            const resp = await fetch(`${API_BASE}/parents?path=${encodeURIComponent(startPage.path)}`);
+            if (!resp.ok) {
+                throw new Error(`Parents endpoint returned ${resp.status}`);
             }
-            console.log('Built breadcrumb path (fallback) with', path.length, 'pages');
-            return path;
+            const data = await resp.json();
+            const parents = data.parents || [];
+            const page = data.page;
+            if (!page) {
+                throw new Error('Parents endpoint returned no current page');
+            }
+            const breadcrumbPath = [...parents, page];
+            console.log('Built breadcrumb via /parents:', breadcrumbPath.length, 'pages:', breadcrumbPath.map(p => p.id));
+            // Cache header/megamenu globally so previewPageLocal can reuse them
+            if (data.header?.success) {
+                window._cachedHeader = data.header.content;
+            }
+            if (data.megamenu?.success) {
+                window._cachedMegamenu = data.megamenu.content;
+            }
+            return { path: breadcrumbPath, header: data.header, megamenu: data.megamenu };
         }
 
         // Build full path for a page given its breadcrumb path
@@ -2180,7 +2339,7 @@
 
             try {
                 // Build breadcrumb path
-                const breadcrumbPath = await buildBreadcrumbPath(page);
+                const { path: breadcrumbPath } = await buildBreadcrumbPath(page);
 
                 if (breadcrumbPath.length === 0) {
                     return ''; // Return empty if no breadcrumb
@@ -3296,10 +3455,16 @@
                 const language = currentPageData?.language || 'en';
                 const rootPath = `/${language}`;
 
-                const headerResponse = await fetch(`/api/v1/pages/by-path?path=${encodeURIComponent(rootPath + '/header')}`);
-                if (headerResponse.ok) {
-                    const headerData = await headerResponse.json();
-                    headerContent = headerData.content || '';
+                // Use cached header from /parents endpoint when available (avoids duplicate by-path call)
+                if (window._cachedHeader) {
+                    headerContent = window._cachedHeader;
+                    console.log('Using cached header from /parents endpoint');
+                } else {
+                    const headerResponse = await fetch(`/api/v1/pages/by-path?path=${encodeURIComponent(rootPath + '/header')}`);
+                    if (headerResponse.ok) {
+                        const headerData = await headerResponse.json();
+                        headerContent = headerData.content || '';
+                    }
                 }
 
                 // Use new getfooter API that returns institution + language level
@@ -3515,6 +3680,10 @@
                     lastModifiedDisplayEl.textContent = formatLastModified(pageToDisplay.last_modified);
                     pagePublishedDisplayEl.textContent = formatPublishedAt(pageToDisplay.last_published);
 
+                    // Update approval and lock display
+                    updateApprovalLockDisplay(pageToDisplay);
+                    applyLockState();
+
                     // Update URL
                     const url = new URL(window.location);
                     url.searchParams.set('pageId', (pageToDisplay.path || pageToDisplay.id));
@@ -3573,6 +3742,12 @@
                 showError('No page selected to save.');
                 return;
             }
+            
+            // Check lock status
+            if (isPageLocked()) {
+                showError('🔒 This page is locked. Unlock it in Properties → Lock Status before saving.');
+                return;
+            }
 
             // If this is a new page, create it via POST instead of PUT
             if (isNewPage) {
@@ -3598,17 +3773,36 @@
                     console.log('Getting content from textarea');
                 }
 
-                // 处理内容中的图片(上传blob/localhost图片到FileBot)
-                console.log('Processing images in content before saving...');
+                // 第一步:先把blob: URL转成base64内嵌(纯浏览器内存操作,快速无阻塞)
                 let processedContent;
-                try {
-                    processedContent = await processImagesInHtmlContent(content);
-                    console.log('Image processing completed');
-                } catch (imageError) {
-                    console.error('Error processing images:', imageError);
-                    // 图片处理失败,但继续保存原始内容
-                    showError(`Warning: Failed to process some images: ${imageError.message}. Saving with original image URLs.`);
+                if (content && content.includes('blob:')) {
+                    console.log('Converting blob URLs to inline base64...');
+                    try {
+                        processedContent = await convertBlobUrlsToDataUrls(content);
+                        console.log('Blob URLs converted to base64');
+                    } catch (e) {
+                        console.warn('Failed to convert blob URLs:', e);
+                        processedContent = content;
+                    }
+                } else {
                     processedContent = content;
+                }
+                
+                // 第二步:后台启动图片上传(不阻塞保存)
+                if (content && (content.includes('data:image/') || content.includes('blob:'))) {
+                    console.log('Starting background image upload...');
+                    processImagesInHtmlContent(processedContent)
+                        .then(async function(newContent) {
+                            if (newContent !== processedContent) {
+                                console.log('Background image upload completed, updating page...');
+                                await updatePageContent(newContent);
+                            }
+                        })
+                        .catch(function(err) {
+                            console.error('Background image upload failed:', err);
+                        });
+                } else {
+                    console.log('No embedded images found in content');
                 }
 
                 // Inject metadata into content if available
@@ -3723,6 +3917,11 @@
                 } else {
                     filePathDisplayEl.textContent = '';
                 }
+
+                // Update approval and lock display
+                updateApprovalLockDisplay(currentPageData);
+                applyLockState();
+                
                 lastModifiedDisplayEl.textContent = formatLastModified(currentPageData.last_modified);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(currentPageData.last_published);
 
@@ -3744,9 +3943,70 @@
             }
         }
 
+        // 后台更新页面内容(图片上传完成后调用,不重复处理图片)
+        async function updatePageContent(newContent) {
+            if (!currentPageId || !currentPageData) {
+                console.warn('updatePageContent: no page selected');
+                return;
+            }
+            
+            try {
+                // 构造和 savePage 一致的 API URL
+                let apiUrl;
+                if (currentPageId && currentPageId.includes('/')) {
+                    apiUrl = `${API_BASE}${currentPageId}`;
+                } else {
+                    let pageIdToUse = currentPageId;
+                    if (currentPageData && currentPageData.id) {
+                        pageIdToUse = currentPageData.id;
+                    }
+                    let parentPath = currentPageData?.parent_path;
+                    if (parentPath) {
+                        const normalizedParent = parentPath.startsWith('/') ? parentPath : `/${parentPath}`;
+                        const cleanParent = normalizedParent.replace(/\/$/, '');
+                        apiUrl = `${API_BASE}${cleanParent}/${encodeURIComponent(pageIdToUse)}`;
+                    } else {
+                        apiUrl = `${API_BASE}/${encodeURIComponent(pageIdToUse)}`;
+                    }
+                }
+
+                const response = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content: newContent }),
+                    signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined
+                });
+
+                if (response.ok) {
+                    console.log('Background content update completed');
+                    successMessageEl.textContent = '✅ Images uploaded and page updated!';
+                    successMessageEl.style.display = 'block';
+                    setTimeout(() => { successMessageEl.style.display = 'none'; }, 5000);
+                    
+                    // Update local state
+                    if (currentPageData) {
+                        currentPageData.content = newContent;
+                        window.currentPageData = currentPageData;
+                    }
+                } else {
+                    console.warn('Background content update failed:', response.status);
+                }
+            } catch (error) {
+                console.error('Background content update error:', error);
+            }
+        }
+
         async function publishPage() {
             if (!currentPageId || !currentPageData) {
                 showError('No page selected to publish.');
+                return;
+            }
+            
+            // Check lock status
+            if (isPageLocked()) {
+                showError('🔒 This page is locked. Unlock it in Properties → Lock Status before publishing.');
                 return;
             }
 
@@ -3785,6 +4045,9 @@
                 pageStatusDisplayEl.textContent = ' | Status: published';
                 lastModifiedDisplayEl.textContent = formatLastModified(result.last_modified || result.published_at);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(result.published_at);
+
+                // Update approval and lock display
+                updateApprovalLockDisplay(currentPageData);
 
                 showSuccess('Page published successfully!');
                 console.log('Published page:', result);
@@ -3846,6 +4109,8 @@
             filePathDisplayEl.textContent = '';
             lastModifiedDisplayEl.textContent = '';
             pagePublishedDisplayEl.textContent = '';
+            pageApprovalDisplayEl.textContent = '';
+            pageLockDisplayEl.textContent = '';
 
             // Clear URL parameter
             const url = new URL(window.location);
@@ -3901,6 +4166,100 @@
                 return ` | Published: ${year}-${month}-${day} ${hours}:${minutes}`;
             } catch (e) {
                 return '';
+            }
+        }
+
+        // Update Approval Status and Lock Status display in toolbar
+        function updateApprovalLockDisplay(pageData) {
+            const meta = pageData?.metadata || {};
+            
+            // Approval status
+            if (meta.approval_status) {
+                const statusMap = {
+                    'pending': '📋 Approval: Pending',
+                    'approved': '✅ Approval: Approved',
+                    'rejected': '❌ Approval: Rejected'
+                };
+                pageApprovalDisplayEl.textContent = ' | ' + (statusMap[meta.approval_status] || `Approval: ${meta.approval_status}`);
+                if (meta.approval_status === 'rejected') {
+                    pageApprovalDisplayEl.style.color = '#d9534f';
+                } else if (meta.approval_status === 'approved') {
+                    pageApprovalDisplayEl.style.color = '#5cb85c';
+                } else {
+                    pageApprovalDisplayEl.style.color = '#f0ad4e';
+                }
+            } else {
+                pageApprovalDisplayEl.textContent = '';
+                pageApprovalDisplayEl.style.color = '';
+            }
+            
+            // Lock status
+            if (meta.lock_status === 'locked') {
+                pageLockDisplayEl.textContent = ' | 🔒 LOCKED';
+                pageLockDisplayEl.style.color = '#d9534f';
+                pageLockDisplayEl.style.fontWeight = 'bold';
+            } else {
+                pageLockDisplayEl.textContent = '';
+                pageLockDisplayEl.style.color = '';
+                pageLockDisplayEl.style.fontWeight = '';
+            }
+        }
+        
+        // Check if the current page is locked
+        function isPageLocked() {
+            return currentPageData?.metadata?.lock_status === 'locked';
+        }
+        
+        // Apply or remove lock overlay/state on the editor
+        function applyLockState() {
+            const locked = isPageLocked();
+            const editorFormEl = document.getElementById('editor-form');
+            const savePageBtn = document.getElementById('save-page');
+            const publishPageBtn = document.getElementById('publish-page');
+            const savePageTopBtn = document.getElementById('save-page-top');
+            
+            // Remove existing lock overlay if any
+            const existingOverlay = document.getElementById('lock-overlay');
+            if (existingOverlay) existingOverlay.remove();
+            
+            if (locked) {
+                // Disable save/publish buttons
+                if (savePageBtn) { savePageBtn.disabled = true; savePageBtn.title = 'Page is locked - editing disabled'; }
+                if (publishPageBtn) { publishPageBtn.disabled = true; publishPageBtn.title = 'Page is locked - publishing disabled'; }
+                if (savePageTopBtn) { savePageTopBtn.disabled = true; savePageTopBtn.title = 'Page is locked - editing disabled'; }
+                
+                // Disable TinyMCE editor
+                if (tinyMceEditor) {
+                    tinyMceEditor.mode.set('readonly');
+                }
+                // Also disable textarea
+                const editorContentEl = document.getElementById('editor-content');
+                if (editorContentEl) editorContentEl.disabled = true;
+                
+                // Add visual lock overlay
+                if (editorFormEl) {
+                    const overlay = document.createElement('div');
+                    overlay.id = 'lock-overlay';
+                    overlay.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.3); z-index: 1000; cursor: not-allowed; display: flex; align-items: center; justify-content: center;';
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'background: #d9534f; color: white; padding: 12px 24px; border-radius: 6px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+                    banner.textContent = '🔒 This page is locked — read-only mode';
+                    overlay.appendChild(banner);
+                    editorFormEl.style.position = editorFormEl.style.position || 'relative';
+                    editorFormEl.appendChild(overlay);
+                }
+            } else {
+                // Re-enable buttons
+                if (savePageBtn) { savePageBtn.disabled = false; savePageBtn.title = ''; }
+                if (publishPageBtn) { publishPageBtn.disabled = false; publishPageBtn.title = ''; }
+                if (savePageTopBtn) { savePageTopBtn.disabled = false; savePageTopBtn.title = ''; }
+                
+                // Re-enable TinyMCE
+                if (tinyMceEditor) {
+                    tinyMceEditor.mode.set('design');
+                }
+                const editorContentEl = document.getElementById('editor-content');
+                if (editorContentEl) editorContentEl.disabled = false;
             }
         }
 
@@ -4691,6 +5050,7 @@
             return true;
         }
 
+        window.addTemplateButtonToUI = addTemplateButtonToUI;
         // Function to show template selector modal
         function showTemplateSelector() {
             console.log('showTemplateSelector called - checking registry availability');
@@ -7729,7 +8089,7 @@
             filebot: {
                 upload: '/content/upload/',
                 documents: '/content/documents/',
-                folders: '/content/folders/',
+                folders: '/api/v1/content/folders/',
                 search: '/content/search/',
                 documentById: (id) => `/content/documents/${id}`,
                 documentDownload: (id) => `/content/documents/${id}/download`,
@@ -7748,7 +8108,7 @@
         console.log('[URL Config] 配置已加载');
 
 
-        const FILEBOT_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZGFkNmZhMS1kNTIxLTQxN2YtODg3Ny1lZmU5NWZjZjFmMDQiLCJleHAiOjE4MTAwNjQzMDR9.0CI5rjrAcsJUkL5LSrWWBmc2paDNVeOwJxnN4gk9txA';
+        const FILEBOT_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZGFkNmZhMS1kNTIxLTQxN2YtODg3Ny1lZmU5NWZjZjFmMDQiLCJleHAiOjIwOTc1MDM2NzJ9.VV_L_o6J1Z1GSkVU8X-A2i09iXZ5GCWNFBRjcgytP-c';
 
         // Convert FileBot document to file manager format
         function convertDocumentToFile(doc) {
@@ -8270,78 +8630,93 @@
 
         // Upload files
         // Helper function to publish a document and set its public URL metadata
-        async function getUniqueFilename(originalFilename) {
+        /**
+         * 将内容中所有的 blob: URL 转为 data: URL (base64内嵌)
+         * 纯浏览器内存操作,无服务器请求,快速完成
+         */
+        async function convertBlobUrlsToDataUrls(htmlContent) {
+            // 找到所有 blob: URL
+            const blobRegex = /src=["'](blob:[^"']+)["']/gi;
+            const matches = [];
+            let match;
+            while ((match = blobRegex.exec(htmlContent)) !== null) {
+                matches.push(match[1]);
+            }
+
+            if (matches.length === 0) return htmlContent;
+
+            console.log(`Found ${matches.length} blob URL(s) to convert`);
+
+            // 去重
+            const uniqueBlobs = [...new Set(matches)];
+
+            // 并行获取所有 blob 并转为 data URL
+            const conversionResults = await Promise.all(
+                uniqueBlobs.map(async (blobUrl) => {
+                    try {
+                        const resp = await fetch(blobUrl, { signal: null });
+                        if (!resp.ok) {
+                            console.warn(`Failed to fetch blob: ${blobUrl}`);
+                            return { old: blobUrl, new: blobUrl };
+                        }
+                        const blob = await resp.blob();
+                        return new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                resolve({ old: blobUrl, new: reader.result });
+                            };
+                            reader.onerror = () => {
+                                console.warn('FileReader error for blob:', blobUrl);
+                                resolve({ old: blobUrl, new: blobUrl });
+                            };
+                            reader.readAsDataURL(blob);
+                        });
+                    } catch (e) {
+                        console.warn('Error converting blob URL:', blobUrl, e);
+                        return { old: blobUrl, new: blobUrl };
+                    }
+                })
+            );
+
+            // 替换内容中的 blob URL 为 data URL
+            let result = htmlContent;
+            for (const { old: oldUrl, new: newUrl } of conversionResults) {
+                if (oldUrl !== newUrl) {
+                    // 使用全局替换,因为同一个 blob URL 可能在内容中出现多次
+                    result = result.split(oldUrl).join(newUrl);
+                    console.log(`Converted blob URL to data URL (${(newUrl.length - oldUrl.length) > 0 ? '+' : ''}${newUrl.length - oldUrl.length} chars)`);
+                }
+            }
+
+            console.log('Blob to data URL conversion complete');
+            return result;
+        }
+
+        function getUniqueFilename(originalFilename) {
             /**
-             * 生成唯一的文件名,避免冲突
-             * 规则:
-             * 1. 首先尝试原始文件名(如 th.jpg)
-             * 2. 如果已存在,尝试 th-1.jpg, th-2.jpg 等
-             * 3. 最多尝试20次
+             * 生成唯一的文件名用于public URL
+             * 注意: 不再调用API检查冲突,因为:
+             *   1. /content/dam/{path} 在找不到文件时返回200(占位GIF)而非404
+             *   2. FileBot后端用UUID存储文件,文件名冲突可能性为零
+             *   3. original_filename仅用于public URL的显示路径
              */
             console.log('Generating unique filename for:', originalFilename);
 
-            // 解析文件名和扩展名
             const dotIndex = originalFilename.lastIndexOf('.');
             let name = originalFilename;
             let extension = '';
             if (dotIndex > -1) {
                 name = originalFilename.substring(0, dotIndex);
-                extension = originalFilename.substring(dotIndex); // 包含点
+                extension = originalFilename.substring(dotIndex);
             }
 
-            // 首先尝试原始文件名
-            let candidate = originalFilename;
-            let attempt = 0;
-            const maxAttempts = 20;
-
-            while (attempt < maxAttempts) {
-                console.log('Checking if filename is available:', candidate);
-
-                try {
-                    // 通过FileBot API检查文件名是否已存在
-                    // 使用by-path端点,如果返回404表示文件名可用
-                    const response = await fetch(URL_CONFIG.filebot.documentByPath(candidate), {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${FILEBOT_JWT_TOKEN}`
-                        }
-                    });
-
-                    if (response.status === 404) {
-                        // 文件名可用!
-                        console.log('Filename available:', candidate);
-                        return candidate;
-                    } else if (response.status === 200) {
-                        // 文件名已被占用,尝试下一个
-                        console.log('Filename already taken:', candidate);
-                        attempt++;
-                        if (extension) {
-                            candidate = `${name}-${attempt}${extension}`;
-                        } else {
-                            candidate = `${name}-${attempt}`;
-                        }
-                    } else {
-                        // 其他错误,保守起见认为文件名可用
-                        console.warn('Unexpected status checking filename:', response.status, 'Assuming available:', candidate);
-                        return candidate;
-                    }
-                } catch (error) {
-                    console.warn('Error checking filename availability:', error, 'Assuming available:', candidate);
-                    return candidate;
-                }
-            }
-
-            // 如果尝试了maxAttempts次仍未找到,返回带时间戳的唯一文件名
-            const timestamp = Date.now().toString().slice(-6);
-            if (extension) {
-                const fallback = `${name}-${timestamp}${extension}`;
-                console.log('Max attempts reached, using timestamped filename:', fallback);
-                return fallback;
-            } else {
-                const fallback = `${name}-${timestamp}`;
-                console.log('Max attempts reached, using timestamped filename:', fallback);
-                return fallback;
-            }
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 10000);
+            const result = extension
+                ? `${name}-${timestamp}-${random}${extension}`
+                : `${name}-${timestamp}-${random}`;
+            console.log('Unique filename generated:', result);
+            return result;
         }
 
         function generateFallbackFilename(originalFilename) {
@@ -8411,7 +8786,8 @@
                         'Authorization': `Bearer ${FILEBOT_JWT_TOKEN}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(requestBody)
+                    body: JSON.stringify(requestBody),
+                    signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined
                 });
 
                 if (!updateResponse.ok) {
@@ -8451,7 +8827,9 @@
 
             try {
                 // 1. 从blob URL获取图片数据
-                const response = await fetch(blobUrl);
+                const response = await fetch(blobUrl, {
+                    signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined
+                });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch blob: ${response.status} ${response.statusText}`);
                 }
@@ -8467,8 +8845,10 @@
                 // Add folder_path if available
                 const folderPath = window.currentFileBotFolder;
                 if (folderPath) {
-                    console.log('Uploading image to folder path:', folderPath);
-                    formData.append('folder_path', folderPath);
+                    // 和 uploadFiles() 保持一致，补上 /boarding app slug
+                    const uploadPath = folderPath.startsWith('/boarding') ? folderPath : '/boarding' + folderPath;
+                    console.log('Uploading image to folder path:', uploadPath);
+                    formData.append('folder_path', uploadPath);
                 }
 
                 const uploadResponse = await fetch(URL_CONFIG.filebot.upload, {
@@ -8476,7 +8856,8 @@
                     headers: {
                         'Authorization': `Bearer ${FILEBOT_JWT_TOKEN}`
                     },
-                    body: formData
+                    body: formData,
+                    signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined
                 });
 
                 if (!uploadResponse.ok) {
@@ -9600,6 +9981,12 @@
             const otherLangInput = document.getElementById('other-language-path');
             if (otherLangInput) otherLangInput.value = currentPageData?.other_language_path || '';
 
+            // Approval Status and Lock Status
+            const approvalSelect = document.getElementById('metadata-approval-status');
+            if (approvalSelect) approvalSelect.value = metadata.approval_status || '';
+            const lockSelect = document.getElementById('metadata-lock-status');
+            if (lockSelect) lockSelect.value = metadata.lock_status || '';
+
             // Populate Raw HTML tab with current editor content
             const rawTextarea = document.getElementById('metadata-raw');
             const editorEl = document.getElementById('editor-content');
@@ -9753,6 +10140,28 @@
             }
 
             console.log('Metadata saved:', currentPageData.metadata);
+
+            // Page State: Approval Status and Lock Status
+            const approvalSelect = document.getElementById('metadata-approval-status');
+            if (approvalSelect) {
+                if (approvalSelect.value) {
+                    metadataManager.updateField('approval_status', approvalSelect.value);
+                } else {
+                    delete currentPageData.metadata.approval_status;
+                }
+            }
+            const lockSelect = document.getElementById('metadata-lock-status');
+            if (lockSelect) {
+                if (lockSelect.value) {
+                    metadataManager.updateField('lock_status', lockSelect.value);
+                } else {
+                    delete currentPageData.metadata.lock_status;
+                }
+            }
+            
+            // Update toolbar display
+            updateApprovalLockDisplay(currentPageData);
+            applyLockState();
 
             // Update page title in the UI if it was changed
             if (titleInput && titleInput.value.trim() && currentPageData.title !== titleInput.value.trim()) {
@@ -11717,9 +12126,6 @@
             }
         }
 
-        // Make function available globally
-        window.addTemplateButtonToUI = addTemplateButtonToUI;
-
         // Initialize template button with retry logic
         function initializeTemplateButtonWhenReady() {
             // Initialize retry counter if not exists
@@ -11831,6 +12237,51 @@
         let _editingHTMLTarget = null;
         let _wysiwygEditor = null;
         let _editMode = 'code'; // 'code' or 'wysiwyg'
+        let _detailsOpenStates = null; // stored original open states of <details> elements
+
+        /**
+         * Snapshot current open state for every <details> in HTML.
+         * Returns array: true = open/has attribute, false = closed
+         */
+        function snapshotDetailsOpenStates(html) {
+            try {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                var details = doc.querySelectorAll('details');
+                var states = [];
+                for (var i = 0; i < details.length; i++) {
+                    states.push(details[i].hasAttribute('open'));
+                }
+                return states;
+            } catch(e) {
+                return [];
+            }
+        }
+
+        /**
+         * Force every <details> to open so content is visible & editable.
+         */
+        function forceAllDetailsOpen(html) {
+            return html.replace(/<details(\s[^>]*)?>/gi, function(match) {
+                if (/\bopen\b/i.test(match)) return match;
+                return match.replace(/^<details/i, '<details open="true"');
+            });
+        }
+
+        /**
+         * Restore original open states on <details> elements after editing.
+         */
+        function restoreDetailsOpenStates(html, states) {
+            if (!states || states.length === 0) return html;
+            var idx = 0;
+            return html.replace(/<details(\s[^>]*)?>/gi, function(match) {
+                if (idx >= states.length) return match;
+                var wasOpen = states[idx++];
+                if (wasOpen) return match;
+                // Remove any open attribute we added
+                return match.replace(/\s+open\s*=\s*["'][^"']*["']/gi, '').replace(/\s+open\b/gi, '');
+            });
+        }
 
         /**
          * Open Quick Edit modal - "edit HTML" triggers code mode, "edit component" triggers WYSIWYG
@@ -11902,7 +12353,10 @@
             }
             wysiwygContainer.innerHTML = '';
 
-            const html = (targetElement.outerHTML || targetElement.innerHTML || '').trim();
+            var rawHtml = (targetElement.outerHTML || targetElement.innerHTML || '').trim();
+            // Snapshot and force all <details> open for editing
+            _detailsOpenStates = snapshotDetailsOpenStates(rawHtml);
+            const html = forceAllDetailsOpen(rawHtml);
             const loc = getElementLocator(targetElement);
             location.textContent = loc;
             location.title = loc;
@@ -11979,7 +12433,7 @@
                     selector: '#wysiwyg-editor-inline',
                     height: 450,
                     menubar: 'edit view insert format table help',
-                    base_url: '/gcweb/external/tinymce/tinymce/js/tinymce/',
+                    base_url: '/etc/designs/canada/gcweb/external/tinymce/tinymce/js/tinymce/',
                     contextmenu: 'link image table',
                     plugins: [
                         'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
@@ -12069,6 +12523,10 @@
                     return;
                 }
                 newHTML = textarea.value.trim();
+            }
+            // Restore original <details> open states
+            if (_detailsOpenStates && _detailsOpenStates.length > 0) {
+                newHTML = restoreDetailsOpenStates(newHTML, _detailsOpenStates);
             }
 
             if (!newHTML) {
@@ -12333,9 +12791,14 @@
 
             // Get current page path for default search
             function getCurrentPathPrefix() {
-                // Priority 1: Already resolved file_path from getEffectiveFilePath
+                // Priority 1: Already resolved file_path from getEffectiveFilePath (respects auto_image_path flag)
                 if (window.currentFileBotFolder) {
                     return window.currentFileBotFolder;
+                }
+                // Priority 2: Fallback - derive page-level DAM path from page path
+                var p = window.currentPageData && window.currentPageData.path;
+                if (p) {
+                    return p.replace('/canadasite/', '/canadasite/content/dam/');
                 }
                 // Priority 2: currentPageData (from API)
                 if (currentPageData) {
@@ -12385,6 +12848,9 @@
                     case 'ai-qa':
                         searchAIQA();
                         break;
+                    case 'references':
+                        searchReferences(pathVal);
+                        break;
                 }
             }
 
@@ -12401,27 +12867,23 @@
                         _imageSkip = 0;
                     }
 
-                    var url = '/api/v1/search/documents?limit=30&skip=' + _imageSkip + '&mime_type=image%';
+                    var params = new URLSearchParams();
+                    params.append('limit', '30');
+                    params.append('offset', String(_imageSkip));
                     if (pathVal) {
-                        // DB paths need /boarding prefix (e.g. /boarding/canadasite/content/dam/...)
-                        // metadata.file_path is stored as /canadasite/content/dam/canada
                         var cleanPath = pathVal;
                         if (cleanPath.indexOf('/') !== 0) {
                             cleanPath = '/' + cleanPath;
                         }
-                        if (cleanPath.indexOf('/boarding') !== 0) {
-                            // Prepend /boarding for DB path matching
-                            if (cleanPath.indexOf('/canadasite') === 0) {
-                                cleanPath = '/boarding' + cleanPath;
-                            } else {
-                                cleanPath = '/boarding/canadasite' + cleanPath;
-                            }
-                        }
-                        url += '&path=' + encodeURIComponent(cleanPath);
+                        // 用 LIKE 匹配当前路径及其子路径
+                        params.append('folder_path__like', cleanPath + '%');
                     }
                     if (titleVal) {
-                        url += '&title=' + encodeURIComponent(titleVal);
+                        params.append('title__like', titleVal);
                     }
+
+                    var url = '/content/documents/?' + params.toString();
+                    console.log('searchImages URL:', url);
 
                     var resp = await fetch(url);
                     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -12499,7 +12961,7 @@
                 filtered.forEach(function(doc) {
                     var storagePath = doc.storage_path || doc.path || '';
                     var damUrl = pathToDamUrl(storagePath);
-                    var filename = doc.original_filename || doc.title || 'image';
+                    var filename = doc.title || doc.original_filename || 'image';
                     var fileSize = doc.file_size;
                     var hasThumb = doc.thumbnail_status === 'GENERATED';
                     cardsHtml += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
@@ -13124,6 +13586,79 @@
                 }
             }
 
+            // -------- Page References --------
+            async function searchReferences(pathVal) {
+                if (!pathVal) {
+                    resultsEl.innerHTML = '<div class="resource-empty">Select or open a page first to see its references.</div>';
+                    return;
+                }
+
+                try {
+                    var encoded = encodeURIComponent(pathVal);
+                    var resp = await fetch('/api/v1/pages/' + encoded + '/references');
+                    if (!resp.ok) {
+                        if (resp.status === 404) {
+                            resultsEl.innerHTML = '<div class="resource-empty">🔗 No reference data found for this page.</div>';
+                            return;
+                        }
+                        throw new Error('HTTP ' + resp.status);
+                    }
+                    var data = await resp.json();
+                    renderReferences(data);
+                } catch (e) {
+                    resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
+                }
+            }
+
+            function renderReferences(data) {
+                var outgoing = data.links_to || [];
+                var incoming = data.linked_from || [];
+
+                var html = '';
+
+                // Outgoing (this page -> other pages)
+                html += '<div class="ref-section">';
+                html += '<div class="ref-section-title">🔗 Outgoing Links (' + data.outgoing_count + ')</div>';
+                if (outgoing.length === 0) {
+                    html += '<div class="resource-empty">This page has no outgoing links to other pages.</div>';
+                } else {
+                    html += '<div class="ref-list">';
+                    outgoing.forEach(function(ref) {
+                        var badge = ref.exists ? (ref.status === 'published' ? '<span class="ref-badge ref-published">published</span>' : ref.status === 'file' ? '<span class="ref-badge ref-file">📄 file</span>' : '<span class="ref-badge ref-draft">draft</span>') : '<span class="ref-badge ref-broken">⚠ broken</span>';
+                        html += '<div class="ref-item">';
+                        html += '<div class="ref-path">' + ref.path + '</div>';
+                        html += '<div class="ref-meta">' + badge + ' <span class="ref-anchor">' + escapeHtml(ref.anchor || '(no text)') + '</span></div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+
+                // Separator
+                html += '<hr class="ref-divider">';
+
+                // Incoming (other pages -> this page)
+                html += '<div class="ref-section">';
+                html += '<div class="ref-section-title">⬅️ Linked From (' + data.incoming_count + ')</div>';
+                if (incoming.length === 0) {
+                    html += '<div class="resource-empty">No other pages link to this page.</div>';
+                } else {
+                    html += '<div class="ref-list">';
+                    incoming.forEach(function(ref) {
+                        var badge = ref.exists ? (ref.status === 'published' ? '<span class="ref-badge ref-published">published</span>' : ref.status === 'file' ? '<span class="ref-badge ref-file">📄 file</span>' : '<span class="ref-badge ref-draft">draft</span>') : '<span class="ref-badge ref-broken">⚠ unknown</span>';
+                        html += '<div class="ref-item">';
+                        html += '<div class="ref-path">' + ref.path + '</div>';
+                        html += '<div class="ref-meta">' + badge + ' <span class="ref-anchor">' + escapeHtml(ref.anchor || '(no text)') + '</span></div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+
+                resultsEl.innerHTML = html;
+            }
+
+            // -------- Events --------
             // Utility: format file size
             function formatFileSize(bytes) {
                 if (!bytes) return '';
@@ -13147,8 +13682,8 @@
                 } else if (type === 'images' || type === 'documents') {
                     // DAM-based path
                     updateDefaultPath();
-                } else if (type === 'pages') {
-                    // Use CMS page path (not DAM path) to derive department level
+                } else if (type === 'pages' || type === 'references') {
+                    // Use CMS page path for page list or references
                     if (currentPageData && currentPageData.path) {
                         pathInput.value = currentPageData.path;
                     } else {
@@ -13189,7 +13724,7 @@
             var _aiSources = [];
 
             function searchAIQA() {
-                var defaultProvider = 'deepseek';  // default to DeepSeek (faster)
+                var defaultProvider = 'openai';  // default to OpenAI (faster)
                 // Show question input UI instead of normal search
                 // Check if page has description
                 var hasDescription = currentPageData && currentPageData.description && currentPageData.description.trim();
@@ -13209,7 +13744,7 @@
                     '  <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
                     '    <div class="btn-group btn-group-sm" role="group" style="display:inline-flex;">' +
                     '      <button id="ai-provider-ollama-btn" class="btn btn-sm ai-provider-btn" data-provider="ollama" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:3px 0 0 3px;">🦙 Ollama</button>' +
-                    '      <button id="ai-provider-deepseek-btn" class="btn btn-sm ai-provider-btn" data-provider="deepseek" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:0 3px 3px 0;margin-left:-1px;">🌐 DeepSeek</button>' +
+                    '      <button id="ai-provider-openai-btn" class="btn btn-sm ai-provider-btn" data-provider="openai" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:0 3px 3px 0;margin-left:-1px;">🤖 OpenAI</button>' +
                     '    </div>' +
                     '    <button id="ai-ask-btn" class="btn btn-primary btn-sm">🤖 Ask AI</button>' +
                     '    <button id="ai-insert-btn" class="btn btn-success btn-sm" style="display:' + (_aiAnswer ? 'inline-block' : 'none') + '">📥 Insert into Editor</button>' +
@@ -13346,10 +13881,10 @@
                 }, 1000);
 
                 // Determine provider from active toggle button
-                var _activeProvider = 'deepseek';
+                var _activeProvider = 'openai';
                 var activeBtn = document.querySelector('.ai-provider-btn[style*="background: rgb(39, 128, 227)"]');
                 if (activeBtn) {
-                    _activeProvider = activeBtn.getAttribute('data-provider') || 'deepseek';
+                    _activeProvider = activeBtn.getAttribute('data-provider') || 'openai';
                 }
 
                 try {
@@ -13519,6 +14054,9 @@
                         break;
                     case 'pages':
                         searchPages(pathVal, titleVal);
+                        break;
+                    case 'references':
+                        searchReferences(pathVal);
                         break;
                 }
             };

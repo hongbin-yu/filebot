@@ -123,6 +123,7 @@ const ClientDocuments: React.FC = () => {
   // Preview overlay state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [previewFileType, setPreviewFileType] = useState<string>('');
 
   // Build preview URL based on file type
   const buildPreviewUrl = (doc: any): string | null => {
@@ -226,42 +227,18 @@ const ClientDocuments: React.FC = () => {
         // Fetch folder documents (with pagination)
         const targetFolderIdentifier = folderId || (folder ? getFolderIdentifier(folder) : '');
         if (targetFolderIdentifier) {
-          // Check folder depth - if >=3 (department level), use path_prefix for all descendant docs
-          const folderNode = findFolderInTree(folderTree, currentFolderData?.path || '');
-          const isDeepPath = folderNode && folderNode.level !== undefined && folderNode.level >= 3;
-          
-          if (isDeepPath) {
-            console.log(`📁 Deep path (level ${folderNode!.level}), using path_prefix pagination`);
-            // Single API call with path_prefix + skip/limit + total_count header
-            const documentsData = await documentService.getDocumentsByPathPrefix(
-              currentFolderData?.path || targetFolderIdentifier,
-              {
-                skip: (currentPage - 1) * pageSize,
-                limit: pageSize,
-                sort_by: 'created_at',
-                sort_order: 'desc'
-              }
-            );
-            setDocuments(documentsData);
-            setTotalPages(Math.ceil(documentService.lastTotalCount / pageSize) || 1);
-          } else {
-            // Single folder: standard path-based query
-            const documentsData = await documentService.getDocuments(targetFolderIdentifier, {
+          // Always use path_prefix for all descendant docs
+          const documentsData = await documentService.getDocumentsByPathPrefix(
+            currentFolderData?.path || targetFolderIdentifier,
+            {
               skip: (currentPage - 1) * pageSize,
               limit: pageSize,
               sort_by: 'created_at',
               sort_order: 'desc'
-            });
-            setDocuments(documentsData);
-            
-            // Proper pagination from total count header
-            if (documentService.lastTotalCount > 0) {
-              setTotalPages(Math.ceil(documentService.lastTotalCount / pageSize) || 1);
-            } else {
-              // Fallback: assume last page if fewer results than pageSize
-              setTotalPages(documentsData.length < pageSize ? currentPage : currentPage + 1);
             }
-          }
+          );
+          setDocuments(documentsData);
+          setTotalPages(Math.ceil(documentService.lastTotalCount / pageSize) || 1);
         }
         
         setLoading(false);
@@ -369,6 +346,7 @@ const ClientDocuments: React.FC = () => {
     if (url) {
       setPreviewUrl(url);
       setPreviewTitle(doc.title || doc.original_filename || 'Document Preview');
+      setPreviewFileType(doc.file_type || '');
     }
   };
 
@@ -376,6 +354,7 @@ const ClientDocuments: React.FC = () => {
   const handleClosePreview = () => {
     setPreviewUrl(null);
     setPreviewTitle('');
+    setPreviewFileType('');
   };
 
   // Handle file upload
@@ -583,7 +562,7 @@ const ClientDocuments: React.FC = () => {
 
   return (
     <>
-      <PreviewOverlay url={previewUrl} title={previewTitle} onClose={handleClosePreview} />
+      <PreviewOverlay url={previewUrl} title={previewTitle} fileType={previewFileType} onClose={handleClosePreview} />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header breadcrumb navigation */}

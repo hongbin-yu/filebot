@@ -10,6 +10,7 @@ from app.db.database import get_db
 from app.core.security import get_current_active_user
 from app.models.user import User
 from app.models.group import Group, GroupMember
+from app.models.institution import Institution
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 class GroupBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
+    institution_id: Optional[str] = None
 
 
 class GroupCreate(GroupBase):
@@ -31,6 +33,7 @@ class GroupCreate(GroupBase):
 class GroupUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
+    institution_id: Optional[str] = None
 
 
 class MemberInfo(BaseModel):
@@ -49,6 +52,7 @@ class GroupResponse(GroupBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     member_count: int = 0
+    institution_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -86,10 +90,22 @@ def create_group(
             detail=f"Group '{group_data.name}' already exists"
         )
 
+    # 确定 institution_id
+    inst_id = group_data.institution_id
+    if not current_user.is_superuser:
+        # admin 只能在自己的机构下创建组
+        inst_id = current_user.institution_id
+    elif inst_id:
+        # superuser 指定机构，验证其存在
+        inst = db.query(Institution).filter(Institution.id == inst_id).first()
+        if not inst:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institution not found")
+
     group = Group(
         name=group_data.name,
         description=group_data.description,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        institution_id=inst_id
     )
     db.add(group)
     db.flush()
@@ -105,25 +121,39 @@ def create_group(
     db.refresh(group)
 
     member_count = db.query(GroupMember).filter(GroupMember.group_id == group.id).count()
-    return _to_response(group, member_count)
+    return _to_response(group, member_count, db)
 
 
 @router.get("/", response_model=List[GroupResponse])
 def list_groups(
+    institution_id: Optional[str] = Query(None, description="Filter by institution (superuser only)"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """列出所有用户组"""
+    """列出用户组 — superuser 看全部，admin 只看本机构
+
+    可选参数:
+      institution_id: superuser 可用此参数按机构过滤
+    """
     if not current_user.is_superuser and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only superuser or admin can list groups"
         )
-    groups = db.query(Group).order_by(Group.name).all()
+
+    query = db.query(Group)
+
+    # superuser 可以指定 institution_id 过滤
+    if current_user.is_superuser and institution_id:
+        query = query.filter(Group.institution_id == institution_id)
+    elif not current_user.is_superuser and current_user.institution_id:
+        query = query.filter(Group.institution_id == current_user.institution_id)
+
+    groups = query.order_by(Group.name).all()
     results = []
     for g in groups:
         count = db.query(GroupMember).filter(GroupMember.group_id == g.id).count()
-        results.append(_to_response(g, count))
+        results.append(_to_response(g, count, db))
     return results
 
 
@@ -140,6 +170,9 @@ def get_group(
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not _check_group_institution_access(group, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="No permission to view this group")
 
     members = db.query(GroupMember).filter(GroupMember.group_id == group.id).all()
     member_infos = []
@@ -151,7 +184,7 @@ def get_group(
             ))
 
     member_count = len(member_infos)
-    resp = _to_response(group, member_count)
+    resp = _to_response(group, member_count, db)
     return GroupDetailResponse(**resp.model_dump(), members=member_infos)
 
 
@@ -169,9 +202,11 @@ def update_group(
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not _check_group_institution_access(group, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="No permission to update this group")
 
     if group_data.name is not None:
-        # 检查重名
         existing = db.query(Group).filter(Group.name == group_data.name, Group.id != group_id).first()
         if existing:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -179,11 +214,16 @@ def update_group(
         group.name = group_data.name
     if group_data.description is not None:
         group.description = group_data.description
+    if group_data.institution_id is not None and current_user.is_superuser:
+        inst = db.query(Institution).filter(Institution.id == group_data.institution_id).first()
+        if not inst:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institution not found")
+        group.institution_id = group_data.institution_id
 
     db.commit()
     db.refresh(group)
     member_count = db.query(GroupMember).filter(GroupMember.group_id == group.id).count()
-    return _to_response(group, member_count)
+    return _to_response(group, member_count, db)
 
 
 @router.delete("/{group_id}")
@@ -199,6 +239,9 @@ def delete_group(
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not _check_group_institution_access(group, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="No permission to delete this group")
     db.delete(group)
     db.commit()
     return {"message": "Group deleted successfully"}
@@ -217,6 +260,9 @@ def list_group_members(
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not _check_group_institution_access(group, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="No permission to view this group's members")
 
     members = db.query(GroupMember).filter(GroupMember.group_id == group.id).all()
     result = []
@@ -241,6 +287,9 @@ def add_group_member(
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not _check_group_institution_access(group, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="No permission to manage members of this group")
 
     user = db.query(User).filter(User.id == req.user_id).first()
     if not user:
@@ -276,6 +325,12 @@ def remove_group_member(
     if not current_user.is_superuser and current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Only superuser or admin can manage group members")
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not _check_group_institution_access(group, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="No permission to manage members of this group")
     member = db.query(GroupMember).filter(
         GroupMember.group_id == group_id,
         GroupMember.user_id == user_id
@@ -287,7 +342,23 @@ def remove_group_member(
     return {"message": "Member removed successfully"}
 
 
-def _to_response(group: Group, member_count: int) -> GroupResponse:
+def _check_group_institution_access(group: Group, current_user: User) -> bool:
+    """检查当前用户是否有权限访问该组"""
+    if current_user.is_superuser:
+        return True
+    # admin 只能操作本机构组
+    if current_user.institution_id and group.institution_id == current_user.institution_id:
+        return True
+    return False
+
+
+def _to_response(group: Group, member_count: int, db: Session = None) -> GroupResponse:
+    inst_name = None
+    if group.institution_id and db:
+        inst = db.query(Institution).filter(Institution.id == group.institution_id).first()
+        if inst:
+            inst_name = inst.name
+
     return GroupResponse(
         id=group.id,
         name=group.name,
@@ -295,5 +366,7 @@ def _to_response(group: Group, member_count: int) -> GroupResponse:
         owner_id=group.owner_id,
         created_at=group.created_at,
         updated_at=group.updated_at,
-        member_count=member_count
+        member_count=member_count,
+        institution_id=group.institution_id,
+        institution_name=inst_name
     )

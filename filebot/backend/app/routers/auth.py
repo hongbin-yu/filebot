@@ -1,6 +1,7 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 
@@ -24,7 +25,7 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    """User login"""
+    """User login - sets cross-subdomain cookie"""
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -40,7 +41,7 @@ def login(
         expires_delta=access_token_expires
     )
     
-    return {
+    response_data = {
         "access_token": access_token,
         "token_type": "bearer",
         "user": {
@@ -51,6 +52,21 @@ def login(
             "full_name": user.full_name
         }
     }
+    
+    # Set cookie for cross-subdomain auth (production, canadasite, www)
+    cookie_max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # seconds
+    response = JSONResponse(content=response_data)
+    response.set_cookie(
+        key="filebot_token",
+        value=access_token,
+        max_age=cookie_max_age,
+        domain=".webfilebot.com",
+        path="/",
+        httponly=True,
+        secure=True,
+        samesite="lax"
+    )
+    return response
 
 
 @router.post("/register", response_model=UserResponse)
@@ -149,5 +165,41 @@ def refresh_token(
 
 @router.post("/logout")
 def logout():
-    """User logout (client should delete the token)"""
-    return {"message": "Logout successful"}
+    """User logout - clears cookie"""
+    response = JSONResponse(content={"message": "Logout successful"})
+    response.delete_cookie(
+        key="filebot_token",
+        domain=".webfilebot.com",
+        path="/"
+    )
+    return response
+
+
+@router.get("/check")
+def auth_check(request: Request, db: Session = Depends(get_db)):
+    """
+    Lightweight auth check for nginx auth_request.
+    Reads token from cookie (filebot_token) or Authorization header.
+    Returns 200 if valid, 401 if not.
+    """
+    # Try cookie first (for cross-subdomain auth)
+    token = request.cookies.get("filebot_token")
+    
+    # Then try Authorization header (for API clients)
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user = get_current_user(db, token)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    return {
+        "authenticated": True,
+        "username": user.username,
+        "role": user.role
+    }

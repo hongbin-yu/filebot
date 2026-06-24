@@ -23,11 +23,14 @@ class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     email: EmailStr = Field(..., description="邮箱")
     full_name: Optional[str] = Field(None, max_length=100, description="全名")
+    institution_id: Optional[str] = Field(None, description="所属机构ID")
 
 
 class UserCreate(UserBase):
     """用户创建模型"""
     password: str = Field(..., min_length=6, max_length=100, description="密码")
+    is_superuser: Optional[bool] = Field(False, description="是否为超级管理员")
+    role: Optional[str] = Field("user", description="用户角色")
     
     @validator("password")
     def validate_password(cls, v):
@@ -43,6 +46,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
+    institution_id: Optional[str] = None
 
 
 class UserResponse(UserBase):
@@ -51,6 +55,7 @@ class UserResponse(UserBase):
     role: str
     is_active: bool
     is_superuser: bool
+    institution_id: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime]
     

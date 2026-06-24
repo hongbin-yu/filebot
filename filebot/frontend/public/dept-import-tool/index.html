@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Department Import Tool — FileBot</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f8f9fa; color: #222; min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a6b3c, #2d8f56);
+    color: white; padding: 1.5rem 2rem;
+  }
+  .header h1 { font-size: 1.5rem; margin-bottom: .3rem; }
+  .header p { opacity: .85; font-size: .9rem; }
+  .container { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  .card {
+    background: white; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    padding: 1.5rem; margin-bottom: 1rem;
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #1a6b3c; }
+  .card h3 { font-size: .95rem; margin-bottom: .5rem; color: #333; }
+  code {
+    background: #eef; padding: .15em .4em;
+    border-radius: 3px; font-size: .9em;
+  }
+  .bookmarklet-box {
+    background: #fff9e6; border: 2px dashed #e0a800;
+    border-radius: 8px; padding: 1.2rem; text-align: center;
+    margin: 1rem 0;
+  }
+  .bookmarklet-link {
+    display: inline-block;
+    background: #1a6b3c; color: white;
+    padding: 10px 24px; border-radius: 6px;
+    font-size: 16px; font-weight: bold;
+    text-decoration: none; cursor: grab;
+    margin: .5rem 0;
+  }
+  .bookmarklet-link:hover { background: #15582f; }
+  .step { margin: .8rem 0; padding-left: 1.2rem; }
+  .step li { margin: .4rem 0; }
+  .note { font-size: .85rem; color: #666; margin-top: 1rem; }
+  .console-box {
+    background: #1e1e1e; color: #d4d4d4;
+    border-radius: 5px; padding: 1rem;
+    font-family: 'Cascadia Code','Fira Code',monospace;
+    font-size: .85rem; line-height: 1.5;
+    overflow-x: auto; white-space: pre-wrap;
+    margin: .8rem 0;
+    user-select: all;
+  }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .75rem; font-weight: 600; }
+  .badge-easy { background: #d4edda; color: #155724; }
+  .badge-manual { background: #fff3cd; color: #856404; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🌾 Department Import Tool</h1>
+  <p>Import department website content into FileBot page by page. Runs directly in the browser, zero deployment.</p>
+</div>
+
+<div class="container">
+
+  <!--
+  <div class="card">
+    <h2>🚀 Quick Test — Paste in Console</h2>
+    <p style="color:#555;margin-bottom:.5rem;">
+      Open canada.ca → F12 → Console tab → paste the code below and press Enter.
+      <span class="badge badge-easy">Easiest for first try</span>
+    </p>
+    <div class="console-box" id="consoleCode">Loading...</div>
+    <p class="note">
+      💡 This pastes the full tool into the current page. No external files needed.
+      Works on any domain, zero configuration.
+    </p>
+  </div>
+  -->
+
+  <!-- Option 1: Self-contained Bookmarklet -->
+  <div class="card">
+    <h2>📌 Bookmarklet (No External Load)</h2>
+    <p style="margin-bottom:1rem;color:#555;">
+      Drag to your bookmarks bar. Click it on any canada.ca page — works instantly
+      because all the code is inside the bookmark itself. No requests to external servers.
+      <span class="badge badge-easy">Recommended</span>
+    </p>
+
+    <div class="bookmarklet-box">
+      <p style="margin-bottom:.5rem;font-weight:600;">👇 Drag to bookmarks bar</p>
+      <a class="bookmarklet-link" id="bookmarkletLink"
+         href="javascript:void(0)"
+         ondragstart="event.dataTransfer.setData('text/plain',this.href)">
+        🌾 Import
+      </a>
+      <p style="margin-top:.5rem;font-size:.85rem;color:#888;">
+        Then <strong>go to any canada.ca page</strong> → click "🌾 Import" in your bookmarks bar
+      </p>
+    </div>
+
+    <h3>📋 Setup Steps</h3>
+    <ol class="step">
+      <li>Show your bookmarks bar (Chrome: Ctrl+Shift+B / Cmd+Shift+B)</li>
+      <li>Drag <strong>"🌾 Import"</strong> above to your bookmarks bar</li>
+      <li>Navigate to any <code>canada.ca</code> page</li>
+      <li>Click <strong>🌾 Import</strong></li>
+      <li>Enter the API URL and token, then click Start</li>
+    </ol>
+  </div>
+
+  <!-- API Configuration -->
+  <div class="card">
+    <h2>🔧 FileBot API Configuration</h2>
+    <p style="color:#555;margin-bottom:.5rem;">
+      The tool will POST the page HTML to your FileBot instance. Make sure it's reachable
+      from your browser (e.g. <code>http://localhost:8001</code> for local dev).
+    </p>
+    <p style="margin-bottom:.5rem;">
+      <strong>Default API URL:</strong>
+      <code>http://localhost:8001/api/v1/import-page</code>
+    </p>
+    <h3 style="margin:1rem 0 .5rem;">Getting an API Token</h3>
+    <div class="console-box">curl -X POST http://localhost:8001/api/v1/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&amp;password=admin123"</div>
+    <p class="note">
+      Copy the <code>access_token</code> from the response and paste it into the tool's token field.
+      Prefix with <code>Bearer </code> if needed.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>📂 Files</h2>
+    <ul style="margin-left:1.2rem;color:#555;">
+      <li><code>index.html</code> — This page (setup instructions)</li>
+      <li><code>bookmarklet.js</code> — Core import tool source</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// Build the bookmarklet — simple encodeURIComponent approach
+(function(){
+  var link = document.getElementById('bookmarkletLink');
+  fetch('bookmarklet.js?v=' + Date.now())
+    .then(function(r) { return r.text(); })
+    .then(function(code) {
+      var clean = code.replace(/^\s*\/\/.*$/gm, '').trim();
+      link.href = 'javascript:' + encodeURIComponent(clean);
+    })
+    .catch(function() {
+      link.textContent = '🌾 Import (failed to load)';
+    });
+})();
+
+/*
+// Console version — commented out with Quick Test section
+(function(){
+  var el = document.getElementById('consoleCode');
+  if (!el) return;
+  fetch('bookmarklet.js?v=' + Date.now())
+    .then(function(r) { return r.text(); })
+    .then(function(code) {
+      var clean = code.replace(/^\/\/.*\n/gm, '').trim();
+      el.textContent = clean;
+    })
+    .catch(function() {
+      el.textContent = '// Failed to load bookmarklet.js';
+    });
+})();
+*/
+</script>
+
+</body>
+</html>

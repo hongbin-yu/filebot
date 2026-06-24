@@ -150,48 +150,48 @@ const AdminTasks: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div style={{ minHeight:"100vh", background:"#f9fafb", padding:24 }}>
+      <div className="container" style={{maxWidth:1280}}>
         {/* 页面标题 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Task Monitor</h1>
-          <p className="mt-2 text-gray-600">Monitor website crawling and other background task progress and status</p>
+        <div style={{marginBottom:32}}>
+          <h1 style={{ fontSize:"1.875rem", fontWeight:700, color:"#111827" }}>Task Monitor</h1>
+          <p  style={{ marginTop:8 }}>Monitor website crawling and other background task progress and status</p>
         </div>
 
         {/* Add task section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Add Task</h2>
-          <div className="flex gap-4">
-            <div className="flex-1">
+        <div style={{ background:"#ffffff", borderRadius:8, boxShadow:"0 1px 2px 0 rgba(0,0,0,0.05)", border:"1px solid #e5e7eb", borderColor:"#e5e7eb", padding:24, marginBottom:32 }}>
+          <h2 style={{ fontSize:"1.25rem", fontWeight:600, color:"#1f2937", marginBottom:16 }}>Add Task</h2>
+          <div style={{ display:"flex", gap:16 }}>
+            <div style={{flex:1}}>
               <input
                 type="text"
                 value={manualTaskId}
                 onChange={(e) => setManualTaskId(e.target.value)}
                 placeholder="Enter task ID (e.g., crawl_abc123def456)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="form-control" style={{borderRadius:8}}
               />
             </div>
             <button
               onClick={handleAddTask}
-              className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+               style={{ paddingLeft:24, paddingTop:8, background:"#2563eb", color:"#ffffff", fontWeight:500, borderRadius:8 }}
             >
               Add Task
             </button>
           </div>
-          <p className="mt-3 text-sm text-gray-500">
+          <p  style={{ marginTop:12, fontSize:"0.875rem" }}>
             Tip: Task ID can be obtained from API response or logs after website crawling, usually in format "crawl_xxxxxxxxxxxx"
           </p>
         </div>
 
         {/* 任务列表区域 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">Task List</h2>
-            <div className="flex gap-3">
+        <div style={{ background:"#ffffff", borderRadius:8, boxShadow:"0 1px 2px 0 rgba(0,0,0,0.05)", border:"1px solid #e5e7eb", borderColor:"#e5e7eb", overflow:"hidden" }}>
+          <div className="fb-justify-between fb-align-center" style={{ paddingLeft:24, paddingTop:16, borderBottom:"1px solid #e5e7eb", borderColor:"#e5e7eb", display:"flex" }}>
+            <h2 style={{ fontSize:"1.25rem", fontWeight:600, color:"#1f2937" }}>Task List</h2>
+            <div style={{ display:"flex", gap:12 }}>
               <button
                 onClick={refreshAllTasks}
                 disabled={loading}
-                className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="fb-label" style={{ paddingLeft:16, paddingTop:8, background:"#f3f4f6", color:"#374151", borderRadius:8 }}
               >
                 {loading ? 'Refreshing...' : 'Refresh'}
               </button>
@@ -200,86 +200,86 @@ const AdminTasks: React.FC = () => {
 
           {/* 加载和错误状态 */}
           {loading && (
-            <div className="p-8 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="mt-2 text-gray-600">Loading task list...</p>
+            <div  style={{ padding:32 }}>
+              <div className="fb-spinner" style={{height:32,width:32,borderWidth:2,borderColor:"#2563eb",borderRadius:"50%"}}></div>
+              <p  style={{ marginTop:8 }}>Loading task list...</p>
             </div>
           )}
 
           {error && (
-            <div className="p-6">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700">{error}</p>
+            <div style={{padding:24}}>
+              <div style={{ background:"#fef2f2", border:"1px solid #e5e7eb", borderColor:"#fecaca", borderRadius:8, padding:16 }}>
+                <p style={{color:"#b91c1c"}}>{error}</p>
               </div>
             </div>
           )}
 
           {/* 任务表格 */}
           {!loading && !error && (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div style={{overflowX:"auto"}}>
+              <table className="fb-divide-y" style={{ minWidth:"100%", "--divide-color":"#e5e7eb" }}>
+                <thead style={{background:"#f9fafb"}}>
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col"  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>
                       Task ID / Status
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col"  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>
                       URL / Depth
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col"  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>
                       Progress / Stats
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col"  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>
                       Time / Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="table">
                   {tasks.map((task) => {
                     const progress = calculateProgress(task);
                     const isRefreshing = refreshingTasks.has(task.task_id);
                     
                     return (
-                      <tr key={task.task_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                              <span className="text-lg">{getStatusIcon(task.status)}</span>
+                      <tr key={task.task_id} className="fb-hover-btn">
+                        <td style={{ paddingLeft:24, paddingTop:16 }}>
+                          <div className="fb-d-flex fb-align-center">
+                            <div style={{flexShrink:0}}>
+                              <span style={{fontSize:"1.125rem"}}>{getStatusIcon(task.status)}</span>
                             </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
+                            <div style={{marginLeft:16}}>
+                              <div className="fb-label" style={{ fontSize:"0.875rem", color:"#111827" }}>
                                 {task.task_id}
                               </div>
-                              <div className="mt-1">
+                              <div style={{marginTop:4}}>
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
                                   {task.status.toUpperCase()}
                                   {isRefreshing && (
-                                    <span className="ml-1 inline-block animate-spin h-3 w-3 border-b-2 border-current rounded-full"></span>
+                                    <span className="fb-spinner" style={{  height:12,width:12 ,  marginLeft:4, display:"inline-block", borderBottomWidth:2, borderRadius:"50%"  }}></span>
                                   )}
                                 </span>
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900 truncate max-w-xs">
+                        <td style={{ paddingLeft:24, paddingTop:16 }}>
+                          <div style={{fontSize:"0.875rem"}}>
+                            <div className="fb-label" style={{ color:"#111827", overflow:"hidden", maxWidth:320 }}>
                               {task.url}
                             </div>
-                            <div className="text-gray-500">
+                            <div >
                               Depth: {task.depth}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-2">
+                        <td style={{ paddingLeft:24, paddingTop:16 }}>
+                          <div className="fb-space-y" style={{gap:8}}>
                             {/* 进度条 */}
                             <div>
-                              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                              <div className="fb-justify-between" style={{ display:"flex", fontSize:"0.75rem", marginBottom:4 }}>
                                 <span>Progress</span>
                                 <span>{progress}%</span>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div  style={{ width:"100%", background:"#e5e7eb", borderRadius:"50%" }}>
                                 <div 
                                   className={`h-2 rounded-full ${
                                     task.status === 'completed' ? 'bg-green-600' :
@@ -293,34 +293,34 @@ const AdminTasks: React.FC = () => {
                             </div>
                             
                             {/* 统计信息 */}
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="text-gray-600">
-                                Pages: <span className="font-medium">{task.pages_crawled} / {task.pages_processed}</span>
+                            <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:8, fontSize:"0.75rem" }}>
+                              <div >
+                                Pages: <span style={{fontWeight:500}}>{task.pages_crawled} / {task.pages_processed}</span>
                               </div>
-                              <div className="text-gray-600">
-                                Images: <span className="font-medium">{task.images_crawled}</span>
+                              <div >
+                                Images: <span style={{fontWeight:500}}>{task.images_crawled}</span>
                               </div>
                               {task.errors.length > 0 && (
-                                <div className="col-span-2 text-red-600">
-                                  Errors: <span className="font-medium">{task.errors.length}</span>
+                                <div style={{ gridColumn:"span 2 / span 2", color:"#dc2626" }}>
+                                  Errors: <span style={{fontWeight:500}}>{task.errors.length}</span>
                                 </div>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-2">
-                            <div className="text-sm text-gray-900">
+                        <td style={{ paddingLeft:24, paddingTop:16 }}>
+                          <div className="fb-space-y" style={{gap:8}}>
+                            <div style={{ fontSize:"0.875rem", color:"#111827" }}>
                               Start: {formatTime(task.started_at)}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div  style={{fontSize:"0.875rem"}}>
                               Updated: {formatTime(task.updated_at)}
                             </div>
-                            <div className="pt-2">
+                            <div style={{ paddingTop:8 }}>
                               <button
                                 onClick={() => refreshTaskStatus(task.task_id)}
                                 disabled={isRefreshing}
-                                className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                className="fb-align-center fb-label" style={{  paddingTop:6,paddingBottom:6 ,  display:"inline-flex", paddingLeft:12, border:"1px solid #e5e7eb", borderColor:"#d1d5db", fontSize:"0.75rem", borderRadius:8, color:"#374151", background:"#ffffff"  }}
                               >
                                 {isRefreshing ? 'Refreshing...' : 'Refresh'}
                               </button>
@@ -335,13 +335,13 @@ const AdminTasks: React.FC = () => {
               
               {/* 空状态 */}
               {tasks.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="inline-block p-4 bg-gray-100 rounded-full">
-                    <span className="text-3xl">📋</span>
+                <div  style={{paddingTop:48,paddingBottom:48}}>
+                  <div style={{ display:"inline-block", padding:16, background:"#f3f4f6", borderRadius:"50%" }}>
+                    <span style={{fontSize:"1.875rem"}}>📋</span>
                   </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No Tasks</h3>
-                  <p className="mt-2 text-gray-600">No task records found.</p>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <h3 className="fb-label" style={{ marginTop:16, fontSize:"1.125rem", color:"#111827" }}>No Tasks</h3>
+                  <p  style={{ marginTop:8 }}>No task records found.</p>
+                  <p  style={{ marginTop:4, fontSize:"0.875rem" }}>
                     Use the input box above to add a task ID, or execute a new website crawling task.
                   </p>
                 </div>
@@ -350,36 +350,36 @@ const AdminTasks: React.FC = () => {
           )}
 
           {/* 页脚信息 */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
+          <div style={{ paddingLeft:24, paddingTop:16, background:"#f9fafb", borderTop:"1px solid #e5e7eb", borderColor:"#e5e7eb" }}>
+            <div  style={{fontSize:"0.875rem"}}>
               <p>Running tasks are automatically refreshed every 10 seconds.</p>
-              <p className="mt-1">Status: ⏳ Waiting | 🌐 Crawling | ⚙️ Processing | ✅ Completed | ❌ Failed | 🚫 Cancelled</p>
+              <p style={{marginTop:4}}>Status: ⏳ Waiting | 🌐 Crawling | ⚙️ Processing | ✅ Completed | ❌ Failed | 🚫 Cancelled</p>
             </div>
           </div>
         </div>
 
         {/* 使用说明 */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">How to Use Task Monitor</h3>
-          <ul className="space-y-2 text-blue-700">
-            <li className="flex items-start">
-              <span className="inline-block mr-2">1.</span>
+        <div style={{ marginTop:32, background:"#eff6ff", border:"1px solid #e5e7eb", borderColor:"#bfdbfe", borderRadius:8, padding:24 }}>
+          <h3 style={{ fontSize:"1.125rem", fontWeight:600, color:"#1e40af", marginBottom:8 }}>How to Use Task Monitor</h3>
+          <ul style={{ rowGap:8, color:"#1d4ed8" }}>
+            <li className="fb-align-start" style={{ display:"flex" }}>
+              <span style={{ display:"inline-block", marginRight:8 }}>1.</span>
               <span>When you execute a website crawl, you will receive a unique task ID</span>
             </li>
-            <li className="flex items-start">
-              <span className="inline-block mr-2">2.</span>
+            <li className="fb-align-start" style={{ display:"flex" }}>
+              <span style={{ display:"inline-block", marginRight:8 }}>2.</span>
               <span>Enter the task ID in the input box above to track task progress</span>
             </li>
-            <li className="flex items-start">
-              <span className="inline-block mr-2">3.</span>
+            <li className="fb-align-start" style={{ display:"flex" }}>
+              <span style={{ display:"inline-block", marginRight:8 }}>3.</span>
               <span>The system automatically refreshes running task status</span>
             </li>
-            <li className="flex items-start">
-              <span className="inline-block mr-2">4.</span>
+            <li className="fb-align-start" style={{ display:"flex" }}>
+              <span style={{ display:"inline-block", marginRight:8 }}>4.</span>
               <span>Click "Refresh" button to manually update individual task</span>
             </li>
-            <li className="flex items-start">
-              <span className="inline-block mr-2">5.</span>
+            <li className="fb-align-start" style={{ display:"flex" }}>
+              <span style={{ display:"inline-block", marginRight:8 }}>5.</span>
               <span>Completed tasks show green, failed tasks show red with error details</span>
             </li>
           </ul>

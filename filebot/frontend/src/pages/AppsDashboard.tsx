@@ -609,12 +609,38 @@ const AppsDashboard: React.FC = () => {
     }
   };
 
+  const getAppColorStyle = (appType: string | undefined | null): Record<string, string> => {
+    if (!appType) return { background: '#f9fafb', borderColor: '#e5e7eb' };
+    
+    try {
+      switch (appType.toLowerCase()) {
+        case 'document_management':
+          return { background: '#eff6ff', borderColor: '#bfdbfe' };
+        case 'sales':
+          return { background: '#f0fdf4', borderColor: '#bbf7d0' };
+        case 'hr':
+          return { background: '#faf5ff', borderColor: '#e9d5ff' };
+        case 'inventory':
+          return { background: '#fefce8', borderColor: '#fef08a' };
+        case 'finance':
+          return { background: '#fef2f2', borderColor: '#fecaca' };
+        case 'marketing':
+          return { background: '#fdf2f8', borderColor: '#fbcfe8' };
+        default:
+          return { background: '#f9fafb', borderColor: '#e5e7eb' };
+      }
+    } catch (err) {
+      console.warn('Error getting app color style for type:', appType, err);
+      return { background: '#f9fafb', borderColor: '#e5e7eb' };
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-gray-600">Loading applications...</div>
+      <div className="fb-page-bg" style={{padding:32}}>
+        <div className="container">
+          <div className="fb-d-flex fb-justify-center fb-align-center" style={{height:256}}>
+            <div className="text-muted">Loading applications...</div>
           </div>
         </div>
       </div>
@@ -622,19 +648,19 @@ const AppsDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="fb-page-bg" style={{padding:16}}>
+      <div className="container">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
+        <div className="fb-d-flex fb-justify-between fb-align-start" style={{marginBottom:32}}>
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Applications</h1>
-            <p className="text-gray-600 mt-2">Select an application to manage its documents and folders</p>
+            <h1 style={{fontSize:"1.875rem",fontWeight:700,color:"#1f2937"}}>Applications</h1>
+            <p className="text-muted" style={{marginTop:8}}>Select an application to manage its documents and folders</p>
           </div>
           <button
             onClick={handleOpenCreateModal}
-            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
+            className="btn btn-success fb-d-flex fb-align-center fb-gap-1"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style={{width:20,height:20}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             Create New Application
@@ -642,19 +668,19 @@ const AppsDashboard: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="text-red-700 mb-2">{error}</div>
-            <div className="flex space-x-3">
+          <div className="alert alert-danger">
+            <div style={{color:"#b91c1c",marginBottom:8}}>{error}</div>
+            <div className="fb-d-flex fb-gap-2">
               <button
                 onClick={fetchApps}
-                className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                className="btn btn-danger btn-xs" style={{background:"#fee2e2",color:"#b91c1c"}}
               >
                 Retry
               </button>
               {error.includes('Authentication required') && (
                 <button
                   onClick={() => window.location.href = '/login'}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                  className="btn btn-info btn-xs" style={{background:"#dbeafe",color:"#1d4ed8"}}
                 >
                   Go to Login Page
                 </button>
@@ -664,11 +690,11 @@ const AppsDashboard: React.FC = () => {
         )}
 
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="text-green-700 mb-2">{successMessage}</div>
+          <div className="alert alert-success">
+            <div style={{color:"#15803d",marginBottom:8}}>{successMessage}</div>
             <button
               onClick={() => setSuccessMessage(null)}
-              className="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-sm"
+              className="btn btn-success btn-xs" style={{background:"#dcfce7",color:"#15803d"}}
             >
               Dismiss
             </button>
@@ -677,10 +703,10 @@ const AppsDashboard: React.FC = () => {
 
         {/* App Cards Grid */}
         {apps.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <div className="text-5xl mb-4">📱</div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">No Applications Found</h2>
-            <p className="text-gray-600 mb-4">
+          <div className="panel panel-default text-center" style={{padding:32}}>
+            <div style={{fontSize:"3rem",marginBottom:16}}>📱</div>
+            <h2 style={{fontSize:"1.25rem",fontWeight:600,color:"#1f2937",marginBottom:8}}>No Applications Found</h2>
+            <p className="text-muted" style={{marginBottom:16}}>
               {error ? 'Unable to load applications. Please check authentication.' : 'No applications have been created yet.'}
             </p>
             
@@ -688,7 +714,7 @@ const AppsDashboard: React.FC = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
               <button
                 onClick={fetchApps}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="btn btn-primary"
               >
                 Retry
               </button>
@@ -697,7 +723,7 @@ const AppsDashboard: React.FC = () => {
               {!error && (
                 <button
                   onClick={() => handleCreateApp("My First Application", "Default application created automatically")}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  className="btn btn-success"
                 >
                   Create First Application
                 </button>
@@ -706,19 +732,19 @@ const AppsDashboard: React.FC = () => {
             
             {/* Guide for new users */}
             {!error && (
-              <div className="mt-8 pt-6 border-t border-gray-200 text-left">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Getting Started</h3>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start">
-                    <span className="text-green-500 mr-2">✓</span>
+              <div style={{marginTop:32,paddingTop:24,borderTop:"1px solid #e5e7eb",textAlign:"left"}}>
+                <h3 style={{fontSize:"1.125rem",fontWeight:600,color:"#1f2937",marginBottom:12}}>Getting Started</h3>
+                <ul className="text-muted" style={{display:"flex",flexDirection:"column",gap:8}}>
+                  <li className="fb-d-flex fb-align-start">
+                    <span style={{color:"#22c55e",marginRight:8}}>✓</span>
                     <span><strong>Step 1:</strong> Create your first application to organize documents</span>
                   </li>
-                  <li className="flex items-start">
-                    <span className="text-green-500 mr-2">✓</span>
+                  <li className="fb-d-flex fb-align-start">
+                    <span style={{color:"#22c55e",marginRight:8}}>✓</span>
                     <span><strong>Step 2:</strong> Inside each application, create folders for categorization</span>
                   </li>
-                  <li className="flex items-start">
-                    <span className="text-green-500 mr-2">✓</span>
+                  <li className="fb-d-flex fb-align-start">
+                    <span style={{color:"#22c55e",marginRight:8}}>✓</span>
                     <span><strong>Step 3:</strong> Upload documents to folders for AI-powered organization</span>
                   </li>
                 </ul>
@@ -726,37 +752,48 @@ const AppsDashboard: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="row">
             {apps.map((app) => (
               <div
                 key={app.id}
-                className={`border rounded-xl shadow-sm p-6 cursor-pointer transition-all duration-200 transform hover:scale-[1.02] hover:shadow-md ${getAppColor(app.app_type)}`}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 12,
+                  boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
+                  padding: 24,
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                  ...getAppColorStyle(app.app_type)
+                }}
+                className="fb-hover-btn"
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'scale(1)'; }}
                 onClick={() => handleAppSelect(app)}
               >
-                <div className="flex items-start mb-4">
-                  <div className="text-3xl mr-4">{getAppIcon(app.app_type)}</div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-800">{app.name}</h3>
+                <div className="fb-d-flex fb-align-start" style={{marginBottom:16}}>
+                  <div style={{fontSize:"1.875rem",marginRight:16}}>{getAppIcon(app.app_type)}</div>
+                  <div style={{flex:1}}>
+                    <h3 style={{fontSize:"1.125rem",fontWeight:700,color:"#1f2937"}}>{app.name}</h3>
                     {app.description && (
-                      <p className="text-gray-600 text-sm mt-1 line-clamp-2">{app.description}</p>
+                      <p className="text-muted" style={{fontSize:"0.875rem",marginTop:4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{app.description}</p>
                     )}
                   </div>
                   <div>
                     {app.is_active ? (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                      <span className="label label-success" style={{borderRadius:9999,fontSize:"0.75rem"}}>
                         Active
                       </span>
                     ) : (
-                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
+                      <span className="label label-default" style={{borderRadius:9999,fontSize:"0.75rem"}}>
                         Inactive
                       </span>
                     )}
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between text-sm text-gray-500 mt-4 pt-4 border-t border-gray-200">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="fb-d-flex fb-align-center fb-justify-between" style={{fontSize:"0.875rem",color:"#6b7280",marginTop:16,paddingTop:16,borderTop:"1px solid #e5e7eb"}}>
+                  <div className="fb-d-flex fb-align-center">
+                    <svg style={{width:16,height:16,marginRight:4}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     <span>{app.created_by}</span>
@@ -766,33 +803,33 @@ const AppsDashboard: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="mt-4 flex space-x-2">
+                <div className="fb-d-flex fb-gap-1" style={{marginTop:16}}>
 
                   <button
                     onClick={(e) => handleEditApp(app, e)}
-                    className="px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                    className="btn btn-link" style={{padding:"6px 12px",color:"#1d4ed8",border:"1px solid #bfdbfe",borderRadius:6}}
                     title="Edit application"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                   <button
                     onClick={(e) => handleConfigureApp(app, e)}
-                    className="px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors"
+                    className="btn btn-link" style={{padding:"6px 12px",color:"#7e22ce",border:"1px solid #e9d5ff",borderRadius:6}}
                     title="Configure application"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </button>
                   <button
                     onClick={(e) => handleDeleteApp(app, e)}
-                    className="px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-md hover:bg-red-100 transition-colors"
+                    className="btn btn-link" style={{padding:"6px 12px",color:"#b91c1c",border:"1px solid #fecaca",borderRadius:6}}
                     title="Delete application"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
@@ -804,28 +841,28 @@ const AppsDashboard: React.FC = () => {
 
         {/* Stats Section */}
         {apps.length > 0 && (
-          <div className="mt-8 bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Applications Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <div className="text-sm font-medium text-blue-700 mb-1">Total Applications</div>
-                <div className="text-2xl font-bold text-blue-800">{apps.length}</div>
+          <div className="panel panel-default" style={{marginTop:32}}>
+            <h2 style={{fontSize:"1.25rem",fontWeight:600,color:"#1f2937",marginBottom:16}}>Applications Overview</h2>
+            <div className="row">
+              <div style={{padding:16,background:"#eff6ff",borderRadius:8}}>
+                <div className="fb-label" style={{color:"#1d4ed8",marginBottom:4}}>Total Applications</div>
+                <div style={{fontSize:"1.5rem",fontWeight:700,color:"#1e40af"}}>{apps.length}</div>
               </div>
-              <div className="p-4 bg-green-50 rounded-lg">
-                <div className="text-sm font-medium text-green-700 mb-1">Active Applications</div>
-                <div className="text-2xl font-bold text-green-800">
+              <div style={{padding:16,background:"#f0fdf4",borderRadius:8}}>
+                <div className="fb-label" style={{color:"#15803d",marginBottom:4}}>Active Applications</div>
+                <div style={{fontSize:"1.5rem",fontWeight:700,color:"#166534"}}>
                   {apps.filter(app => app.is_active).length}
                 </div>
               </div>
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <div className="text-sm font-medium text-purple-700 mb-1">Document Management</div>
-                <div className="text-2xl font-bold text-purple-800">
+              <div style={{padding:16,background:"#faf5ff",borderRadius:8}}>
+                <div className="fb-label" style={{color:"#7e22ce",marginBottom:4}}>Document Management</div>
+                <div style={{fontSize:"1.5rem",fontWeight:700,color:"#6b21a8"}}>
                   {apps.filter(app => app.app_type?.toLowerCase()?.includes('document')).length}
                 </div>
               </div>
-              <div className="p-4 bg-yellow-50 rounded-lg">
-                <div className="text-sm font-medium text-yellow-700 mb-1">Other Types</div>
-                <div className="text-2xl font-bold text-yellow-800">
+              <div style={{padding:16,background:"#fefce8",borderRadius:8}}>
+                <div className="fb-label" style={{color:"#a16207",marginBottom:4}}>Other Types</div>
+                <div style={{fontSize:"1.5rem",fontWeight:700,color:"#854d0e"}}>
                   {apps.filter(app => !app.app_type?.toLowerCase()?.includes('document')).length}
                 </div>
               </div>
@@ -836,87 +873,87 @@ const AppsDashboard: React.FC = () => {
         {/* Help Text */}
         <div className="mt-8 text-center text-gray-500 text-sm">
           <p>Select an application to view and manage its folders and documents.</p>
-          <p className="mt-1">Each application has its own document organization system.</p>
+          <p style={{marginTop:4}}>Each application has its own document organization system.</p>
         </div>
       </div>
 
       {/* Edit Application Modal */}
       {showEditModal && editingApp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => {
+        <div className="fb-modal-backdrop fb-d-flex fb-align-center fb-justify-center" style={{zIndex:50,padding:16}} onClick={(e) => {
           if (e.target === e.currentTarget) {
             setShowEditModal(false);
             setEditingApp(null);
           }
         }}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">Edit Application</h2>
+          <div className="panel panel-default" style={{width:"100%",maxWidth:448}}>
+            <div style={{padding:24}}>
+              <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+                <h2 style={{fontSize:"1.25rem",fontWeight:700,color:"#1f2937"}}>Edit Application</h2>
                 <button
                   onClick={() => {
                     setShowEditModal(false);
                     setEditingApp(null);
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="fb-link text-muted"
                   aria-label="Close"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg style={{width:24,height:24}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div style={{display:"flex",flexDirection:"column",gap:16}}>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="fb-label">
                     Application Name
                   </label>
                   <input
                     type="text"
                     value={editForm.name || ''}
                     onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="form-control"
                     placeholder="Enter application name"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="fb-label">
                     Description
                   </label>
                   <textarea
                     value={editForm.description || ''}
                     onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="form-control"
                     rows={3}
                     placeholder="Enter application description"
                   />
                 </div>
                 
-                <div className="flex items-center">
+                <div className="fb-d-flex fb-align-center">
                   <input
                     type="checkbox"
                     id="is_active"
                     checked={editForm.is_active || false}
                     onChange={(e) => setEditForm({...editForm, is_active: e.target.checked})}
-                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                    style={{height:16,width:16,color:"#2563eb"}}
                   />
-                  <label htmlFor="is_active" className="ml-2 text-sm text-gray-700">
+                  <label htmlFor="is_active" style={{marginLeft:8,fontSize:"0.875rem",color:"#374151"}}>
                     Active
                   </label>
                 </div>
                 
                 {/* Index Management Section */}
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex justify-between items-center mb-3">
+                <div style={{borderTop:"1px solid #e5e7eb",paddingTop:16,marginTop:16}}>
+                  <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:12}}>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-700 mb-1">Application Indices</h3>
-                      <p className="text-xs text-gray-500">Add index names that will be stored in app_config table</p>
+                      <h3 className="fb-label">Application Indices</h3>
+                      <p style={{fontSize:"0.75rem",color:"#6b7280"}}>Add index names that will be stored in app_config table</p>
                     </div>
                     <button
                       type="button"
                       onClick={handleAddEmptyIndex}
-                      className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                      className="btn btn-success btn-sm"
                     >
                       + Add Index
                     </button>
@@ -924,23 +961,23 @@ const AppsDashboard: React.FC = () => {
                   
                   {/* Display editable indices */}
                   {(editForm.config?.indices && editForm.config.indices.length > 0) ? (
-                    <div className="space-y-3 mb-4">
+                    <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
                       {editForm.config!.indices.map((index: string, idx: number) => (
-                        <div key={idx} className="flex items-center space-x-3">
-                          <div className="text-sm font-medium text-gray-700 min-w-[100px]">
+                        <div key={idx} className="fb-d-flex fb-align-center fb-gap-2">
+                          <div className="fb-label" style={{minWidth:100}}>
                             index name:
                           </div>
                           <input
                             type="text"
                             value={index}
                             onChange={(e) => handleIndexNameChange(idx, e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className="form-control" style={{fontSize:"0.875rem"}}
                             placeholder="e.g. reporty type, report name, date"
                           />
                           <button
                             type="button"
                             onClick={() => handleRemoveIndex(idx)}
-                            className="px-3 py-2 text-red-500 hover:text-red-700 text-sm"
+                            className="fb-link" style={{padding:"6px 12px",color:"#ef4444",fontSize:"0.875rem"}}
                           >
                             Delete
                           </button>
@@ -948,18 +985,18 @@ const AppsDashboard: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500 italic mb-4">No indices added yet. Click "+ Add Index" to add new index fields.</p>
+                    <p style={{fontSize:"0.875rem",color:"#6b7280",fontStyle:"italic",marginBottom:16}}>No indices added yet. Click "+ Add Index" to add new index fields.</p>
                   )}
                 </div>
               </div>
               
-              <div className="mt-6 flex justify-end space-x-3">
+              <div className="fb-d-flex fb-gap-2" style={{marginTop:24,justifyContent:"flex-end"}}>
                 <button
                   onClick={() => {
                     setShowEditModal(false);
                     setEditingApp(null);
                   }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn btn-default"
                   disabled={actionLoading}
                 >
                   Cancel
@@ -968,7 +1005,7 @@ const AppsDashboard: React.FC = () => {
                 <button
                   onClick={handleUpdateApp}
                   disabled={actionLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  className="btn btn-primary"
                 >
                   {actionLoading ? 'Updating...' : 'Save Changes'}
                 </button>
@@ -980,50 +1017,50 @@ const AppsDashboard: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && appToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => {
+        <div className="fb-modal-backdrop fb-d-flex fb-align-center fb-justify-center" style={{zIndex:50,padding:16}} onClick={(e) => {
           if (e.target === e.currentTarget) {
             setShowDeleteConfirm(false);
             setAppToDelete(null);
           }
         }}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
+          <div className="panel panel-default" style={{width:"100%",maxWidth:448}}>
+            <div style={{padding:24}}>
               <div className="text-center mb-6">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="fb-d-flex fb-align-center fb-justify-center" style={{margin:"0 auto",height:48,width:48,borderRadius:"50%",background:"#fee2e2",marginBottom:16}}>
+                  <svg style={{height:24,width:24,color:"#dc2626"}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </div>
-                <div className="flex justify-between items-center mb-2">
-                  <h2 className="text-xl font-bold text-gray-800">Delete Application</h2>
+                <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:8}}>
+                  <h2 style={{fontSize:"1.25rem",fontWeight:700,color:"#1f2937"}}>Delete Application</h2>
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(false);
                       setAppToDelete(null);
                     }}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="fb-link text-muted"
                     aria-label="Close"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg style={{width:24,height:24}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <p className="text-gray-600">
+                <p className="text-muted">
                   Are you sure you want to delete "<span className="font-semibold">{appToDelete.name}</span>"?
                 </p>
-                <p className="text-red-600 text-sm mt-2">
+                <p style={{color:"#dc2626",fontSize:"0.875rem",marginTop:8}}>
                   This action cannot be undone. All folders and documents in this application will also be deleted.
                 </p>
               </div>
               
-              <div className="flex justify-end space-x-3">
+              <div className="fb-d-flex fb-gap-2" style={{justifyContent:"flex-end"}}>
                 <button
                   onClick={() => {
                     setShowDeleteConfirm(false);
                     setAppToDelete(null);
                   }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn btn-default"
                   disabled={actionLoading}
                 >
                   Cancel
@@ -1031,7 +1068,7 @@ const AppsDashboard: React.FC = () => {
                 <button
                   onClick={handleConfirmDelete}
                   disabled={actionLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                  className="btn btn-danger"
                 >
                   {actionLoading ? 'Deleting...' : 'Delete Application'}
                 </button>
@@ -1043,77 +1080,77 @@ const AppsDashboard: React.FC = () => {
 
       {/* Configuration Modal */}
       {showConfigModal && configuringApp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => {
+        <div className="fb-modal-backdrop fb-d-flex fb-align-center fb-justify-center" style={{zIndex:50,padding:16}} onClick={(e) => {
           if (e.target === e.currentTarget) {
             setShowConfigModal(false);
             setConfiguringApp(null);
           }
         }}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800 truncate mr-4">Configure Application: {configuringApp.name}</h2>
+          <div className="panel panel-default" style={{width:"100%",maxWidth:672,maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{padding:24}}>
+              <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+                <h2 style={{fontSize:"1.25rem",fontWeight:700,color:"#1f2937",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:16}}>Configure Application: {configuringApp.name}</h2>
                 <button
                   onClick={() => {
                     setShowConfigModal(false);
                     setConfiguringApp(null);
                   }}
-                  className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+                  className="fb-link text-muted" style={{flexShrink:0}}
                   aria-label="Close"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg style={{width:24,height:24}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               
-              <div className="space-y-6">
+              <div style={{display:"flex",flexDirection:"column",gap:24}}>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">General Settings</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
+                  <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#374151",marginBottom:12}}>General Settings</h3>
+                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                    <div className="fb-d-flex fb-align-center fb-justify-between">
+                      <label className="fb-label">
                         Enable Document Versioning
                       </label>
                       <input
                         type="checkbox"
                         checked={configForm.enableVersioning || false}
                         onChange={(e) => setConfigForm({...configForm, enableVersioning: e.target.checked})}
-                        className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        style={{height:20,width:20,color:"#2563eb"}}
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
+                    <div className="fb-d-flex fb-align-center fb-justify-between">
+                      <label className="fb-label">
                         Auto-tag Documents
                       </label>
                       <input
                         type="checkbox"
                         checked={configForm.autoTagging || false}
                         onChange={(e) => setConfigForm({...configForm, autoTagging: e.target.checked})}
-                        className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        style={{height:20,width:20,color:"#2563eb"}}
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
+                    <div className="fb-d-flex fb-align-center fb-justify-between">
+                      <label className="fb-label">
                         Enable AI Categorization
                       </label>
                       <input
                         type="checkbox"
                         checked={configForm.enableAICategorization || false}
                         onChange={(e) => setConfigForm({...configForm, enableAICategorization: e.target.checked})}
-                        className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        style={{height:20,width:20,color:"#2563eb"}}
                       />
                     </div>
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">Storage Limits</h3>
-                  <div className="space-y-4">
+                  <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#374151",marginBottom:12}}>Storage Limits</h3>
+                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="fb-label">
                         Max File Size (MB)
                       </label>
                       <input
@@ -1122,14 +1159,14 @@ const AppsDashboard: React.FC = () => {
                         max="1000"
                         value={configForm.maxFileSize || 100}
                         onChange={(e) => setConfigForm({...configForm, maxFileSize: parseInt(e.target.value) || 100})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="form-control"
                         placeholder="Maximum file size in MB"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Maximum allowed file size for uploads (1-1000 MB)</p>
+                      <p style={{fontSize:"0.75rem",color:"#6b7280",marginTop:4}}>Maximum allowed file size for uploads (1-1000 MB)</p>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="fb-label">
                         Storage Quota (GB)
                       </label>
                       <input
@@ -1138,85 +1175,85 @@ const AppsDashboard: React.FC = () => {
                         max="100"
                         value={configForm.storageQuota || 10}
                         onChange={(e) => setConfigForm({...configForm, storageQuota: parseInt(e.target.value) || 10})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="form-control"
                         placeholder="Storage quota in GB"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Total storage limit for this application (1-100 GB)</p>
+                      <p style={{fontSize:"0.75rem",color:"#6b7280",marginTop:4}}>Total storage limit for this application (1-100 GB)</p>
                     </div>
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">Security Settings</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
+                  <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#374151",marginBottom:12}}>Security Settings</h3>
+                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                    <div className="fb-d-flex fb-align-center fb-justify-between">
+                      <label className="fb-label">
                         Require Password for Downloads
                       </label>
                       <input
                         type="checkbox"
                         checked={configForm.requirePasswordForDownload || false}
                         onChange={(e) => setConfigForm({...configForm, requirePasswordForDownload: e.target.checked})}
-                        className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        style={{height:20,width:20,color:"#2563eb"}}
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
+                    <div className="fb-d-flex fb-align-center fb-justify-between">
+                      <label className="fb-label">
                         Enable Audit Log
                       </label>
                       <input
                         type="checkbox"
                         checked={configForm.enableAuditLog || true}
                         onChange={(e) => setConfigForm({...configForm, enableAuditLog: e.target.checked})}
-                        className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        style={{height:20,width:20,color:"#2563eb"}}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="fb-label">
                         Allowed File Types
                       </label>
                       <input
                         type="text"
                         value={configForm.allowedFileTypes || ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.png"}
                         onChange={(e) => setConfigForm({...configForm, allowedFileTypes: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="form-control"
                         placeholder="Comma-separated file extensions"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Example: .pdf,.doc,.jpg,.png (leave empty to allow all types)</p>
+                      <p style={{fontSize:"0.75rem",color:"#6b7280",marginTop:4}}>Example: .pdf,.doc,.jpg,.png (leave empty to allow all types)</p>
                     </div>
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">Custom Fields</h3>
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 p-4 rounded-md">
-                      <p className="text-sm text-gray-600 mb-3">Add custom key-value pairs that can be used throughout the application. Example: "Report type" = "Monthly Reports"</p>
+                  <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#374151",marginBottom:12}}>Custom Fields</h3>
+                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                    <div style={{padding:16,background:"#f9fafb",borderRadius:6}}>
+                      <p style={{fontSize:"0.875rem",color:"#4b5563",marginBottom:12}}>Add custom key-value pairs that can be used throughout the application. Example: "Report type" = "Monthly Reports"</p>
                       
-                      <div className="space-y-3">
+                      <div style={{display:"flex",flexDirection:"column",gap:12}}>
                         {/* Display existing custom fields */}
                         {configForm.customFields && Object.entries(configForm.customFields).map(([key, value], index) => (
-                          <div key={index} className="flex items-center space-x-2">
+                          <div key={index} className="fb-d-flex fb-align-center fb-gap-1">
                             <input
                               type="text"
                               value={key}
                               onChange={(e) => handleCustomFieldKeyChange(index, e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              className="form-control" style={{fontSize:"0.875rem"}}
                               placeholder="Field name"
                             />
-                            <span className="text-gray-500">=</span>
+                            <span className="text-muted">=</span>
                             <input
                               type="text"
                               value={value as string}
                               onChange={(e) => handleCustomFieldValueChange(index, e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              className="form-control" style={{fontSize:"0.875rem"}}
                               placeholder="Field value"
                             />
                             <button
                               onClick={() => handleRemoveCustomField(index)}
-                              className="px-3 py-2 text-red-600 hover:text-red-800"
+                              className="fb-link" style={{padding:"6px 12px",color:"#dc2626"}}
                               type="button"
                             >
                               Delete
@@ -1227,7 +1264,7 @@ const AppsDashboard: React.FC = () => {
                         {/* Add new field button */}
                         <button
                           onClick={handleAddCustomField}
-                          className="px-4 py-2 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md border border-blue-200"
+                          className="btn btn-info btn-sm" style={{background:"#eff6ff"}}
                           type="button"
                         >
                           + Add Custom Field
@@ -1238,9 +1275,9 @@ const AppsDashboard: React.FC = () => {
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">Advanced Settings</h3>
+                  <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#374151",marginBottom:12}}>Advanced Settings</h3>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="fb-label">
                       Custom Configuration (JSON)
                     </label>
                     <textarea
@@ -1255,22 +1292,22 @@ const AppsDashboard: React.FC = () => {
                           setConfigForm({...configForm, customConfig: e.target.value});
                         }
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      className="form-control" style={{fontFamily:"monospace",fontSize:"0.875rem"}}
                       rows={5}
                       placeholder='{"key": "value"}'
                     />
-                    <p className="text-xs text-gray-500 mt-1">Advanced users only. Invalid JSON will be ignored on save.</p>
+                    <p style={{fontSize:"0.75rem",color:"#6b7280",marginTop:4}}>Advanced users only. Invalid JSON will be ignored on save.</p>
                   </div>
                 </div>
               </div>
               
-              <div className="mt-8 flex justify-end space-x-3">
+              <div className="fb-d-flex fb-gap-2" style={{marginTop:32,justifyContent:"flex-end"}}>
                 <button
                   onClick={() => {
                     setShowConfigModal(false);
                     setConfiguringApp(null);
                   }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn btn-default"
                   disabled={actionLoading}
                 >
                   Cancel
@@ -1278,7 +1315,7 @@ const AppsDashboard: React.FC = () => {
                 <button
                   onClick={handleSaveConfig}
                   disabled={actionLoading}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                  style={{padding:"4px 8px",background:"#9333ea",color:"#fff",borderRadius:6,border:"none"}} className="fb-hover-btn"
                 >
                   {actionLoading ? 'Saving...' : 'Save Configuration'}
                 </button>
@@ -1290,81 +1327,81 @@ const AppsDashboard: React.FC = () => {
 
       {/* Create New Application Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => {
+        <div className="fb-modal-backdrop fb-d-flex fb-align-center fb-justify-center" style={{zIndex:50,padding:16}} onClick={(e) => {
           if (e.target === e.currentTarget) {
             setShowCreateModal(false);
             setNewAppForm({ name: '', description: '' });
           }
         }}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">Create New Application</h2>
+          <div className="panel panel-default" style={{width:"100%",maxWidth:448}}>
+            <div style={{padding:24}}>
+              <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+                <h2 style={{fontSize:"1.25rem",fontWeight:700,color:"#1f2937"}}>Create New Application</h2>
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
                     setNewAppForm({ name: '', description: '' });
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="fb-link text-muted"
                   aria-label="Close"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg style={{width:24,height:24}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div style={{display:"flex",flexDirection:"column",gap:16}}>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Application Name <span className="text-red-500">*</span>
+                  <label className="fb-label">
+                    Application Name <span style={{color:"#ef4444"}}>*</span>
                   </label>
                   <input
                     type="text"
                     value={newAppForm.name}
                     onChange={(e) => setNewAppForm({...newAppForm, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="form-control"
                     placeholder="Enter application name"
                     autoFocus
                   />
-                  <p className="text-xs text-gray-500 mt-1">Required. This will be displayed on the application card.</p>
+                  <p style={{fontSize:"0.75rem",color:"#6b7280",marginTop:4}}>Required. This will be displayed on the application card.</p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="fb-label">
                     Description
                   </label>
                   <textarea
                     value={newAppForm.description}
                     onChange={(e) => setNewAppForm({...newAppForm, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="form-control"
                     rows={3}
                     placeholder="Enter application description (optional)"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Optional. Describe the purpose of this application.</p>
+                  <p style={{fontSize:"0.75rem",color:"#6b7280",marginTop:4}}>Optional. Describe the purpose of this application.</p>
                 </div>
                 
-                <div className="flex items-center">
+                <div className="fb-d-flex fb-align-center">
                   <input
                     type="checkbox"
                     id="create_is_active"
                     checked={true}
                     readOnly
-                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                    style={{height:16,width:16,color:"#2563eb"}}
                   />
-                  <label htmlFor="create_is_active" className="ml-2 text-sm text-gray-700">
+                  <label htmlFor="create_is_active" style={{marginLeft:8,fontSize:"0.875rem",color:"#374151"}}>
                     Active (new applications are active by default)
                   </label>
                 </div>
               </div>
               
-              <div className="mt-6 flex justify-end space-x-3">
+              <div className="fb-d-flex fb-gap-2" style={{marginTop:24,justifyContent:"flex-end"}}>
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
                     setNewAppForm({ name: '', description: '' });
                   }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="btn btn-default"
                   disabled={actionLoading}
                 >
                   Cancel
@@ -1380,7 +1417,7 @@ const AppsDashboard: React.FC = () => {
                     setNewAppForm({ name: '', description: '' });
                   }}
                   disabled={actionLoading}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                  className="btn btn-success"
                 >
                   {actionLoading ? 'Creating...' : 'Create Application'}
                 </button>

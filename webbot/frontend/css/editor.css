@@ -257,34 +257,10 @@
             margin-bottom: 20px;
         }
 
-        /* Breadcrumb */
-        .breadcrumb {
+        /* Breadcrumb — WET theme #wb-bc, keep flex order in editor header */
+        #wb-bc {
+            order: 4;
             margin-bottom: 15px;
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            border: 1px solid #e9ecef;
-            width: 100%;
-            order: 4; /* Display on new line after page-info (order: 3) */
-        }
-
-        .breadcrumb-item {
-            display: inline;
-        }
-
-        .breadcrumb-item + .breadcrumb-item::before {
-            content: "›";
-            color: #6c757d;
-            padding: 0 8px;
-        }
-
-        .breadcrumb-item a {
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .breadcrumb-item a:hover {
-            text-decoration: underline;
         }
 
         /* WYSIWYG Editor Styles */
@@ -2131,4 +2107,94 @@
 
 .ttm-tag-list .ttm-item.selected {
     background: #d4edda;
+}
+
+/* ============================================================
+   Page References (Resource Sidebar)
+   ============================================================ */
+.ref-section {
+    margin-bottom: 12px;
+}
+
+.ref-section-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.ref-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.ref-item {
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.ref-item:hover {
+    background: #f0f7ff;
+}
+
+.ref-path {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #555;
+    word-break: break-all;
+}
+
+.ref-meta {
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ref-anchor {
+    font-size: 11px;
+    color: #888;
+    font-style: italic;
+}
+
+.ref-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.ref-published {
+    background: #d4edda;
+    color: #155724;
+}
+
+.ref-draft {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.ref-broken {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.ref-file {
+    background: #e2e3f8;
+    color: #37307a;
+}
+
+.ref-divider {
+    border: none;
+    border-top: 1px dashed #ccc;
+    margin: 12px 0;
 }

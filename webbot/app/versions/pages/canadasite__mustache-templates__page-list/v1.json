@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "page_id": "/canadasite/mustache-templates/page-list",
+  "page_path": "/canadasite/mustache-templates/page-list",
+  "page_title": "Mustache Template: page-list",
+  "language": "en",
+  "content_size": 167,
+  "created_at": "2026-06-01T17:17:31.389638Z",
+  "author": null,
+  "notes": "Published via WebBot",
+  "content": "{\n  \"dataresource\": \"/api/v1/pages/?path=/canadasite/en/services/ai-qa\",\n  \"template\": \"{{#.}}\\n<li><a href=\\\"{{{path}}},html\\\">{{title}}</li>\\n{{/.}}\",\n  \"data\": {}\n}"
+}

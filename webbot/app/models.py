@@ -204,6 +204,7 @@ class PageListItem(BaseModel):
     created_at: Optional[str] = None
     last_modified: Optional[str] = None
     tags: List[str] = []
+    lock_status: Optional[str] = None
 
 
 class PageMetadataItem(BaseModel):

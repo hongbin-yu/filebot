@@ -8,6 +8,8 @@ export interface Group {
   created_at: string;
   updated_at?: string;
   member_count: number;
+  institution_id?: string;
+  institution_name?: string;
 }
 
 export interface GroupDetail extends Group {
@@ -37,8 +39,9 @@ export interface AddMemberRequest {
 }
 
 const groupService = {
-  async list(): Promise<Group[]> {
-    const response = await api.get('/groups/');
+  async list(institutionId?: string): Promise<Group[]> {
+    const params = institutionId ? { institution_id: institutionId } : {};
+    const response = await api.get('/groups/', { params });
     return response.data;
   },
 

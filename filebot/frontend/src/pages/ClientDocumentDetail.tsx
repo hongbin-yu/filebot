@@ -169,10 +169,10 @@ const ClientDocumentDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
-        <div className="max-w-4xl mx-auto text-center py-16">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading document details...</p>
+      <div className="fb-page-bg" style={{padding:24}}>
+        <div className="container" style={{textAlign:"center",paddingTop:64,paddingBottom:64}}>
+          <div className="fb-spinner"></div>
+          <p className="text-muted" style={{marginTop:16}}>Loading document details...</p>
         </div>
       </div>
     );
@@ -180,14 +180,14 @@ const ClientDocumentDetail: React.FC = () => {
 
   if (error || !document) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Load failed</h2>
-            <p className="text-gray-700 mb-6">{error || 'Document not found'}</p>
+      <div className="fb-page-bg" style={{padding:24}}>
+        <div className="container">
+          <div className="panel panel-default" style={{padding:32,textAlign:"center",borderRadius:12}}>
+            <h2 style={{fontSize:"1.5rem",fontWeight:700,color:"#dc2626",marginBottom:16}}>Load failed</h2>
+            <p style={{color:"#374151",marginBottom:24}}>{error || 'Document not found'}</p>
             <button
               onClick={handleBack}
-              className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="btn btn-primary"
             >
               Back to document list
             </button>
@@ -200,16 +200,16 @@ const ClientDocumentDetail: React.FC = () => {
   const isHtmlFile = document.file_type.toLowerCase() === 'html';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="fb-page-bg" style={{padding:24}}>
+      <div className="container">
         {/* Breadcrumb navigation */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-            <Link to="/apps" className="hover:text-blue-600">App list</Link>
+        <div style={{marginBottom:24}}>
+          <div className="fb-d-flex fb-align-center fb-gap-1 small text-muted" style={{marginBottom:16}}>
+            <Link to="/apps" className="fb-link">App list</Link>
             <span>›</span>
             {app && (
               <>
-                <Link to={`/apps/${app.slug || app.id}`} className="hover:text-blue-600">
+                <Link to={`/apps/${app.slug || app.id}`} className="fb-link">
                   {app.name}
                 </Link>
                 <span>›</span>
@@ -219,44 +219,44 @@ const ClientDocumentDetail: React.FC = () => {
               <>
                 <Link 
                   to={`/apps/${app?.slug || app?.id}/folders/${encodeURIComponent(folder.path)}/documents`} 
-                  className="hover:text-blue-600"
+                  className="fb-link"
                 >
                   {folder.name}
                 </Link>
                 <span>›</span>
               </>
             )}
-            <span className="text-gray-700">{document.original_filename}</span>
+            <span style={{color:"#374151"}}>{document.original_filename}</span>
           </div>
         </div>
 
         {/* Title and action buttons */}
-        <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <div className="flex justify-between items-start">
+        <div className="panel panel-default" style={{padding:24,marginBottom:24,borderRadius:12}}>
+          <div className="fb-d-flex fb-justify-between fb-align-start">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">{document.original_filename}</h1>
-              <div className="flex items-center space-x-3 mt-3">
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              <h1 style={{fontSize:"1.875rem",fontWeight:700,color:"#1f2937"}}>{document.original_filename}</h1>
+              <div className="fb-d-flex fb-align-center fb-gap-2" style={{marginTop:12}}>
+                <span className="label label-info" style={{borderRadius:9999}}>
                   {document.file_type.toUpperCase()}
                 </span>
-                <span className="text-gray-600">
+                <span className="text-muted">
                   Size: {formatFileSize(document.file_size)}
                 </span>
-                <span className="text-gray-600">
+                <span className="text-muted">
                   Uploaded: {new Date(document.created_at).toLocaleDateString()}
                 </span>
               </div>
             </div>
-            <div className="flex space-x-3">
+            <div className="fb-d-flex fb-gap-2">
               <button
                 onClick={handleBack}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="btn btn-default"
               >
                 Back
               </button>
               <button
                 onClick={() => handleDownload('original')}
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="btn btn-primary"
               >
                 Download
               </button>
@@ -266,39 +266,39 @@ const ClientDocumentDetail: React.FC = () => {
 
         {/* Document preview area */}
         {isHtmlFile ? (
-          <div className="bg-white rounded-xl shadow overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">HTML Preview</h2>
+          <div className="panel panel-default" style={{borderRadius:12,overflow:"hidden"}}>
+            <div style={{padding:24,borderBottom:"1px solid #e5e7eb"}}>
+              <h2 style={{fontSize:"1.25rem",fontWeight:700,color:"#1f2937"}}>HTML Preview</h2>
             </div>
-            <div className="p-6">
+            <div style={{padding:24}}>
               {previewLoading ? (
-                <div className="text-center py-12">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <p className="mt-3 text-gray-600">Loading HTML content...</p>
+                <div style={{textAlign:"center",paddingTop:48,paddingBottom:48}}>
+                  <div className="fb-spinner" style={{width:32,height:32}}></div>
+                  <p className="text-muted" style={{marginTop:12}}>Loading HTML content...</p>
                 </div>
               ) : htmlContentUrl ? (
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                <div style={{border:"1px solid #d1d5db",borderRadius:8,overflow:"hidden"}}>
                   <iframe
                     src={htmlContentUrl}
                     title={document.original_filename}
-                    className="w-full h-[600px] border-0"
+                    style={{width:"100%",height:600,border:0}}
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                   />
-                  <div className="p-4 border-t border-gray-200 text-center">
+                  <div style={{padding:16,borderTop:"1px solid #e5e7eb",textAlign:"center"}}>
                     <button
                       onClick={() => handleDownload('original')}
-                      className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      className="btn btn-primary"
                     >
                       Download HTML file
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-600">Unable to load HTML preview</p>
+                <div style={{textAlign:"center",paddingTop:48,paddingBottom:48}}>
+                  <p className="text-muted">Unable to load HTML preview</p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                    className="btn btn-default" style={{marginTop:16}}
                   >
                     Retry
                   </button>
@@ -307,22 +307,22 @@ const ClientDocumentDetail: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow p-8 text-center">
-            <div className="text-gray-400 mb-6">
-              <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <div className="panel panel-default" style={{padding:32,textAlign:"center",borderRadius:12}}>
+            <div className="text-muted" style={{marginBottom:24}}>
+              <svg style={{width:96,height:96,margin:"0 auto"}} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
             </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">
+            <h3 style={{fontSize:"1.25rem",fontWeight:500,color:"#111827",marginBottom:8}}>
               File type preview not available
             </h3>
-            <p className="text-gray-500 mb-6">
+            <p className="text-muted" style={{marginBottom:24}}>
               Preview for {document.file_type.toUpperCase()} files is under development.
               You can download the file to view it locally.
             </p>
             <button
               onClick={() => handleDownload('original')}
-              className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="btn btn-primary"
             >
               Download {document.file_type.toUpperCase()} file
             </button>
@@ -330,7 +330,7 @@ const ClientDocumentDetail: React.FC = () => {
         )}
 
         {/* Footer */}
-        <footer className="mt-12 pt-8 border-t border-gray-200 text-center text-gray-500 text-sm">
+        <footer style={{marginTop:48,paddingTop:32,borderTop:"1px solid #e5e7eb",textAlign:"center",fontSize:"0.875rem"}} className="text-muted">
           <p>FileBot Client Portal • Document Details • {document.original_filename}</p>
         </footer>
       </div>

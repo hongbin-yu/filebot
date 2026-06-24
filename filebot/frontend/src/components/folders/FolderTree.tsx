@@ -413,21 +413,17 @@ const FolderTree: React.FC<FolderTreeProps> = ({
     const isDropTarget = dropTarget.targetFolderId === node.path || dropTarget.targetFolderId === node.path;
     
     return (
-      <div key={node.path} className="relative">
+      <div key={node.path} style={{position:"relative"}}>
         {/* 放置前的指示线 */}
         {isDropTarget && dropTarget.position === 'before' && dropTarget.isValid && (
-          <div className="absolute left-0 right-0 top-0 h-0.5 bg-blue-500 z-10"></div>
+          <div style={{position:"absolute",left:0,right:0,top:0,height:2,backgroundColor:"#3b82f6",zIndex:10}}></div>
         )}
         
         {/* 文件夹行 */}
         <div 
-          className={`
-            flex items-center py-2 px-2 rounded cursor-pointer transition-all duration-150
-            ${isCurrent ? 'bg-blue-50 border border-blue-200' : ''}
-            ${isDragged ? 'opacity-50 bg-gray-100' : ''}
-            ${isDropTarget && dropTarget.position === 'inside' && dropTarget.isValid ? 'bg-blue-100 border border-blue-300' : ''}
-            hover:bg-gray-100
-          `}
+          className={`fb-d-flex fb-align-center ${isCurrent ? 'bg-blue-50 border border-blue-200' : ''} 
+             ${isDragged ? 'opacity-50 bg-gray-100' : ''} 
+             ${isDropTarget && dropTarget.position === 'inside' && dropTarget.isValid ? 'bg-blue-100 border border-blue-300' : ''}`} style={{paddingTop:8,paddingBottom:8,paddingLeft:8,paddingRight:8,borderRadius:4,cursor:"pointer",transitionProperty:"all",transitionDuration:"150ms"}}
           style={{ marginLeft: `${node.level * 16}px` }}
           onClick={() => onFolderSelect(node.path)}
           draggable={!node.is_system_folder}
@@ -439,62 +435,62 @@ const FolderTree: React.FC<FolderTreeProps> = ({
           {/* 展开/收起按钮 */}
           {hasChildren ? (
             <button 
-              className="w-4 h-4 mr-1 flex-shrink-0 text-gray-500 hover:text-gray-700"
+              className="text-muted fb-link" style={{width:16,height:16,marginRight:4,flexShrink:0}}
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpand(node.path);
               }}
             >
               {node.expanded ? (
-                <ChevronDownIcon className="w-4 h-4" />
+                <ChevronDownIcon style={{width:16,height:16}} />
               ) : (
-                <ChevronRightIcon className="w-4 h-4" />
+                <ChevronRightIcon style={{width:16,height:16}} />
               )}
             </button>
           ) : (
-            <div className="w-5 mr-1"></div> // 占位，保持对齐
+            <div style={{width:20,marginRight:4}}></div> // 占位，保持对齐
           )}
           
           {/* 文件夹图标 */}
-          <div className="flex-shrink-0 mr-2">
+          <div style={{flexShrink:0,marginRight:8}}>
             {node.expanded ? (
-              <FolderOpenIcon className="w-5 h-5 text-yellow-500" />
+              <FolderOpenIcon style={{width:20,height:20,color:"#eab308"}} />
             ) : (
-              <FolderIcon className="w-5 h-5 text-yellow-500" />
+              <FolderIcon style={{width:20,height:20,color:"#eab308"}} />
             )}
           </div>
           
           {/* 文件夹信息 */}
-          <div className="flex-1 min-w-0">
-            <div className={`font-medium truncate ${isCurrent ? 'text-blue-600' : 'text-gray-800'}`}>
+          <div style={{flex:1,minWidth:0}}>
+            <div className={`${isCurrent ? 'text-blue-600' : 'text-gray-800'}`} style={{fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               {node.name}
               {dragState.isDragging && dragState.draggedFolderId === node.path && (
-                <span className="ml-2 text-xs text-gray-500">{t('folderTree.dragging')}</span>
+                <span className="text-muted" style={{marginLeft:8,fontSize:"0.75rem",lineHeight:"1rem"}}>{t('folderTree.dragging')}</span>
               )}
             </div>
             {/* Description removed as requested */}
           </div>
           
           {/* 文档计数 */}
-          <div className="flex-shrink-0 mr-2 text-sm text-gray-500">
+          <div className="text-muted" style={{flexShrink:0,marginRight:8,fontSize:"0.875rem",lineHeight:"1.25rem"}}>
             {node.document_count || 0} {t('folderTree.documents')}
           </div>
           
           {/* 拖拽手柄（只在可拖拽时显示） */}
           {!node.is_system_folder && (
             <div 
-              className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-600 cursor-grab active:cursor-grabbing"
+              className="fb-link" style={{flexShrink:0,padding:4,color:"#9ca3af",cursor:"grab"}}
               title={t('folderTree.dragToMove')}
               onClick={(e) => e.stopPropagation()}
             >
-              <ArrowsUpDownIcon className="w-4 h-4" />
+              <ArrowsUpDownIcon style={{width:16,height:16}} />
             </div>
           )}
           
           {/* 删除按钮 */}
           {onDeleteFolder && !node.is_system_folder && (
             <button 
-              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-600"
+              style={{flexShrink:0,padding:4,color:"#9ca3af"}}
               onClick={async (e) => {
                 e.stopPropagation();
                 const nodePathInfo = (node as any).path ? `\n目标路径: ${(node as any).path}` : '';
@@ -507,22 +503,22 @@ const FolderTree: React.FC<FolderTreeProps> = ({
               }}
               title={t('folderTree.deleteFolder')}
             >
-              <TrashIcon className="w-4 h-4" />
+              <TrashIcon style={{width:16,height:16}} />
             </button>
           )}
         </div>
         
         {/* 放置后的指示线 */}
         {isDropTarget && dropTarget.position === 'after' && dropTarget.isValid && (
-          <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-500 z-10"></div>
+          <div style={{position:"absolute",left:0,right:0,bottom:0,height:2,backgroundColor:"#3b82f6",zIndex:10}}></div>
         )}
         
         {/* 子文件夹 */}
         {node.expanded && hasChildren && (
-          <div className="relative">
+          <div style={{position:"relative"}}>
             {/* 内部放置指示器（当拖拽到文件夹内部时） */}
             {isDropTarget && dropTarget.position === 'inside' && dropTarget.isValid && (
-              <div className="absolute left-0 right-0 top-0 h-1 bg-blue-500 z-10"></div>
+              <div style={{position:"absolute",left:0,right:0,top:0,height:4,backgroundColor:"#3b82f6",zIndex:10}}></div>
             )}
             {node.children.map(child => renderTreeNode(child))}
           </div>
@@ -548,22 +544,22 @@ const FolderTree: React.FC<FolderTreeProps> = ({
     <div className="folder-tree">
       {/* 拖拽提示 */}
       {dragState.isDragging && (
-        <div className="p-2 mb-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-          <div className="flex items-center">
-            <ArrowDownOnSquareIcon className="w-4 h-4 mr-2" />
+        <div style={{padding:8,marginBottom:8,backgroundColor:"#eff6ff",border:"1px solid #ddd",borderColor:"#bfdbfe",borderRadius:4,fontSize:"0.875rem",lineHeight:"1.25rem",color:"#1d4ed8"}}>
+          <div className="fb-d-flex fb-align-center">
+            <ArrowDownOnSquareIcon style={{width:16,height:16,marginRight:8}} />
             <span>{t('folderTree.dragHint')}</span>
           </div>
         </div>
       )}
       
       {treeNodes.length === 0 ? (
-        <div className="text-center py-6 text-gray-500">
-          <FolderIcon className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+        <div className="text-center text-muted" style={{paddingTop:24,paddingBottom:24}}>
+          <FolderIcon style={{width:48,height:48,marginLeft:"auto",marginRight:"auto",color:"#d1d5db",marginBottom:8}} />
           <p>{t('folderTree.noFolders')}</p>
-          <p className="text-sm mt-1">{t('folderTree.createFirstFolder')}</p>
+          <p style={{fontSize:"0.875rem",lineHeight:"1.25rem",marginTop:4}}>{t('folderTree.createFirstFolder')}</p>
         </div>
       ) : (
-        <div className="space-y-1">
+        <div style={{display:"flex",flexDirection:"column",gap:4}}>
           {treeNodes.map(node => renderTreeNode(node))}
         </div>
       )}

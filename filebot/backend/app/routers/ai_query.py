@@ -121,6 +121,7 @@ class AIQueryResponse(BaseModel):
     sources: list[SourceItem]
     cached: bool
     elapsed_ms: int
+    site: Optional[str] = None
 
 
 # --- Helpers ---
@@ -599,6 +600,10 @@ async def ai_query(
     t0 = time.time()
     model = get_embedding_model()
 
+    provider_key = req.provider or LLM_PROVIDER
+    logger.info("AI QUERY DEBUG: q='%s' lang=%s site='%s' provider=%s top_k=%s",
+                req.query, req.lang, req.site, provider_key, req.top_k)
+
     # 1. Embed query
     q_emb = embed_query(req.query, model)
 
@@ -606,7 +611,6 @@ async def ai_query(
     conn = get_pg_conn()
     try:
         # 3. Check cache (provider-specific)
-        provider_key = req.provider or LLM_PROVIDER
         cached = check_cache(conn, q_emb, req.lang, req.site, provider_key)
         if cached:
             sources = [
@@ -620,18 +624,27 @@ async def ai_query(
                 sources=sources,
                 cached=True,
                 elapsed_ms=elapsed,
+                site=cached.get("site_filter") or req.site,
             )
 
         # 4. Search chunks
         chunks = search_chunks(conn, q_emb, req.lang, req.site, req.top_k)
+        if not chunks and req.site:
+            # Fallback: retry without site filter (e.g. user is on a department
+            # page whose content hasn't been indexed yet)
+            logger.warning("AI QUERY: NO CHUNKS WITH site='%s', retrying without", req.site)
+            chunks = search_chunks(conn, q_emb, req.lang, "", req.top_k)
         if not chunks:
+            logger.warning("AI QUERY: NO CHUNKS FOUND q='%s' lang=%s site='%s'",
+                          req.query, req.lang, req.site)
             elapsed = int((time.time() - t0) * 1000)
             return AIQueryResponse(
                 query=req.query,
-                answer="No relevant content found in Canada.ca.",
+                answer=f"No relevant content found in {req.site or 'Canada.ca'}.",
                 sources=[],
                 cached=False,
                 elapsed_ms=elapsed,
+                site=req.site,
             )
 
         # 5. Build prompt (system + user) + call LLM
@@ -651,6 +664,7 @@ async def ai_query(
             sources=[SourceItem(**c) for c in chunks],
             cached=False,
             elapsed_ms=elapsed,
+            site=req.site,
         )
     finally:
         conn.close()

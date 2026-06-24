@@ -10,6 +10,7 @@ import { Add as AddIcon, Delete as DeleteIcon, Security as SecurityIcon } from '
 import permissionService, { Permission, PermissionCreate } from '../../services/permission.service';
 import groupService, { Group } from '../../services/group.service';
 import authService from '../../services/auth.service';
+import institutionService from '../../services/institution.service';
 
 interface App {
   id: string;
@@ -46,6 +47,10 @@ const AdminPermissions: React.FC = () => {
   const [folderSelections, setFolderSelections] = useState<string[]>([]);
   const [loadingLevel, setLoadingLevel] = useState(false);
 
+  // Institution filter
+  const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
+  const [institutionFilter, setInstitutionFilter] = useState('');
+
   const loadPermissions = useCallback(async () => {
     try {
       setLoading(true);
@@ -79,12 +84,20 @@ const AdminPermissions: React.FC = () => {
     } catch { /* ignore */ }
   }, []);
 
+  const loadInstitutions = useCallback(async () => {
+    try {
+      const data = await institutionService.getInstitutions();
+      setInstitutions(data);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     loadPermissions();
     loadApps();
     loadGroups();
     loadUsers();
-  }, [loadPermissions, loadApps, loadGroups, loadUsers]);
+    loadInstitutions();
+  }, [loadPermissions, loadApps, loadGroups, loadUsers, loadInstitutions]);
 
   const handleCreate = async () => {
     if (!formData.resource_id || !formData.assignee_id) return;
@@ -180,10 +193,22 @@ const AdminPermissions: React.FC = () => {
     }
   };
 
-  // Filter by tab
-  const filteredPermissions = tabValue === 0
+  // Current user info for superuser check
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(() => {
+    authService.getCurrentUser().then(u => setCurrentUser(u)).catch(() => {});
+  }, []);
+
+  const isSuperuser = currentUser?.is_superuser === true;
+
+  // Filter by tab + institution
+  let filteredPermissions = tabValue === 0
     ? permissions.filter(p => p.resource_type === 'app')
     : permissions.filter(p => p.resource_type === 'folder');
+
+  if (institutionFilter) {
+    filteredPermissions = filteredPermissions.filter(p => p.institution_id === institutionFilter);
+  }
 
   return (
     <Box>
@@ -204,6 +229,22 @@ const AdminPermissions: React.FC = () => {
         <Tab label="Folder Permissions" />
       </Tabs>
 
+      {isSuperuser && (
+        <FormControl sx={{ mb: 2, minWidth: 280 }} size="small">
+          <InputLabel>Filter by Institution</InputLabel>
+          <Select
+            value={institutionFilter}
+            label="Filter by Institution"
+            onChange={(e) => setInstitutionFilter(e.target.value)}
+          >
+            <MenuItem value="">All Institutions</MenuItem>
+            {institutions.map(inst => (
+              <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
+
       {loading ? (
         <Typography>Loading...</Typography>
       ) : filteredPermissions.length === 0 ? (
@@ -220,6 +261,7 @@ const AdminPermissions: React.FC = () => {
               <TableRow>
                 <TableCell>Resource</TableCell>
                 <TableCell>Assignee</TableCell>
+                <TableCell>Institution</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell>Level</TableCell>
                 <TableCell>Created</TableCell>
@@ -234,6 +276,14 @@ const AdminPermissions: React.FC = () => {
                     <Typography variant="caption" color="text.secondary">{perm.resource_id}</Typography>
                   </TableCell>
                   <TableCell>{getAssigneeName(perm)}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={perm.institution_name || '-'}
+                      size="small"
+                      variant="outlined"
+                      sx={{ maxWidth: 180 }}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={perm.user_id ? 'User' : 'Group'}

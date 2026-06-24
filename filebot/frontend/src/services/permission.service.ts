@@ -4,6 +4,8 @@ export interface Permission {
   id: string;
   user_id?: string;
   group_id?: string;
+  institution_id?: string;
+  institution_name?: string;
   resource_type: 'app' | 'folder';
   resource_id: string;
   permission_level: 'read' | 'write' | 'admin' | 'owner';

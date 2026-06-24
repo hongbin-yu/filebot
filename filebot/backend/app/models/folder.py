@@ -18,6 +18,9 @@ class Folder(Base):
     
     # 系统文件夹标志
     is_system_folder = Column(Boolean, default=False, index=True)
+    
+    # 缩略图尺寸（如 "128x128", "256x256"），为空则继承父文件夹设置
+    thumbnail_size = Column(String(20), nullable=True, default=None)
     order_index = Column(Integer, default=0)
     
     # 审计字段

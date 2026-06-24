@@ -14,7 +14,13 @@ from .. import versioning
 
 router = APIRouter(prefix="/api/v1/versions", tags=["versions"])
 
-DB_PATH = "app/webbot.db"
+import os
+
+DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
+
 
 
 def get_db():

@@ -1,0 +1,14 @@
+[Unit]
+Description=WebFileBot Company Site Server
+After=network.target
+
+[Service]
+Type=simple
+User=hongb
+WorkingDirectory=/home/hongb/.openclaw/workspace/webbot/app
+ExecStart=/usr/bin/python3 /home/hongb/.openclaw/workspace/webbot/app/company_server.py 8004
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

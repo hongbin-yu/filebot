@@ -20,11 +20,17 @@ class FileType(str, enum.Enum):
     JPEG = "jpeg"
     JPG = "jpg"
     PNG = "png"
+    GIF = "gif"
+    WEBP = "webp"
+    BMP = "bmp"
+    SVG = "svg"
     PCL = "pcl"
     PS = "ps"
     TXT = "txt"
     HTML = "html"
     HTM = "htm"
+    VIDEO = "video"
+    AUDIO = "audio"
     OTHER = "other"
 
 

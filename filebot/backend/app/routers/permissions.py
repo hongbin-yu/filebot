@@ -10,6 +10,7 @@ from app.db.database import get_db
 from app.core.security import get_current_active_user
 from app.models.user import User
 from app.models.group import Group, GroupMember
+from app.models.institution import Institution
 from app.models.permission import Permission, ResourceType, PermissionLevel
 from app.schemas.permission import (
     PermissionCreate, PermissionResponse, PermissionCheckRequest,
@@ -19,6 +20,53 @@ from datetime import datetime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _check_permission_institution_access(
+    db: Session,
+    permission_user_id: Optional[str],
+    permission_group_id: Optional[str],
+    current_user: User
+):
+    """检查当前 admin 是否有权限操作涉及此 user/group 的 permission"""
+    if current_user.is_superuser:
+        return True
+    if not current_user.institution_id:
+        return False
+
+    if permission_user_id:
+        target_user = db.query(User).filter(User.id == permission_user_id).first()
+        if target_user and target_user.institution_id == current_user.institution_id:
+            return True
+
+    if permission_group_id:
+        target_group = db.query(Group).filter(Group.id == permission_group_id).first()
+        if target_group and target_group.institution_id == current_user.institution_id:
+            return True
+
+    return False
+
+
+def _get_institution_scoped_permissions_query(db: Session, current_user: User):
+    """返回当前 admin 可见的 permissions 查询范围"""
+    if current_user.is_superuser:
+        return db.query(Permission)
+
+    # admin: 只看本机构 user 或本机构 group 的 permission
+    from sqlalchemy import or_
+    inst_user_ids = db.query(User.id).filter(
+        User.institution_id == current_user.institution_id
+    ).subquery()
+    inst_group_ids = db.query(Group.id).filter(
+        Group.institution_id == current_user.institution_id
+    ).subquery()
+
+    return db.query(Permission).filter(
+        or_(
+            Permission.user_id.in_(inst_user_ids),
+            Permission.group_id.in_(inst_group_ids)
+        )
+    )
 
 
 @router.post("/", response_model=PermissionResponse, status_code=status.HTTP_201_CREATED)
@@ -46,6 +94,13 @@ def create_permission(
         if not group:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
 
+    # 非 superuser admin 只能操作本机构的 user/group
+    if not _check_permission_institution_access(db, data.user_id, data.group_id, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot create permission for users/groups outside your institution"
+        )
+
     permission = Permission(
         user_id=data.user_id,
         group_id=data.group_id,
@@ -57,7 +112,7 @@ def create_permission(
     db.add(permission)
     db.commit()
     db.refresh(permission)
-    return _to_response(permission)
+    return _to_response(permission, db)
 
 
 @router.delete("/{permission_id}")
@@ -73,6 +128,14 @@ def delete_permission(
     permission = db.query(Permission).filter(Permission.id == permission_id).first()
     if not permission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Permission not found")
+
+    # 非 superuser admin 只能删除本机构 user/group 的 permission
+    if not _check_permission_institution_access(db, permission.user_id, permission.group_id, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot delete permissions for users/groups outside your institution"
+        )
+
     db.delete(permission)
     db.commit()
     return {"message": "Permission deleted successfully"}
@@ -92,7 +155,8 @@ def list_permissions(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Only superuser or admin can view permissions")
 
-    query = db.query(Permission)
+    # 非 superuser admin 只看本机构 user/group 的 permission
+    query = _get_institution_scoped_permissions_query(db, current_user)
     if resource_type:
         query = query.filter(Permission.resource_type == resource_type)
     if resource_id:
@@ -103,7 +167,7 @@ def list_permissions(
         query = query.filter(Permission.group_id == group_id)
 
     permissions = query.order_by(Permission.created_at.desc()).all()
-    return [_to_response(p) for p in permissions]
+    return [_to_response(p, db) for p in permissions]
 
 
 @router.get("/users/{user_id}", response_model=List[PermissionResponse])
@@ -116,6 +180,15 @@ def get_user_permissions(
     if not current_user.is_superuser and current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Only superuser or admin can view user permissions")
+
+    # 非 superuser admin 只能查本机构的用户
+    if not current_user.is_superuser:
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user or target_user.institution_id != current_user.institution_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot view permissions for users outside your institution"
+            )
 
     # 1. 用户直接权限
     direct_perms = db.query(Permission).filter(Permission.user_id == user_id).all()
@@ -141,7 +214,7 @@ def get_user_permissions(
                 continue
             seen[key] = p
 
-    return [_to_response(p) for p in seen.values()]
+    return [_to_response(p, db) for p in seen.values()]
 
 
 @router.post("/check", response_model=PermissionCheckResponse)
@@ -226,11 +299,31 @@ def _check_user_permission(
     return False, None
 
 
-def _to_response(p: Permission) -> PermissionResponse:
+def _to_response(p: Permission, db: Optional[Session] = None) -> PermissionResponse:
+    institution_id = None
+    institution_name = None
+    if db:
+        if p.user_id:
+            user = db.query(User).filter(User.id == p.user_id).first()
+            if user and user.institution_id:
+                institution_id = user.institution_id
+                inst = db.query(Institution).filter(Institution.id == user.institution_id).first()
+                if inst:
+                    institution_name = inst.name
+        elif p.group_id:
+            group = db.query(Group).filter(Group.id == p.group_id).first()
+            if group and group.institution_id:
+                institution_id = group.institution_id
+                inst = db.query(Institution).filter(Institution.id == group.institution_id).first()
+                if inst:
+                    institution_name = inst.name
+
     return PermissionResponse(
         id=p.id,
         user_id=p.user_id,
         group_id=p.group_id,
+        institution_id=institution_id,
+        institution_name=institution_name,
         resource_type=p.resource_type,
         resource_id=p.resource_id,
         permission_level=p.permission_level,

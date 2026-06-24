@@ -449,20 +449,20 @@ const Upload: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="container">
       {/* Breadcrumb Navigation */}
       {(effectiveAppId && (folderId || effectiveDrawerSlug)) && (
-        <nav className="flex items-center text-sm text-gray-600 mb-4">
+        <nav className="fb-d-flex fb-align-center text-muted" style={{fontSize:"0.875rem",marginBottom:16}}>
           <button
             onClick={() => navigate('/')}
-            className="hover:text-blue-600"
+            className="fb-link"
           >
             Applications
           </button>
           <span className="mx-2">›</span>
           <button
             onClick={() => navigate(`/${effectiveAppId}`)}
-            className="hover:text-blue-600"
+            className="fb-link"
           >
             {effectiveAppId ? `App ${effectiveAppId}` : 'Application'}
           </button>
@@ -471,40 +471,40 @@ const Upload: React.FC = () => {
               <span className="mx-2">›</span>
               <button
                 onClick={() => navigate(`/${effectiveAppId}/${drawerInfo.slug || drawerInfo.id}`)}
-                className="hover:text-blue-600"
+                className="fb-link"
               >
                 {drawerInfo.name || 'Drawer'}
               </button>
-              <span className="mx-2 text-xs text-gray-400">(drawer)</span>
+              <span style={{margin:"0 8px",fontSize:"0.75rem",color:"#9ca3af"}}>(drawer)</span>
             </>
           ) : folderId ? (
             <>
               <span className="mx-2">›</span>
               <button
                 onClick={() => navigate(`/${effectiveAppId}/folders/${encodeURIComponent(folder?.path || folderId)}/documents`)}
-                className="hover:text-blue-600"
+                className="fb-link"
               >
                 Folder Documents
               </button>
-              <span className="mx-2 text-xs text-gray-400">(folder)</span>
+              <span style={{margin:"0 8px",fontSize:"0.75rem",color:"#9ca3af"}}>(folder)</span>
             </>
           ) : effectiveDrawerSlug ? (
             <>
               <span className="mx-2">›</span>
-              <span className="text-gray-600">
+              <span className="text-muted">
                 Drawer: {effectiveDrawerSlug}
-                <span className="mx-2 text-xs text-gray-400">(slug only)</span>
+                <span style={{margin:"0 8px",fontSize:"0.75rem",color:"#9ca3af"}}>(slug only)</span>
               </span>
             </>
           ) : null}
           <span className="mx-2">›</span>
-          <span className="font-medium text-gray-800">Upload</span>
+          <span style={{fontWeight:500,color:"#1f2937"}}>Upload</span>
         </nav>
       )}
       
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Upload Documents</h1>
+      <h1 style={{fontSize:"1.875rem",fontWeight:700,color:"#1f2937",marginBottom:8}}>Upload Documents</h1>
       {effectiveAppId && (folderId || effectiveDrawerSlug) && (
-        <p className="text-gray-600 mb-8">
+        <p className="text-muted" style={{marginBottom:32}}>
           Uploading to <span className="font-medium">
             {drawerInfo ? `Drawer: ${drawerInfo.name}` : 'Folder'}
           </span> in <span className="font-medium">Application {effectiveAppId}</span>
@@ -512,28 +512,37 @@ const Upload: React.FC = () => {
       )}
       
       {/* Upload Zone */}
-      <div className="bg-white rounded-lg shadow mb-8">
+      <div className="panel panel-default" style={{marginBottom:32}}>
         <div
           {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors duration-300 ${
-            isDragActive 
-              ? 'border-blue-500 bg-blue-50' 
-              : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-          }`}
+          style={{
+            borderWidth: 2,
+            borderStyle: 'dashed',
+            borderRadius: 8,
+            padding: 48,
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'all 300ms',
+            borderColor: isDragActive ? '#3b82f6' : '#d1d5db',
+            background: isDragActive ? '#eff6ff' : undefined
+          }}
+          className={!isDragActive ? 'fb-hover-btn' : undefined}
+          onMouseEnter={(e) => { if (!isDragActive) { e.currentTarget.style.borderColor = '#60a5fa'; e.currentTarget.style.background = '#f9fafb'; } }}
+          onMouseLeave={(e) => { if (!isDragActive) { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = undefined; } }}
         >
           <input {...getInputProps()} />
           
-          <div className="text-6xl mb-6">📤</div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">
+          <div style={{fontSize:"3.75rem",marginBottom:24}}>📤</div>
+          <h3 style={{fontSize:"1.5rem",fontWeight:700,color:"#1f2937",marginBottom:16}}>
             {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted" style={{marginBottom:24}}>
             or click to select files from your computer
           </p>
-          <button className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-medium">
+          <button className="btn btn-primary">
             Select Files
           </button>
-          <p className="text-sm text-gray-500 mt-4">
+          <p style={{fontSize:"0.875rem",color:"#6b7280",marginTop:16}}>
             Supports PDF, Images, Documents, Spreadsheets, Presentations, and Archives (max 100MB each)
           </p>
         </div>
@@ -541,29 +550,29 @@ const Upload: React.FC = () => {
 
       {/* Selected Files */}
       {files.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="panel panel-default" style={{marginBottom:32}}>
+          <h3 style={{fontSize:"1.25rem",fontWeight:700,color:"#1f2937",marginBottom:16}}>
             Selected Files ({files.length})
           </h3>
           
-          <div className="space-y-4">
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
             {files.map((file, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center">
-                  <span className="text-2xl mr-4">{getFileIcon(file)}</span>
+              <div key={index} className="fb-d-flex fb-align-center fb-justify-between" style={{padding:16,border:"1px solid #e5e7eb",borderRadius:8}}>
+                <div className="fb-d-flex fb-align-center">
+                  <span style={{fontSize:"1.5rem",marginRight:16}}>{getFileIcon(file)}</span>
                   <div>
-                    <h4 className="font-medium text-gray-800">{file.name}</h4>
-                    <p className="text-sm text-gray-600">
+                    <h4 style={{fontWeight:500,color:"#1f2937"}}>{file.name}</h4>
+                    <p style={{fontSize:"0.875rem",color:"#4b5563"}}>
                       {formatFileSize(file.size)} • {file.type}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => removeFile(index)}
-                  className="text-red-600 hover:text-red-800"
+                  className="fb-link" style={{color:"#dc2626"}}
                   disabled={uploading}
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg style={{width:24,height:24}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -571,9 +580,9 @@ const Upload: React.FC = () => {
             ))}
           </div>
           
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">Total size:</span>
+          <div style={{marginTop:24,paddingTop:24,borderTop:"1px solid #e5e7eb"}}>
+            <div className="fb-d-flex fb-justify-between fb-align-center">
+              <span style={{color:"#374151"}}>Total size:</span>
               <span className="font-semibold">
                 {formatFileSize(files.reduce((total, file) => total + file.size, 0))}
               </span>
@@ -583,28 +592,28 @@ const Upload: React.FC = () => {
       )}
 
       {/* Upload Options */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h3 className="text-xl font-bold text-gray-800 mb-6">Upload Options</h3>
+      <div className="panel panel-default" style={{marginBottom:32}}>
+        <h3 style={{fontSize:"1.25rem",fontWeight:700,color:"#1f2937",marginBottom:24}}>Upload Options</h3>
         
-        <div className="space-y-6">
+        <div style={{display:"flex",flexDirection:"column",gap:24}}>
           {/* Folder Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="fb-label">
               Select Folder {effectiveDrawerSlug ? '(Required for Drawer Upload)' : '(Optional)'}
             </label>
             
             {/* 抽屉上传模式警告 */}
             {effectiveDrawerSlug && folders.length === 0 && (
-              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="alert alert-warning" style={{padding:12}}>
+                <div className="fb-d-flex fb-align-center">
+                  <svg style={{width:20,height:20,color:"#ca8a04",marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
-                  <span className="text-yellow-800 font-medium">
+                  <span style={{fontWeight:500,color:"#854d0e"}}>
                     No folders available in this drawer
                   </span>
                 </div>
-                <p className="text-sm text-yellow-700 mt-1 ml-7">
+                <p style={{fontSize:"0.875rem",color:"#a16207",marginTop:4,marginLeft:28}}>
                   You need to create a folder first before uploading documents to this drawer.
                 </p>
               </div>
@@ -612,12 +621,12 @@ const Upload: React.FC = () => {
             
             {/* 抽屉上传模式成功信息 */}
             {effectiveDrawerSlug && selectedFolder && folders.length > 0 && (
-              <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg text-sm">
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="alert alert-success" style={{fontSize:"0.875rem"}}>
+                <div className="fb-d-flex fb-align-center">
+                  <svg style={{width:16,height:16,color:"#16a34a",marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-green-800">
+                  <span style={{color:"#166534"}}>
                     Auto-selected folder for drawer upload: <span className="font-medium">
                       {folders.find(f => f.path === selectedFolder)?.name || 'Unknown folder'}
                     </span>
@@ -627,7 +636,7 @@ const Upload: React.FC = () => {
             )}
             
             <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="form-control"
               value={selectedFolder}
               onChange={(e) => setSelectedFolder(e.target.value)}
               disabled={uploading || (effectiveDrawerSlug && folders.length === 0)}
@@ -639,7 +648,7 @@ const Upload: React.FC = () => {
                 </option>
               ))}
             </select>
-            <p className="text-sm text-gray-500 mt-1">
+            <p style={{fontSize:"0.875rem",color:"#6b7280",marginTop:4}}>
               {effectiveDrawerSlug 
                 ? 'Documents will be uploaded to the selected folder in this drawer' 
                 : 'Organize your documents by selecting an existing folder'}
@@ -648,29 +657,29 @@ const Upload: React.FC = () => {
           
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="fb-label">
               Tags (Optional)
             </label>
             <input
               type="text"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="form-control"
               placeholder="e.g., invoice, report, 2024"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               disabled={uploading}
             />
-            <p className="text-sm text-gray-500 mt-1">
+            <p style={{fontSize:"0.875rem",color:"#6b7280",marginTop:4}}>
               Separate tags with commas for easy searching
             </p>
           </div>
           
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="fb-label">
               Description (Optional)
             </label>
             <textarea
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="form-control"
               rows={3}
               placeholder="Add a description for these files..."
               value={description}
@@ -682,16 +691,16 @@ const Upload: React.FC = () => {
       </div>
 
       {/* Progress and Actions */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="panel panel-default">
         {uploading && (
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Upload Progress</span>
-              <span className="text-sm font-semibold text-blue-600">{progress}%</span>
+          <div style={{marginBottom:24}}>
+            <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:8}}>
+              <span className="fb-label">Upload Progress</span>
+              <span style={{fontSize:"0.875rem",fontWeight:600,color:"#2563eb"}}>{progress}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div style={{width:"100%",background:"#e5e7eb",borderRadius:9999,height:10}}>
               <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                style={{background:"#2563eb",height:10,borderRadius:9999,transition:"all 300ms"}}
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
@@ -700,9 +709,9 @@ const Upload: React.FC = () => {
 
         {/* Error Messages */}
         {errors.length > 0 && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <h4 className="font-medium text-red-800 mb-2">Upload Errors:</h4>
-            <ul className="text-sm text-red-700 list-disc list-inside">
+          <div className="alert alert-danger">
+            <h4 style={{fontWeight:500,color:"#991b1b",marginBottom:8}}>Upload Errors:</h4>
+            <ul style={{fontSize:"0.875rem",color:"#991b1b",listStyle:"disc inside"}}>
               {errors.map((error, index) => (
                 <li key={index}>{error}</li>
               ))}
@@ -712,18 +721,18 @@ const Upload: React.FC = () => {
 
         {/* Success Message */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="alert alert-success">
+            <div className="fb-d-flex fb-align-center">
+              <svg style={{width:20,height:20,color:"#16a34a",marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-green-800 font-medium">{successMessage}</span>
+              <span style={{color:"#166534",fontWeight:500}}>{successMessage}</span>
             </div>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-between">
+        <div className="fb-d-flex fb-justify-between">
           <button
             onClick={() => {
               if (effectiveAppId && folderId) {
@@ -732,17 +741,17 @@ const Upload: React.FC = () => {
                 navigate('/');
               }
             }}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            className="btn btn-default"
             disabled={uploading}
           >
             Cancel
           </button>
           
-          <div className="flex space-x-4">
+          <div className="fb-d-flex fb-gap-3">
             {files.length > 0 && !uploading && (
               <button
                 onClick={() => setFiles([])}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="btn btn-default"
                 disabled={uploading}
               >
                 Clear All
@@ -752,23 +761,28 @@ const Upload: React.FC = () => {
             <button
               onClick={handleUpload}
               disabled={uploading || files.length === 0 || (effectiveDrawerSlug && folders.length === 0)}
-              className={`px-8 py-3 rounded-lg font-medium ${
-                uploading || files.length === 0 || (effectiveDrawerSlug && folders.length === 0)
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+              style={{
+                padding: '12px 32px',
+                borderRadius: 8,
+                fontWeight: 500,
+                background: (uploading || files.length === 0 || (effectiveDrawerSlug && folders.length === 0)) ? '#9ca3af' : '#2563eb',
+                color: (uploading || files.length === 0 || (effectiveDrawerSlug && folders.length === 0)) ? undefined : '#fff',
+                cursor: (uploading || files.length === 0 || (effectiveDrawerSlug && folders.length === 0)) ? 'not-allowed' : 'pointer',
+                border: 'none'
+              }}
+              className={!uploading && files.length > 0 && !(effectiveDrawerSlug && folders.length === 0) ? 'fb-hover-btn' : undefined}
             >
               {uploading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <span className="fb-d-flex fb-align-center">
+                  <svg className="fb-spinner" style={{width:20,height:20,marginLeft:-4,marginRight:12,color:"#fff"}} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Uploading...
                 </span>
               ) : effectiveDrawerSlug && folders.length === 0 ? (
-                <span className="flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span className="fb-d-flex fb-align-center">
+                  <svg style={{width:20,height:20,marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                   No Folders Available

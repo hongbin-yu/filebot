@@ -33,6 +33,11 @@ const AdminAppFolders: React.FC = () => {
   const [showImportWebsiteModal, setShowImportWebsiteModal] = useState(false);
   const [parentFolderPath, setParentFolderPath] = useState<string | null>(null);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [showEditDocModal, setShowEditDocModal] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<any>(null);
+  const [editDocTitle, setEditDocTitle] = useState('');
+  const [editDocDescription, setEditDocDescription] = useState('');
+  const [editDocSaving, setEditDocSaving] = useState(false);
   
   // Website import form
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -95,12 +100,13 @@ const AdminAppFolders: React.FC = () => {
   // Load top-level folders for sidebar
   const loadFolders = async (appIdentifier: string, appId?: string) => {
     try {
+      // Load ALL folders for this app using path prefix filter
       const allFolderData = await folderService.getFolders(appIdentifier, {
         app_slug: appIdentifier,
         path_starts_with: '/' + appIdentifier,
         limit: 5000
       });
-      // Sort by path depth: top-level folders first for the sidebar
+      // Top-level = folders whose parent is the app root path
       const topLevel = allFolderData.filter(f => f.parent_folder_path === '/' + appIdentifier);
       setFolders(topLevel);
       setAllFolders(allFolderData);
@@ -383,9 +389,39 @@ const AdminAppFolders: React.FC = () => {
     }
   };
   
+  // Handle edit document
+  const handleEditDocument = (doc: any) => {
+    setEditingDocument(doc);
+    setEditDocTitle(doc.title || doc.original_filename || '');
+    setEditDocDescription(doc.description || '');
+    setShowEditDocModal(true);
+  };
+
+  const handleSaveEditDoc = async () => {
+    if (!editingDocument || !editDocTitle.trim()) return;
+    setEditDocSaving(true);
+    try {
+      await documentService.updateDocument(editingDocument.path || editingDocument.storage_path, {
+        title: editDocTitle.trim(),
+        description: editDocDescription.trim()
+      });
+      setShowEditDocModal(false);
+      setEditingDocument(null);
+      if (currentFolderPath) {
+        await loadDocuments(currentFolderPath);
+      }
+      showToast('Document updated successfully', 'success');
+    } catch (error) {
+      console.error('Failed to update document:', error);
+      showToast('Failed to update document', 'error');
+    } finally {
+      setEditDocSaving(false);
+    }
+  };
+
   // Handle edit folder
   const handleEditFolder = async (folderPath: string) => {
-    const folderToEdit = folders.find(f => f.path === folderPath);
+    const folderToEdit = allFolders.find(f => f.path === folderPath);
     if (!folderToEdit) return;
     
     setEditingFolder(folderToEdit);
@@ -724,10 +760,9 @@ const AdminAppFolders: React.FC = () => {
   // Render loading state
   if (loading) {
     return (
-      <div className="p-6 text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="mt-4 text-gray-600">Loading folders...</p>
-      </div>
+      <main property="mainContentOfPage" className="container">
+        <p className="mrgn-tp-xl">Loading folders...</p>
+      </main>
     );
   }
   
@@ -737,172 +772,146 @@ const AdminAppFolders: React.FC = () => {
     const errorTitle = isPermissionError ? 'No Access Permission' : 'App Not Found';
     
     return (
-      <div className="p-6">
-        <div className="mb-6">
-          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-            <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
-            <span>›</span>
-            <span className="text-gray-700">Unknown App</span>
+      <main property="mainContentOfPage" className="container">
+        <nav id="wb-bc" property="breadcrumb">
+          <h2 className="wb-inv">You are here:</h2>
+          <div className="container">
+            <ol className="breadcrumb">
+              <li><Link to="/admin/apps">Apps</Link></li>
+              <li>Unknown App</li>
+            </ol>
           </div>
-        </div>
+        </nav>
         
         {isPermissionError ? (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 text-center">
-            <h3 className="text-lg font-medium text-orange-800 mb-2">{errorTitle}</h3>
-            <p className="text-orange-700 mb-4">{error || 'You do not have permission to access this app.'}</p>
-            <div className="space-y-3">
-              <Link to="/admin/apps" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-block">
-                Back to App List
-              </Link>
-              <div className="mt-4 pt-4 border-t border-orange-100">
-                <p className="text-sm text-orange-600 mb-2">To access this app:</p>
-                <div className="space-y-2 text-sm text-orange-700">
-                  <p>1. Log in with the app owner account</p>
-                  <p>2. Contact an admin to grant access</p>
-                  <p>3. Create your own app</p>
-                </div>
-                <button
-                  onClick={() => navigate('/admin/apps?create=true')}
-                  className="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Create New App
-                </button>
-              </div>
-            </div>
+          <div className="alert alert-warning">
+            <h3>{errorTitle}</h3>
+            <p>{error || 'You do not have permission to access this app.'}</p>
+            <Link to="/admin/apps" className="btn btn-primary">Back to App List</Link>
+            <hr/>
+            <p>To access this app:</p>
+            <ol>
+              <li>Log in with the app owner account</li>
+              <li>Contact an admin to grant access</li>
+              <li>Create your own app</li>
+            </ol>
+            <button onClick={() => navigate('/admin/apps?create=true')} className="btn btn-success">Create New App</button>
           </div>
         ) : (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <h3 className="text-lg font-medium text-red-800 mb-2">{errorTitle}</h3>
-            <p className="text-red-700 mb-4">{error || 'Could not find the specified app. Check the URL or go back.'}</p>
-            <Link to="/admin/apps" className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-              Back to App List
-            </Link>
+          <div className="alert alert-danger">
+            <h3>{errorTitle}</h3>
+            <p>{error || 'Could not find the specified app. Check the URL or go back.'}</p>
+            <Link to="/admin/apps" className="btn btn-danger">Back to App List</Link>
           </div>
         )}
-      </div>
+      </main>
     );
   }
   
   const breadcrumbs = buildBreadcrumbs();
   
   return (
-    <div className="p-6 relative">
+    <main property="mainContentOfPage" className="container">
       {/* Inline success notification */}
       {importSuccess && (
-        <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-300 rounded-lg p-4 shadow-lg max-w-md animate-slide-in">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-green-800">{importSuccess}</p>
-              <p className="text-xs text-green-600 mt-1">Check the Tasks page for progress.</p>
-            </div>
-            <button onClick={() => setImportSuccess(null)} className="ml-auto pl-3 text-green-400 hover:text-green-600">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+        <div className="alert alert-success">
+          <p><strong>{importSuccess}</strong></p>
+          <p className="small">Check the Tasks page for progress.</p>
+          <button onClick={() => setImportSuccess(null)} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         </div>
       )}
-      {/* Breadcrumb Navigation */}
-      <div className="mb-6">
-        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-          <Link to="/admin/apps" className="hover:text-blue-600">Apps</Link>
-          {breadcrumbs.map((crumb, index) => (
-            <React.Fragment key={crumb.path}>
-              <span>›</span>
-              {index < breadcrumbs.length - 1 ? (
-                <button
-                  type="button"
-                  className="hover:text-blue-600 underline underline-offset-2"
-                  onClick={() => {
-                    if (crumb.path === 'app') {
-                      // Navigate to app root (clear folder selection)
-                      if (currentFolderPath) {
-                        setForwardStack(prev => [...prev, currentFolderPath]);
+      {/* WET Breadcrumb */}
+      <nav id="wb-bc" property="breadcrumb">
+        <h2 className="wb-inv">You are here:</h2>
+        <div className="container">
+          <ol className="breadcrumb">
+            <li><Link to="/admin/apps">Apps</Link></li>
+            {breadcrumbs.map((crumb, index) => (
+              <React.Fragment key={crumb.path}>
+                {index < breadcrumbs.length - 1 ? (
+                  <li><a href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (crumb.path === 'app') {
+                        if (currentFolderPath) {
+                          setForwardStack(prev => [...prev, currentFolderPath]);
+                        }
+                        setCurrentFolderPath(null);
+                        navigate('');
+                      } else {
+                        handleFolderClick(crumb.path);
                       }
-                      setCurrentFolderPath(null);
-                      navigate('');
-                    } else {
-                      handleFolderClick(crumb.path);
-                    }
-                  }}
-                >
-                  {crumb.name}
-                </button>
-              ) : (
-                <span className="text-gray-700 font-medium">{crumb.name}</span>
-              )}
-            </React.Fragment>
-          ))}
+                    }}
+                  >{crumb.name}</a></li>
+                ) : (
+                  <li>{crumb.name}</li>
+                )}
+              </React.Fragment>
+            ))}
+          </ol>
         </div>
-        <h1 className="text-2xl font-bold text-gray-800">{app.name}</h1>
-        <p className="text-gray-600 mt-1">{app.description}</p>
-      </div>
-      
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Folder Management</h2>
-        <div className="flex space-x-2">
+      </nav>
+
+      {/* Title */}
+      <h1 property="name">{app.name}</h1>
+      <p>{app.description}</p>
+
+      {/* Folder Management bar */}
+      <div className="row mrgn-tp-md mrgn-bttm-md">
+        <div className="col-sm-6">
+          <h2 className="h4">Folder Management</h2>
+        </div>
+        <div className="col-sm-6 text-right">
           <button 
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
+            className="btn btn-primary"
             onClick={() => {
               setParentFolderPath(null);
               setShowCreateModal(true);
             }}
-          >
-            <span>+ Create Root Folder</span>
-          </button>
+          >+ Create Root Folder</button>
+          {' '}
           {currentFolderPath && (
             <button 
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center"
+              className="btn btn-success"
               onClick={() => {
                 setParentFolderPath(currentFolderPath);
                 setShowCreateModal(true);
               }}
-            >
-              <span>+ Create Subfolder</span>
-            </button>
+            >+ Create Subfolder</button>
           )}
         </div>
       </div>
-      
-      {/* Two-Column Layout */}
-      <div className="flex space-x-6">
+
+      <div className="row">
         {/* Left: Subfolders + AI Operations */}
-        <div className="w-1/3 space-y-4">
+        <div className="col-md-3 aside">
           {/* Subfolders Card */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <h3 className="font-medium">Folders</h3>
-              {currentFolder && (() => {
-                const parentPath = currentFolder.parent_folder_path || (currentFolder.path ? currentFolder.path.substring(0, currentFolder.path.lastIndexOf('/')) : null);
-                if (!parentPath || parentPath === '') return null;
-                return (
-                  <button
-                    className="text-blue-600 hover:text-blue-800 text-xs ml-2"
-                    onClick={() => {
-                      setForwardStack(prev => [...prev, currentFolder.path]);
-                      handleFolderClick(parentPath);
-                    }}
-                  >
-                    ← Go to parent folder
-                  </button>
+          <div className="panel panel-info">
+            <div className="panel-heading">
+              <h3 className="panel-title">Folders</h3>
+              <div className="pull-right">
+                {currentFolder && (() => {
+                  const parentPath = currentFolder.parent_folder_path || (currentFolder.path ? currentFolder.path.substring(0, currentFolder.path.lastIndexOf('/')) : null);
+                  if (!parentPath || parentPath === '') return null;
+                  return (
+                    <button
+                      className="btn btn-link btn-xs"
+                      onClick={() => {
+                        setForwardStack(prev => [...prev, currentFolder.path]);
+                        handleFolderClick(parentPath);
+                      }}
+                    >← Parent</button>
                 );
               })()}
-              <button
-                className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                disabled={forwardStack.length === 0}
-                onClick={handleForward}
-                title="Forward"
-              >
-                <svg className="w-4 h-4 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
-              </button>
+                <button
+                  className="btn btn-link btn-xs"
+                  disabled={forwardStack.length === 0}
+                  onClick={handleForward}
+                  title="Forward"
+                >→</button>
+              </div>
             </div>
-            <div className="p-4">
+            <div className="panel-body">
               {(() => {
                 // Show subfolders when a folder is selected, otherwise show all folders
                 const displayFolders = currentFolder ? subfolders : folders;
@@ -914,34 +923,34 @@ const AdminAppFolders: React.FC = () => {
                 return (
                   <>
                     {showFilter && (
-                      <div className="mb-3">
+                      <div style={{marginBottom:12}}>
                         <input
                           type="text"
                           value={folderSearch}
                           onChange={e => setFolderSearch(e.target.value)}
                           placeholder="Filter folders..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           style={{ width:"100%", paddingLeft:12, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:8, fontSize:"0.875rem" }}
                         />
                       </div>
                     )}
                     {filteredFolders.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="fb-space-y" style={{gap:8}}>
                         {filteredFolders.map(folder => (
                           <div
                             key={folder.path || folder.id}
-                            className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                            style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8, cursor:"pointer" }}
                             onClick={() => handleFolderClick(folder.path || '')}
                           >
-                            <div className="flex items-center">
-                              <FolderIcon className="w-5 h-5 text-yellow-500 mr-2" />
-                              <div className="flex-1">
-                                <div className="font-medium">{folder.name}</div>
+                            <div className="fb-d-flex fb-align-center">
+                              <FolderIcon style={{ width:20, height:20, color:"#eab308", marginRight:8 }} />
+                              <div style={{flex:1}}>
+                                <div style={{fontWeight:500}}>{folder.name}</div>
                               </div>
-                              <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                              <ChevronRightIcon style={{ width:20, height:20, color:"#9ca3af" }} />
                             </div>
                           </div>
                         ))}
-                        <div className="text-sm text-gray-500 mt-2">
+                        <div  style={{ fontSize:"0.875rem", marginTop:8 }}>
                           {filteredFolders.length} folder{filteredFolders.length !== 1 ? 's' : ''} total
                           {folderSearch && filteredFolders.length !== displayFolders.length && (
                             <> (filtered from {displayFolders.length})</>
@@ -949,7 +958,7 @@ const AdminAppFolders: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500 text-center py-4">
+                      <p  style={{ paddingTop:16 }}>
                         {folderSearch ? 'No matching folders' : 'No folders yet'}
                       </p>
                     )}
@@ -960,73 +969,73 @@ const AdminAppFolders: React.FC = () => {
           </div>
 
           {/* AI Operations Card */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 border-b">
-              <h3 className="font-medium">AI Operations</h3>
+          <div className="panel panel-warning">
+            <div className="panel-heading">
+              <h3 className="panel-title">AI Operations</h3>
             </div>
-            <div className="p-4">
-              <div className="grid grid-cols-1 gap-3">
+            <div className="panel-body">
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(1, minmax(0, 1fr))", gap:12 }}>
                 <button
-                  className="p-3 border rounded-lg hover:bg-red-50 text-left border-red-200"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8, borderColor:"#fecaca" }}
                   onClick={() => handleDeleteFolder(currentFolder?.path || currentFolderPath || '')}
                 >
-                  <div className="font-medium text-red-600">Delete Folder</div>
-                  <div className="text-sm text-red-500">Delete this folder and all its contents</div>
+                  <div style={{ fontWeight:500, color:"#dc2626" }}>Delete Folder</div>
+                  <div style={{ fontSize:"0.875rem", color:"#ef4444" }}>Delete this folder and all its contents</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8 }}
                   onClick={() => {
                     setParentFolderPath(currentFolder?.path || currentFolderPath || '');
                     setShowCreateModal(true);
                   }}
                 >
-                  <div className="font-medium">Create Subfolder</div>
-                  <div className="text-sm text-gray-500">Create a new subfolder in the current folder</div>
+                  <div style={{fontWeight:500}}>Create Subfolder</div>
+                  <div  style={{fontSize:"0.875rem"}}>Create a new subfolder in the current folder</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8 }}
                   onClick={() => handleNavigateToUpload(currentFolder?.path || currentFolderPath || '')}
                 >
-                  <div className="font-medium">Upload</div>
-                  <div className="text-sm text-gray-500">Upload files to this folder</div>
+                  <div style={{fontWeight:500}}>Upload</div>
+                  <div  style={{fontSize:"0.875rem"}}>Upload files to this folder</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-gray-50 text-left"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8 }}
                   onClick={() => handleNavigateToDocuments(currentFolder?.path || currentFolderPath || '')}
                 >
-                  <div className="font-medium">Documents</div>
-                  <div className="text-sm text-gray-500">Browse documents in this folder</div>
+                  <div style={{fontWeight:500}}>Documents</div>
+                  <div  style={{fontSize:"0.875rem"}}>Browse documents in this folder</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-blue-50 text-left border-blue-200"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8, borderColor:"#bfdbfe" }}
                   onClick={() => handleEditFolder(currentFolder?.path || currentFolderPath || '')}
                 >
-                  <div className="font-medium text-blue-600">Edit Folder</div>
-                  <div className="text-sm text-blue-500">Edit folder name and description</div>
+                  <div style={{ fontWeight:500, color:"#2563eb" }}>Edit Folder</div>
+                  <div style={{ fontSize:"0.875rem", color:"#3b82f6" }}>Edit folder name and description</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-green-50 text-left border-green-200"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8, borderColor:"#bbf7d0" }}
                   onClick={() => handleImportFolder(currentFolder?.path || currentFolderPath || '')}
                 >
-                  <div className="font-medium text-green-600">Import Folder</div>
-                  <div className="text-sm text-green-500">Import an entire folder from local drive</div>
+                  <div style={{ fontWeight:500, color:"#16a34a" }}>Import Folder</div>
+                  <div style={{ fontSize:"0.875rem", color:"#22c55e" }}>Import an entire folder from local drive</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-amber-50 text-left border-amber-200"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8, borderColor:"#fde68a" }}
                   onClick={handleMoveFolder}
                 >
-                  <div className="font-medium text-amber-600">Move Folder</div>
-                  <div className="text-sm text-amber-500">Move this folder to a different parent</div>
+                  <div  style={{ fontWeight:500 }}>Move Folder</div>
+                  <div  style={{ fontSize:"0.875rem" }}>Move this folder to a different parent</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-purple-50 text-left border-purple-200"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8, borderColor:"#e9d5ff" }}
                   onClick={() => handleImportWebsite(currentFolder?.path || currentFolderPath || '')}
                 >
-                  <div className="font-medium text-purple-600">Import Website</div>
-                  <div className="text-sm text-purple-500">Crawl web pages and images from a URL</div>
+                  <div style={{ fontWeight:500, color:"#9333ea" }}>Import Website</div>
+                  <div  style={{ fontSize:"0.875rem" }}>Crawl web pages and images from a URL</div>
                 </button>
                 <button
-                  className="p-3 border rounded-lg hover:bg-indigo-50 text-left border-indigo-200"
+                   style={{ padding:12, border:"1px solid #e5e7eb", borderRadius:8, borderColor:"#c7d2fe" }}
                   onClick={() => {
                     if (!currentFolderPath) {
                       showToast('Please select a folder first', 'warning');
@@ -1038,8 +1047,8 @@ const AdminAppFolders: React.FC = () => {
                     setShowExportWebBotModal(true);
                   }}
                 >
-                  <div className="font-medium text-indigo-600">Export to WebBot</div>
-                  <div className="text-sm text-indigo-500">Export folder structure and pages to WebBot</div>
+                  <div style={{ fontWeight:500, color:"#4f46e5" }}>Export to WebBot</div>
+                  <div  style={{ fontSize:"0.875rem" }}>Export folder structure and pages to WebBot</div>
                 </button>
               </div>
             </div>
@@ -1047,103 +1056,99 @@ const AdminAppFolders: React.FC = () => {
         </div>
 
         {/* Right: Folder Content */}
-        <div className="w-2/3">
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 border-b">
+        <div className="col-md-9">
+          <div className="panel panel-success">
+            <div className="panel-heading">
               {currentFolder ? (
-                <div className="flex justify-between items-start">
-                  <details className="text-sm flex-1">
-                    <summary className="cursor-pointer">
-                      <h3 className="font-medium inline">{currentFolder.name} - Content</h3>
-                    </summary>
-                    <div className="mt-2 mb-2 text-xs text-gray-500 space-y-1 pl-1">
-                      <div><span className="text-gray-400">Path:</span> <span className="font-mono">{currentFolder.path}</span></div>
-                      <div><span className="text-gray-400">Created:</span> {new Date(currentFolder.created_at).toLocaleString()}</div>
-                      {currentFolder.description && (
-                        <div><span className="text-gray-400">Description:</span> {currentFolder.description}</div>
-                      )}
-                    </div>
-                  </details>
-                  <div className="text-sm text-gray-500 shrink-0 pt-0.5">
-                    Documents ({documents.length})
+                <details>
+                  <summary>
+                    <h3 className="panel-title">{currentFolder.name}</h3>
+                  </summary>
+                  <div className="small mrgn-tp-sm">
+                    <p><strong>Path:</strong> <code>{currentFolder.path}</code></p>
+                    <p><strong>Created:</strong> {new Date(currentFolder.created_at).toLocaleString()}</p>
+                    {currentFolder.description && (
+                      <p><strong>Description:</strong> {currentFolder.description}</p>
+                    )}
                   </div>
-                </div>
+                </details>
               ) : (
-                <h3 className="font-medium">Root — Content</h3>
-              )}
-              {!currentFolder && (
-                <div className="text-sm text-gray-500 shrink-0 pt-0.5">
-                  Documents ({documents.length})
-                </div>
+                <h3 className="panel-title">Root</h3>
               )}
             </div>
             
-            <div className="p-4">
+            <div className="panel-body">
               {!currentFolder && documents.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <FolderIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                <div  style={{ paddingTop:32 }}>
+                  <FolderIcon  style={{ width:64, height:64, color:"#d1d5db", marginBottom:16 }} />
                   <p>Select a folder from the left panel</p>
                 </div>
               ) : (
                 <>
                   {/* Documents */}
                   {documents.length > 0 && (
-                    <div className="mb-6 border-t pt-6">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
+                    <div style={{  paddingTop:24 ,  marginBottom:24, borderTop:"1px solid #e5e7eb"  }}>
+                      <div className="table-responsive" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                        <table className="fb-divide-y" style={{ minWidth:"100%", "--divide-color":"#e5e7eb" }}>
+                          <thead style={{background:"#f9fafb"}}>
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>Documents <span className="badge pull-right">{documents.length} <span className="wb-inv">Documents</span></span></th>
+                              <th  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>Actions</th>
+                              <th  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>Type</th>
+                              <th  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>Size</th>
+                              <th  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>Uploaded</th>
+                              <th  style={{ paddingLeft:24, paddingTop:12, fontSize:"0.75rem", fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em" }}>Status</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="table">
                             {documents.map(doc => (
-                              <tr key={doc.path || doc.storage_path || doc.name} className="hover:bg-gray-50">
-                                <td className="px-6 py-4">
+                              <tr key={doc.path || doc.storage_path || doc.name} className="fb-hover-btn">
+                                <td style={{ paddingLeft:24, paddingTop:16 }}>
                                   <div>
-                                    <div className="font-medium text-gray-900">{doc.title || doc.original_filename || 'Untitled'}</div>
-                                    <div className="text-sm text-gray-500">{doc.original_filename}</div>
-                                    {doc.folder_path && <div className="text-xs text-gray-400 font-mono mt-0.5">{doc.folder_path}</div>}
+                                    <div className="fb-label">{doc.title || doc.original_filename || 'Untitled'}</div>
+                                    <div  style={{fontSize:"0.875rem"}}>{doc.original_filename}</div>
+                                    {doc.folder_path && <div  style={{ fontSize:"0.75rem", color:"#9ca3af", fontFamily:"monospace" }}>{doc.folder_path}</div>}
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 text-right text-sm font-medium">
+                                <td  style={{ paddingLeft:24, paddingTop:16, fontSize:"0.875rem", fontWeight:500 }}>
                                   <button 
-                                    className="text-blue-600 hover:text-blue-900 mr-3"
+                                    style={{  marginRight:12 ,  color:"#2563eb"  }}
                                     onClick={() => handlePreviewDocument(doc)}
                                   >
                                     Preview
                                   </button>
                                   <button type="button"
-                                    className="text-emerald-600 hover:text-emerald-800 mr-3 text-sm font-medium bg-transparent border-0"
+                                    style={{  marginRight:12 ,  color:"#059669", fontSize:"0.875rem", fontWeight:500, background:"transparent", border:"none"  }}
                                     onClick={() => handleWebbotPush(doc)}
                                     title="Import this page to WebBot"
                                   >
                                     WebBot
                                   </button>
                                   <button 
-                                    className="text-red-600 hover:text-red-900"
+                                    className="fb-link" style={{color:"#2563eb"}}
+                                    onClick={() => handleEditDocument(doc)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button 
+                                    className="fb-link" style={{color:"#dc2626"}}
                                     onClick={() => handleDeleteDocument(doc)}
                                   >
                                     Delete
                                   </button>
                                 </td>
-                                <td className="px-6 py-4">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <td style={{ paddingLeft:24, paddingTop:16 }}>
+                                  <span className="fb-align-center" style={{ display:"inline-flex", borderRadius:"50%", fontSize:"0.75rem", fontWeight:500, background:"#dbeafe", color:"#1e40af" }}>
                                     {doc.file_type || 'Unknown'}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td style={{ paddingLeft:24, paddingTop:16 }}>
                                   {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : 'Unknown'}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td style={{ paddingLeft:24, paddingTop:16 }}>
                                   {doc.created_at ? new Date(doc.created_at).toLocaleString() : 'Unknown'}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td style={{ paddingLeft:24, paddingTop:16 }}>
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     doc.conversion_status === 'completed' ? 'bg-green-100 text-green-800' :
                                     doc.conversion_status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
@@ -1165,13 +1170,13 @@ const AdminAppFolders: React.FC = () => {
                   )}
                   
                   {documents.length === 0 && currentFolder && (
-                    <div className="mb-6 border-t pt-6">
-                      <h4 className="font-medium mb-3">Documents</h4>
-                      <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
-                        <DocumentIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                    <div style={{  paddingTop:24 ,  marginBottom:24, borderTop:"1px solid #e5e7eb"  }}>
+                      <h4 style={{ fontWeight:500, marginBottom:12 }}>Documents</h4>
+                      <div  style={{ paddingTop:32, background:"#f9fafb", borderRadius:8 }}>
+                        <DocumentIcon  style={{ width:64, height:64, color:"#d1d5db", marginBottom:16 }} />
                         <p>No documents in this folder</p>
                         <button 
-                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          style={{ marginTop:16, paddingLeft:16, paddingTop:8, background:"#2563eb", color:"#ffffff", borderRadius:4 }}
                           onClick={() => handleNavigateToUpload(currentFolder?.path || currentFolderPath || '')}
                         >
                           Upload First Document
@@ -1219,48 +1224,48 @@ const AdminAppFolders: React.FC = () => {
       
       {/* Export to WebBot Modal */}
       {showExportWebBotModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 overflow-y-auto py-8">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 my-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-indigo-800">Export to WebBot</h3>
+        <div className="fb-align-start fb-justify-center" style={{  background:"rgba" ,  position:"fixed", top:0, background:"#000000", display:"flex", zIndex:50, overflowY:"auto", paddingTop:32  }}>
+          <div style={{  boxShadow:"0 20px 25px -5px rgba(0,0,0,0.1)" ,  background:"#ffffff", borderRadius:8, width:"100%", maxWidth:768  }}>
+            <div style={{padding:24}}>
+              <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+                <h3 style={{ fontSize:"1.125rem", fontWeight:500, color:"#3730a3" }}>Export to WebBot</h3>
                 <button
                   onClick={() => setShowExportWebBotModal(false)}
-                  className="text-gray-400 hover:text-gray-500"
+                  style={{ color:"#9ca3af" }}
                 >
                   ✕
                 </button>
               </div>
               
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm text-gray-600">
+              <div className="fb-space-y" style={{gap:16}}>
+                <div style={{ background:"#f9fafb", padding:12, borderRadius:6 }}>
+                  <p  style={{fontSize:"0.875rem"}}>
                     <strong>Folder:</strong> {currentFolderPath || 'Not selected'}
                   </p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="fb-label" style={{display:"block",fontSize:"0.875rem",marginBottom:4}}>
                     Export Depth (1-20)
                   </label>
-                  <div className="flex items-center space-x-2">
+                  <div className="fb-d-flex fb-align-center fb-gap-1">
                     <input
                       type="number"
                       min="1"
                       max="20"
                       value={exportDepth}
                       onChange={(e) => setExportDepth(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
-                      className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                       style={{ width:80, paddingLeft:12, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:6 }}
                       disabled={exportingToWebBot}
                     />
-                    <span className="text-sm text-gray-500">
+                    <span  style={{fontSize:"0.875rem"}}>
                       depth 1 = current folder only
                     </span>
                   </div>
                 </div>
                 
                 {exportError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                  <div style={{ background:"#fef2f2", border:"1px solid #e5e7eb", borderColor:"#fecaca", color:"#b91c1c", paddingLeft:16, paddingTop:12, borderRadius:6, fontSize:"0.875rem" }}>
                     {exportError}
                   </div>
                 )}
@@ -1268,13 +1273,13 @@ const AdminAppFolders: React.FC = () => {
                 <button
                   onClick={handleExportToWebBot}
                   disabled={exportingToWebBot || !currentFolderPath}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ width:"100%", paddingLeft:16, paddingTop:8, background:"#4f46e5", color:"#ffffff", borderRadius:6 }}
                 >
                   {exportingToWebBot ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    <span className="fb-align-center fb-justify-center" style={{ display:"flex" }}>
+                      <svg className="-ml-1 fb-spinner" style={{ marginRight:8, height:16, width:16, color:"#ffffff" }} fill="none" viewBox="0 0 24 24">
+                        <circle style={{ opacity:0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path style={{opacity:0.75}} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                       </svg>
                       Exporting...
                     </span>
@@ -1284,9 +1289,9 @@ const AdminAppFolders: React.FC = () => {
                 </button>
                 
                 {exportResult && (
-                  <div className="mt-4 border-t pt-4">
-                    <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3">
-                      <p className="text-sm text-green-800">
+                  <div style={{ marginTop:16, borderTop:"1px solid #e5e7eb", paddingTop:16 }}>
+                    <div style={{ background:"#f0fdf4", border:"1px solid #e5e7eb", borderColor:"#bbf7d0", borderRadius:6, padding:12, marginBottom:12 }}>
+                      <p style={{ fontSize:"0.875rem", color:"#166534" }}>
                         📄 <strong>Documents:</strong> {exportResult.documents ? exportResult.documents.length : (exportResult.document_count || 0)}
                         {(exportResult.subfolder_count > 0 || (exportResult.subfolders || []).length > 0) && (
                           <> &nbsp;|&nbsp; 📁 <strong>Subfolders:</strong> {(exportResult.subfolders || []).length}</>
@@ -1296,15 +1301,15 @@ const AdminAppFolders: React.FC = () => {
 
                     {/* Preview of exported documents */}
                     {(exportResult.documents || []).length > 0 && (
-                      <div className="mb-3">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      <div style={{marginBottom:12}}>
+                        <h4 className="fb-label" style={{display:"block",marginBottom:8}}>
                           Documents ({exportResult.documents.length})
                         </h4>
-                        <div className="bg-gray-50 border border-gray-200 rounded-md p-3 max-h-60 overflow-y-auto">
+                        <div  style={{ background:"#f9fafb", border:"1px solid #e5e7eb", borderColor:"#e5e7eb", borderRadius:6, padding:12, overflowY:"auto" }}>
                           {(exportResult.documents.slice(0, 10) || []).map((doc: any, i: number) => (
-                            <div key={doc.path || i} className="text-xs text-gray-600 py-1 border-b border-gray-100 last:border-0">
-                              <span className="font-medium">{doc.title || doc.path}</span>
-                              <span className="text-gray-400 ml-2">{doc.mime_type || ''}</span>
+                            <div key={doc.path || i}  style={{ fontSize:"0.75rem", paddingTop:4, borderBottom:"1px solid #e5e7eb" }}>
+                              <span style={{fontWeight:500}}>{doc.title || doc.path}</span>
+                              <span style={{ color:"#9ca3af", marginLeft:8 }}>{doc.mime_type || ''}</span>
                             </div>
                           ))}
                         </div>
@@ -1315,13 +1320,13 @@ const AdminAppFolders: React.FC = () => {
                     <button
                       onClick={handleImportToWebBot}
                       disabled={importingToWebBot || !exportResult}
-                      className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ width:"100%", paddingLeft:16, paddingTop:8, background:"#16a34a", color:"#ffffff", borderRadius:6 }}
                     >
                       {importingToWebBot ? (
-                        <span className="flex items-center justify-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        <span className="fb-align-center fb-justify-center" style={{ display:"flex" }}>
+                          <svg className="-ml-1 fb-spinner" style={{ marginRight:8, height:16, width:16, color:"#ffffff" }} fill="none" viewBox="0 0 24 24">
+                            <circle style={{ opacity:0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path style={{opacity:0.75}} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                           </svg>
                           Importing...
                         </span>
@@ -1332,13 +1337,13 @@ const AdminAppFolders: React.FC = () => {
 
                     {/* Import result display */}
                     {importResult && (
-                      <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
-                        <p className="text-sm text-blue-800">
+                      <div style={{ marginTop:12, background:"#eff6ff", border:"1px solid #e5e7eb", borderColor:"#bfdbfe", borderRadius:6, padding:12 }}>
+                        <p style={{ fontSize:"0.875rem", color:"#1e40af" }}>
                           ✅ <strong>Import complete:</strong>{' '}
                           {importResult.inserted} new pages{' '}
                           {importResult.updated > 0 && <>+ {importResult.updated} updated{' '}</>}
                           in WebBot{' '}
-                          {importResult.skipped > 0 && <span className="text-gray-500">({importResult.skipped} skipped)</span>}
+                          {importResult.skipped > 0 && <span >({importResult.skipped} skipped)</span>}
                         </p>
                       </div>
                     )}
@@ -1352,28 +1357,28 @@ const AdminAppFolders: React.FC = () => {
       
       {/* Move Folder Modal */}
       {showMoveFolderModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-amber-800">Move Folder</h3>
+        <div className="fb-modal-backdrop fb-d-flex fb-align-center fb-justify-center">
+          <div style={{  boxShadow:"0 20px 25px -5px rgba(0,0,0,0.1)" ,  background:"#ffffff", borderRadius:8, width:"100%", maxWidth:576  }}>
+            <div style={{padding:24}}>
+              <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+                <h3  style={{ fontSize:"1.125rem", fontWeight:500 }}>Move Folder</h3>
                 <button
                   onClick={() => setShowMoveFolderModal(false)}
-                  className="text-gray-400 hover:text-gray-500"
+                  style={{ color:"#9ca3af" }}
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm text-gray-600">
+              <div className="fb-space-y" style={{gap:16}}>
+                <div style={{ background:"#f9fafb", padding:12, borderRadius:6 }}>
+                  <p  style={{fontSize:"0.875rem"}}>
                     <strong>Moving:</strong> {currentFolder?.path || currentFolderPath}
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="fb-label" style={{display:"block",fontSize:"0.875rem",marginBottom:4}}>
                     Target Parent Folder Path
                   </label>
                   <input
@@ -1381,24 +1386,24 @@ const AdminAppFolders: React.FC = () => {
                     value={moveFolderTarget}
                     onChange={(e) => setMoveFolderTarget(e.target.value)}
                     placeholder="e.g. /boarding/canadasite/en/new-parent"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                     style={{ width:"100%", paddingLeft:12, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:6 }}
                     disabled={moveFolderLoading}
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p style={{ fontSize:"0.75rem", color:"#9ca3af", marginTop:4 }}>
                     Enter the full path of the target parent folder
                   </p>
                 </div>
 
                 {moveFolderError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                  <div style={{ background:"#fef2f2", border:"1px solid #e5e7eb", borderColor:"#fecaca", color:"#b91c1c", paddingLeft:16, paddingTop:12, borderRadius:6, fontSize:"0.875rem" }}>
                     {moveFolderError}
                   </div>
                 )}
 
-                <div className="flex gap-2">
+                <div style={{ display:"flex", gap:8 }}>
                   <button
                     onClick={() => setShowMoveFolderModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                    style={{ flex:1, paddingLeft:16, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", color:"#374151", borderRadius:6 }}
                     disabled={moveFolderLoading}
                   >
                     Cancel
@@ -1406,13 +1411,13 @@ const AdminAppFolders: React.FC = () => {
                   <button
                     onClick={handleMoveFolderConfirm}
                     disabled={moveFolderLoading || !moveFolderTarget.trim()}
-                    className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ flex:1, paddingLeft:16, paddingTop:8, background:"#d97706", color:"#ffffff", borderRadius:6 }}
                   >
                     {moveFolderLoading ? (
-                      <span className="flex items-center justify-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                      <span className="fb-align-center fb-justify-center" style={{ display:"flex" }}>
+                        <svg className="-ml-1 fb-spinner" style={{ marginRight:8, height:16, width:16, color:"#ffffff" }} fill="none" viewBox="0 0 24 24">
+                          <circle style={{ opacity:0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path style={{opacity:0.75}} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                         </svg>
                         Moving...
                       </span>
@@ -1429,21 +1434,21 @@ const AdminAppFolders: React.FC = () => {
 
       {/* Import Website Modal */}
       {showImportWebsiteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-purple-800">Import Content</h3>
+        <div className="fb-modal-backdrop fb-d-flex fb-align-center fb-justify-center">
+          <div style={{  boxShadow:"0 20px 25px -5px rgba(0,0,0,0.1)" ,  background:"#ffffff", borderRadius:8, width:"100%", maxWidth:576  }}>
+            <div style={{padding:24}}>
+              <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+                <h3 style={{ fontSize:"1.125rem", fontWeight:500, color:"#6b21a8" }}>Import Content</h3>
                 <button
                   onClick={() => setShowImportWebsiteModal(false)}
-                  className="text-gray-400 hover:text-gray-500"
+                  style={{ color:"#9ca3af" }}
                 >
                   ✕
                 </button>
               </div>
               
               {/* Tab switcher */}
-              <div className="flex border-b border-gray-200 mb-4">
+              <div style={{ display:"flex", borderBottom:"1px solid #e5e7eb", borderColor:"#e5e7eb", marginBottom:16 }}>
                 <button
                   onClick={() => { setImportTab('website'); setImportError(null); }}
                   className={`px-4 py-2 text-sm font-medium border-b-2 ${
@@ -1467,9 +1472,9 @@ const AdminAppFolders: React.FC = () => {
               </div>
               
               {importTab === 'website' && (
-                <div className="space-y-4">
+                <div className="fb-space-y" style={{gap:16}}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="fb-label" style={{display:"block",fontSize:"0.875rem",marginBottom:4}}>
                       Website URL
                     </label>
                     <input
@@ -1477,54 +1482,54 @@ const AdminAppFolders: React.FC = () => {
                       value={websiteUrl}
                       onChange={(e) => setWebsiteUrl(e.target.value)}
                       placeholder="https://example.com"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                       style={{ width:"100%", paddingLeft:12, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:6 }}
                       disabled={importingWebsite}
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="fb-label" style={{display:"block",fontSize:"0.875rem",marginBottom:4}}>
                       Crawl Depth
                     </label>
-                    <div className="flex items-center space-x-2">
+                    <div className="fb-d-flex fb-align-center fb-gap-1">
                       <input
                         type="range"
                         min="1"
                         max="5"
                         value={crawlDepth}
                         onChange={(e) => setCrawlDepth(parseInt(e.target.value))}
-                        className="flex-1"
+                        style={{flex:1}}
                         disabled={importingWebsite}
                       />
-                      <span className="text-sm font-medium text-purple-600 w-8">{crawlDepth}</span>
+                      <span style={{ fontSize:"0.875rem", fontWeight:500, color:"#9333ea", width:32 }}>{crawlDepth}</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <div className="fb-justify-between" style={{ display:"flex", fontSize:"0.75rem", marginTop:4 }}>
                       <span>1 (Homepage only)</span>
                       <span>3</span>
                       <span>5 (Deep crawl)</span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p  style={{ fontSize:"0.875rem", marginTop:4 }}>
                       Depth {crawlDepth}: {getDepthDescription(crawlDepth)}
                     </p>
                   </div>
                   
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <p className="text-sm text-gray-600">
+                  <div style={{ background:"#f9fafb", padding:12, borderRadius:6 }}>
+                    <p  style={{fontSize:"0.875rem"}}>
                       <strong>Target Folder:</strong> {currentFolder?.name || 'Not selected'} <br />
                       <strong>App:</strong> {app?.name || 'Unknown'}
                     </p>
                   </div>
                   
                   {importError && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                      <p className="text-sm text-red-700">{importError}</p>
+                    <div style={{ background:"#fef2f2", border:"1px solid #e5e7eb", borderColor:"#fecaca", borderRadius:6, padding:12 }}>
+                      <p style={{fontSize:"0.875rem",color:"#b91c1c"}}>{importError}</p>
                     </div>
                   )}
                   
-                  <div className="flex justify-end space-x-3 pt-4">
+                  <div className="fb-justify-end" style={{ display:"flex", columnGap:12, paddingTop:16 }}>
                     <button
                       onClick={() => setShowImportWebsiteModal(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      style={{ paddingLeft:16, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:6, color:"#374151" }}
                       disabled={importingWebsite}
                     >
                       Cancel
@@ -1532,11 +1537,11 @@ const AdminAppFolders: React.FC = () => {
                     <button
                       onClick={handleSubmitImportWebsite}
                       disabled={importingWebsite || !websiteUrl.trim()}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                      className="fb-align-center" style={{ paddingLeft:16, paddingTop:8, background:"#9333ea", color:"#ffffff", borderRadius:6, display:"flex" }}
                     >
                       {importingWebsite ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="fb-spinner" style={{ borderRadius:"50%", height:16, width:16, borderBottomWidth:2, marginRight:8 }}></div>
                           Importing...
                         </>
                       ) : (
@@ -1548,9 +1553,9 @@ const AdminAppFolders: React.FC = () => {
               )}
               
               {importTab === 'sitemap' && (
-                <div className="space-y-4">
+                <div className="fb-space-y" style={{gap:16}}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="fb-label" style={{display:"block",fontSize:"0.875rem",marginBottom:4}}>
                       Sitemap URL
                     </label>
                     <input
@@ -1558,50 +1563,50 @@ const AdminAppFolders: React.FC = () => {
                       value={sitemapUrl}
                       onChange={(e) => setSitemapUrl(e.target.value)}
                       placeholder="https://www.canada.ca/sitemap.xml"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      style={{ width:"100%", paddingLeft:12, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:6 }}
                       disabled={importingSitemap}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p  style={{fontSize:"0.75rem",marginTop:4}}>
                       Enter a sitemap.xml URL to bulk-import all listed pages
                     </p>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="fb-label" style={{display:"block",fontSize:"0.875rem",marginBottom:4}}>
                       Recursion Depth
                     </label>
                     <select
                       value={sitemapDepth}
                       onChange={(e) => setSitemapDepth(parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      style={{ width:"100%", paddingLeft:12, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:6 }}
                       disabled={importingSitemap}
                     >
                       <option value={0}>0 - Sitemap URLs only (no link tracking)</option>
                       <option value={1}>1 - Sitemap URLs + direct child links</option>
                       <option value={2}>2 - Sitemap URLs + 2 levels deep</option>
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p  style={{fontSize:"0.75rem",marginTop:4}}>
                       Recommended: depth = 0 (sitemaps already contain all desired URLs)
                     </p>
                   </div>
                   
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <p className="text-sm text-gray-600">
+                  <div style={{ background:"#f9fafb", padding:12, borderRadius:6 }}>
+                    <p  style={{fontSize:"0.875rem"}}>
                       <strong>Target Folder:</strong> {currentFolder?.name || 'Not selected'} <br />
                       <strong>App:</strong> {app?.name || 'Unknown'}
                     </p>
                   </div>
                   
                   {importError && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                      <p className="text-sm text-red-700">{importError}</p>
+                    <div style={{ background:"#fef2f2", border:"1px solid #e5e7eb", borderColor:"#fecaca", borderRadius:6, padding:12 }}>
+                      <p style={{fontSize:"0.875rem",color:"#b91c1c"}}>{importError}</p>
                     </div>
                   )}
                   
-                  <div className="flex justify-end space-x-3 pt-4">
+                  <div className="fb-justify-end" style={{ display:"flex", columnGap:12, paddingTop:16 }}>
                     <button
                       onClick={() => setShowImportWebsiteModal(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      style={{ paddingLeft:16, paddingTop:8, border:"1px solid #e5e7eb", borderColor:"#d1d5db", borderRadius:6, color:"#374151" }}
                       disabled={importingSitemap}
                     >
                       Cancel
@@ -1609,11 +1614,11 @@ const AdminAppFolders: React.FC = () => {
                     <button
                       onClick={handleSubmitImportSitemap}
                       disabled={importingSitemap || !sitemapUrl.trim()}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                      className="fb-align-center" style={{ paddingLeft:16, paddingTop:8, background:"#16a34a", color:"#ffffff", borderRadius:6, display:"flex" }}
                     >
                       {importingSitemap ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="fb-spinner" style={{ borderRadius:"50%", height:16, width:16, borderBottomWidth:2, marginRight:8 }}></div>
                           Importing...
                         </>
                       ) : (
@@ -1627,7 +1632,57 @@ const AdminAppFolders: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+
+      {/* Edit Document Modal */}
+      {showEditDocModal && editingDocument && (
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ maxWidth: 520, margin: '60px auto' }}>
+            <div className="panel panel-default" style={{ margin: 0 }}>
+              <div className="panel-heading">
+                <button className="close" onClick={() => { setShowEditDocModal(false); setEditingDocument(null); }}>&times;</button>
+                <h3 className="panel-title">✏️ Edit Document</h3>
+              </div>
+              <div className="panel-body">
+                <div className="form-group">
+                  <label>Title</label>
+                  <input type="text" className="form-control" style={{ display: 'block', width: '100%', boxSizing: 'border-box' }}
+                    value={editDocTitle}
+                    onChange={e => setEditDocTitle(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea className="form-control" rows={3} style={{ display: 'block', width: '100%', boxSizing: 'border-box' }}
+                    value={editDocDescription}
+                    onChange={e => setEditDocDescription(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Path</label>
+                  <code className="form-control" style={{ display: 'block', wordBreak: 'break-all', height: 'auto', minHeight: 34 }}>
+                    {editingDocument.path || editingDocument.storage_path || '-'}
+                  </code>
+                </div>
+                <div className="form-group">
+                  <label>Folder Path</label>
+                  <code className="form-control" style={{ display: 'block', wordBreak: 'break-all', height: 'auto', minHeight: 34 }}>
+                    {editingDocument.folder_path || editingDocument.parent_folder_path || '-'}
+                  </code>
+                </div>
+              </div>
+              <div className="panel-footer text-right">
+                <button className="btn btn-default"
+                  onClick={() => { setShowEditDocModal(false); setEditingDocument(null); }}
+                  disabled={editDocSaving}>Cancel</button>
+                <button className="btn btn-primary" style={{ marginLeft: 8 }}
+                  onClick={handleSaveEditDoc}
+                  disabled={editDocSaving || !editDocTitle.trim()}>
+                  {editDocSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
 };
 

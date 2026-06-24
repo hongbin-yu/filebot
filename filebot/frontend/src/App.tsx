@@ -18,6 +18,7 @@ import AdminTasks from './pages/admin/AdminTasks';
 import AdminGroups from './pages/admin/AdminGroups';
 import AdminPermissions from './pages/admin/AdminPermissions';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminInstitutions from './pages/admin/AdminInstitutions';
 import DocumentDetail from './pages/DocumentDetail';
 import AdminPathView from './pages/admin/AdminPathView';
 import PathDocumentView from './pages/PathDocumentView';
@@ -72,14 +73,14 @@ const MainAppContent: React.FC = () => {
   if (isOpen) {
     // 两栏布局模式：左边主系统，右边FileBot聊天窗口
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="fb-d-flex" style={{minHeight:"100vh",background:"#f9fafb"}}>
         {/* 左边：主系统 (占主要空间) */}
-        <div className="flex-1 overflow-auto">
+        <div style={{flex:1,overflow:"auto"}}>
           <MainLayout />
         </div>
         
         {/* 右边：FileBot聊天窗口 (固定宽度) */}
-        <div className="w-96 border-l border-gray-200">
+        <div style={{width:384,borderLeft:"1px solid #e5e7eb"}}>
           <CopilotSidebar />
         </div>
       </div>
@@ -88,7 +89,7 @@ const MainAppContent: React.FC = () => {
   
   // 全屏模式：简化系统界面
   return (
-    <div className="min-h-screen">
+    <div style={{minHeight:"100vh"}}>
       <MainLayout />
     </div>
   );
@@ -98,7 +99,7 @@ function App() {
   return (
     <CopilotProvider>
       <ToastNotification />
-      <Router>
+      <Router basename="/">
         <Routes>
           {/* ==================== 公共路由 ==================== */}
           <Route path="/login" element={<Login />} />
@@ -197,6 +198,9 @@ function App() {
 
             {/* Admin用户管理 */}
             <Route path="users" element={<AdminUsers />} />
+
+            {/* Admin机构管理 */}
+            <Route path="institutions" element={<AdminInstitutions />} />
             
             {/* Admin路径视图（新URL模式：/admin/{app}/{path}） */}
             <Route path=":appSlug/*" element={<AdminPathView />} />

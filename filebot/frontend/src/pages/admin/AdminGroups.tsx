@@ -6,6 +6,7 @@ import {
   List, ListItem, ListItemText, ListItemAvatar, Avatar, Divider,
   Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Group as GroupIcon, PersonAdd as PersonAddIcon, PersonRemove as PersonRemoveIcon } from '@mui/icons-material';
 import groupService, { Group, GroupDetail, MemberInfo } from '../../services/group.service';
 import authService from '../../services/auth.service';
@@ -24,9 +25,11 @@ const AdminGroups: React.FC = () => {
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
 
   const [selectedGroup, setSelectedGroup] = useState<GroupDetail | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', institution_id: '' });
   const [addMemberForm, setAddMemberForm] = useState({ user_id: '', role: 'member' });
   const [users, setUsers] = useState<{ id: string; username: string; email: string }[]>([]);
+  const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
+  const [filterInstitution, setFilterInstitution] = useState('');
 
   const loadGroups = useCallback(async () => {
     try {
@@ -40,6 +43,15 @@ const AdminGroups: React.FC = () => {
     }
   }, []);
 
+  const loadInstitutions = useCallback(async () => {
+    try {
+      const response = await (await import('../../services/api')).default.get('/institutions/');
+      setInstitutions(response.data);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const loadUsers = useCallback(async () => {
     try {
       const response = await (await import('../../services/api')).default.get('/users/');
@@ -49,15 +61,19 @@ const AdminGroups: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { loadGroups(); }, [loadGroups]);
+  useEffect(() => { loadGroups(); loadInstitutions(); }, [loadGroups, loadInstitutions]);
 
   const handleCreate = async () => {
     if (!formData.name.trim()) return;
     try {
-      await groupService.create({ name: formData.name, description: formData.description });
+      const createData: any = { name: formData.name, description: formData.description };
+      if (userInfo?.is_superuser && formData.institution_id) {
+        createData.institution_id = formData.institution_id;
+      }
+      await groupService.create(createData);
       setSuccess(`Group "${formData.name}" created`);
       setCreateDialogOpen(false);
-      setFormData({ name: '', description: '' });
+      setFormData({ name: '', description: '', institution_id: '' });
       loadGroups();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create group');
@@ -67,7 +83,11 @@ const AdminGroups: React.FC = () => {
   const handleEdit = async () => {
     if (!selectedGroup) return;
     try {
-      await groupService.update(selectedGroup.id, formData);
+      const updateData: any = { name: formData.name, description: formData.description };
+      if (isSuperuser && formData.institution_id !== undefined) {
+        updateData.institution_id = formData.institution_id || null;
+      }
+      await groupService.update(selectedGroup.id, updateData);
       setSuccess('Group updated');
       setEditDialogOpen(false);
       loadGroups();
@@ -93,7 +113,11 @@ const AdminGroups: React.FC = () => {
     try {
       const detail = await groupService.get(group.id);
       setSelectedGroup(detail);
-      setFormData({ name: detail.name, description: detail.description || '' });
+      setFormData({
+        name: detail.name,
+        description: detail.description || '',
+        institution_id: detail.institution_id || ''
+      });
       setEditDialogOpen(true);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load group details');
@@ -144,17 +168,40 @@ const AdminGroups: React.FC = () => {
   // Check is admin
   const userInfo = authService.getUserInfo();
   const isAdmin = userInfo?.is_superuser || userInfo?.role === 'admin';
+  const isSuperuser = userInfo?.is_superuser;
+
+  // Filter groups by institution
+  const filteredGroups = filterInstitution
+    ? groups.filter((g) => g.institution_id === filterInstitution)
+    : groups;
 
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight="bold">Groups</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
-          setFormData({ name: '', description: '' });
-          setCreateDialogOpen(true);
-        }}>
-          Create Group
-        </Button>
+        <Typography variant="h4" fontWeight="bold" className="hidden sm:block">Groups</Typography>
+        <Box display="flex" gap={1} alignItems="center">
+          {isSuperuser && institutions.length > 0 && (
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel><FilterAltIcon sx={{ mr: 0.5, verticalAlign: 'middle' }} fontSize="small" />Institution</InputLabel>
+              <Select
+                value={filterInstitution}
+                label={<Box component="span"><FilterAltIcon sx={{ mr: 0.5, verticalAlign: 'middle' }} fontSize="small" />Institution</Box>}
+                onChange={(e) => setFilterInstitution(e.target.value)}
+              >
+                <MenuItem value="">All Institutions</MenuItem>
+                {institutions.map((inst) => (
+                  <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          <Button variant="contained" startIcon={<AddIcon />} sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 } }} onClick={() => {
+            setFormData({ name: '', description: '', institution_id: '' });
+            setCreateDialogOpen(true);
+          }}>
+            Create Group
+          </Button>
+        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
@@ -174,12 +221,13 @@ const AdminGroups: React.FC = () => {
                 <TableCell>Name</TableCell>
                 <TableCell>Description</TableCell>
                 <TableCell>Members</TableCell>
+                {isSuperuser && <TableCell>Institution</TableCell>}
                 <TableCell>Created</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {groups.map((group) => (
+              {filteredGroups.map((group) => (
                 <TableRow key={group.id} hover>
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={1}>
@@ -191,6 +239,15 @@ const AdminGroups: React.FC = () => {
                   <TableCell>
                     <Chip label={`${group.member_count} member${group.member_count !== 1 ? 's' : ''}`} size="small" />
                   </TableCell>
+                  {isSuperuser && (
+                    <TableCell>
+                      {group.institution_name ? (
+                        <Chip label={group.institution_name} size="small" variant="outlined" color="primary" />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">-</Typography>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>{new Date(group.created_at).toLocaleDateString()}</TableCell>
                   <TableCell align="right">
                     <IconButton onClick={() => openMemberDialog(group)} title="Manage Members" color="primary">
@@ -224,6 +281,21 @@ const AdminGroups: React.FC = () => {
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
+          {isSuperuser && institutions.length > 0 && (
+            <FormControl fullWidth margin="dense">
+              <InputLabel>Institution</InputLabel>
+              <Select
+                value={formData.institution_id}
+                label="Institution"
+                onChange={(e) => setFormData({ ...formData, institution_id: e.target.value })}
+              >
+                <MenuItem value="">None</MenuItem>
+                {institutions.map((inst) => (
+                  <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
@@ -245,6 +317,21 @@ const AdminGroups: React.FC = () => {
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
+          {isSuperuser && institutions.length > 0 && (
+            <FormControl fullWidth margin="dense">
+              <InputLabel>Institution</InputLabel>
+              <Select
+                value={formData.institution_id}
+                label="Institution"
+                onChange={(e) => setFormData({ ...formData, institution_id: e.target.value })}
+              >
+                <MenuItem value="">None</MenuItem>
+                {institutions.map((inst) => (
+                  <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>

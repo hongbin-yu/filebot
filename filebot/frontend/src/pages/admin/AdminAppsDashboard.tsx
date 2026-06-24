@@ -94,17 +94,17 @@ const AdminAppsDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
+      <div style={{padding:24}}>
+        <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:24}}>
+          <h1 style={{fontSize:"1.5rem",fontWeight:700,color:"#1f2937"}}>Application Management</h1>
+          <button className="btn btn-primary" onClick={handleCreateApp}>
             + Create Application
           </button>
         </div>
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading applications...</p>
+        <div className="fb-d-flex fb-justify-center fb-align-center" style={{height:256}}>
+          <div >
+            <div className="fb-spinner" style={{height:48,width:48,borderWidth:2,borderColor:"#2563eb",borderRadius:"50%"}}></div>
+            <p  style={{ marginTop:16 }}>Loading applications...</p>
           </div>
         </div>
       </div>
@@ -113,19 +113,19 @@ const AdminAppsDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
+      <div style={{padding:24}}>
+        <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:24}}>
+          <h1 style={{fontSize:"1.5rem",fontWeight:700,color:"#1f2937"}}>Application Management</h1>
+          <button className="btn btn-primary" onClick={handleCreateApp}>
             + Create Application
           </button>
         </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-red-800 mb-2">Load Failed</h3>
-          <p className="text-red-700 mb-4">{error}</p>
+        <div  style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:24}}>
+          <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#991b1b",marginBottom:8}}>Load Failed</h3>
+          <p style={{ color:"#b91c1c", marginBottom:16 }}>{error}</p>
           <button 
             onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            className="btn btn-danger"
           >
             Retry
           </button>
@@ -135,61 +135,61 @@ const AdminAppsDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
+    <div style={{padding:24}}>
+      <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:24}}>
+        <h1 style={{fontSize:"1.5rem",fontWeight:700,color:"#1f2937"}}>Application Management</h1>
+        <button className="btn btn-primary" onClick={handleCreateApp}>
           + Create Application
         </button>
       </div>
 
       {apps.length === 0 ? (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
-          <h3 className="text-lg font-medium text-yellow-800 mb-2">No applications yet</h3>
-          <p className="text-yellow-700 mb-4">You haven't created any applications yet. Click the button above to create your first application.</p>
-          <button className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700" onClick={handleCreateApp}>
+        <div  style={{background:"#fefce8",border:"1px solid #fef08a",borderRadius:8,padding:32}}>
+          <h3 style={{fontSize:"1.125rem",fontWeight:500,color:"#854d0e",marginBottom:8}}>No applications yet</h3>
+          <p style={{ color:"#a16207", marginBottom:16 }}>You haven't created any applications yet. Click the button above to create your first application.</p>
+          <button className="btn btn-warning" onClick={handleCreateApp}>
             Create First Application
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold">All Applications ({apps.length})</h2>
+        <div className="panel panel-default">
+          <div style={{padding:16,borderBottom:"1px solid #e5e7eb"}}>
+            <h2 style={{fontSize:"1.125rem",fontWeight:600}}>All Applications ({apps.length})</h2>
           </div>
           
-          <div className="divide-y">
+          <div className="fb-divide-y">
             {apps.map(app => (
-              <div key={app.id} className="p-4 hover:bg-gray-50">
-                <div className="flex justify-between items-center">
+              <div key={app.id} className="fb-hover-btn" style={{padding:16}}>
+                <div className="fb-d-flex fb-justify-between fb-align-center">
                   <div>
                     <Link 
                       to={`/admin/apps/${app.slug || app.id}`}
-                      className="text-lg font-medium text-blue-600 hover:text-blue-800"
+                      className="fb-link" style={{fontSize:"1.125rem",fontWeight:500,color:"#2563eb"}}
                     >
                       {app.name}
                     </Link>
-                    <p className="text-gray-600 mt-1">{app.description || 'No description'}</p>
-                    <div className="mt-2 text-sm text-gray-500">
+                    <p  style={{ marginTop:4 }}>{app.description || 'No description'}</p>
+                    <div  style={{ marginTop:8, fontSize:"0.875rem" }}>
                       <span>ID: {app.id}</span>
-                      {app.slug && <span className="ml-4">Slug: {app.slug}</span>}
+                      {app.slug && <span style={{marginLeft:16}}>Slug: {app.slug}</span>}
                     </div>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="fb-d-flex fb-gap-1">
                     <Link
                       to={`/admin/permissions?resource_type=app&resource_id=${app.id}`}
-                      className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200"
+                      className="fb-badge fb-badge-purple fb-hover-btn" style={{padding:"4px 12px",borderRadius:"50%",fontSize:"0.875rem"}}
                     >
                       Permissions
                     </Link>
                     <button 
                       onClick={() => handleEditApp(app.id)}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      className="fb-badge fb-badge-blue fb-hover-btn" style={{padding:"4px 12px",borderRadius:"50%",fontSize:"0.875rem"}}
                     >
                       Edit
                     </button>
                     <button 
                       onClick={() => handleDeleteApp(app.id, app.name)}
-                      className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-300"
+                      className="fb-badge fb-badge-red fb-hover-btn" style={{padding:"4px 12px",borderRadius:"50%",fontSize:"0.875rem"}}
                     >
                       Delete
                     </button>
@@ -201,12 +201,12 @@ const AdminAppsDashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-medium text-blue-800">New Architecture Information</h3>
-        <p className="text-blue-700 mt-1">
+      <div style={{marginTop:32,padding:16,background:"#eff6ff",borderRadius:8}}>
+        <h3 style={{ fontWeight:500, color:"#1e40af" }}>New Architecture Information</h3>
+        <p style={{ color:"#1d4ed8", marginTop:4 }}>
           FileBot has been simplified to a two-layer structure: Application → Folder → Document. The drawer layer has been removed.
         </p>
-        <div className="mt-2 text-sm text-blue-600">
+        <div style={{ marginTop:8, fontSize:"0.875rem", color:"#2563eb" }}>
           <p>• Admin URL prefix: <code>/admin/apps</code></p>
           <p>• Client URL prefix: <code>/apps</code> (public portal)</p>
           <p>• Data has been cleared, starting from scratch</p>

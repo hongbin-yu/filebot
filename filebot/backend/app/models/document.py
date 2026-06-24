@@ -38,6 +38,8 @@ class FileType(enum.Enum):
     TXT = "txt"
     HTML = "html"
     HTM = "htm"
+    VIDEO = "video"
+    AUDIO = "audio"
     OTHER = "other"
 
 

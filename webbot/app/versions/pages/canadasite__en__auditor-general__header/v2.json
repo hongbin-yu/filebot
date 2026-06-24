@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "page_id": "/canadasite/en/auditor-general/header",
+  "page_path": "/canadasite/en/auditor-general/header",
+  "page_title": "header",
+  "language": "en",
+  "content_size": 1252,
+  "created_at": "2026-05-31T01:29:48.974181Z",
+  "author": null,
+  "notes": "Published via WebBot",
+  "content": "<div class=\"brand col-xs-9 col-sm-5 col-md-4\" property=\"publisher\" resource=\"#wb-publisher\" typeof=\"GovernmentOrganization\"><a href=\"/en/auditor-general.html\" property=\"url\"> <img src=\"/etc/designs/canada/wet-boew/projects/oag-template/soag-header-en.svg\" alt=\"Auditor General of Canada\" property=\"logo\" /> <span class=\"wb-inv\" property=\"name\">Auditor General of Canada</span> </a></div>\n<section id=\"wb-srch\" class=\"col-lg-offset-4 col-md-offset-4 col-sm-offset-2 col-xs-12 col-sm-5 col-md-4\">\n<h2>Search</h2>\n<form action=\"/en/auditor-general/ai-search.html\" method=\"get\" name=\"cse-search-box\" role=\"search\"><input type=\"hidden\" value=\"en\" /> <input type=\"hidden\" name=\"site\" value=\"/en/auditor-general\" />\n<div class=\"form-group wb-srch-qry\"><label for=\"wb-srch-q\" class=\"wb-inv\">AI Search OAG</label> <input id=\"wb-srch-q\" list=\"wb-srch-q-ac\" class=\"wb-srch-q form-control\" name=\"q\" type=\"search\" value=\"\" size=\"34\" maxlength=\"170\" placeholder=\"AI Search OAG\" />\n<datalist id=\"wb-srch-q-ac\"></datalist>\n</div>\n<div class=\"form-group submit\"><button type=\"submit\" id=\"wb-srch-sub\" class=\"btn btn-primary btn-small\" name=\"wb-srch-sub\"><span class=\"glyphicon-search glyphicon\"></span><span class=\"wb-inv\">Search</span></button></div>\n</form></section>"
+}

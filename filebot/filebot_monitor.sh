@@ -5,6 +5,11 @@
 # 配置
 CHECK_INTERVAL=60  # 检查间隔（秒）
 HEALTH_URL="http://localhost:8001/api/health"
+NGINX_HEALTH_URL="https://localhost/api/v1/auth/login"
+HTTPS_PROXY_URL="https://localhost:8443/api/health"
+HTTPS_PROXY_DIR="/home/hongb/.openclaw/workspace/filebot"
+HTTPS_PROXY_CERT="/tmp/filebot-cert.pem"
+HTTPS_PROXY_KEY="/tmp/filebot-key.pem"
 BACKEND_ROOT="/home/hongb/.openclaw/workspace/filebot/backend"
 LOG_FILE="$BACKEND_ROOT/filebot_monitor.log"
 MAX_LOG_SIZE=10485760  # 10MB
@@ -107,8 +112,83 @@ main() {
             restart_service
         fi
         
+        # 检查 nginx（统一入口 + IP白名单）
+        if ! check_nginx; then
+            log_message "🔒 nginx不可用，尝试重启..."
+            restart_nginx
+        fi
+        
+        # 检查 HTTPS 代理（跨機器訪問用）
+        if ! check_https_proxy; then
+            log_message "🔐 HTTPS代理不可用，尝试重启..."
+            restart_https_proxy
+        fi
+        
         sleep "$CHECK_INTERVAL"
     done
+}
+
+# 检查 nginx
+check_nginx() {
+    response=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 5 "$NGINX_HEALTH_URL" 2>/dev/null)
+    if [ "$response" = "200" ] || [ "$response" = "405" ] || [ "$response" = "422" ]; then
+        return 0
+    fi
+    return 1
+}
+
+# 重启 nginx
+restart_nginx() {
+    if sudo nginx -t 2>/dev/null; then
+        sudo nginx -s reload 2>/dev/null || sudo nginx 2>/dev/null
+        sleep 2
+        if check_nginx; then
+            log_message "✅ nginx重启成功"
+        else
+            log_message "❌ nginx重启失败"
+        fi
+    else
+        log_message "❌ nginx配置异常，无法重启"
+    fi
+}
+
+# 检查 HTTPS 代理
+check_https_proxy() {
+    response=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 5 "$HTTPS_PROXY_URL" 2>/dev/null)
+    if [ "$response" = "200" ]; then
+        return 0
+    fi
+    log_message "⚠️  HTTPS代理响应: $response"
+    return 1
+}
+
+# 重启 HTTPS 代理
+restart_https_proxy() {
+    # 确保证书存在
+    if [ ! -f "$HTTPS_PROXY_CERT" ] || [ ! -f "$HTTPS_PROXY_KEY" ]; then
+        log_message "📜 证书缺失，重新生成自签名证书..."
+        openssl req -x509 -newkey rsa:2048 -keyout "$HTTPS_PROXY_KEY" -out "$HTTPS_PROXY_CERT" -days 3650 -nodes -subj "/CN=10.0.0.91" 2>/dev/null
+    fi
+    
+    # 杀掉旧进程
+    pids=$(ps aux | grep "https-proxy.py" | grep -v grep | awk '{print $2}')
+    if [ -n "$pids" ]; then
+        for pid in $pids; do
+            kill -TERM "$pid" 2>/dev/null
+        done
+        sleep 2
+    fi
+    
+    # 启动新进程
+    cd "$HTTPS_PROXY_DIR" || return 1
+    nohup python3 https-proxy.py > /tmp/https-proxy.log 2>&1 &
+    sleep 3
+    
+    if check_https_proxy; then
+        log_message "✅ HTTPS代理重启成功"
+    else
+        log_message "❌ HTTPS代理重启失败"
+    fi
 }
 
 # 运行主函数

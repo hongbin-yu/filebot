@@ -16,7 +16,7 @@
     var STORAGE_KEY = 'access_token';
     var USER_KEY = 'user_info';
     var API_BASE = '/api/v1/auth';
-    var LOGIN_PAGE = 'http://localhost:5174/login';
+    var LOGIN_PAGE = window.location.origin + '/static/login.html';
 
     // ── Helpers ──────────────────────────────────────────────────────
 

@@ -206,52 +206,52 @@ const Folders: React.FC = () => {
 
   const renderFolderTree = (folders: FolderTreeItem[], level = 0) => {
     return (
-      <div className="ml-4">
+      <div style={{marginLeft:16}}>
         {folders.map(folder => (
-          <div key={folder.path} className="mb-2">
-            <div className="flex items-center p-2 bg-gray-50 rounded hover:bg-gray-100">
+          <div key={folder.path} style={{marginBottom:8}}>
+            <div className="fb-d-flex fb-align-center" style={{padding:8,backgroundColor:"#f9fafb",borderRadius:4}}>
               <button
                 onClick={() => toggleFolderExpansion(folder.path)}
-                className="mr-2 text-gray-500 hover:text-gray-700"
+                className="text-muted fb-link" style={{marginRight:8}}
               >
                 {folder.children && folder.children.length > 0 ? (
                   expandedFolders.has(folder.path) ? '▼' : '▶'
                 ) : (
-                  <span className="w-4 inline-block">•</span>
+                  <span style={{width:16,display:"inline-block"}}>•</span>
                 )}
               </button>
-              <div className="flex-1">
-                <span className="font-medium">{folder.name}</span>
+              <div style={{flex:1}}>
+                <span style={{fontWeight:500}}>{folder.name}</span>
                 {folder.description && (
-                  <span className="text-gray-500 text-sm ml-2">- {folder.description}</span>
+                  <span className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",marginLeft:8}}>- {folder.description}</span>
                 )}
-                <div className="text-xs text-gray-400 mt-1">
+                <div style={{fontSize:"0.75rem",lineHeight:"1rem",color:"#9ca3af",marginTop:4}}>
                   {folder.document_count !== undefined && (
                     <span>{folder.document_count} documents</span>
                   )}
                   {folder.total_size !== undefined && (
-                    <span className="ml-2">• {formatFileSize(folder.total_size)}</span>
+                    <span style={{marginLeft:8}}>• {formatFileSize(folder.total_size)}</span>
                   )}
                 </div>
               </div>
-              <div className="flex space-x-2">
+              <div className="fb-d-flex" style={{display:"flex",gap:8}}>
                 <button
                   onClick={() => setParentFolderId(folder.path)}
-                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  style={{paddingLeft:8,paddingRight:8,paddingTop:4,paddingBottom:4,fontSize:"0.75rem",lineHeight:"1rem",backgroundColor:"#dbeafe",color:"#1d4ed8",borderRadius:4}}
                   title="Create subfolder here"
                 >
                   Add Subfolder
                 </button>
                 <button
                   onClick={() => handleDeleteFolder(folder.path)}
-                  className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  style={{paddingLeft:8,paddingRight:8,paddingTop:4,paddingBottom:4,fontSize:"0.75rem",lineHeight:"1rem",backgroundColor:"#fee2e2",color:"#b91c1c",borderRadius:4}}
                 >
                   Delete
                 </button>
               </div>
             </div>
             {folder.children && folder.children.length > 0 && expandedFolders.has(folder.path) && (
-              <div className="mt-1">
+              <div style={{marginTop:4}}>
                 {renderFolderTree(folder.children, level + 1)}
               </div>
             )}
@@ -269,10 +269,10 @@ const Folders: React.FC = () => {
 
   if (loading && apps.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-gray-500">Loading applications...</div>
+      <div className="fb-page-bg">
+        <div style={{maxWidth:"72rem",marginLeft:"auto",marginRight:"auto"}}>
+          <div className="fb-d-flex fb-align-center" style={{justifyContent:"center",height:256}}>
+            <div className="text-muted">Loading applications...</div>
           </div>
         </div>
       </div>
@@ -280,36 +280,36 @@ const Folders: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Folders Management</h1>
-          <p className="text-gray-600 mt-2">Organize your documents into folders and subfolders</p>
+    <div className="fb-page-bg" style={{backgroundColor:"#f9fafb",padding:32}}>
+      <div style={{maxWidth:"72rem",marginLeft:"auto",marginRight:"auto"}}>
+        <div style={{marginBottom:32}}>
+          <h1 style={{fontSize:"1.875rem",lineHeight:"2.25rem",fontWeight:700,color:"#1f2937"}}>Folders Management</h1>
+          <p className="text-muted" style={{marginTop:8}}>Organize your documents into folders and subfolders</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="text-red-700 mb-2">{error}</div>
-            <div className="flex space-x-2">
+          <div style={{marginBottom:24,padding:16,backgroundColor:"#fef2f2",border:"1px solid #ddd",borderColor:"#fecaca",borderRadius:8}}>
+            <div style={{color:"#b91c1c",marginBottom:8}}>{error}</div>
+            <div className="fb-d-flex" style={{display:"flex",gap:8}}>
               <button
                 onClick={() => {
                   setError(null);
                   fetchApps();
                 }}
-                className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                style={{paddingLeft:12,paddingRight:12,paddingTop:4,paddingBottom:4,backgroundColor:"#fee2e2",color:"#b91c1c",borderRadius:4,fontSize:"0.875rem",lineHeight:"1.25rem"}}
               >
                 Retry
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+                style={{paddingLeft:12,paddingRight:12,paddingTop:4,paddingBottom:4,backgroundColor:"#e5e7eb",color:"#374151",borderRadius:4,fontSize:"0.875rem",lineHeight:"1.25rem"}}
               >
                 Refresh Page
               </button>
               {!localStorage.getItem('access_token') && (
                 <button
                   onClick={() => window.location.href = '/login'}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                  style={{paddingLeft:12,paddingRight:12,paddingTop:4,paddingBottom:4,backgroundColor:"#dbeafe",color:"#1d4ed8",borderRadius:4,fontSize:"0.875rem",lineHeight:"1.25rem"}}
                 >
                   Go to Login
                 </button>
@@ -319,15 +319,15 @@ const Folders: React.FC = () => {
         )}
 
         {/* App Selection */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Select Application</h2>
-          <div className="grid grid-cols-1 gap-4">
+        <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",padding:24,marginBottom:24}}>
+          <h2 style={{fontSize:"1.25rem",lineHeight:"1.75rem",fontWeight:600,color:"#1f2937",marginBottom:16}}>Select Application</h2>
+          <div className="row" style={{gap:16}}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:8}}>
                 Application
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{width:"100%",paddingLeft:12,paddingRight:12,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:6}}
                 value={selectedApp?.id || ''}
                 onChange={(e) => {
                   const app = apps.find(a => a.id === e.target.value);
@@ -346,38 +346,38 @@ const Folders: React.FC = () => {
         </div>
 
         {/* Create Folder Form */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Create New Folder</h2>
+        <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",padding:24,marginBottom:24}}>
+          <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+            <h2 style={{fontSize:"1.25rem",lineHeight:"1.75rem",fontWeight:600,color:"#1f2937"}}>Create New Folder</h2>
             <button
               onClick={() => setShowCreateForm(!showCreateForm)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,backgroundColor:"#2563eb",color:"#fff",borderRadius:6}}
             >
               {showCreateForm ? 'Cancel' : 'New Folder'}
             </button>
           </div>
 
           {showCreateForm && (
-            <div className="mt-4 p-4 border border-gray-200 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div style={{marginTop:16,padding:16,border:"1px solid #ddd",borderColor:"#e5e7eb",borderRadius:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(1, 1fr)",gap:16}}>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:8}}>
                     Folder Name *
                   </label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{width:"100%",paddingLeft:12,paddingRight:12,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:6}}
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
                     placeholder="Enter folder name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:8}}>
                     Parent Folder
                   </label>
                   <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{width:"100%",paddingLeft:12,paddingRight:12,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:6}}
                     value={parentFolderId || ''}
                     onChange={(e) => setParentFolderId(e.target.value || undefined)}
                   >
@@ -389,29 +389,29 @@ const Folders: React.FC = () => {
                     ))}
                   </select>
                   {parentFolderId && (
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="text-muted" style={{marginTop:8,fontSize:"0.875rem",lineHeight:"1.25rem"}}>
                       Folder will be created under selected parent
                     </p>
                   )}
                 </div>
               </div>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div style={{marginTop:16}}>
+                <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:8}}>
                   Description (Optional)
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{width:"100%",paddingLeft:12,paddingRight:12,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:6}}
                   value={newFolderDescription}
                   onChange={(e) => setNewFolderDescription(e.target.value)}
                   placeholder="Enter folder description"
                   rows={2}
                 />
               </div>
-              <div className="mt-6 flex justify-end">
+              <div className="fb-d-flex" style={{marginTop:24,justifyContent:"flex-end"}}>
                 <button
                   onClick={handleCreateFolder}
                   disabled={!newFolderName.trim() || !selectedApp}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{paddingLeft:24,paddingRight:24,paddingTop:8,paddingBottom:8,backgroundColor:"#16a34a",color:"#fff",borderRadius:6}}
                 >
                   Create Folder
                 </button>
@@ -421,31 +421,31 @@ const Folders: React.FC = () => {
         </div>
 
         {/* Folder Tree */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Folder Structure</h2>
-            <div className="text-sm text-gray-500">
+        <div className="panel panel-default" style={{padding:24}}>
+          <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:16}}>
+            <h2 style={{fontSize:"1.25rem",lineHeight:"1.75rem",fontWeight:600,color:"#1f2937"}}>Folder Structure</h2>
+            <div className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem"}}>
               {folders.length} folder{folders.length !== 1 ? 's' : ''} total
             </div>
           </div>
 
           {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="text-gray-500">Loading folders...</div>
+            <div className="fb-d-flex fb-align-center" style={{justifyContent:"center",height:128}}>
+              <div className="text-muted">Loading folders...</div>
             </div>
           ) : folders.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted">
               {selectedApp ? (
                 <>
-                  <p className="text-lg">No folders found for this application.</p>
-                  <p className="mt-2">Click "New Folder" to create your first folder.</p>
+                  <p style={{fontSize:"1.125rem",lineHeight:"1.75rem"}}>No folders found for this application.</p>
+                  <p style={{marginTop:8}}>Click "New Folder" to create your first folder.</p>
                 </>
               ) : (
-                <p className="text-lg">Please select an application to view folders.</p>
+                <p style={{fontSize:"1.125rem",lineHeight:"1.75rem"}}>Please select an application to view folders.</p>
               )}
             </div>
           ) : (
-            <div className="mt-4">
+            <div style={{marginTop:16}}>
               {renderFolderTree(folderTree)}
             </div>
           )}
@@ -453,20 +453,20 @@ const Folders: React.FC = () => {
 
         {/* Folder Statistics */}
         {folders.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-sm font-medium text-gray-500">Total Folders</h3>
-              <p className="text-2xl font-bold text-gray-800 mt-1">{folders.length}</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(1, 1fr)",marginTop:24,gap:16}}>
+            <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",padding:16}}>
+              <h3 className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500}}>Total Folders</h3>
+              <p style={{fontSize:"1.5rem",lineHeight:"2rem",fontWeight:700,color:"#1f2937",marginTop:4}}>{folders.length}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-sm font-medium text-gray-500">Total Documents</h3>
-              <p className="text-2xl font-bold text-gray-800 mt-1">
+            <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",padding:16}}>
+              <h3 className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500}}>Total Documents</h3>
+              <p style={{fontSize:"1.5rem",lineHeight:"2rem",fontWeight:700,color:"#1f2937",marginTop:4}}>
                 {folders.reduce((total, folder) => total + (folder.document_count || 0), 0)}
               </p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-sm font-medium text-gray-500">Total Size</h3>
-              <p className="text-2xl font-bold text-gray-800 mt-1">
+            <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",padding:16}}>
+              <h3 className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500}}>Total Size</h3>
+              <p style={{fontSize:"1.5rem",lineHeight:"2rem",fontWeight:700,color:"#1f2937",marginTop:4}}>
                 {formatFileSize(folders.reduce((total, folder) => total + (folder.total_size || 0), 0))}
               </p>
             </div>

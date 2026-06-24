@@ -3,10 +3,19 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  
   plugins: [react()],
   server: {
     host: '0.0.0.0',
     port: 5174,
+    strictPort: true,
+    allowedHosts: ['localhost', '10.0.0.91', '.trycloudflare.com', 'webfilebot.com', 'www.webfilebot.com', 'prod.webfilebot.com'],
+    hmr: {
+      protocol: 'wss',
+      host: 'prod.webfilebot.com',
+      clientPort: 443,
+      path: '/vite-hmr',
+    },
     proxy: {
       // 认证相关API直接代理到FileBot后端（端口8001）
       '/api/v1/auth': {

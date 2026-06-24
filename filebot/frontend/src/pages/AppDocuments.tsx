@@ -392,9 +392,16 @@ const AppDocuments: React.FC = () => {
     return '📎';
   };
 
-  const getAICategoryColor = (category?: string) => {
-    if (!category) return 'gray';
-    
+  const getAICategoryStyle = (category?: string): { backgroundColor: string; color: string } => {
+    const colorMap: Record<string, { backgroundColor: string; color: string }> = {
+      green: { backgroundColor: '#dcfce7', color: '#166534' },
+      blue: { backgroundColor: '#dbeafe', color: '#1e40af' },
+      purple: { backgroundColor: '#f3e8ff', color: '#6b21a8' },
+      yellow: { backgroundColor: '#fef3c7', color: '#854d0e' },
+      indigo: { backgroundColor: '#e0e7ff', color: '#3730a3' },
+      pink: { backgroundColor: '#fce7f3', color: '#9d174d' },
+      gray: { backgroundColor: '#f3f4f6', color: '#1f2937' },
+    };
     const colors: Record<string, string> = {
       'INVOICE': 'green',
       'CONTRACT': 'blue',
@@ -404,8 +411,8 @@ const AppDocuments: React.FC = () => {
       'ADMIN': 'pink',
       'GENERAL': 'gray'
     };
-    
-    return colors[category] || 'gray';
+    const colorName = (category ? colors[category] : null) || 'gray';
+    return colorMap[colorName];
   };
 
   const getAICategoryText = (category?: string) => {
@@ -427,29 +434,29 @@ const AppDocuments: React.FC = () => {
   const getClassificationStatusBadge = (status?: string, confidence?: number) => {
     if (!status || !aiEnabled) return null;
     
-    const statusConfig: Record<string, { color: string; text: string; icon: string }> = {
+    const statusConfig: Record<string, { style: { backgroundColor: string; color: string }; text: string; icon: string }> = {
       'ai_classified': {
-        color: 'bg-green-100 text-green-800',
+        style: { backgroundColor: '#dcfce7', color: '#166534' },
         text: 'AI已分类',
         icon: '🤖'
       },
       'needs_manual': {
-        color: 'bg-yellow-100 text-yellow-800',
+        style: { backgroundColor: '#fef3c7', color: '#854d0e' },
         text: '待人工分类',
         icon: '👤'
       },
       'manual_classified': {
-        color: 'bg-blue-100 text-blue-800',
+        style: { backgroundColor: '#dbeafe', color: '#1e40af' },
         text: '人工已分类',
         icon: '👤✓'
       },
       'review_needed': {
-        color: 'bg-orange-100 text-orange-800',
+        style: { backgroundColor: '#ffedd5', color: '#9a3412' },
         text: '需审核',
         icon: '🔍'
       },
       'unclassified': {
-        color: 'bg-gray-100 text-gray-800',
+        style: { backgroundColor: '#f3f4f6', color: '#1f2937' },
         text: '未分类',
         icon: '📄'
       }
@@ -458,8 +465,8 @@ const AppDocuments: React.FC = () => {
     const config = statusConfig[status.toLowerCase()] || statusConfig.unclassified;
     
     return (
-      <div className="mt-2">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <div style={{marginTop:8}}>
+        <span style={{paddingLeft:8,paddingRight:8,paddingTop:4,paddingBottom:4,borderRadius:9999,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,...config.style}}>
           {config.icon} {config.text}
           {confidence !== undefined && ` (${Math.round(confidence * 100)}%)`}
         </span>
@@ -469,10 +476,10 @@ const AppDocuments: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-gray-600">Loading documents...</div>
+      <div className="fb-page-bg">
+        <div style={{maxWidth:"80rem",marginLeft:"auto",marginRight:"auto"}}>
+          <div className="fb-d-flex fb-align-center" style={{justifyContent:"center",height:256}}>
+            <div className="text-muted">Loading documents...</div>
           </div>
         </div>
       </div>
@@ -480,76 +487,72 @@ const AppDocuments: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="fb-page-bg" style={{backgroundColor:"#f9fafb",padding:32}}>
+      <div style={{maxWidth:"80rem",marginLeft:"auto",marginRight:"auto"}}>
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center text-sm text-gray-600 mb-6">
+        <nav className="fb-d-flex fb-align-center text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",marginBottom:24}}>
           <button
             onClick={() => navigate('/')}
-            className="hover:text-blue-600"
+            className="fb-link"
           >
             Applications
           </button>
-          <span className="mx-2">›</span>
+          <span style={{marginLeft:8,marginRight:8}}>›</span>
           <button
             onClick={() => navigate(`/${appSlug}`)}
-            className="hover:text-blue-600"
+            className="fb-link"
           >
             {app?.name || 'Application'}
           </button>
           {drawerSlug || drawerInfo ? (
             <>
-              <span className="mx-2">›</span>
+              <span style={{marginLeft:8,marginRight:8}}>›</span>
               <button
                 onClick={() => navigate(`/${appSlug}/${drawerSlug || drawerInfo?.slug || drawerInfo?.id}`)}
-                className="hover:text-blue-600"
+                className="fb-link"
               >
                 {drawerInfo?.name || drawerSlug || 'Drawer'}
               </button>
-              <span className="mx-2">›</span>
-              <span className="font-medium text-gray-800">{folder?.name || 'Folder'} Documents</span>
+              <span style={{marginLeft:8,marginRight:8}}>›</span>
+              <span style={{fontWeight:500,color:"#1f2937"}}>{folder?.name || 'Folder'} Documents</span>
             </>
           ) : (
             <>
-              <span className="font-medium text-gray-800">{folder?.name || 'Folder'} Documents</span>
+              <span style={{fontWeight:500,color:"#1f2937"}}>{folder?.name || 'Folder'} Documents</span>
             </>
           )}
         </nav>
         
         {/* Debug info for drawer breadcrumb */}
         {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-gray-400 mb-2">
+          <div style={{fontSize:"0.75rem",lineHeight:"1rem",color:"#9ca3af",marginBottom:8}}>
             抽屉调试: drawerSlug="{drawerSlug}", drawerInfo={drawerInfo ? `已设置(${drawerInfo.name})` : 'null'}, location.state={location.state ? JSON.stringify(location.state) : 'null'}
           </div>
         )}
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:32}}>
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">{folder?.name || 'Folder'} Documents</h1>
-            <div className="mt-2">
-              <p className="text-gray-600">
+            <h1 style={{fontSize:"1.875rem",lineHeight:"2.25rem",fontWeight:700,color:"#1f2937"}}>{folder?.name || 'Folder'} Documents</h1>
+            <div style={{marginTop:8}}>
+              <p className="text-muted">
                 {app?.name ? `Application: ${app.name}` : ''} 
                 {folder?.description && ` • ${folder.description}`}
               </p>
-              <div className="mt-1 text-sm text-gray-500 flex items-center">
+              <div className="text-muted fb-d-flex fb-align-center" style={{marginTop:4,fontSize:"0.875rem",lineHeight:"1.25rem"}}>
                 <span>
                   {aiEnabled ? 'AI分类功能已启用' : '基础版本（无AI功能）'}
                 </span>
-                <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${
-                  edition === 'basic' ? 'bg-gray-100 text-gray-800' :
-                  edition === 'professional' ? 'bg-blue-100 text-blue-800' :
-                  'bg-purple-100 text-purple-800'
-                }`}>
+              <span style={{marginLeft:8,paddingLeft:12,paddingRight:12,paddingTop:4,paddingBottom:4,borderRadius:9999,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,...(edition === 'basic' ? {backgroundColor:'#f3f4f6',color:'#1f2937'} : edition === 'professional' ? {backgroundColor:'#dbeafe',color:'#1e40af'} : {backgroundColor:'#f3e8ff',color:'#6b21a8'})}}>
                   {edition === 'basic' ? '基础版' : edition === 'professional' ? '专业版' : '企业版'}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex space-x-3 flex-wrap gap-2">
+          <div className="fb-d-flex fb-gap-2" style={{display:"flex",gap:12,flexWrap:"wrap"}}>
             <button
               onClick={() => navigate(`/${appSlug}`)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              style={{paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",color:"#374151",borderRadius:6}}
             >
               Back to Folders
             </button>
@@ -574,9 +577,9 @@ const AppDocuments: React.FC = () => {
                 console.log('🔧 上传导航状态:', navState);
                 navigate(uploadPath, { state: Object.keys(navState).length > 0 ? navState : undefined });
               }}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 flex items-center"
+              className="fb-d-flex fb-align-center" style={{backgroundColor:"#2563eb",color:"#fff",paddingLeft:24,paddingRight:24,paddingTop:8,paddingBottom:8,borderRadius:6}}
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg style={{width:20,height:20,marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
               Upload Document
@@ -586,19 +589,19 @@ const AppDocuments: React.FC = () => {
             <button
               onClick={handleExportFolder}
               disabled={exporting || !folder || !app}
-              className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="fb-d-flex fb-align-center" style={{backgroundColor:"#16a34a",color:"#fff",paddingLeft:24,paddingRight:24,paddingTop:8,paddingBottom:8,borderRadius:6}}
             >
               {exporting ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg className="fb-spinner" style={{marginLeft:-4,marginRight:12,height:20,width:20,color:"#fff"}} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle style={{opacity:0.25}} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path style={{opacity:0.75}} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Exporting...
                 </>
               ) : (
                 <>
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg style={{width:20,height:20,marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   Export Folder
@@ -611,15 +614,15 @@ const AppDocuments: React.FC = () => {
 
         {/* AI功能说明条 */}
         {!aiEnabled && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+          <div style={{backgroundColor:"#fffbeb",borderLeftWidth:4,borderColor:"#facc15",padding:16,marginBottom:32}}>
+            <div className="fb-d-flex">
+              <div style={{flexShrink:0}}>
+                <svg style={{height:20,width:20,color:"#facc15"}} viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
               </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">
+              <div style={{marginLeft:12}}>
+                <p style={{fontSize:"0.875rem",lineHeight:"1.25rem",color:"#a16207"}}>
                   当前为<strong>基础版本</strong>，不包含AI分类功能。
                   {edition === 'basic' && ' 如需AI功能，请升级到专业版或企业版。'}
                 </p>
@@ -630,56 +633,56 @@ const AppDocuments: React.FC = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div style={{marginBottom:32,padding:16,backgroundColor:"#fef2f2",border:"1px solid #ddd",borderColor:"#fecaca",borderRadius:8}}>
+            <div className="fb-d-flex fb-align-center">
+              <svg style={{width:20,height:20,color:"#dc2626",marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-red-800 font-medium">{error}</span>
+              <span style={{color:"#991b1b",fontWeight:500}}>{error}</span>
             </div>
-            <div className="mt-2 text-sm text-red-700">
+            <div style={{marginTop:8,fontSize:"0.875rem",lineHeight:"1.25rem",color:"#b91c1c"}}>
               <p>可能的解决方案：</p>
-              <ul className="list-disc list-inside mt-1">
+              <ul style={{listStyleType:"disc",listStylePosition:"inside",marginTop:4}}>
                 <li>请通过有效的文件夹访问文档列表</li>
                 <li>检查URL中的文件夹ID格式是否正确</li>
-                <li>返回<a href="/" className="underline text-blue-700">应用列表</a>重新选择文件夹</li>
+                <li>返回<a href="/" style={{textDecoration:"underline",color:"#1d4ed8"}}>应用列表</a>重新选择文件夹</li>
               </ul>
             </div>
           </div>
         )}
 
         {/* Search and Stats */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",padding:24,marginBottom:32}}>
+          <div className="row" style={{gap:16}}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:8}}>
                 Search Documents
               </label>
-              <div className="relative">
+              <div style={{position:"relative"}}>
                 <input
                   type="text"
                   placeholder="Search by name or type..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{width:"100%",paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:8}}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <svg className="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg style={{width:20,height:20,color:"#9ca3af",position:"absolute",right:12,top:10}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
             </div>
             
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <div className="text-sm font-medium text-blue-700 mb-1">Total Documents</div>
-              <div className="text-2xl font-bold text-blue-800">{documents.length}</div>
+            <div style={{padding:16,backgroundColor:"#eff6ff",borderRadius:8}}>
+              <div style={{fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#1d4ed8",marginBottom:4}}>Total Documents</div>
+              <div style={{fontSize:"1.5rem",lineHeight:"2rem",fontWeight:700,color:"#1e40af"}}>{documents.length}</div>
             </div>
             
-            <div className="flex items-end">
+            <div className="fb-d-flex" style={{alignItems:"flex-end"}}>
               <button
                 onClick={fetchData}
-                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center justify-center"
+                className="fb-d-flex fb-align-center" style={{width:"100%",backgroundColor:"#e5e7eb",color:"#374151",paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,borderRadius:8,justifyContent:"center"}}
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg style={{width:20,height:20,marginRight:8}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 Refresh
@@ -690,50 +693,50 @@ const AppDocuments: React.FC = () => {
 
         {/* Documents List (Table View) */}
         {filteredDocuments.length > 0 ? (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+          <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",overflow:"hidden"}}>
+            <div style={{overflowX:"auto"}}>
+              <table style={{minWidth:"100%",borderTop:"1px solid #e5e7eb",borderColor:"#e5e7eb"}}>
+                <thead style={{backgroundColor:"#f9fafb"}}>
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="text-left text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:12,paddingBottom:12,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>
                       Document
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="text-left text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:12,paddingBottom:12,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>
                       Type
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="text-left text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:12,paddingBottom:12,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>
                       Size
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="text-left text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:12,paddingBottom:12,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>
                       Uploaded
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="text-left text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:12,paddingBottom:12,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>
                       Status
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="text-left text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:12,paddingBottom:12,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody style={{backgroundColor:"#fff",borderTop:"1px solid #e5e7eb",borderColor:"#e5e7eb"}}>
                   {filteredDocuments.map((doc) => (
-                    <tr key={doc.path || doc.storage_path || doc.title} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="text-2xl mr-4">
+                    <tr key={doc.path || doc.storage_path || doc.title} style={{}}>
+                      <td style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,whiteSpace:"nowrap"}}>
+                        <div className="fb-d-flex fb-align-center">
+                          <div style={{fontSize:"1.5rem",lineHeight:"2rem",marginRight:16}}>
                             {getFileIcon(doc.file_type)}
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900 truncate max-w-xs">
+                            <div style={{fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:320}}>
                               {doc.title || doc.original_filename}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                               {doc.description || 'No description'}
                             </div>
                             {/* AI分类信息 */}
                             {aiEnabled && doc.ai_category && (
-                              <div className="mt-1">
-                                <span className={`inline-block px-2 py-1 rounded text-xs font-medium bg-${getAICategoryColor(doc.ai_category)}-100 text-${getAICategoryColor(doc.ai_category)}-800`}>
+                              <div style={{marginTop:4}}>
+                                <span style={{display:"inline-block",paddingLeft:8,paddingRight:8,paddingTop:4,paddingBottom:4,borderRadius:4,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,...getAICategoryStyle(doc.ai_category)}}>
                                   {getAICategoryText(doc.ai_category)}
                                 </span>
                               </div>
@@ -741,35 +744,33 @@ const AppDocuments: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,whiteSpace:"nowrap",fontSize:"0.875rem",lineHeight:"1.25rem"}}>
                         {doc.file_type}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,whiteSpace:"nowrap",fontSize:"0.875rem",lineHeight:"1.25rem"}}>
                         {formatFileSize(doc.file_size)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="text-muted" style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,whiteSpace:"nowrap",fontSize:"0.875rem",lineHeight:"1.25rem"}}>
                         {formatDate(doc.created_at)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          doc.folder_path ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                      <td style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,whiteSpace:"nowrap"}}>
+                        <span style={{paddingLeft:12,paddingRight:12,paddingTop:4,paddingBottom:4,borderRadius:9999,fontSize:"0.75rem",lineHeight:"1rem",fontWeight:500,...(doc.folder_path ? {backgroundColor:'#dcfce7',color:'#166534'} : {backgroundColor:'#f3f4f6',color:'#1f2937'})}}>
                           {doc.folder_path ? 'In Folder' : 'Uncategorized'}
                         </span>
                         {getClassificationStatusBadge(doc.classification_status, doc.ai_confidence)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                      <td style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,whiteSpace:"nowrap",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500}}>
+                        <div className="fb-d-flex" style={{display:"flex",gap:8}}>
                           <Link
                             to={`/documents/${(doc.path || doc.storage_path || doc.id).replace(/^\//, '')}`}
-                            className="text-blue-600 hover:text-blue-900"
+                            style={{color:"#1e3a5f"}}
                             title="View Details"
                           >
                             View
                           </Link>
                           <button
                             onClick={() => handleDelete(doc.path)}
-                            className="text-red-600 hover:text-red-900"
+                            style={{color:"#dc2626"}}
                             title="Delete"
                           >
                             Delete
@@ -783,21 +784,21 @@ const AppDocuments: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <div className="text-6xl mb-6">📄</div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">
+          <div className="text-center" style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 1px 3px 0 rgba(0,0,0,0.1)",padding:48}}>
+            <div style={{fontSize:"3.75rem",lineHeight:1,marginBottom:24}}>📄</div>
+            <h3 style={{fontSize:"1.5rem",lineHeight:"2rem",fontWeight:700,color:"#1f2937",marginBottom:16}}>
               {searchTerm 
                 ? 'No matching documents found' 
                 : 'No documents in this folder'}
             </h3>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            <p className="text-muted" style={{marginBottom:32,maxWidth:448,marginLeft:"auto",marginRight:"auto"}}>
               {searchTerm
                 ? 'Try adjusting your search terms to find what you\'re looking for.'
                 : 'Upload documents to this folder to start organizing them.'}
             </p>
             <Link
               to="/upload"
-              className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-medium"
+              style={{display:"inline-block",backgroundColor:"#2563eb",color:"#fff",paddingLeft:32,paddingRight:32,paddingTop:12,paddingBottom:12,borderRadius:8,fontWeight:500}}
             >
               Upload Documents
             </Link>
@@ -805,14 +806,14 @@ const AppDocuments: React.FC = () => {
         )}
 
         {/* Footer Stats */}
-        <div className="mt-8 text-center text-gray-600">
+        <div className="text-center text-muted" style={{marginTop:32}}>
           <p>
             Showing {filteredDocuments.length} of {documents.length} documents in this folder
             {aiEnabled && ' • AI classification enabled'}
           </p>
           {folder && (
-            <p className="mt-2 text-sm">
-              Folder: <span className="font-medium">{folder.name}</span>
+            <p style={{marginTop:8,fontSize:"0.875rem",lineHeight:"1.25rem"}}>
+              Folder: <span style={{fontWeight:500}}>{folder.name}</span>
               {folder.document_count !== undefined && ` • ${folder.document_count} total documents`}
               {folder.total_size !== undefined && ` • ${formatFileSize(folder.total_size)} total size`}
             </p>

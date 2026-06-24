@@ -26,6 +26,8 @@ export interface Folder {
   app_slug?: string;
   // 应用路径
   app_path?: string;
+  // 缩略图尺寸，如 "128x128", "256x256"
+  thumbnail_size?: string;
 }
 
 export interface FolderCreateRequest {
@@ -34,12 +36,14 @@ export interface FolderCreateRequest {
   parent_folder_path?: string;
   path?: string;
   app_id: string; // 应用slug，不是UUID
+  thumbnail_size?: string;
 }
 
 export interface FolderUpdateRequest {
   name?: string;
   description?: string;
   parent_folder_path?: string;
+  thumbnail_size?: string;
 }
 
 export interface FolderTreeItem extends Folder {
@@ -298,3 +302,38 @@ class FolderService {
 }
 
 export default new FolderService();
+
+
+// ========== 缩略图尺寸继承工具函数 ==========
+
+const DEFAULT_THUMBNAIL_SIZE = '128x128';
+
+/**
+ * 解析文件夹的生效缩略图尺寸。
+ * 沿父链向上查找，返回第一个非空的 thumbnail_size，
+ * 若全为空则返回默认值 "128x128"。
+ *
+ * @param folderPath 要查询的文件夹路径
+ * @param allFolders 当前已加载的完整文件夹列表（用于父链查找）
+ * @returns 生效的缩略图尺寸（如 "256x256"）
+ */
+export function getEffectiveThumbnailSize(
+  folderPath: string,
+  allFolders: Folder[]
+): string {
+  let currentPath = folderPath;
+
+  while (currentPath) {
+    const folder = allFolders.find(f => f.path === currentPath);
+    if (folder?.thumbnail_size) {
+      return folder.thumbnail_size;
+    }
+    // 向上走父路径
+    if (currentPath === '/') break;
+    const parts = currentPath.replace(/\/$/, '').split('/');
+    parts.pop();
+    currentPath = parts.length > 1 ? parts.join('/') : '/';
+  }
+
+  return DEFAULT_THUMBNAIL_SIZE;
+}

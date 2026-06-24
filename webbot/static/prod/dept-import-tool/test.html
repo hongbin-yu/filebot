@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html><body>
+<h2>Bookmarklet Test</h2>
+<p>Click the link below to test the bookmarklet (on this page)</p>
+<a id="testLink" href="#">Test Bookmarklet</a>
+<pre id="output"></pre>
+<script>
+function $(id) { return document.getElementById(id); }
+
+fetch('http://localhost:5174/dept-import-tool/bookmarklet.js?v=' + Date.now())
+  .then(function(r) { return r.text(); })
+  .then(function(code) {
+    // Same minifier as index.html
+    var min = code.replace(/\n\s*/g, '').replace(/\s{2,}/g, ' ').trim();
+    
+    console.log('Code length:', min.length);
+    
+    // Test 1: Syntax check
+    try {
+      new Function(min);
+      $('output').textContent += '✅ Syntax valid\n';
+    } catch(e) {
+      $('output').textContent += '❌ Syntax: ' + e.message + '\n';
+    }
+    
+    // Test 2: encodeURIComponent roundtrip
+    var enc = encodeURIComponent(min);
+    var dec = decodeURIComponent(enc);
+    try {
+      new Function(dec);
+      $('output').textContent += '✅ Roundtrip valid\n';
+    } catch(e) {
+      $('output').textContent += '❌ Roundtrip: ' + e.message + '\n';
+    }
+    
+    // Test 3: Check for characters that might be problematic
+    var problems = [];
+    if (enc.includes('#')) problems.push('# not encoded');
+    if (enc.includes('?')) problems.push('? not encoded');
+    if (enc.includes('&')) problems.push('& not encoded');
+    $('output').textContent += (problems.length ? '❌ ' + problems.join(', ') : '✅ No raw special chars') + '\n';
+    
+    // Test 4: Execute the decoded code directly
+    try {
+      (new Function(dec))();
+      $('output').textContent += '✅ Code executed directly\n';
+    } catch(e) {
+      $('output').textContent += '❌ Execution: ' + e.message + '\n';
+    }
+    
+    // Test 5: Set the bookmarklet URL
+    var bmUrl = 'javascript:' + enc;
+    $('testLink').href = bmUrl;
+    $('output').textContent += '\nBookmarklet URL ready (click to test)\n';
+    $('output').textContent += 'URL length: ' + bmUrl.length + ' bytes\n';
+    
+    // Test 6: navigate via location
+    // This will execute the bookmarklet in the current page context
+  });
+</script>
+</body></html>

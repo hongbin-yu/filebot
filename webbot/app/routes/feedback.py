@@ -18,7 +18,7 @@ from email.header import Header
 
 router = APIRouter(prefix="/api/v1/feedback", tags=["feedback"])
 
-DB_PATH = os.environ.get("WEBBOT_DB_PATH", "app/webbot.db")
+DB_PATH = os.environ.get("WEBBOT_DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db"))
 
 # 反馈邮件目标地址（环境变量配置）
 FEEDBACK_TO = os.environ.get("FEEDBACK_TO", "")

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "page_id": "/canadasite/en/services/ai-search",
+  "page_path": "/canadasite/en/services/ai-search",
+  "page_title": "AI Search",
+  "language": "en",
+  "content_size": 897,
+  "created_at": "2026-05-31T13:55:20.341959Z",
+  "author": null,
+  "notes": "Published via WebBot",
+  "content": "<h1 property=\"name\" id=\"wb-cont\" dir=\"ltr\">AI Search <span class=\"page-title\">Government of Canada services</span></h1>\n<p><label class=\"wb-inv\" for=\"query\">Search Government of Canada websites</label></p>\n<form onsubmit=\"doSearch(); return false;\" class=\"mrgn-top-sm\">\n<div class=\"input-group mrgn-tp-lg\"><input type=\"hidden\" value=\"en\" /> <input type=\"hidden\" id=\"site\" name=\"site\" value=\"/en/services\" /> <input id=\"query\" class=\"form-control\" value=\"\" name=\"q\" dir=\"ltr\" autocomplete=\"off\" spellcheck=\"false\" style=\"outline: medium none;\" type=\"search\" data-fusion-query=\"safe\" aria-describedby=\"gc-pi\" placeholder=\"AI Search...\" /> <span class=\"input-group-btn\"> <button id=\"sch-inp\" class=\"btn btn-primary btn-small\" name=\"wb-srch-sub\" type=\"submit\"> <span class=\"glyphicon-search glyphicon\"></span> <span class=\"wb-inv\">Search</span> </button> </span></div>\n</form>\n<div id=\"results\"></div>"
+}

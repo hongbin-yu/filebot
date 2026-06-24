@@ -273,44 +273,44 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fb-modal-backdrop fb-d-flex fb-align-center" style={{justifyContent:"center",zIndex:50}}
       onClick={handleBackgroundClick}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden">
+      <div style={{backgroundColor:"#fff",borderRadius:8,boxShadow:"0 20px 25px -5px rgba(0,0,0,0.1)",width:"100%",maxWidth:448,maxHeight:"90vh",overflow:"hidden"}}>
         {/* 模态框头部 */}
-        <div className="px-6 py-4 border-b flex justify-between items-center">
-          <div className="flex items-center">
-            <FolderIcon className="w-6 h-6 text-yellow-500 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-800">
+        <div className="fb-d-flex fb-justify-between fb-align-center" style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,borderBottom:"1px solid #e5e7eb"}}>
+          <div className="fb-d-flex fb-align-center">
+            <FolderIcon style={{width:24,height:24,color:"#eab308",marginRight:8}} />
+            <h2 style={{fontSize:"1.125rem",lineHeight:"1.75rem",fontWeight:600,color:"#1f2937"}}>
               {mode === 'edit' ? t('folderModal.editFolder') : t('folderModal.createFolder')}
             </h2>
           </div>
           <button 
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded"
+            style={{padding:4,borderRadius:4}}
             disabled={isSubmitting}
           >
-            <XMarkIcon className="w-5 h-5 text-gray-500" />
+            <XMarkIcon className="text-muted" style={{width:20,height:20}} />
           </button>
         </div>
         
         {/* 模态框内容 */}
-        <div className="px-6 py-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+        <div style={{paddingLeft:24,paddingRight:24,paddingTop:16,paddingBottom:16,overflowY:"auto", maxHeight: 'calc(90vh - 140px)' }}>
           <form onSubmit={handleSubmit}>
             {/* 父文件夹信息 */}
-            <div className="mb-6 p-3 bg-blue-50 rounded-lg">
-              <div className="text-sm text-blue-800 mb-1">{t('folderModal.parentFolder')}</div>
-              <div className="font-medium">{selectedParentInfo.name}</div>
+            <div style={{marginBottom:24,padding:12,backgroundColor:"#eff6ff",borderRadius:8}}>
+              <div style={{fontSize:"0.875rem",lineHeight:"1.25rem",color:"#1e40af",marginBottom:4}}>{t('folderModal.parentFolder')}</div>
+              <div style={{fontWeight:500}}>{selectedParentInfo.name}</div>
               {selectedParentInfo.path && (
-                <div className="text-sm text-blue-600 mt-1 truncate">
+                <div style={{fontSize:"0.875rem",lineHeight:"1.25rem",color:"#2563eb",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                   {t('folderModal.pathLabel')} {selectedParentInfo.path}
                 </div>
               )}
             </div>
             
             {/* 文件夹名称 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                 {t('folderModal.folderNameLabel')}
               </label>
               <input
@@ -320,33 +320,33 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                   setName(e.target.value);
                   setError(null);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-control"
                 placeholder={t('folderModal.folderNamePlaceholder')}
                 autoFocus
                 disabled={isSubmitting}
                 maxLength={100}
               />
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                 {t('folderModal.folderNameHint')}
               </div>
             </div>
             
             {/* 路径预览 */}
             {name.trim() && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600 mb-1">{t('folderModal.pathPreview')}</div>
-                <div className="font-mono text-sm text-gray-800 truncate">
+              <div style={{marginBottom:16,padding:12,backgroundColor:"#f9fafb",borderRadius:8}}>
+                <div className="text-muted" style={{fontSize:"0.875rem",lineHeight:"1.25rem",marginBottom:4}}>{t('folderModal.pathPreview')}</div>
+                <div style={{fontFamily:"ui-monospace, SFMono-Regular, monospace",fontSize:"0.875rem",lineHeight:"1.25rem",color:"#1f2937",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                   {pathPreview}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                   {t('folderModal.pathPreviewHint')}
                 </div>
               </div>
             )}
             
             {/* 文件夹描述 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                 {t('folderModal.descriptionLabel')}
               </label>
               <textarea
@@ -355,32 +355,32 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                   setDescription(e.target.value);
                   setError(null);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-control"
                 placeholder={t('folderModal.descriptionPlaceholder')}
                 rows={3}
                 disabled={isSubmitting}
                 maxLength={500}
               />
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                 {t('folderModal.descriptionHint')}
               </div>
             </div>
             
             {/* 选择父文件夹 - 创建子文件夹时只读显示，创建根文件夹时可选 */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div style={{marginBottom:24}}>
+              <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
                 {t('folderModal.selectParentFolderLabel')}
               </label>
               {parentFolderPath ? (
-                <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm text-gray-700">
-                  <span className="font-medium">{getSelectedParentInfo().name}</span>
-                  <span className="text-gray-400 ml-2">{getSelectedParentInfo().path}</span>
+                <div style={{width:"100%",paddingLeft:12,paddingRight:12,paddingTop:8,paddingBottom:8,backgroundColor:"#f9fafb",border:"1px solid #ddd",borderColor:"#d1d5db",borderRadius:4,fontSize:"0.875rem",lineHeight:"1.25rem",color:"#374151"}}>
+                  <span style={{fontWeight:500}}>{getSelectedParentInfo().name}</span>
+                  <span style={{color:"#9ca3af",marginLeft:8}}>{getSelectedParentInfo().path}</span>
                 </div>
               ) : (
                 <select
                   value={selectedParentFolderPath}
                   onChange={(e) => setSelectedParentFolderPath(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-control"
                   disabled={isSubmitting}
                 >
                   {folderOptions.map(option => (
@@ -390,36 +390,36 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                   ))}
                 </select>
               )}
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                 {parentFolderPath ? t('folderModal.currentFolderAsParent') || '此文件夹为固定的父文件夹' : t('folderModal.selectParentFolderHint')}
               </div>
             </div>
             
             {/* 错误信息 */}
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
-                <div className="text-sm text-red-800">{error}</div>
+              <div style={{marginBottom:16,padding:12,backgroundColor:"#fef2f2",border:"1px solid #ddd",borderColor:"#fecaca",borderRadius:4}}>
+                <div style={{fontSize:"0.875rem",lineHeight:"1.25rem",color:"#991b1b"}}>{error}</div>
               </div>
             )}
             
             {/* 操作按钮 */}
-            <div className="flex justify-end space-x-3 pt-4 border-t">
+            <div className="fb-d-flex" style={{justifyContent:"flex-end",display:"flex",gap:12,paddingTop:16,borderTop:"1px solid #e5e7eb"}}>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                style={{paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,border:"1px solid #ddd",borderColor:"#d1d5db",color:"#374151",borderRadius:4}}
                 disabled={isSubmitting}
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{paddingLeft:16,paddingRight:16,paddingTop:8,paddingBottom:8,backgroundColor:"#2563eb",color:"#fff",borderRadius:4}}
                 disabled={isSubmitting || !name.trim()}
               >
                 {isSubmitting ? (
-                  <span className="flex items-center">
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                  <span className="fb-d-flex fb-align-center">
+                    <span className="fb-spinner" style={{borderRadius:9999,height:16,width:16,borderBottomWidth:2,borderColor:"#fff",marginRight:8}}></span>
                     {mode === 'edit' ? t('folderModal.saving') : t('folderModal.creating')}
                   </span>
                 ) : (

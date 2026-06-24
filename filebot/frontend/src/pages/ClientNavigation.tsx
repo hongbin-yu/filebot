@@ -6,10 +6,7 @@ import FolderService from '../services/folder.service';
 import { App } from '../services/app.service';
 import { Document } from '../services/document.service';
 import { Folder } from '../services/folder.service';
-// import LoadingSpinner from '../components/common/LoadingSpinner';
-// import ErrorAlert from '../components/common/ErrorAlert';
 
-// Define types for thumbnail grid items
 interface ThumbnailItem {
   id: string;
   documentId: string;
@@ -24,8 +21,7 @@ interface ThumbnailItem {
 const ClientNavigation: React.FC = () => {
   const { appSlug } = useParams<{ appSlug: string }>();
   const navigate = useNavigate();
-  
-  // State management
+
   const [apps, setApps] = useState<App[]>([]);
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -35,498 +31,266 @@ const ClientNavigation: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterText, setFilterText] = useState('');
-  
-  // Services (already imported as instances)
-  const appService = AppService;
-  const documentService = DocumentService;
-  const folderService = FolderService;
-  
-  // Load apps list for sidebar
+  const [lightboxItem, setLightboxItem] = useState<ThumbnailItem | null>(null);
+
   const loadApps = useCallback(async () => {
     try {
-      const appsData = await appService.getApps();
+      const appsData = await AppService.getApps();
       setApps(appsData);
-      
-      // If appSlug is provided in URL, select that app
-      if (appSlug && appsData.length > 0) {
-        const foundApp = appsData.find((app: App) => app.slug === appSlug);
-        if (foundApp) {
-          setSelectedApp(foundApp);
-        } else {
-          // If app not found, select first app
-          setSelectedApp(appsData[0]);
-        }
-      } else if (appsData.length > 0) {
-        // Select first app by default
+      if (appSlug && appsData.length) {
+        const found = appsData.find((a: App) => a.slug === appSlug);
+        if (found) setSelectedApp(found);
+        else setSelectedApp(appsData[0]);
+      } else if (appsData.length) {
         setSelectedApp(appsData[0]);
       }
-    } catch (err) {
-      console.error('Failed to load apps:', err);
+    } catch {
       setError('Failed to load applications list');
     }
   }, [appSlug]);
-  
-  // Load folders for selected app
-  const loadFolders = useCallback(async (appSlug: string) => {
+
+  const loadFolders = useCallback(async (slug: string) => {
     try {
-      const foldersData = await folderService.getFolders(appSlug, { 
-        parent_folder_path: `/${appSlug}`
-      });
-      setFolders(foldersData);
-      
-      // Select first folder by default, or root folder if exists
-      const rootFolder = foldersData.find((folder: Folder) => !folder.parent_folder_path);
-      if (rootFolder) {
-        setSelectedFolder(rootFolder);
-      } else if (foldersData.length > 0) {
-        setSelectedFolder(foldersData[0]);
-      } else {
-        setSelectedFolder(null);
-      }
-    } catch (err) {
-      console.error('Failed to load folders:', err);
-      setError('Failed to load folders for selected application');
+      const data = await FolderService.getFolders(slug, { parent_folder_path: `/${slug}` });
+      setFolders(data);
+      setSelectedFolder(data.length ? data[0] : null);
+    } catch {
+      setError('Failed to load folders');
     }
   }, []);
-  
-  // Load documents for selected folder
+
   const loadDocuments = useCallback(async (folderId: string) => {
     if (!folderId) return;
-    
     try {
       setLoading(true);
-      const documentsData = await documentService.getDocuments(folderId);
-      setDocuments(documentsData);
-      
-      // Convert documents to thumbnail items
-      const thumbnails: ThumbnailItem[] = documentsData.map((doc: Document) => {
-        const docIdent = doc.path || doc.storage_path || doc.id;
-        const encodedDoc = encodeURIComponent(docIdent);
+      const docs = await DocumentService.getDocuments(folderId);
+      setDocuments(docs);
+      setThumbnailItems(docs.map((doc: Document) => {
+        const ident = doc.path || doc.storage_path || doc.id;
+        const encoded = encodeURIComponent(ident);
         return {
-          id: docIdent,
-          documentId: docIdent,
+          id: ident,
+          documentId: ident,
           title: doc.title || doc.original_filename || 'Untitled',
-          thumbnailUrl: `/api/v1/documents/${encodedDoc}/thumbnail`,
-          fullImageUrl: `/api/v1/documents/${encodedDoc}/download`,
+          thumbnailUrl: `/api/v1/documents/${encoded}/thumbnail`,
+          fullImageUrl: `/api/v1/documents/${encoded}/download`,
           fileType: doc.file_type || 'unknown',
           fileSize: doc.file_size,
           uploadedAt: doc.created_at
         };
-      });
-      
-      setThumbnailItems(thumbnails);
-    } catch (err) {
-      console.error('Failed to load documents:', err);
+      }));
+    } catch {
       setError('Failed to load documents');
     } finally {
       setLoading(false);
     }
   }, []);
-  
-  // Initialize data
+
   useEffect(() => {
-    const initData = async () => {
-      setLoading(true);
-      await loadApps();
-      setLoading(false);
-    };
-    
-    initData();
+    const init = async () => { setLoading(true); await loadApps(); setLoading(false); };
+    init();
   }, [loadApps]);
-  
-  // When selected app changes, load its folders
+
   useEffect(() => {
-    if (selectedApp?.id) {
-      loadFolders(selectedApp.slug || selectedApp.id);
-    }
+    if (selectedApp?.id) loadFolders(selectedApp.slug || selectedApp.id);
   }, [selectedApp, loadFolders]);
-  
-  // When selected folder changes, load its documents
+
   useEffect(() => {
-    if (selectedFolder?.path) {
-      // Prefer path, fall back to ID if not available
-      const folderIdentifier = selectedFolder.path || selectedFolder.id;
-      loadDocuments(folderIdentifier);
-    }
+    if (selectedFolder?.path) loadDocuments(selectedFolder.path);
   }, [selectedFolder, loadDocuments]);
-  
-  // Handle app selection
+
   const handleAppSelect = (app: App) => {
     setSelectedApp(app);
-    // Update URL if app slug is different
-    if (appSlug !== app.slug) {
-      navigate(`/apps/${app.slug}/navigation`);
-    }
+    if (appSlug !== app.slug) navigate(`/apps/${app.slug}/navigation`);
   };
-  
-  // Handle folder selection
-  const handleFolderSelect = (folder: Folder) => {
-    setSelectedFolder(folder);
-  };
-  
-  // Filter thumbnails based on search text
-  const filteredThumbnails = thumbnailItems.filter(item =>
+
+  const filtered = thumbnailItems.filter(item =>
     item.title.toLowerCase().includes(filterText.toLowerCase())
   );
-  
-  // Handle thumbnail click - open lightbox
-  const handleThumbnailClick = (item: ThumbnailItem) => {
-    // TODO: Implement lightbox opening
-    // For now, open the full image in a new tab
-    window.open(item.fullImageUrl, '_blank');
-  };
-  
-  // Handle filter change
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilterText(e.target.value);
-  };
-  
-  // Initialize WET framework components
-  useEffect(() => {
-    // Wait for WET framework to be loaded
-    const initWETComponents = () => {
-      // Check if window.wb object exists
-      if ((window as any).wb) {
-        // Initialize lightbox if not already initialized
-        const lightboxElements = document.querySelectorAll('[data-wb-lbx]');
-        lightboxElements.forEach(el => {
-          if (!el.classList.contains('wb-lbx-initialized')) {
-            el.classList.add('wb-lbx-initialized');
-            // Trigger WET initialization
-            (window as any).wb.init(el);
-          }
-        });
-        
-        // Initialize filter if not already initialized
-        const filterElements = document.querySelectorAll('[data-wb-filter]');
-        filterElements.forEach(el => {
-          if (!el.classList.contains('wb-filter-initialized')) {
-            el.classList.add('wb-filter-initialized');
-            (window as any).wb.init(el);
-          }
-        });
-        
-        console.log('WET components initialized');
-      } else {
-        // Retry after 500ms if WET not loaded yet
-        setTimeout(initWETComponents, 500);
-      }
-    };
-    
-    // Start initialization
-    initWETComponents();
-    
-    // Cleanup if needed
-    return () => {
-      // Cleanup if necessary
-    };
-  }, [filteredThumbnails]); // Re-initialize when thumbnails change
-  
+
   if (loading && !selectedApp) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+      <div className="fb-loading" style={{ minHeight: '50vh' }}>
         <div className="text-center">
-          <div className="spinner-border text-primary" role="status">
+          <div className="spinner-border" role="status" style={{ width: '3rem', height: '3rem' }}>
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-2">Loading applications...</p>
+          <p className="text-muted" style={{ marginTop: 12 }}>Loading applications...</p>
         </div>
       </div>
     );
   }
-  
+
   if (error) {
     return (
-      <div className="alert alert-danger m-3">
-        <h5 className="alert-heading">Error</h5>
+      <div className="alert alert-danger" style={{ margin: 15 }}>
+        <strong>Error</strong>
         <p>{error}</p>
-        <button className="btn btn-primary" onClick={() => window.location.reload()}>
-          Retry
-        </button>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button>
       </div>
     );
   }
-  
+
   return (
-    <div className="container-fluid p-0">
-      <div className="row g-0" style={{ minHeight: 'calc(100vh - 60px)' }}>
-        {/* Sidebar - Apps List */}
-        <div className="col-md-3 col-lg-2 bg-light border-end" style={{ overflowY: 'auto', maxHeight: '100vh' }}>
-          <div className="p-3">
-            <h2 className="h5 mb-3">Applications</h2>
-            <div className="list-group">
-              {apps.map(app => (
-                <button
-                  key={app.id}
-                  className={`list-group-item list-group-item-action ${selectedApp?.id === app.id ? 'active' : ''}`}
-                  onClick={() => handleAppSelect(app)}
-                  style={{ textAlign: 'left' }}
+    <div className="container-fluid" style={{ padding: 0 }}>
+      <div className="row" style={{ minHeight: 'calc(100vh - 60px)' }}>
+        {/* Sidebar */}
+        <div className="col-md-3 col-lg-2 fb-sidebar" style={{ overflowY: 'auto', maxHeight: '100vh', background: '#f5f5f5', borderRight: '1px solid #ddd', padding: 15 }}>
+          <div className="fb-sidebar-cat">Applications</div>
+          <ul className="fb-sidebar-nav">
+            {apps.map(app => (
+              <li key={app.id}>
+                <a href="#"
+                  className={selectedApp?.id === app.id ? 'active' : ''}
+                  onClick={e => { e.preventDefault(); handleAppSelect(app); }}
                 >
-                  <div className="d-flex align-items-center">
-                    {app.icon && (
-                      <i className={`bi bi-${app.icon} me-2`}></i>
-                    )}
-                    <div>
-                      <div className="fw-medium">{app.name}</div>
-                      {app.description && (
-                        <small className="text-muted d-block">{app.description}</small>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            {selectedApp && (
-              <>
-                <h3 className="h6 mt-4 mb-2">Folders</h3>
-                <div className="list-group">
-                  {folders.map(folder => (
-                    <button
-                      key={folder.path}
-                      className={`list-group-item list-group-item-action ${selectedFolder?.path === folder.path ? 'active' : ''}`}
-                      onClick={() => handleFolderSelect(folder)}
-                      style={{ textAlign: 'left', fontSize: '0.9rem' }}
-                    >
-                      <div className="d-flex align-items-center">
-                        <i className="bi bi-folder me-2"></i>
-                        <span>{folder.name}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        
-        {/* Main Content Area */}
-        <div className="col-md-9 col-lg-10 p-4" style={{ overflowY: 'auto', maxHeight: '100vh' }}>
-          <div className="mb-4">
-            <h1 className="h3">
-              {selectedApp ? selectedApp.name : 'Select an Application'}
-              {selectedFolder && <span className="text-muted"> / {selectedFolder.name}</span>}
-            </h1>
-            
-            {/* Filter input using WET framework */}
-            <div className="row mb-3">
-              <div className="col-md-6">
-                <div className="wb-filter" data-wb-filter='{
-                  "filterType": "list",
-                  "filterGroup": ".thumbnail-grid",
-                  "filterItem": ".thumbnail-item",
-                  "filterSelector": ".thumbnail-title"
-                }'>
-                  <div className="input-group">
-                    <label htmlFor="filterInput" className="wb-inv">Filter documents by name</label>
-                    <input
-                      type="search"
-                      id="filterInput"
-                      className="form-control"
-                      placeholder="Filter documents by name..."
-                      value={filterText}
-                      onChange={handleFilterChange}
-                      data-wb-filter='{
-                        "action": "filter",
-                        "selector": ".thumbnail-item",
-                        "filterGroup": ".thumbnail-grid",
-                        "filterSelector": ".thumbnail-title"
-                      }'
-                    />
-                    <button
-                      className="btn btn-primary"
-                      type="button"
-                      onClick={() => setFilterText('')}
-                      aria-label="Clear filter"
-                    >
-                      <i className="bi bi-x"></i>
-                    </button>
-                  </div>
-                  <div className="wb-filter-results alert alert-info wb-invisible mt-2">
-                    <p><span className="wb-filter-count">0</span> of <span className="wb-filter-total">0</span> documents match your filter.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="col-md-6 text-end">
-                <div className="btn-group" role="group">
-                  <button className="btn btn-default" type="button" data-wb-filter='{"action": "showAll"}'>
-                    <i className="bi bi-eye"></i> Show All
-                  </button>
-                  <button className="btn btn-default" type="button" data-wb-filter='{"action": "hideAll"}'>
-                    <i className="bi bi-eye-slash"></i> Hide All
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Stats */}
-            <div className="alert alert-info py-2 mb-3">
-              <div className="row">
-                <div className="col">
-                  <small>
-                    <i className="bi bi-folder me-1"></i>
-                    <strong>{folders.length}</strong> folders
-                  </small>
-                </div>
-                <div className="col">
-                  <small>
-                    <i className="bi bi-file-earmark me-1"></i>
-                    <strong>{documents.length}</strong> documents
-                  </small>
-                </div>
-                <div className="col">
-                  <small>
-                    <i className="bi bi-eye me-1"></i>
-                    <strong>{filteredThumbnails.length}</strong> showing
-                  </small>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Thumbnail Grid with WET Lightbox */}
-          {loading ? (
-            <div className="d-flex justify-content-center align-items-center py-5">
-              <div className="text-center">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                <p className="mt-2">Loading documents...</p>
-              </div>
-            </div>
-          ) : filteredThumbnails.length === 0 ? (
-            <div className="text-center py-5">
-              <i className="bi bi-folder-x display-1 text-muted mb-3"></i>
-              <h3 className="h5">No documents found</h3>
-              <p className="text-muted">
-                {filterText ? 'Try adjusting your filter' : 'Upload documents to see them here'}
-              </p>
-            </div>
-          ) : (
+                  {app.icon && <span style={{ marginRight: 6 }}>{app.icon}</span>}
+                  {app.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          {selectedApp && (
             <>
-              {/* WET Lightbox Gallery - Hidden links for lightbox */}
-              <div className="wb-lbx hidden">
-                {filteredThumbnails.map(item => (
-                  <a
-                    key={item.id}
-                    href={item.fullImageUrl}
-                    className="wb-lbx-item"
-                    title={item.title}
-                    data-wb-lbx={`{"type": "image", "url": "${item.fullImageUrl}", "title": "${item.title}"}`}
-                    aria-label={`View ${item.title}`}
-                  >
-                    {/* Hidden link for lightbox */}
-                  </a>
-                ))}
-              </div>
-              
-              {/* Thumbnail Grid */}
-              <div className="thumbnail-grid row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-3">
-                {filteredThumbnails.map((item, index) => (
-                  <div key={item.id} className="col thumbnail-item" data-wb-filter-item>
-                    <div 
-                      className="card h-100 border shadow-sm thumbnail-card"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        // Open WET lightbox
-                        const lightboxItems = document.querySelectorAll('.wb-lbx-item');
-                        if (lightboxItems[index]) {
-                          (lightboxItems[index] as HTMLElement).click();
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          const lightboxItems = document.querySelectorAll('.wb-lbx-item');
-                          if (lightboxItems[index]) {
-                            (lightboxItems[index] as HTMLElement).click();
-                          }
-                        }
-                      }}
+              <div className="fb-sidebar-cat">Folders</div>
+              <ul className="fb-sidebar-nav">
+                {folders.map(folder => (
+                  <li key={folder.path}>
+                    <a href="#"
+                      className={selectedFolder?.path === folder.path ? 'active' : ''}
+                      onClick={e => { e.preventDefault(); setSelectedFolder(folder); }}
+                      style={{ fontSize: '0.9em' }}
                     >
-                      <div className="card-img-top bg-light d-flex align-items-center justify-content-center" 
-                           style={{ height: '150px', overflow: 'hidden' }}>
-                        {item.thumbnailUrl ? (
-                          <img 
-                            src={item.thumbnailUrl} 
-                            alt={item.title}
-                            className="img-fluid thumbnail-image"
-                            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                            onError={(e) => {
-                              // Fallback to file type icon if thumbnail fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = `
-                                  <div class="text-center">
-                                    <i class="bi bi-file-earmark display-4 text-muted"></i>
-                                    <div class="mt-2 small">${item.fileType.toUpperCase()}</div>
-                                  </div>
-                                `;
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="text-center">
-                            <i className="bi bi-file-earmark display-4 text-muted"></i>
-                            <div className="mt-2 small">{item.fileType.toUpperCase()}</div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="card-body p-3">
-                        <h6 className="card-title mb-1 thumbnail-title" style={{ fontSize: '0.85rem' }}>
-                          {item.title.length > 30 ? item.title.substring(0, 30) + '...' : item.title}
-                        </h6>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <small className="text-muted">
-                            {item.fileSize ? `${(item.fileSize / 1024).toFixed(1)} KB` : 'Unknown size'}
-                          </small>
-                          <span className="badge bg-secondary">{item.fileType}</span>
-                        </div>
-                      </div>
-                      <div className="card-footer bg-transparent border-top-0 py-2">
-                        <button 
-                          className="btn btn-sm btn-outline-primary w-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(item.fullImageUrl, '_blank');
-                          }}
-                        >
-                          <i className="bi bi-download me-1"></i> Download
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                      📁 {folder.name}
+                    </a>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </>
           )}
-          
-          {/* Lightbox Modal (placeholder) */}
-          <div className="modal fade" id="imageLightbox" tabIndex={-1} aria-hidden="true">
-            <div className="modal-dialog modal-dialog-centered modal-xl">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title" id="lightboxTitle">Image Preview</h5>
-                  <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div className="modal-body text-center">
-                  <img id="lightboxImage" src="" alt="" className="img-fluid" />
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                  <a id="lightboxDownload" href="#" className="btn btn-primary" download>
-                    <i className="bi bi-download me-1"></i> Download
-                  </a>
-                </div>
+        </div>
+
+        {/* Main content */}
+        <div className="col-md-9 col-lg-10" style={{ padding: 15, overflowY: 'auto', maxHeight: '100vh' }}>
+          <div className="fb-page-header">
+            <h2 style={{ margin: 0 }}>
+              {selectedApp ? selectedApp.name : 'Select an Application'}
+              {selectedFolder && <small className="text-muted"> / {selectedFolder.name}</small>}
+            </h2>
+          </div>
+
+          {/* Filter */}
+          <div className="row" style={{ marginBottom: 15 }}>
+            <div className="col-sm-6">
+              <div className="input-group">
+                <input type="search" className="form-control"
+                  placeholder="Filter documents by name..." value={filterText}
+                  onChange={e => setFilterText(e.target.value)} />
+                {filterText && (
+                  <span className="input-group-btn">
+                    <button className="btn btn-default" onClick={() => setFilterText('')}>✕</button>
+                  </span>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Stats bar */}
+          <div className="alert alert-info" style={{ padding: '6px 12px', fontSize: '0.85em', marginBottom: 15 }}>
+            <strong>{folders.length}</strong> folders |{' '}
+            <strong>{documents.length}</strong> documents |{' '}
+            <strong>{filtered.length}</strong> showing
+          </div>
+
+          {/* Content */}
+          {loading ? (
+            <div className="fb-loading" style={{ minHeight: 200 }}>
+              <div className="text-center">
+                <div className="spinner-border" role="status" style={{ width: '2rem', height: '2rem' }}>
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="text-muted" style={{ marginTop: 8 }}>Loading documents...</p>
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="fb-empty-state">
+              <p style={{ fontSize: '2em', marginBottom: 8 }}>📭</p>
+              <p>{filterText ? 'Try adjusting your filter' : 'No documents in this folder'}</p>
+            </div>
+          ) : (
+            <div className="row">
+              {filtered.map(item => (
+                <div className="col-xs-6 col-sm-4 col-md-3 col-lg-2" key={item.id}
+                  style={{ marginBottom: 15 }}>
+                  <div className="panel panel-default"
+                    style={{ cursor: 'pointer', marginBottom: 0, transition: 'box-shadow .15s' }}
+                    onClick={() => setLightboxItem(item)}
+                    onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.15)')}
+                    onMouseLeave={e => (e.currentTarget.style.boxShadow = '')}>
+                    <div className="panel-body text-center"
+                      style={{ padding: 8, height: 130, overflow: 'hidden', background: '#f9f9f9' }}>
+                      {item.thumbnailUrl ? (
+                        <img src={item.thumbnailUrl} alt={item.title}
+                          style={{ maxWidth: '100%', maxHeight: 114, objectFit: 'contain' }}
+                          onError={e => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const p = (e.target as HTMLElement).parentElement;
+                            if (p) p.innerHTML = '<div style="padding:30px 0;color:#999">📄<br><small>' + item.fileType.toUpperCase() + '</small></div>';
+                          }} />
+                      ) : (
+                        <div style={{ padding: '30px 0', color: '#999' }}>
+                          📄<br /><small>{item.fileType.toUpperCase()}</small>
+                        </div>
+                      )}
+                    </div>
+                    <div className="panel-body" style={{ padding: '8px 10px' }}>
+                      <div className="fb-text-truncate" style={{ fontSize: '0.82em', fontWeight: 500 }}>
+                        {item.title}
+                      </div>
+                      <div className="fb-d-flex fb-justify-between fb-align-center"
+                        style={{ fontSize: '0.75em', color: '#999', marginTop: 4 }}>
+                        <span>{item.fileSize ? `${(item.fileSize / 1024).toFixed(0)}KB` : ''}</span>
+                        <span className="label label-default" style={{ fontSize: '0.85em' }}>{item.fileType}</span>
+                      </div>
+                    </div>
+                    <div className="panel-footer" style={{ padding: '6px 10px' }}>
+                      <button className="btn btn-default btn-xs btn-block"
+                        onClick={e => { e.stopPropagation(); window.open(item.fullImageUrl, '_blank'); }}>
+                        ⬇ Download
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Lightbox overlay */}
+      {lightboxItem && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 2000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'column'
+        }} onClick={() => setLightboxItem(null)}>
+          <button className="btn btn-link"
+            style={{ position: 'absolute', top: 20, right: 20, color: '#fff', fontSize: 28 }}
+            onClick={() => setLightboxItem(null)}>✕</button>
+          <img src={lightboxItem.fullImageUrl} alt={lightboxItem.title}
+            style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain' }}
+            onClick={e => e.stopPropagation()} />
+          <div style={{ color: '#fff', marginTop: 15, fontSize: '0.95em' }}>
+            {lightboxItem.title}
+          </div>
+          <a href={lightboxItem.fullImageUrl} download
+            className="btn btn-primary" style={{ marginTop: 10 }}
+            onClick={e => e.stopPropagation()}>
+            ⬇ Download
+          </a>
+        </div>
+      )}
     </div>
   );
 };

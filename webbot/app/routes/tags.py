@@ -11,7 +11,13 @@ import json
 
 router = APIRouter(prefix="/api/v1/tags", tags=["tags"])
 
-DB_PATH = "app/webbot.db"
+import os
+
+DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
+
 
 TAG_ROOT = "/canadasite/tags"
 

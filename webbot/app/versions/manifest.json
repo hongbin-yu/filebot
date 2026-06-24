@@ -79,14 +79,15 @@
       "versions": [
         1,
         2,
-        3
+        3,
+        4
       ],
-      "latest": 3,
+      "latest": 4,
       "latest_meta": {
-        "version": 3,
-        "created_at": "2026-06-07T02:38:46.231161Z",
-        "author": "system",
-        "content_size": 11200
+        "version": 4,
+        "created_at": "2026-06-16T13:56:15.652612Z",
+        "author": null,
+        "content_size": 10407
       }
     },
     "canadasite__en__conservation-institute": {
@@ -185,12 +186,13 @@
       "versions": [
         1,
         2,
-        3
+        3,
+        4
       ],
-      "latest": 3,
+      "latest": 4,
       "latest_meta": {
-        "version": 3,
-        "created_at": "2026-05-26T15:39:24.774263Z",
+        "version": 4,
+        "created_at": "2026-06-15T13:24:07.810257Z",
         "author": "system",
         "content_size": 14404
       }
@@ -200,12 +202,13 @@
       "versions": [
         1,
         2,
-        3
+        3,
+        4
       ],
-      "latest": 3,
+      "latest": 4,
       "latest_meta": {
-        "version": 3,
-        "created_at": "2026-05-31T13:44:25.975802Z",
+        "version": 4,
+        "created_at": "2026-06-13T19:13:08.357426Z",
         "author": "system",
         "content_size": 7524
       }
@@ -214,14 +217,15 @@
       "page_path": "/canadasite/en/services",
       "versions": [
         1,
-        2
+        2,
+        3
       ],
-      "latest": 2,
+      "latest": 3,
       "latest_meta": {
-        "version": 2,
-        "created_at": "2026-05-30T21:29:12.488976Z",
+        "version": 3,
+        "created_at": "2026-06-13T19:20:46.776753Z",
         "author": "system",
-        "content_size": 19275
+        "content_size": 18981
       }
     },
     "canadasite__en__atlantic-canada-opportunities__atlantic-economic-panel": {
@@ -440,12 +444,13 @@
     "canadasite__en__services__business": {
       "page_path": "/canadasite/en/services/business",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-21T00:36:39.892374Z",
+        "version": 2,
+        "created_at": "2026-06-13T19:13:12.692731Z",
         "author": "system",
         "content_size": 9358
       }
@@ -453,12 +458,13 @@
     "canadasite__en__services__environment": {
       "page_path": "/canadasite/en/services/environment",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-21T00:37:41.605787Z",
+        "version": 2,
+        "created_at": "2026-06-13T19:13:20.281049Z",
         "author": "system",
         "content_size": 7839
       }
@@ -466,12 +472,13 @@
     "canadasite__en__services__health": {
       "page_path": "/canadasite/en/services/health",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-21T00:37:55.037813Z",
+        "version": 2,
+        "created_at": "2026-06-13T19:13:25.974689Z",
         "author": "system",
         "content_size": 7856
       }
@@ -479,12 +486,13 @@
     "canadasite__en__services__immigration-citizenship": {
       "page_path": "/canadasite/en/services/immigration-citizenship",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-21T00:38:06.814144Z",
+        "version": 2,
+        "created_at": "2026-06-13T19:13:30.586466Z",
         "author": "system",
         "content_size": 13368
       }
@@ -558,12 +566,13 @@
     "canadasite__index": {
       "page_path": "/canadasite/index",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-05-27T18:04:45.305904Z",
+        "version": 2,
+        "created_at": "2026-06-13T14:37:31.355965Z",
         "author": "system",
         "content_size": 1386
       }
@@ -705,14 +714,15 @@
     "canadasite__en__services__ai-qa__how-to-apply-ei-in-canada": {
       "page_path": "/canadasite/en/services/ai-qa/how-to-apply-ei-in-canada",
       "versions": [
-        1
+        1,
+        2
       ],
-      "latest": 1,
+      "latest": 2,
       "latest_meta": {
-        "version": 1,
-        "created_at": "2026-06-01T22:27:35.608432Z",
+        "version": 2,
+        "created_at": "2026-06-19T23:38:01.940463Z",
         "author": null,
-        "content_size": 2043
+        "content_size": 2294
       }
     },
     "canadasite__en__services__ai-qa__how-do-i-apply-for-a-canadian-passport": {
@@ -836,7 +846,254 @@
         "author": null,
         "content_size": 4968
       }
+    },
+    "canadasite__en__services__benefits__audience": {
+      "page_path": "/canadasite/en/services/benefits/audience",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T16:09:06.678106Z",
+        "author": "system",
+        "content_size": 5183
+      }
+    },
+    "canadasite__en__error-404": {
+      "page_path": "/canadasite/en/error-404",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T18:44:15.101482Z",
+        "author": null,
+        "content_size": 1174
+      }
+    },
+    "canadasite__en__services__culture": {
+      "page_path": "/canadasite/en/services/culture",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:13:16.504157Z",
+        "author": "system",
+        "content_size": 13136
+      }
+    },
+    "canadasite__en__services__indigenous-peoples": {
+      "page_path": "/canadasite/en/services/indigenous-peoples",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:14:05.946451Z",
+        "author": "system",
+        "content_size": 10301
+      }
+    },
+    "canadasite__en__services__jobs": {
+      "page_path": "/canadasite/en/services/jobs",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:14:20.372228Z",
+        "author": "system",
+        "content_size": 8955
+      }
+    },
+    "canadasite__en__services__retirement": {
+      "page_path": "/canadasite/en/services/retirement",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:14:33.435642Z",
+        "author": "system",
+        "content_size": 29442
+      }
+    },
+    "canadasite__en__services__finance": {
+      "page_path": "/canadasite/en/services/finance",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:15:06.377887Z",
+        "author": "system",
+        "content_size": 8934
+      }
+    },
+    "canadasite__en__services__defence": {
+      "page_path": "/canadasite/en/services/defence",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:15:29.711457Z",
+        "author": "system",
+        "content_size": 4564
+      }
+    },
+    "canadasite__en__services__policing": {
+      "page_path": "/canadasite/en/services/policing",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:15:43.142624Z",
+        "author": "system",
+        "content_size": 4177
+      }
+    },
+    "canadasite__en__services__science": {
+      "page_path": "/canadasite/en/services/science",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:16:01.958057Z",
+        "author": "system",
+        "content_size": 8305
+      }
+    },
+    "canadasite__en__services__taxes": {
+      "page_path": "/canadasite/en/services/taxes",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:16:07.417796Z",
+        "author": "system",
+        "content_size": 9004
+      }
+    },
+    "canadasite__en__services__transport": {
+      "page_path": "/canadasite/en/services/transport",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:16:41.343888Z",
+        "author": "system",
+        "content_size": 10396
+      }
+    },
+    "canadasite__en__services__veterans-military": {
+      "page_path": "/canadasite/en/services/veterans-military",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:17:05.927990Z",
+        "author": "system",
+        "content_size": 4833
+      }
+    },
+    "canadasite__en__services__veterans": {
+      "page_path": "/canadasite/en/services/veterans",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:17:21.788964Z",
+        "author": "system",
+        "content_size": 4833
+      }
+    },
+    "canadasite__en__services__death": {
+      "page_path": "/canadasite/en/services/death",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:17:36.833399Z",
+        "author": "system",
+        "content_size": 6052
+      }
+    },
+    "canadasite__en__services__youth": {
+      "page_path": "/canadasite/en/services/youth",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:17:47.349352Z",
+        "author": "system",
+        "content_size": 8091
+      }
+    },
+    "canadasite__fr__error-404": {
+      "page_path": "/canadasite/fr/error-404",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-13T19:46:07.141220Z",
+        "author": null,
+        "content_size": 1329
+      }
+    },
+    "canadasite__en__canada-water-agency__data-collaboration__national-freshwater-data-strategy": {
+      "page_path": "/canadasite/en/canada-water-agency/data-collaboration/national-freshwater-data-strategy",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-14T23:43:53.843583Z",
+        "author": null,
+        "content_size": 6618
+      }
+    },
+    "canadasite__en__canada-water-agency__freshwater-action-plan__freshwater-action-plan-overview": {
+      "page_path": "/canadasite/en/canada-water-agency/freshwater-action-plan/freshwater-action-plan-overview",
+      "versions": [
+        1
+      ],
+      "latest": 1,
+      "latest_meta": {
+        "version": 1,
+        "created_at": "2026-06-15T13:25:37.685953Z",
+        "author": "system",
+        "content_size": 2835
+      }
     }
   },
-  "updated_at": "2026-06-07T02:38:46.231161Z"
+  "updated_at": "2026-06-19T23:38:01.940463Z"
 }

@@ -30,7 +30,7 @@ from app.schemas.document import DocumentCreate
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["webbot"])
+router = APIRouter()
 
 WEBBOT_DB_PATH = str(Path(__file__).resolve().parents[4] / "webbot" / "app" / "webbot.db")
 FILEBOT_DATA_DIR = str(Path(__file__).resolve().parents[2] / "data")

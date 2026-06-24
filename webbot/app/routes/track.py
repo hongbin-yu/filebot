@@ -16,7 +16,13 @@ import time
 
 router = APIRouter(prefix="/api/v1/track", tags=["tracking"])
 
-DB_PATH = "app/webbot.db"
+import os
+
+DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
+
 
 # ── IP Geo-location Cache (in-memory + sqlite fallback) ──
 _GEO_CACHE = {}  # ip_str -> {country, region, ts}

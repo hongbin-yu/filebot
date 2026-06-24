@@ -7,9 +7,14 @@ from typing import Optional
 import sqlite3
 from datetime import datetime
 
+import os
+
 router = APIRouter(prefix="/api/v1/pages", tags=["schedule"])
 
-DB_PATH = "app/webbot.db"
+DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
 
 
 def get_db():
@@ -154,6 +159,106 @@ async def approval_status(
         if not row:
             raise HTTPException(status_code=404, detail=f"Page not found: {path}")
         return dict(row)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+# ==================== 🔒 锁管理 ====================
+
+import json
+
+@router.post("/lock")
+async def lock_page(
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact"),
+    locked_by: str = Query("system", description="Who locked this page")
+):
+    """Lock a page to prevent editing and publishing"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, metadata FROM webbot_page WHERE path = ?", (path,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+        
+        meta = json.loads(row["metadata"]) if row["metadata"] else {}
+        now = datetime.now().isoformat()
+        meta["lock_status"] = "locked"
+        meta["locked_at"] = now
+        meta["locked_by"] = locked_by
+        
+        cursor.execute(
+            "UPDATE webbot_page SET metadata = ? WHERE path = ?",
+            (json.dumps(meta), path)
+        )
+        conn.commit()
+        return {"success": True, "path": path, "locked": True, "locked_at": now, "locked_by": locked_by}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@router.post("/unlock")
+async def unlock_page(
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact")
+):
+    """Unlock a page to allow editing and publishing"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, metadata FROM webbot_page WHERE path = ?", (path,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+        
+        meta = json.loads(row["metadata"]) if row["metadata"] else {}
+        meta["lock_status"] = "unlocked"
+        meta.pop("locked_at", None)
+        meta.pop("locked_by", None)
+        
+        cursor.execute(
+            "UPDATE webbot_page SET metadata = ? WHERE path = ?",
+            (json.dumps(meta), path)
+        )
+        conn.commit()
+        return {"success": True, "path": path, "locked": False}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@router.get("/lock-status")
+async def lock_status(
+    path: str = Query(..., description="Full page path")
+):
+    """Get lock status for a page"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT metadata FROM webbot_page WHERE path = ?",
+            (path,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+        meta = json.loads(row["metadata"]) if row["metadata"] else {}
+        return {
+            "locked": meta.get("lock_status") == "locked",
+            "lock_status": meta.get("lock_status", "unlocked"),
+            "locked_at": meta.get("locked_at"),
+            "locked_by": meta.get("locked_by")
+        }
     except HTTPException:
         raise
     except Exception as e:

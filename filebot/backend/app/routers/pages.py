@@ -1,14 +1,18 @@
 """Pages routes — 基于文档路径而非 UUID"""
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, Request
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import logging
 import os
 import uuid
 import re
+import json
+import sqlite3
+import threading
 import httpx
 from pathlib import Path
+from datetime import datetime
 from urllib.parse import urlparse, urljoin
 
 from app.db.database import get_db
@@ -22,6 +26,137 @@ from app.schemas.document import PageResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# SQLite path for webbot navigation page data
+WEBBOT_DB_PATH = os.environ.get("WEBBOT_DB_PATH", "/opt/webfilebot/webbot/data/webbot.db")
+
+def _get_webbot_conn():
+    """Get a read-only-mindful SQLite connection to the webbot page db."""
+    conn = sqlite3.connect(WEBBOT_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+class NavigationPageItem(BaseModel):
+    """Navigation page list item — mirrors webbot PageListItem format"""
+    id: str
+    title: str = ""
+    description: Optional[str] = ""
+    language: str = "en"
+    status: str = "draft"
+    path: Optional[str] = None
+    parent_path: Optional[str] = None
+    other_language_path: Optional[str] = None
+    has_children: bool = False
+    created_at: Optional[str] = None
+    last_modified: Optional[str] = None
+    tags: List[str] = []
+    metadata: Optional[Dict[str, Any]] = None
+
+class SinglePageResponse(BaseModel):
+    """Single page detail response — mirrors webbot PageResponse"""
+    id: str
+    title: str = ""
+    description: Optional[str] = ""
+    content: Optional[str] = ""
+    language: str = "en"
+    status: str = "draft"
+    path: Optional[str] = None
+    parent_path: Optional[str] = None
+    other_language_path: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[str] = None
+    last_modified: Optional[str] = None
+    keywords: Optional[str] = None
+    hide_in_navigation: bool = False
+    scheduled_publish: Optional[str] = None
+    approved: int = 0
+    approved_at: Optional[str] = None
+    approved_by: Optional[str] = None
+    current_version: int = 0
+    tags: List[str] = []
+
+def _query_navigation_pages(parent_path: Optional[str] = None, prefix: Optional[str] = None, skip: int = 0, limit: int = 100, order_by: str = "title"):
+    """Query webbot_page (SQLite) for navigation page listing.
+    
+    Args:
+        parent_path: If set, filter by parent_path = this value. If None and prefix is None, return root pages (parent_path IS NULL).
+        prefix: If set, filter by path LIKE 'prefix%' (overrides parent_path).
+        skip: Offset
+        limit: Max items
+        order_by: ORDER BY column
+    """
+    import sqlite3 as _sqlite3
+    conn = _get_webbot_conn()
+    c = conn.cursor()
+    try:
+        if prefix:
+            norm = prefix.rstrip('/')
+            c.execute(
+                "SELECT * FROM webbot_page WHERE path LIKE ? ORDER BY path ASC LIMIT ? OFFSET ?",
+                (f"{norm}/%", limit, skip)
+            )
+        elif parent_path is not None:
+            c.execute(
+                "SELECT * FROM webbot_page WHERE parent_path = ? ORDER BY title ASC LIMIT ? OFFSET ?",
+                (parent_path, limit, skip)
+            )
+        else:
+            # Root: pages with parent_path = '/' OR parent_path IS NULL (legacy orphans)
+            c.execute(
+                "SELECT * FROM webbot_page WHERE parent_path = '/' OR parent_path IS NULL ORDER BY title ASC LIMIT ? OFFSET ?",
+                (limit, skip)
+            )
+        rows = c.fetchall()
+        result = []
+        for row in rows:
+            d = dict(row)
+            # Parse metadata JSON string
+            if d.get("metadata"):
+                if isinstance(d["metadata"], str):
+                    try:
+                        d["metadata"] = json.loads(d["metadata"])
+                    except json.JSONDecodeError:
+                        d["metadata"] = {}
+            else:
+                d["metadata"] = {}
+            # Parse tags (stored as comma-separated or NULL)
+            if d.get("tags") is None:
+                d["tags"] = []
+            elif isinstance(d["tags"], str):
+                d["tags"] = [t.strip() for t in d["tags"].split(",") if t.strip()]
+            # Check has_children
+            page_path = d.get("path", "")
+            c2 = conn.cursor()
+            c2.execute("SELECT COUNT(*) FROM webbot_page WHERE parent_path = ?", (page_path,))
+            d["has_children"] = c2.fetchone()[0] > 0
+            c2.close()
+            result.append(d)
+        return result
+    finally:
+        conn.close()
+
+def _query_navigation_page_by_path(path: str) -> Optional[dict]:
+    """Query a single page from webbot_page by exact path."""
+    import sqlite3 as _sqlite3
+    conn = _get_webbot_conn()
+    c = conn.cursor()
+    try:
+        c.execute("SELECT * FROM webbot_page WHERE path = ?", (path,))
+        row = c.fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        if d.get("metadata"):
+            if isinstance(d["metadata"], str):
+                try:
+                    d["metadata"] = json.loads(d["metadata"])
+                except json.JSONDecodeError:
+                    d["metadata"] = {}
+        else:
+            d["metadata"] = {}
+        return d
+    finally:
+        conn.close()
 
 
 class PublishRequest(BaseModel):
@@ -291,6 +426,45 @@ def _save_published_page(html: str, page_path: str, extension: str = ".html") ->
     return str(output_file), html_len, copied_assets
 
 
+# ─── CDN Pre-cache ───────────────────────────────────────────────
+
+CDN_BASE = "https://cdn.webfilebot.com"
+
+
+def _cdn_refresh_paths(url_paths: list[str]):
+    """异步刷新 CDN 缓存。GET ?__cache_refresh=1 强制 Worker 回源更新 R2。"""
+    def _do():
+        with httpx.Client(timeout=10.0) as client:
+            for p in url_paths:
+                try:
+                    r = client.get(f"{CDN_BASE}{p}", params={"__cache_refresh": "1"})
+                    if r.status_code == 200:
+                        logger.info(f"CDN refreshed: {p}")
+                    else:
+                        logger.warning(f"CDN refresh {p} → {r.status_code}")
+                except Exception as e:
+                    logger.warning(f"CDN refresh failed for {p}: {e}")
+
+    threading.Thread(target=_do, daemon=True).start()
+
+
+def _cdn_delete_paths(url_paths: list[str]):
+    """异步删除 CDN 缓存。GET ?__cache_delete=1 强制 Worker 删除 R2。"""
+    def _do():
+        with httpx.Client(timeout=10.0) as client:
+            for p in url_paths:
+                try:
+                    r = client.get(f"{CDN_BASE}{p}", params={"__cache_delete": "1"})
+                    if r.status_code == 200:
+                        logger.info(f"CDN deleted: {p}")
+                    else:
+                        logger.warning(f"CDN delete {p} → {r.status_code}")
+                except Exception as e:
+                    logger.warning(f"CDN delete failed for {p}: {e}")
+
+    threading.Thread(target=_do, daemon=True).start()
+
+
 @router.post("/publish")
 def publish_page(
     path: str = Query(..., description="Page path, e.g. /canadasite/en/contact"),
@@ -330,11 +504,22 @@ def publish_page(
         publish_req.html_content, path, extension
     )
 
+    # 计算 CDN URL 路径
+    rel_path = path.lstrip("/")
+    if rel_path.startswith("canadasite/"):
+        rel_path = rel_path[len("canadasite/"):]
+    # 预缓存 HTML 页面 + 所有复制的图片/资源
+    cdn_paths = [f"/{rel_path}{extension}"]
+    for img in copied_images:
+        if img.get("src"):
+            cdn_paths.append(img["src"])
+
     # Step 2: Create database records (folder + document) under publish app
     try:
         publish_app = _get_publish_app(db)
         if not publish_app:
             logger.warning(f"Publish app '{PUBLISH_APP_SLUG}' not found in DB, skipping DB records")
+            _cdn_refresh_paths(cdn_paths)
             return {
                 "success": True,
                 "path": path,
@@ -347,9 +532,6 @@ def publish_page(
 
         # Build folder hierarchy under /publish/...
         # 去掉 /canadasite 前缀
-        rel_path = path.lstrip("/")
-        if rel_path.startswith("canadasite/"):
-            rel_path = rel_path[len("canadasite/"):]
         path_parts = rel_path.split("/")
         doc_name = path_parts[-1]  # e.g. "en"
         folder_rel_parts = path_parts[:-1]  # e.g. "canadasite"
@@ -420,6 +602,8 @@ def publish_page(
         db.commit()
         logger.info(f"DB records created for published page: {path}")
 
+        _cdn_refresh_paths(cdn_paths)
+
         return {
             "success": True,
             "path": path,
@@ -435,7 +619,9 @@ def publish_page(
         logger.error(f"Failed to create DB records for published page: {e}")
         import traceback
         traceback.print_exc()
-        # HTML file was already written, just return without DB records
+        # HTML file was already written, pre-cache it anyway
+        _cdn_refresh_paths(cdn_paths)
+        # return without DB records
         return {
             "success": True,
             "path": path,
@@ -518,6 +704,12 @@ def unpublish_page(
         db.rollback()
         logger.error(f"Failed to update DB for unpublish: {e}")
 
+    # 删除 CDN 缓存（只删 HTML 页面，图片由其他页面共享，不过期再删）
+    cdn_url_path = f"/{rel_path}"
+    if not cdn_url_path.endswith(extension):
+        cdn_url_path += extension
+    _cdn_delete_paths([cdn_url_path])
+
     return {
         "success": True,
         "path": path,
@@ -527,7 +719,7 @@ def unpublish_page(
     }
 
 
-@router.get("/path", response_model=List[PageResponse])
+@router.get("/path")
 def get_pages_by_path(
     path: str = Query(..., description="Folder path, e.g. /boarding/canadasite/fr"),
     skip: int = Query(0, ge=0),
@@ -536,32 +728,145 @@ def get_pages_by_path(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """按文件夹路径获取所有文档的页面"""
+    """按文件夹路径获取所有文档的页面
+    
+    先查 PostgreSQL 的 folders → documents → pages 链路。
+    如果文件夹不存在，回退到 SQLite webbot_page（导航页面数据），
+    按 parent_path 返回子页面列表。
+    """
     if not path or not path.startswith('/'):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Path must start with /")
 
     normalized = path.rstrip('/')
-    folder = db.query(Folder).filter(Folder.path == normalized).first()
-    if not folder:
+
+    # 先尝试从 PostgreSQL folders 查询
+    folder = db.query(FolderModel).filter(FolderModel.path == normalized).first()
+
+    if folder:
+        # Postgres documents pages (existing logic)
+        if include_subfolders:
+            folder_path_prefix = f"{normalized}/"
+            subfolders = db.query(FolderModel).filter(
+                FolderModel.parent_folder_path.like(f"{folder_path_prefix}%")
+            ).all()
+            folder_paths = [folder.path] + [f.path for f in subfolders]
+            docs = db.query(Document).filter(Document.folder_path.in_(folder_paths)).all()
+        else:
+            docs = db.query(Document).filter(Document.folder_path == folder.path).all()
+
+        if not docs:
+            return []
+
+        doc_paths = [d.path for d in docs]
+        pages = db.query(Page).filter(
+            Page.document_path.in_(doc_paths)
+        ).order_by(Page.document_path, Page.page_number).offset(skip).limit(limit).all()
+        return pages
+
+    # 回退到 SQLite webbot_page（导航页面）
+    try:
+        import sqlite3 as _sqlite3
+        if normalized == '':
+            # root path → pages with parent_path = '/' OR IS NULL
+            parent_path = None
+        else:
+            parent_path = normalized
+
+        raw = _query_navigation_pages(
+            parent_path=parent_path,
+            skip=skip,
+            limit=limit
+        )
+        # Convert to NavigationPageItem list
+        items = []
+        for row in raw:
+            items.append(NavigationPageItem(**row))
+        return items
+    except (_sqlite3.Error, FileNotFoundError) as e:
+        logger.warning(f"SQLite fallback failed: {e}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Folder not found: {path}")
 
-    # 构建文档查询
-    if include_subfolders:
-        folder_path_prefix = f"{normalized}/"
-        subfolders = db.query(Folder).filter(
-            Folder.parent_folder_path.like(f"{folder_path_prefix}%")
-        ).all()
-        folder_paths = [folder.path] + [f.path for f in subfolders]
-        docs = db.query(Document).filter(Document.folder_path.in_(folder_paths)).all()
-    else:
-        docs = db.query(Document).filter(Document.folder_path == folder.path).all()
 
-    if not docs:
+@router.get("/", response_model=List[NavigationPageItem])
+def list_pages(
+    skip: int = 0,
+    limit: int = 100,
+    path: Optional[str] = Query(None, description="Parent page path, returns direct children. e.g. /en returns pages with parent_path=/en"),
+    prefix: Optional[str] = Query(None, description="Path prefix filter, returns all pages whose path starts with this prefix"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """列出导航页面（从 webbot_page SQLite）
+    
+    - 如果指定 path 参数，返回该路径的直接子页面
+    - 如果指定 prefix 参数，返回路径前缀匹配的所有页面
+    - 都不指定则返回根页面（parent_path IS NULL）
+    """
+    import sqlite3 as _sqlite3
+    try:
+        if prefix:
+            # Prefix-based query (recursive)
+            raw = _query_navigation_pages(prefix=prefix, skip=skip, limit=limit, order_by="path")
+        elif path is not None:
+            norm = path.rstrip('/')
+            if not norm:
+                # path=/ → root pages (parent_path = '/' OR IS NULL)
+                raw = _query_navigation_pages(parent_path=None, skip=skip, limit=limit)
+            else:
+                raw = _query_navigation_pages(parent_path=norm, skip=skip, limit=limit)
+        else:
+            # Root pages
+            raw = _query_navigation_pages(parent_path=None, skip=skip, limit=limit)
+
+        items = [NavigationPageItem(**row) for row in raw]
+        return items
+    except (_sqlite3.Error, FileNotFoundError) as e:
+        logger.warning(f"SQLite query failed: {e}")
         return []
 
-    doc_paths = [d.path for d in docs]
-    pages = db.query(Page).filter(
-        Page.document_path.in_(doc_paths)
-    ).order_by(Page.document_path, Page.page_number).offset(skip).limit(limit).all()
 
-    return pages
+@router.get("/by-path", response_model=SinglePageResponse)
+def get_page_by_path(
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """根据完整路径获取单个页面详情（从 webbot_page SQLite）"""
+    import sqlite3 as _sqlite3
+    try:
+        d = _query_navigation_page_by_path(path)
+        if not d:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Page not found: {path}")
+
+        # Parse tags
+        tags = d.get("tags")
+        if tags is None:
+            tags = []
+        elif isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
+
+        return SinglePageResponse(
+            id=d.get("id", d.get("path", "")),
+            title=d.get("title", ""),
+            description=d.get("description", ""),
+            content=d.get("content", ""),
+            language=d.get("language", "en"),
+            status=d.get("status", "draft"),
+            path=d.get("path"),
+            parent_path=d.get("parent_path"),
+            other_language_path=d.get("other_language_path"),
+            metadata=d.get("metadata"),
+            created_at=d.get("created_at"),
+            last_modified=d.get("last_modified"),
+            keywords=d.get("keywords"),
+            hide_in_navigation=bool(d.get("hide_in_navigation", False)),
+            scheduled_publish=d.get("scheduled_publish"),
+            approved=int(d.get("approved", 0)),
+            approved_at=d.get("approved_at"),
+            approved_by=d.get("approved_by"),
+            current_version=int(d.get("current_version", 0)),
+            tags=tags,
+        )
+    except (_sqlite3.Error, FileNotFoundError) as e:
+        logger.warning(f"SQLite by-path query failed: {e}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Page not found: {path}")
