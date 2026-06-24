@@ -294,12 +294,13 @@ def search_documents(
     # Archive status
     is_archived: Optional[bool] = Query(None, description="Is archived"),
     
-    # Path filter
-    path: Optional[str] = Query(None, description="Path prefix match (LIKE 'path%')"),
-    
     # AI image tag filters
     ai_category: Optional[str] = Query(None, description="Filter by AI image category (exact match)"),
     ai_tags: Optional[str] = Query(None, description="Filter by AI tags (fuzzy match on JSON field)"),
+    ai_tag: Optional[str] = Query(None, description="Filter by AI tag (exact match on tag field within ai_tags JSON array)"),
+    
+    # Path filter
+    path: Optional[str] = Query(None, description="Path prefix match (LIKE 'path%')"),
     
     # Pagination
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -314,7 +315,7 @@ def search_documents(
 ):
     """Search documents
     
-    Supports multi-condition combined search, including document attributes, status, folder hierarchy, time range, etc.
+    Supports multi-condition combined search, including document attributes, status, folder hierarchy, time range, AI tags, etc.
     """
     try:
         # Build base query (permission filter already applied)
@@ -397,6 +398,18 @@ def search_documents(
             # Cast JSON to text and do fuzzy match
             query = query.filter(
                 cast(Document.ai_tags, String).ilike(f"%{ai_tags}%")
+            )
+
+        # ===== AI tag filter (exact match on tag field in JSON array) =====
+        if ai_tag:
+            # ai_tags column is JSON array like [{"tag": "contract", "score": 0.98}, ...]
+            # Use json_array_elements to unnest and match on tag field
+            query = query.filter(
+                Document.id.in_(
+                    db.query(Document.id).filter(
+                        func.json_array_elements(Document.ai_tags).op('->>')('tag') == ai_tag
+                    ).subquery()
+                )
             )
     
         # ===== Sorting =====
@@ -776,12 +789,11 @@ def advanced_search(
     }
 
 
-# ── AI Category endpoints ──────────────────────────────────────────────
+# ========== AI Image Categories API ==========
 
 class AICategoryItem(BaseModel):
     category: str
     count: int
-
 
 class AICategoriesResponse(BaseModel):
     categories: List[AICategoryItem]

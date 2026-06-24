@@ -7703,8 +7703,8 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label for="search-filter">🔎 Search</label>
-                                            <input type="text" class="form-control" id="search-filter" placeholder="Search by filename, title...">
+                                            <label for="search-filter">🔎 Search Title or Category</label>
+                                            <input type="text" class="form-control" id="search-filter" placeholder="Search by title or category...">
                                         </div>
                                     </div>
                                 </div>
@@ -12789,6 +12789,100 @@
 
             if (!resourceTypeSelect || !resultsEl) return;
 
+            // Populate AI categories dropdown/datalist
+            var categorySelect = document.getElementById('resource-category-select');
+            var categoryDatalist = document.getElementById('resource-category-datalist');
+            var categoryRow = document.getElementById('resource-category-row');
+            var docAiTagInput = document.getElementById('resource-doc-aitag-input');
+            var docAiTagDatalist = document.getElementById('doc-ai-tag-suggestions');
+            var docAiTagRow = document.getElementById('resource-doc-aitag-row');
+
+            async function loadAICategories() {
+                if (!categorySelect) return;
+                // Show category row only in images mode
+                if (categoryRow) {
+                    categoryRow.style.display = (resourceTypeSelect && resourceTypeSelect.value === 'images') ? '' : 'none';
+                }
+                try {
+                    var fp = (pathInput && pathInput.value) ? pathInput.value.trim() : '';
+                    var params = new URLSearchParams({ from: 'clip' });
+                    if (fp) params.append('path', fp);
+                    var url = '/api/v1/search/categories?' + params.toString();
+                    var resp = await fetch(url, {
+                        headers: { 'Authorization': 'Bearer ' + (FILEBOT_JWT_TOKEN || '') }
+                    });
+                    if (!resp.ok) return;
+                    var data = await resp.json();
+                    var cats = data.categories || [];
+                    categorySelect.innerHTML = '<option value="">All Categories (' + cats.length + ')</option>';
+                    cats.forEach(function(cat) {
+                        var opt = document.createElement('option');
+                        opt.value = cat.category;
+                        opt.textContent = cat.category + ' (' + cat.count + ')';
+                        categorySelect.appendChild(opt);
+                    });
+                } catch (err) {
+                    console.warn('Failed to load AI categories:', err);
+                }
+            }
+
+            loadAICategories();
+
+            async function loadDocAITags() {
+                if (!docAiTagInput || !docAiTagDatalist) return;
+                // Show AI tag row only in documents mode
+                if (docAiTagRow) {
+                    var isDocs = resourceTypeSelect && resourceTypeSelect.value === 'documents';
+                    if (!isDocs) {
+                        docAiTagRow.style.display = 'none';
+                        return;
+                    }
+                }
+                try {
+                    var fp = (pathInput && pathInput.value) ? pathInput.value.trim() : '';
+                    var params = new URLSearchParams({ from: 'ai' });
+                    if (fp) params.append('path', fp);
+                    var url = '/api/v1/search/categories?' + params.toString();
+                    var resp = await fetch(url, {
+                        headers: { 'Authorization': 'Bearer ' + (FILEBOT_JWT_TOKEN || '') }
+                    });
+                    if (!resp.ok) return;
+                    var data = await resp.json();
+                    var tags = data.categories || [];
+                    if (docAiTagRow) {
+                        docAiTagRow.style.display = (tags.length > 0) ? '' : 'none';
+                    }
+                    if (tags.length === 0) return;
+                    docAiTagDatalist.innerHTML = '';
+                    tags.forEach(function(item) {
+                        var opt = document.createElement('option');
+                        opt.value = item.category;
+                        opt.textContent = item.category + ' (' + item.count + ')';
+                        docAiTagDatalist.appendChild(opt);
+                    });
+                } catch (err) {
+                    console.warn('Failed to load AI tags:', err);
+                }
+            }
+
+            loadDocAITags();
+
+            // Trigger search when doc AI tag changes
+            if (categorySelect) {
+                categorySelect.addEventListener('change', function() {
+                    if (resourceTypeSelect && resourceTypeSelect.value === 'images') {
+                        doSearch();
+                    }
+                });
+            }
+            if (docAiTagInput) {
+                docAiTagInput.addEventListener('input', function() {
+                    if (resourceTypeSelect && resourceTypeSelect.value === 'documents') {
+                        doSearch();
+                    }
+                });
+            }
+
             // Get current page path for default search
             function getCurrentPathPrefix() {
                 // Priority 1: Already resolved file_path from getEffectiveFilePath (respects auto_image_path flag)
@@ -12818,6 +12912,8 @@
                 var path = getCurrentPathPrefix();
                 if (path) {
                     pathInput.value = path;
+                    loadAICategories();
+                    loadDocAITags();
                 }
             }
 
@@ -12826,15 +12922,28 @@
                 var type = resourceTypeSelect.value;
                 var pathVal = pathInput.value.trim();
                 var titleVal = searchInput.value.trim();
+                var categoryVal = categorySelect ? categorySelect.value : '';
+                // If input matches an AI category label, use it as category filter
+                if (titleVal && categoryDatalist) {
+                    var opts = categoryDatalist.options;
+                    for (var i = 0; i < opts.length; i++) {
+                        if (opts[i].value.toLowerCase() === titleVal.toLowerCase()) {
+                            categoryVal = titleVal;
+                            titleVal = '';
+                            break;
+                        }
+                    }
+                }
 
                 resultsEl.innerHTML = '<div class="resource-loading">⏳ Searching...</div>';
 
                 switch (type) {
                     case 'images':
-                        searchImages(pathVal, titleVal);
+                        searchImages(pathVal, titleVal, false, categoryVal);
                         break;
                     case 'documents':
-                        searchDocuments(pathVal, titleVal);
+                        var docAiTagVal = docAiTagInput ? docAiTagInput.value.trim() : '';
+                        searchDocuments(pathVal, titleVal, docAiTagVal);
                         break;
                     case 'components':
                         searchComponents(pathVal, titleVal);
@@ -12858,11 +12967,13 @@
             var _imageSkip = 0;
             var _imagePathVal = '';
             var _imageTitleVal = '';
+            var _imageCategoryVal = '';
 
-            async function searchImages(pathVal, titleVal, append) {
+            async function searchImages(pathVal, titleVal, append, categoryVal) {
                 try {
                     _imagePathVal = pathVal || '';
                     _imageTitleVal = titleVal || '';
+                    _imageCategoryVal = categoryVal || '';
                     if (!append) {
                         _imageSkip = 0;
                     }
@@ -12880,6 +12991,9 @@
                     }
                     if (titleVal) {
                         params.append('title__like', titleVal);
+                    }
+                    if (categoryVal) {
+                        params.append('ai_category', categoryVal);
                     }
 
                     var url = '/content/documents/?' + params.toString();
@@ -12900,7 +13014,7 @@
 
             // Load more images (called from Load More button)
             window.loadMoreImages = function() {
-                searchImages(_imagePathVal, _imageTitleVal, true);
+                searchImages(_imagePathVal, _imageTitleVal, true, _imageCategoryVal);
             };
 
             function renderImageResults(docs, append) {
@@ -13054,7 +13168,7 @@
             }
 
             // -------- Documents (PDF, Word, Excel, etc.) --------
-            async function searchDocuments(pathVal, titleVal) {
+            async function searchDocuments(pathVal, titleVal, categoryVal) {
                 try {
                     // Filter common document types: PDF, Word, Excel, PowerPoint, text
                     var mimeFilter = 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain';
@@ -13075,6 +13189,9 @@
                     }
                     if (titleVal) {
                         url += '&title=' + encodeURIComponent(titleVal);
+                    }
+                    if (aiTagVal) {
+                        url += '&ai_tag=' + encodeURIComponent(aiTagVal);
                     }
 
                     var resp = await fetch(url);
@@ -13688,6 +13805,19 @@
                         pathInput.value = currentPageData.path;
                     } else {
                         updateDefaultPath();
+                    }
+                }
+
+                // Show Category row only for images, AI Tag row only for documents
+                if (categoryRow) {
+                    categoryRow.style.display = (type === 'images') ? '' : 'none';
+                }
+                if (docAiTagRow) {
+                    if (type === 'documents') {
+                        loadDocAITags();
+                    } else {
+                        docAiTagRow.style.display = 'none';
+                        if (docAiTagInput) docAiTagInput.value = '';
                     }
                 }
 

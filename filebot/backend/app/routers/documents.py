@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, 
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy import func
 from typing import List, Optional, Dict, Any
 import uuid
 import os
@@ -710,6 +711,8 @@ def get_documents(
     type_filter: Optional[DocumentType] = Query(None, description="Filter by document type"),
     conversion_status_filter: Optional[ConversionStatus] = Query(None, description="Filter by conversion status"),
     search_term: Optional[str] = Query(None, description="Search document title or description"),
+    ai_category: Optional[str] = Query(None, description="Filter by AI category (exact match)"),
+    ai_tag: Optional[str] = Query(None, description="Filter by AI tag (exact match on tag field within ai_tags JSON array)"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
     response: Response = None
@@ -813,6 +816,20 @@ def get_documents(
             (Document.title.ilike(search_pattern)) |
             (Document.description.ilike(search_pattern)) |
             (Document.document_number.ilike(search_pattern))
+        )
+    
+    if ai_category:
+        query = query.filter(Document.ai_category.ilike(ai_category))
+    
+    if ai_tag:
+        # ai_tags column is JSON array like [{"tag": "contract", "score": 0.98}, ...]
+        # Use json_array_elements to unnest and match on tag field
+        query = query.filter(
+            Document.id.in_(
+                db.query(Document.id).filter(
+                    func.json_array_elements(Document.ai_tags).op('->>')('tag') == ai_tag
+                ).subquery()
+            )
         )
     
     # Count total matching records before pagination

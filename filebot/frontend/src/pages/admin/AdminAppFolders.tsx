@@ -433,6 +433,7 @@ const AdminAppFolders: React.FC = () => {
     name: string;
     description?: string;
     parent_folder_path?: string;
+    thumbnail_size?: string;
   }) => {
     if (!editingFolder || !app || !editingFolder.path) return;
     
@@ -944,7 +945,14 @@ const AdminAppFolders: React.FC = () => {
                             <div className="fb-d-flex fb-align-center">
                               <FolderIcon style={{ width:20, height:20, color:"#eab308", marginRight:8 }} />
                               <div style={{flex:1}}>
-                                <div style={{fontWeight:500}}>{folder.name}</div>
+                                <div style={{fontWeight:500}}>
+                                  {folder.name}
+                                  {folder.thumbnail_size && (
+                                    <span className="label label-info" style={{marginLeft:8,fontSize:'0.65rem',verticalAlign:'middle'}}>
+                                      {folder.thumbnail_size}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <ChevronRightIcon style={{ width:20, height:20, color:"#9ca3af" }} />
                             </div>
@@ -1069,6 +1077,9 @@ const AdminAppFolders: React.FC = () => {
                     <p><strong>Created:</strong> {new Date(currentFolder.created_at).toLocaleString()}</p>
                     {currentFolder.description && (
                       <p><strong>Description:</strong> {currentFolder.description}</p>
+                    )}
+                    {currentFolder.thumbnail_size && (
+                      <p><strong>Thumbnail Size:</strong> <code>{currentFolder.thumbnail_size}</code></p>
                     )}
                   </div>
                 </details>

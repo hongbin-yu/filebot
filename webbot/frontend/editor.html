@@ -86,6 +86,21 @@
                         <span id="resource-upload-msg" class="resource-upload-msg"></span>
                     </div>
                 </div>
+                <div class="resource-search-row" id="resource-category-row" style="display:none;">
+                    <div class="resource-category-field">
+                        <span class="resource-path-label">🏷️ Category</span>
+                        <select id="resource-category-select" class="form-control">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="resource-search-row" id="resource-doc-aitag-row" style="display:none;">
+                    <div class="resource-title-field">
+                        <span class="resource-path-label">🏷️ AI Tag</span>
+                        <input type="text" id="resource-doc-aitag-input" class="form-control" placeholder="Filter by AI tag..." list="doc-ai-tag-suggestions" autocomplete="off">
+                        <datalist id="doc-ai-tag-suggestions"></datalist>
+                    </div>
+                </div>
                 <div class="resource-search-row">
                     <div class="resource-title-field">
                         <span class="resource-path-label">🔍 Title</span>
@@ -282,7 +297,7 @@
     <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
 
     <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
-    <script src="/static/js/editor.js?v=20260622-lock"></script>
+    <script src="/static/js/editor.js?v=20260624-docaitag"></script>
 
     <!-- Initialize after all scripts are loaded -->
     <!-- Simple Metadata Editor (Backend Use Only) -->

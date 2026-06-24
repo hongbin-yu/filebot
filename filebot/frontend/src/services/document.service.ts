@@ -373,12 +373,20 @@ class DocumentService {
   }
 
   // 搜索文档
+  async getAiTagCategories(path?: string): Promise<{ categories: { category: string; count: number }[] }> {
+    const params: any = { from: 'ai' };
+    if (path) params.path = path;
+    const response = await api.get('/search/categories', { params });
+    return response.data;
+  }
+
   async searchDocuments(params: {
     q?: string;
     folder_id?: string;
     file_type?: string;
     conversion_status?: string;
     path?: string;
+    ai_tag?: string;
     skip?: number;
     limit?: number;
   }): Promise<Document[]> {
@@ -405,6 +413,10 @@ class DocumentService {
       searchParams.path = params.path;
     }
     
+    if (params.ai_tag) {
+      searchParams.ai_tag = params.ai_tag;
+    }
+    
     if (params.skip !== undefined) {
       searchParams.skip = params.skip;
     }
@@ -414,8 +426,35 @@ class DocumentService {
     }
     
     // 调用搜索端点：/search/documents
-    const response = await api.get('/search/documents', { params: searchParams });
-    return response.data;
+    // 后端返回 { documents: Document[], total, skip, limit } 格式
+    const response = await api.get<{ documents: Document[]; total: number; skip: number; limit: number }>('/search/documents', { params: searchParams });
+    return response.data.documents || [];
+  }
+
+  async searchDocumentsWithTotal(params: {
+    q?: string;
+    folder_id?: string;
+    file_type?: string;
+    conversion_status?: string;
+    path?: string;
+    ai_tag?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<{ documents: Document[]; total: number }> {
+    const searchParams: any = {};
+    if (params.q) searchParams.title = params.q;
+    if (params.folder_id) searchParams.folder_id = params.folder_id;
+    if (params.file_type) searchParams.file_type = params.file_type;
+    if (params.conversion_status) searchParams.conversion_status = params.conversion_status;
+    if (params.path) searchParams.path = params.path;
+    if (params.ai_tag) searchParams.ai_tag = params.ai_tag;
+    if (params.skip !== undefined) searchParams.skip = params.skip;
+    if (params.limit !== undefined) searchParams.limit = params.limit;
+    const response = await api.get<{ documents: Document[]; total: number; skip: number; limit: number }>('/search/documents', { params: searchParams });
+    return {
+      documents: response.data.documents || [],
+      total: response.data.total || 0
+    };
   }
 
   // 获取文档的转换状态（支持path或UUID）

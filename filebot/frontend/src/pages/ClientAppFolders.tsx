@@ -42,6 +42,9 @@ const ClientAppFolders: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedAiTag, setSelectedAiTag] = useState('');
+  const [aiTagCategories, setAiTagCategories] = useState<{ category: string; count: number }[]>([]);
+  const [aiTagsLoading, setAiTagsLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFileType, setPreviewFileType] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -137,11 +140,27 @@ const ClientAppFolders: React.FC = () => {
     })();
   }, [currentFolderPath, appSlug, currentPage, pageSize]);
 
-  const handleSearch = useCallback(async (query: string) => {
-    setSearchQuery(query);
+  const fetchAiTagCategories = useCallback(async () => {
+    if (!appSlug || !currentFolderPath) { setAiTagCategories([]); setAiTagsLoading(false); return; }
+    try {
+      setAiTagsLoading(true);
+      const fullPath = '/' + appSlug + currentFolderPath;
+      const data = await documentService.getAiTagCategories(fullPath);
+      setAiTagCategories(Array.isArray(data?.categories) ? data.categories : []);
+    } catch { setAiTagCategories([]); }
+    finally { setAiTagsLoading(false); }
+  }, [appSlug, currentFolderPath]);
+
+  // 切换文件夹时刷新 AI tag 分类下拉
+  useEffect(() => {
+    setSelectedAiTag('');
+    fetchAiTagCategories();
+  }, [fetchAiTagCategories]);
+
+  const doSearch = useCallback(async (query: string, aiTag: string) => {
     if (!currentFolderPath) return;
     const fullPath = '/' + appSlug + currentFolderPath;
-    if (!query.trim()) {
+    if (!query.trim() && !aiTag.trim()) {
       setIsSearching(false);
       try {
         setDocumentsLoading(true);
@@ -155,11 +174,30 @@ const ClientAppFolders: React.FC = () => {
     }
     try {
       setIsSearching(true);
-      const results = await documentService.searchDocuments({ q: query, path: fullPath, limit: 1000 });
-      setDocuments(results || []);
+      const params: any = { path: fullPath, limit: 1000 };
+      if (query.trim()) params.q = query.trim();
+      if (aiTag.trim()) params.ai_tag = aiTag.trim();
+      const result = await documentService.searchDocumentsWithTotal(params);
+      setDocuments(Array.isArray(result.documents) ? result.documents : []);
+      setTotalPages(Math.ceil((result.total || 0) / pageSize) || 1);
     } catch {}
     finally { setIsSearching(false); }
   }, [currentFolderPath, appSlug, currentPage, pageSize]);
+
+  const handleSearch = useCallback(async (query: string) => {
+    setSearchQuery(query);
+    doSearch(query, selectedAiTag);
+  }, [doSearch, selectedAiTag]);
+
+  const handleAiTagSelect = useCallback((tag: string) => {
+    setSelectedAiTag(tag);
+    doSearch(searchQuery, tag);
+  }, [doSearch, searchQuery]);
+
+  const handleAiTagClear = useCallback(() => {
+    setSelectedAiTag('');
+    doSearch(searchQuery, '');
+  }, [doSearch, searchQuery]);
 
   const handleFolderClick = (folderPath: string) => {
     const appPrefix = '/' + appSlug;
@@ -340,6 +378,28 @@ const ClientAppFolders: React.FC = () => {
           </span>
         </form>
 
+        {/* AI Tag Filter — Dropdown */}
+        <div className="input-group" style={{ marginBottom: 20 }}>
+          <span className="input-group-addon">🏷️ AI Tag</span>
+          <select className="form-control"
+            value={selectedAiTag}
+            onChange={e => handleAiTagSelect(e.target.value)}
+            disabled={aiTagsLoading}>
+            <option value="">{aiTagsLoading ? 'Loading...' : '-- All documents --'}</option>
+            {Array.isArray(aiTagCategories) && aiTagCategories.map((cat, i) => (
+              <option key={i} value={cat.category}>
+                {cat.category} ({cat.count})
+              </option>
+            ))}
+          </select>
+          {selectedAiTag && (
+            <span className="input-group-btn">
+              <button type="button" className="btn btn-default"
+                onClick={handleAiTagClear}>&times;</button>
+            </span>
+          )}
+        </div>
+
         {/* Two-col layout */}
         <div className="row">
           {/* LEFT: Folders + AI Ops */}
@@ -432,7 +492,7 @@ const ClientAppFolders: React.FC = () => {
                 </span>
               </div>
 
-              {!currentFolderPath && documents.length === 0 && !documentsLoading ? (
+              {!currentFolderPath && Array.isArray(documents) && documents.length === 0 && !documentsLoading ? (
                 <div className="panel-body text-center fb-empty-state">
                   <p style={{ fontSize: '2em' }}>📁</p>
                   <p className="text-muted">Select a folder from the left panel</p>
@@ -441,10 +501,14 @@ const ClientAppFolders: React.FC = () => {
                 <div className="panel-body text-center fb-loading">
                   <p className="text-muted">Loading documents...</p>
                 </div>
-              ) : documents.length === 0 ? (
+              ) : Array.isArray(documents) && documents.length === 0 ? (
                 <div className="panel-body text-center fb-empty-state">
                   <p style={{ fontSize: '2em' }}>📄</p>
                   <p className="text-muted">No documents found under this folder</p>
+                </div>
+              ) : !Array.isArray(documents) ? (
+                <div className="panel-body text-center fb-loading">
+                  <p className="text-muted">Re-rendering...</p>
                 </div>
               ) : (
                 <div className="table-responsive">
@@ -461,7 +525,7 @@ const ClientAppFolders: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {documents.map(doc => {
+                      {Array.isArray(documents) && documents.map(doc => {
                         const token = localStorage.getItem('access_token');
                         const encodedPath = encodeURIComponent(doc.path || doc.storage_path);
                         const publishUrl = doc.publish_status === 'PUBLISHED' && doc.path
@@ -471,7 +535,7 @@ const ClientAppFolders: React.FC = () => {
                           ? `/api/v1/documents/${encodedPath}/preview/html?token=${token}`
                           : `/api/v1/documents/${encodedPath}/download?preview=1&token=${token}`);
                         const isVideo = doc.file_type === 'video';
-                        const isImage = isVideo || ['jpeg', 'jpg', 'png', 'gif', 'svg', 'tiff', 'tif'].includes(doc.file_type);
+                        const isImage = isVideo || ['jpeg', 'jpg', 'png', 'gif', 'svg', 'tiff', 'tif'].includes(doc.file_type?.toLowerCase());
                         const thumbUrl = `/api/v1/documents/${encodedPath}/thumbnail?token=${token}`;
                         return (
                           <tr key={doc.path || doc.storage_path}>

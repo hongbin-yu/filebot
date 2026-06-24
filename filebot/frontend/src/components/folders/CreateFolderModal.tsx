@@ -31,6 +31,19 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  // Thumbnail size state
+  const [thumbnailPreset, setThumbnailPreset] = useState('');
+  const [thumbnailSizeCustom, setThumbnailSizeCustom] = useState('');
+  const [showCustomSize, setShowCustomSize] = useState(false);
+
+  const thumbnailPresets = [
+    { value: '', label: t('folderModal.thumbnailSizeInherit') || 'Inherit (128×128)' },
+    { value: '128x128', label: '128×128' },
+    { value: '256x256', label: '256×256' },
+    { value: '512x512', label: '512×512' },
+    { value: '__custom__', label: t('folderModal.thumbnailSizeCustom') || 'Custom...' },
+  ];
+
   // 直接使用路径，而不是UUID
   const [selectedParentFolderPath, setSelectedParentFolderPath] = useState<string | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +82,19 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     if (mode === 'edit' && folderToEdit) {
       setName(folderToEdit.name);
       setDescription(folderToEdit.description || '');
+      
+      // Init thumbnail size for edit mode
+      if (folderToEdit.thumbnail_size) {
+        const matchedPreset = thumbnailPresets.find(p => p.value === folderToEdit.thumbnail_size);
+        if (matchedPreset && matchedPreset.value !== '__custom__') {
+          setThumbnailPreset(folderToEdit.thumbnail_size);
+          setShowCustomSize(false);
+        } else {
+          setThumbnailPreset('__custom__');
+          setThumbnailSizeCustom(folderToEdit.thumbnail_size);
+          setShowCustomSize(true);
+        }
+      }
       
       // 确定父文件夹路径：优先使用parent_folder_path，否则尝试转换parent_folder_id
       let parentPath = folderToEdit.parent_folder_path || '';
@@ -217,12 +243,21 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       const autoPath = selectedParentFolderPath
         ? `${selectedParentFolderPath.replace(/\/+$/, '')}/${name.trim().replace(/\s+/g, '-').toLowerCase()}`
         : '';
+      // Determine thumbnail_size value
+      let finalThumbnailSize: string | undefined;
+      if (thumbnailPreset === '__custom__' && thumbnailSizeCustom.trim()) {
+        finalThumbnailSize = thumbnailSizeCustom.trim();
+      } else if (thumbnailPreset) {
+        finalThumbnailSize = thumbnailPreset;
+      }
+
       const folderData = {
         name: name.trim(),
         description: description.trim() || undefined,
         parent_folder_path: parentPath,
         path: autoPath,
-        app_id: appSlug
+        app_id: appSlug,
+        ...(finalThumbnailSize ? { thumbnail_size: finalThumbnailSize } : {})
       };
       
       await onSubmit(folderData);
@@ -231,6 +266,9 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       setName('');
       setDescription('');
       setSelectedParentFolderPath('');
+      setThumbnailPreset('');
+      setThumbnailSizeCustom('');
+      setShowCustomSize(false);
       
       // 不需要手动关闭，父组件会在成功提交后关闭模态框
     } catch (err: any) {
@@ -366,6 +404,42 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
               </div>
             </div>
             
+            {/* Thumbnail Size */}
+            <div style={{marginBottom:24}}>
+              <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>
+                {t('folderModal.thumbnailSizeLabel') || 'Thumbnail Size'}
+              </label>
+              <select
+                value={thumbnailPreset}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setThumbnailPreset(val);
+                  setThumbnailSizeCustom('');
+                  setShowCustomSize(val === '__custom__');
+                }}
+                className="form-control"
+                disabled={isSubmitting}
+              >
+                {thumbnailPresets.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              {showCustomSize && (
+                <input
+                  type="text"
+                  value={thumbnailSizeCustom}
+                  onChange={(e) => setThumbnailSizeCustom(e.target.value)}
+                  className="form-control"
+                  placeholder="e.g. 300x300"
+                  style={{marginTop:8}}
+                  disabled={isSubmitting}
+                />
+              )}
+              <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
+                {t('folderModal.thumbnailSizeHint') || 'Set thumbnail size for this folder and its subfolders. Leave as Inherit to use parent or default (128×128).'}
+              </div>
+            </div>
+
             {/* 选择父文件夹 - 创建子文件夹时只读显示，创建根文件夹时可选 */}
             <div style={{marginBottom:24}}>
               <label style={{display:"block",fontSize:"0.875rem",lineHeight:"1.25rem",fontWeight:500,color:"#374151",marginBottom:4}}>

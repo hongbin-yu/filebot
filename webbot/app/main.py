@@ -1117,6 +1117,8 @@ async def list_documents(
     folder_path__like: str = None,
     original_filename__like: str = None,
     title__like: str = None,
+    ai_category: str = None,
+    ai_tag: str = None,
     limit: int = 50,
     offset: int = 0
 ):
@@ -1152,6 +1154,14 @@ async def list_documents(
         if title__like:
             where_clauses.append("title ILIKE %s")
             params.append('%' + title__like + '%')
+        if ai_category:
+            where_clauses.append("ai_category ILIKE %s")
+            params.append('%' + ai_category + '%')
+        if ai_tag:
+            # ai_tags column is JSON array like [{"tag": "contract", "score": 0.98}, ...]
+            # json_typeof check avoids errors on NULL or scalar ai_tags values
+            where_clauses.append("path IN (SELECT path FROM documents d2, json_array_elements(d2.ai_tags) elem WHERE elem->>'tag' = %s AND json_typeof(d2.ai_tags) = 'array')")
+            params.append(ai_tag)
         
         where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
         
@@ -1374,7 +1384,7 @@ async def proxy_ai_query(request: Request):
     auth = request.headers.get("authorization", "")
     target_path = request.url.path
     
-    target_url = f"http://10.0.0.58:8001{target_path}"
+    target_url = f"http://localhost:8001{target_path}"
     if request.url.query:
         target_url += "?" + request.url.query
     

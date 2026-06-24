@@ -174,9 +174,30 @@ async def get_tracking_script():
 
 
 @router.post("")
-async def track_pageview(data: PageviewData, request: Request):
-    """Receive and log a pageview event from the tracking script."""
+async def track_pageview(request: Request):
+    """Receive and log a pageview event from the tracking script.
+    
+    Note: navigator.sendBeacon() sends Content-Type: text/plain,
+    so we parse the JSON body manually instead of using Pydantic auto-validation.
+    """
     _ensure_table()
+
+    # Parse body (sendBeacon sends text/plain, not application/json)
+    try:
+        body = await request.json()
+    except Exception:
+        try:
+            raw = await request.body()
+            body = json.loads(raw.decode())
+        except Exception:
+            return Response(content='{"ok":false,"error":"invalid json"}', status_code=400, media_type="application/json")
+
+    path = body.get("path", "")
+    host = body.get("host", "")
+    lang = body.get("lang", "")
+    ref = body.get("ref", "")
+    sw = body.get("sw", 0)
+    sh = body.get("sh", 0)
 
     # Hash IP for privacy (no raw IP stored)
     ip_raw = request.client.host if request.client and request.client.host else "unknown"
@@ -195,21 +216,21 @@ async def track_pageview(data: PageviewData, request: Request):
         INSERT INTO pageview_log (path, host, ip_hash, user_agent, referrer, language, screen_width, screen_height, country, region)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        data.path,
-        data.host,
+        path,
+        host,
         ip_hash,
         user_agent,
-        data.ref,
-        data.lang,
-        data.sw,
-        data.sh,
+        ref,
+        lang,
+        sw,
+        sh,
         country,
         region,
     ))
     conn.commit()
     conn.close()
 
-    return {"ok": True, "path": data.path}
+    return {"ok": True, "path": path}
 
 
 @router.get("/daily")
