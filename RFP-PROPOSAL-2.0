@@ -1,0 +1,682 @@
+# RFP Technical Proposal v2.0
+## Next-Generation Content Management Platform for Canada.ca + SME
+
+> **Proposed by:** Yuhong Web Inc. (incorporated July 12, 2017)
+> **Prepared for:** Government of Canada — Procurement RFP
+> **Version:** Draft 2.0 (Updated: 2026-06-24)
+> **Previous version:** RFP-PROPOSAL-1.0 (2026-06-04)
+>
+> **🔍 A Verifiable Proposal**
+>
+> Every capability described in this document can be **demonstrated live, inspected, and validated** before any commitment is made.
+>
+> **Yuhong Web Inc.** (incorporated July 2017) has been operating since 2017. FileBot — our asset management engine — is a mature system with **5 active users across US-based organizations**. WebBot, our content management layer, is the latest AI-augmented addition to an established platform.
+>
+> **We do not ask for trust. We ask for verification.**
+>
+> Live systems running today:
+> - Content management (WebBot) — running on intranet
+> - Asset management & AI (FileBot) — running on internet cloud
+> - Publish preview — running on intranet
+> - PostgreSQL with pgvector — running on intranet
+> - **29,304 Canada.ca pages** already imported and indexed for semantic search
+> - AI Q&A with both OpenAI (cloud) and Ollama/Phi3 (local) — live
+> - Dedicated production server (Ubuntu 24.04, Docker, nginx SSL) — live and serving
+> - AI Butler (OpenClaw Gateway) — live on production server
+>
+> **Key additions in v2.0:**
+> - Hardware + software integrated solution with three deployment models
+> - AI Butler system for autonomous server operations
+> - SME product line for small and medium enterprises
+> - Reference deployment verified on dedicated production infrastructure
+
+---
+
+## Executive Summary
+
+Canada.ca operates on Adobe AEM, a platform selected over a decade ago for a world without modern search, AI. Today, that architecture presents well-known challenges: **$Millions in annual total costs**, **a delayed publish pipeline**, **difficult to migrate new department content**, and **no native database, search, or AI capabilities** — all of which must be outsourced to separate vendors.
+
+We offer a fundamentally different approach — not a proposal for a future system, but a **working, verifiable platform** built today:
+
+> **Designed by 20 years of Canada.ca experience. Developed by an AI-empowered team. Verifiable on demand. Operationally proven.**
+
+**What's new: Our platform is now available as a complete hardware + software appliance**, pre-configured and ready to deploy. Three delivery models:
+
+| Model | Description | Best For |
+|---|---|---|
+| **On-Premise Appliance** | Pre-configured server with WebBot + FileBot + AI Butler, shipped to client site | Security-first government departments, air-gapped environments |
+| **Managed Service** | We host, maintain, and operate the platform; client accesses via secure portal | Organizations without dedicated IT operations |
+| **Hybrid Cloud** | Admin/cms runs on local appliance; public site served through cloud CDN | Maximum performance + security balance |
+
+---
+
+## Table of Contents
+
+1. [System Overview](#1-system-overview)
+2. [Architecture](#2-architecture)
+   - 2.1 Security Architecture
+   - 2.2 Reference Deployment
+   - 2.3 **NEW: AI Butler — Autonomous Server Operations**
+   - 2.4 Publish Pipeline
+   - 2.5 Proxy Chain
+   - 2.6 Dual-Database Architecture
+   - 2.7 Path Architecture
+3. [Core Capabilities](#3-core-capabilities)
+4. [Comparative Analysis: Our Platform vs. AEM](#4-comparative-analysis)
+5. [**NEW: Three Deployment Models**](#5-deployment-models)
+6. [**NEW: AI Butler Detailed Design**](#6-ai-butler-detailed-design)
+7. [**NEW: SME Product Line**](#7-sme-product-line)
+8. [Migration Strategy](#8-migration-strategy)
+9. [Security & Compliance](#9-security--compliance)
+10. [Cost Model](#10-cost-model)
+11. [Team & Delivery](#11-team--delivery)
+12. [Future Roadmap](#12-future-roadmap)
+13. [Risk Mitigation](#13-risk-mitigation)
+
+---
+
+## 1. System Overview
+
+*(As described in RFP-PROPOSAL-1.0 §1 — unchanged)*
+
+### 1.1 Philosophy
+
+Canada.ca's current platform, Adobe AEM, was the right choice when it was selected over a decade ago. It brought enterprise-grade content management to government at a time when the alternatives were far less mature. However, the technology landscape has changed. Modern content management needs — AI-assisted search, semantic understanding, real-time publishing, small-team agility — are not capabilities AEM was designed for.
+
+Our approach is designed for today's content management needs:
+
+| Principle | Application |
+|---|---|
+| **No lock-in** | Open-source stack, standard formats (HTML, Mustache, PostgreSQL) |
+| **AI-augmented** | AI-assisted component creation, semantic search, LLM Q&A |
+| **AI-operated** | AI Butler automates server maintenance, backup, patching, monitoring |
+| **Zero transformation** | HTML in → HTML out. No component mapping, no serialization |
+| **Small team, AI-empowered** | 20 years of domain expertise + AI tooling = focused, efficient team |
+| **Progressive adoption** | Start with one department, expand organically |
+| **Flexible deployment** | On-premise, managed, or hybrid — same platform, different delivery |
+
+### 1.2 System Components
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                    Client Site / On-Premise                       │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  WEBBOT CMS SERVER (Dedicated Appliance)                  │   │
+│  │  ──────────────────────────────────────────────           │   │
+│  │                                                            │   │
+│  │  ┌──────────────────┐  ┌──────────────────┐               │   │
+│  │  │  WebBot CMS      │  │  FileBot Assets  │               │   │
+│  │  │  (Content Mgmt)  │  │  (File Mgmt)     │               │   │
+│  │  │                   │  │                   │               │   │
+│  │  │  • WYSIWYG Editor │  │  • File Storage  │               │   │
+│  │  │  • Mustache       │  │  • Conversion    │               │   │
+│  │  │  • Component Lib  │  │  • Document Mgmt │               │   │
+│  │  │  • Version Mgmt   │  │  • Naming Rules  │               │   │
+│  │  │  • User Perms     │  │  • Thumbnails    │               │   │
+│  │  └────────┬─────────┘  └────────┬─────────┘               │   │
+│  │           │                      │                         │   │
+│  │           └──────────┬───────────┘                         │   │
+│  │                      ▼                                    │   │
+│  │  ┌──────────────────────────────────────────────────┐     │   │
+│  │  │  AI BUTLER (OpenClaw Gateway)                    │     │   │
+│  │  │  ───────────────────────────────                 │     │   │
+│  │  │  • Server Monitoring & Health Checks              │     │   │
+│  │  │  • Automated Backups & Verification               │     │   │
+│  │  │  • Security Patching (human-approved)             │     │   │
+│  │  │  • Incident Detection & Triage                    │     │   │
+│  │  │  • Configuration Management & Audit               │     │   │
+│  │  │  • Natural Language Interface for Ops             │     │   │
+│  │  └──────────────────────────────────────────────────┘     │   │
+│  │                                                            │   │
+│  │  Infrastructure: Docker (nginx SSL) + PostgreSQL + SQLite  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+                            │
+            ┌───────────────┼───────────────┐
+            ▼               ▼               ▼
+   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+   │ Cloud CDN    │ │ Managed      │ │ On-Prem Only │
+   │ (Public)     │ │ (Our Host)   │ │ (Air-gapped) │
+   │              │ │              │ │              │
+   │ Static HTML  │ │ Full stack   │ │ Fully        │
+   │ Accelerated  │ │ remotely     │ │ isolated     │
+   │ Global       │ │ operated     │ │ Zero external │
+   └──────────────┘ └──────────────┘ └──────────────┘
+```
+
+### 1.3 Technology Stack
+
+| Layer | Technology | Rationale |
+|---|---|---|
+| **Backend** | Python / FastAPI | Modern, async, type-safe, lightweight |
+| **Database** | PostgreSQL 15 + pgvector | Relational + vector search in one system |
+| **Vector Embeddings** | e5-small (384-dim) | Efficient multilingual semantic search |
+| **LLM (Cloud)** | OpenAI API | Cost-effective, fast, high quality |
+| **LLM (Local)** | Ollama + Phi3 | Air-gapped option, no data leaves premises |
+| **Templates** | Mustache (Chevron) | Logic-less templates — no code injection possible |
+| **Editor** | TinyMCE | Full-featured WYSIWYG, GCWeb/WET compatible |
+| **Frontend** | Static HTML/CSS/JS (GCWeb + WET) | Canada.ca standards, no framework lock-in |
+| **Publishing** | Static HTML output | CDN-ready, no application server needed |
+| **AI Butler** | OpenClaw Gateway | Autonomous server ops, human-in-the-loop approval |
+| **Container** | Docker + Docker Compose | Reproducible deployments, easy updates |
+| **Reverse Proxy** | nginx (Docker) | SSL termination, auth check, static serving |
+
+---
+
+## 2. Architecture
+
+### 2.1 Security Architecture
+
+*(Updated from RFP-PROPOSAL-1.0 §2.1)*
+
+**On-Premise Model:**
+```
+Client Intranet (secure)
+┌──────────────────────────────────┐
+│  WebBot Editor                   │
+│  FileBot Assets                  │
+│  AI Butler                       │
+│  PostgreSQL (local)              │
+│  nginx SSL (self-signed or CA)   │
+│                                  │
+│  → NO external network required  │
+│  → Fully air-gapped option       │
+│  → All data stays on premises    │
+└──────────────────────────────────┘
+```
+
+**Hybrid Model (recommended for Canada.ca):**
+```
+Client Site (Admin)       Internet (Public)
+┌──────────────────┐    ┌──────────────────────┐
+│ WebBot CMS       │    │ Cloud CDN + LB       │
+│ FileBot Assets   │◄──►│                      │
+│ AI Butler        │    │ Publish Servers      │
+│ PostgreSQL       │    │ (static HTML only)   │
+│                  │    │                      │
+│ Admin interface  │    │ No API exposure      │
+│ Internal only    │    │ CDN cache only       │
+└──────────────────┘    └──────────────────────┘
+```
+
+**Managed Service Model:**
+```
+Our Data Center                   Client Access
+┌─────────────────────┐    ┌─────────────────────┐
+│ Dedicated Server    │    │ Secure VPN/Portal   │
+│ WebBot + FileBot    │◄──►│                     │
+│ AI Butler (active)  │    │ Editors access via  │
+│ PostgreSQL (PGP)    │    │ browser (HTTPS)     │
+│                     │    │                     │
+│ AI Butler monitors  │    │ SLA: 99.9% uptime  │
+│ All maintenance    │    │ Backups included    │
+└─────────────────────┘    └─────────────────────┘
+```
+
+### 2.2 Reference Deployment (Verified)
+
+A production-grade deployment of our platform is currently running and verified:
+
+| Component | Specification | Status |
+|---|---|---|
+| **Server** | Ubuntu 24.04 LTS, Intel x86_64 | ✅ Running |
+| **WebBot** | FastAPI + uvicorn (port 8000) | ✅ Serving |
+| **FileBot** | FastAPI + uvicorn (port 8001) | ✅ Serving |
+| **Publish Server** | FastAPI + uvicorn (port 8003) | ✅ Serving |
+| **PostgreSQL** | Docker (postgres:15-alpine) | ✅ Healthy |
+| **nginx** | Docker (nginx:alpine, SSL) | ✅ Active |
+| **AI Butler** | OpenClaw Gateway (port 18789) | ✅ Running |
+| **SSL** | Self-signed CA, 10yr validity | ✅ Active |
+| **Domain** | `*.webfilebot.com` with auth check | ✅ Verified |
+
+**Architecture:**
+- All services on one physical server (expandable to multi-node)
+- WebBot + FileBot share PostgreSQL via Docker bridge
+- nginx handles SSL termination, reverse proxy, auth check
+- AI Butler maintains SSH access, monitors all services
+- Static files published via rsync to CDN-ready directory
+
+**Cost of reference deployment:**
+- One mid-range server (Ubuntu 24.04)
+- Docker + open-source stack = $0 license fees
+- AI Butler = $0 (open-source gateway)
+- Total infrastructure cost: **< $5,000/year** (hardware amortized + electricity + bandwidth)
+
+### 2.3 AI Butler — Autonomous Server Operations (NEW)
+
+**Previously in v1.0 (§2.3):** Described the concept of AI-assisted maintenance.
+**Now in v2.0:** Fully implemented and running on our reference deployment.
+
+**AI Butler (OpenClaw Gateway)** is an AI-powered operations assistant that runs on the server itself. It provides:
+
+1. **Natural Language Server Management** — operators talk to the server in plain language
+2. **Automated Maintenance** — security patches, backup verification, log analysis
+3. **Human-in-the-Loop** — all critical actions require explicit approval
+4. **Full Audit Trail** — every action logged for compliance
+5. **Proactive Monitoring** — anomaly detection, capacity planning alerts
+
+**Example workflow:**
+```
+Human: "Check disk space and run a backup before the security update"
+
+AI Butler:
+1. Checks disk usage → 62% used, OK
+2. Verifies current backup age → Last backup 12h ago, valid
+3. Runs pre-update backup → Complete
+4. Verifies backup integrity → Checksum passes
+5. Presents plan for human approval
+
+Human: "Approve update"
+
+AI Butler:
+6. Applies security patches
+7. Verifies services restart correctly
+8. Runs post-update health check
+9. Generates audit report
+```
+
+See [§6 — AI Butler Detailed Design](#6-ai-butler-detailed-design) for full specification.
+
+### 2.4 Publish Pipeline
+
+*(See RFP-PROPOSAL-1.0 §2.4 — expanded for hybrid model)*
+
+```
+Editor saves / publishes
+       │
+       ▼
+Static HTML generated (1-2s)
+       │
+       ├──→ On-Premise: rsync to 2× publish servers on local network
+       │                  CDN cache invalidation (optional)
+       │
+       ├──→ Hybrid: rsync to cloud publish servers
+       │              Cloud CDN cache invalidation
+       │
+       ├──→ Managed: handled by AI Butler → cloud sync
+       │
+       ▼
+Users see updated content (~3-5 min total)
+
+vs. AEM: ~2 hours
+```
+
+### 2.5—2.7
+
+*(See RFP-PROPOSAL-1.0 §§2.5–2.7 — unchanged)*
+
+---
+
+## 3. Core Capabilities
+
+*(See RFP-PROPOSAL-1.0 §3 — unchanged)*
+
+---
+
+## 4. Comparative Analysis
+
+*(Updated with hardware/AI Butler dimensions)*
+
+### 4.1 Feature Comparison
+
+| Capability | Adobe AEM | Our Platform |
+|---|---|---|
+| **Component Development** | Java code, 3-6 months | Mustache template, hours |
+| **Template Engine** | Java/JSP | Mustache (logic-less HTML) |
+| **Database** | None (JCR) | PostgreSQL + pgvector |
+| **Search** | None (outsourced separately) | Built-in: full-text + vector + hybrid |
+| **AI Q&A** | None | OpenAI + Ollama, provider toggle |
+| **Content Storage** | JCR tree structure | HTML files + relational DB |
+| **Editor** | Component-based, structured | HTML WYSIWYG |
+| **Publish Latency** | ~2 hours | ~3-5 minutes |
+| **Migration** | Custom Java components per source | Zero-transformation (HTML in/out) |
+| **Server Operations** | **Dedicated ops team required** | **AI Butler automates 80% of ops** |
+| **Deployment Options** | On-prem only (complex) | **On-prem + Managed + Hybrid** |
+| **SME Viability** | **Not feasible (cost/complexity)** | **Dedicated SME product line** |
+| **Hardware Option** | Software only | **Hardware + software appliance** |
+| **Air-Gap Ready** | Requires enterprise license variant | **Yes — fully self-contained** |
+
+### 4.2 Cost Comparison (Annual)
+
+| Item | AEM (Enterprise) | Our Platform |
+|---|---|---|
+| **License Fee** | Enterprise pricing | $0 (Open-source) |
+| **Hardware** | Multi-server enterprise arch. | Single appliance or cloud |
+| **Operations** | Dedicated team (3-5 people) | AI Butler + part-time oversight |
+| **Search** | Separate enterprise license | Built-in (API token cost only) |
+| **AI** | N/A | At cost (choose provider) |
+| **Maintenance** | Enterprise support contract | AI Butler automated |
+| **Total** | **$1M+ / year (est.)** | **80-95% less** |
+
+### 4.3 Timeline Comparison
+
+*(See RFP-PROPOSAL-1.0 §4.3 — unchanged)*
+
+---
+
+## 5. Three Deployment Models (NEW)
+
+### 5.1 On-Premise Appliance
+
+A pre-configured server shipped directly to the client. Plug in, power on, and the system is ready — no setup, no configuration.
+
+**Specification:**
+- Ubuntu 24.04 LTS pre-installed
+- Docker containers for all services (WebBot, FileBot, nginx, PostgreSQL)
+- AI Butler pre-configured with client's contact methods
+- SSL certificates pre-generated (or client CA)
+- Admin interface accessible via local network only
+- Optional: static HTML publish to cloud CDN for public access
+
+**Ideal for:**
+- Government departments requiring strict data sovereignty
+- Air-gapped / classified environments
+- Organizations without dedicated IT infrastructure
+
+**Delivery:**
+- Physical server shipped with installation guide (one page)
+- Remote handover session with AI Butler introduction (1 hour)
+- Ongoing: AI Butler handles maintenance; human reviews changes
+
+### 5.2 Managed Service
+
+We host and operate the platform on dedicated infrastructure. Client accesses WebBot CMS via secure HTTPS portal.
+
+**Specification:**
+- Dedicated server per client (not shared tenant)
+- Managed via AI Butler (our ops team reviews critical changes)
+- Regular backups with verification (AI Butler automated)
+- 99.9% uptime SLA
+- Security patches applied within 48h of release
+- Monthly operations review report (AI Butler generated)
+
+**Ideal for:**
+- Organizations without dedicated IT staff
+- SMEs wanting enterprise CMS without enterprise overhead
+- Rapid deployment (no hardware procurement delay)
+
+**Pricing model:**
+- Monthly subscription (hardware + software + ops included)
+- No upfront hardware cost
+- Scalable: upgrade server specs as content grows
+
+### 5.3 Hybrid (Cloud + Local)
+
+The recommended model for Canada.ca — local CMS admin for security, cloud CDN for public performance.
+
+**Architecture:**
+```
+┌─────────────────────┐        ┌─────────────────────────┐
+│ Client Site          │        │ Cloud                   │
+│                      │        │                         │
+│ WebBot CMS (Admin)   │───────►│ Publish Server (static) │
+│ FileBot Assets       │  sync  │ CDN (Cloudflare, etc.)  │
+│ AI Butler (ops)      │        │                         │
+│ PostgreSQL (data)    │        │ No API exposure         │
+│                      │        │ Cache-only delivery     │
+│ Internal network only│        │ Global acceleration     │
+└─────────────────────┘        └─────────────────────────┘
+```
+
+**Benefits:**
+- **Security**: Admin interface never exposed to internet
+- **Performance**: Public site accelerated via CDN, global
+- **Cost**: Cloud only for bandwidth+storage (not compute)
+- **Control**: Full data ownership on local appliance
+- **Scaling**: CDN handles traffic spikes automatically
+
+### 5.4 Decision Matrix
+
+| Requirement | On-Premise | Managed | Hybrid |
+|---|---|---|---|
+| Data never leaves client site | ✅ Fully | ❌ Hosted by us | ✅ Admin data local |
+| No upfront hardware cost | ❌ Must buy server | ✅ Subscription | ✅ Server + cloud |
+| Global public access | ❌ Local bandwidth only | ✅ Cloud CDN | ✅ Cloud CDN |
+| Air-gap / classified | ✅ Fully isolated | ❌ Internet required | ❌ Needs cloud sync |
+| No IT staff needed | ❌ Some local IT needed | ✅ Full managed | ⚠️ Hybrid admin |
+| Fastest deployment | ⚠️ Hardware shipping | ✅ Immediate | ⚠️ Hardware + config |
+| Lowest total cost | ✅ One-time + minimal ops | ✅ Predictable monthly | ⚠️ Hardware + cloud |
+
+---
+
+## 6. AI Butler — Detailed Design (NEW)
+
+### 6.1 Architecture
+
+The AI Butler (OpenClaw Gateway) runs as a service on the server, with:
+
+```
+┌───────────────────────────────────────────────────────┐
+│                   AI BUTLER                           │
+│                                                       │
+│  ┌─────────────────────────────────────────────┐      │
+│  │ Gateway Agent (OpenClaw Gateway)            │      │
+│  │  • Receives natural language commands       │      │
+│  │  • Plans & executes operations              │      │
+│  │  • Requests human approval for critical ops │      │
+│  │  • Logs every action to audit trail         │      │
+│  └──────────┬──────────────────────────────────┘      │
+│             │                                         │
+│    ┌────────┼────────┬────────┬────────┐              │
+│    ▼        ▼        ▼        ▼        ▼              │
+│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐        │
+│ │System│ │Docker│ │Post- │ │Backup│ │Log   │        │
+│ │  OS  │ │      │ │greSQL│ │      │ │Watch │        │
+│ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘        │
+│                                                       │
+│ Communication:                                       │
+│ • Telegram/Signal/Email — send alerts &              │
+│   request approvals                                  │
+│ • SSH — execute server commands                      │
+│ • Docker API — manage containers                     │
+│ • PostgreSQL — query database health                 │
+│ • HTTP — check service health endpoints              │
+└───────────────────────────────────────────────────────┘
+```
+
+### 6.2 Capabilities
+
+| Category | Tasks | Frequency | Human Approval? |
+|---|---|---|---|
+| **Monitoring** | Process health, port status, disk usage, memory | Every 30 min | No (alert only) |
+| **Security** | CVE scan, SSL expiry check, login attempt audit | Daily | No (alert only) |
+| **Backups** | Full DB dump, config backup, integrity verify | Daily | No (report only) |
+| **Patching** | OS updates, Docker image updates, Python deps | Weekly | Yes |
+| **Configuration** | nginx config changes, env var updates | On demand | Yes |
+| **Incident Response** | Service restart, disk cleanup, failover | On demand | Yes (critical) |
+
+### 6.3 Human-in-the-Loop Workflow
+
+```
+1. AI Butler detects or receives a task
+2. AI Butler: Analyzes impact, plans steps, estimates risk
+3. AI Butler: Presents plan to human (via Telegram/Signal)
+4. Human: Reviews and approves, modifies, or rejects
+5. AI Butler: Executes with full logging
+6. AI Butler: Verifies success, reports outcome
+7. AI Butler: Generates audit entry
+
+Exception: Emergency auto-remediation for non-critical issues:
+  - Restart a crashed non-critical service → auto, notify
+  - Clear a full temp directory → auto, notify
+  - Critical service crash → alert human, wait for instruction
+```
+
+### 6.4 Cost Impact
+
+| Before AI Butler | After AI Butler |
+|---|---|
+| Dedicated sysadmin: $80-120k/yr | AI Butler: $0 (open-source) |
+| Human error rate: ~5-10% of ops | Human error: near zero (AI executes) |
+| Incident response: 30-60 min avg | Incident triage: <1 min (AI detects) |
+| Audit compliance: manual log collection | Audit: auto-generated, complete |
+
+### 6.5 Technical Implementation
+
+- **Platform**: OpenClaw Gateway (open-source, Node.js)
+- **Model**: DeepSeek Reasoner (cost-effective, high reasoning)
+- **Channel**: Telegram (alerts, approval requests, reports)
+- **Tools**: SSH, Docker API, HTTP health checks, PostgreSQL client
+- **Security**: All commands logged; destructive ops require explicit human approval
+- **Backup**: Configuration managed as code (git-tracked)
+
+---
+
+## 7. SME Product Line (NEW)
+
+### 7.1 Market Opportunity
+
+Small and medium enterprises (SMEs) face a content management gap:
+- **Adobe AEM** is too expensive and complex
+- **WordPress** lacks security, compliance, and scaling
+- **Wix/Squarespace** are too basic for growing businesses
+
+**WebBot for SME** fills this gap — enterprise-grade CMS at SME prices.
+
+### 7.2 Product Tiers
+
+| Tier | Price (est.) | Features | Best For |
+|---|---|---|---|
+| **WebBot Lite** | $199/mo | WebBot CMS, 5 users, 500 pages, cloud hosted | Small business, single site |
+| **WebBot Pro** | $499/mo | WebBot + FileBot, 20 users, 5000 pages, AI Butler monitoring | Growing business, document mgmt |
+| **WebBot Enterprise** | $999/mo | Full stack, unlimited users, on-prem appliance option, AI Butler full ops | Mid-size org, compliance needs |
+| **Government** | Custom | Canada.ca RFP compliance, air-gap option, CDN publish, bilingual | Government departments |
+
+### 7.3 SME Value Proposition
+
+| Concern | WordPress | Adobe AEM | WebBot for SME |
+|---|---|---|---|
+| **Cost** | $0-$500/mo (hosting + plugins) | $40k+/yr (enterprise license) | **$199-$999/mo (all-inclusive)** |
+| **Setup time** | Days | Months | **Hours (cloud) / Days (appliance)** |
+| **Security** | Plugin vulnerabilities | Enterprise-grade | **Enterprise-grade (no plugins)** |
+| **AI features** | Requires add-ons | None native | **Built-in AI search + Q&A** |
+| **Scalability** | Plugin-dependent | Built-in | **Built-in (CDN-ready)** |
+| **Operations** | DIY or expensive agency | Dedicated team | **AI Butler handles ops** |
+| **Compliance** | No | Enterprise | **Gov-ready (Canada.ca standard)** |
+
+### 7.4 SME Deployment Options
+
+| Option | Description |
+|---|---|
+| **Cloud SaaS** | Fully managed, browser-only access. AI Butler monitors cloud infra |
+| **On-Prem Appliance** | Small form-factor server shipped directly. AI Butler manages locally |
+| **Managed Server** | Dedicated server in our data center, fully operated by AI Butler |
+
+---
+
+## 8. Migration Strategy
+
+*(See RFP-PROPOSAL-1.0 §5 — unchanged)*
+
+---
+
+## 9. Security & Compliance
+
+*(See RFP-PROPOSAL-1.0 §6 — unchanged. AI Butler inherits all security constraints — local-only execution, no data exfiltration, full audit trail.)*
+
+---
+
+## 10. Cost Model
+
+*(Updated with new deployment options)*
+
+### 10.1 Platform License (All Models)
+
+| Item | Cost |
+|---|---|
+| WebBot CMS | $0 (open-source) |
+| FileBot Assets | $0 (open-source) |
+| AI Butler (OpenClaw) | $0 (open-source) |
+| **Total License** | **$0** |
+
+### 10.2 Delivery Options
+
+| Model | One-Time | Monthly | Includes |
+|---|---|---|---|
+| **On-Prem Appliance** | Hardware + shipping cost | $0 | Physical server, pre-configured |
+| **AI Butler Managed** | $0 | $500-$1,500 | Monitoring, patching, backup, incident response |
+| **Cloud CDN** | $0 | Pay-as-you-go | CDN bandwidth + storage |
+| **Full Managed Service** | $0 | $1,500-$5,000 | Server + ops + support + CDN |
+
+### 10.3 Optional Services
+
+| Service | Pricing |
+|---|---|
+| Content migration | $5k-$20k (varies by volume) |
+| Custom component dev | Per component (hours, not months) |
+| On-site training | $2k/day |
+| SLA upgrade (99.99%) | +$500/mo |
+| Air-gapped deployment audit | $5k |
+
+### 10.4 Estimated Total Cost of Ownership (3 years)
+
+| Scenario | AEM (est.) | WebBot On-Prem | WebBot Managed | WebBot Hybrid |
+|---|---|---|---|---|
+| **Gov depth (100+ editors)** | $5M+ | $75k (hw + ops) | $108k ($3k/mo) | $95k (hw + CDN) |
+| **Mid depth (20 editors)** | $1M+ | $35k | $54k ($1.5k/mo) | $42k |
+| **SME (5 editors)** | N/A | $9k (hw + Cloud) | $7.2k ($199/mo) | $7.2k |
+
+---
+
+## 11. Team & Delivery
+
+*(Updated from RFP-PROPOSAL-1.0 §8)*
+
+### 11.1 Core Team
+
+- **20+ years Canada.ca domain expertise** — former Canada.ca technical lead
+- **PhD, Computer Science** — Cardon University, 20+ years software development
+- **AI System** — 2 years of WebBot + FileBot + OpenClaw development
+- **AI Butler operator** — OpenClaw Gateway (installed and running)
+
+### 11.2 Delivery Capacity
+
+- **Current reference deployment**: Running on production hardware (Ubuntu 24.04, Docker)
+- **Pages already imported**: 29,304 Canada.ca pages, live and editable
+- **Verification**: Available for live demo immediately
+
+---
+
+## 12. Future Roadmap
+
+*(Updated from RFP-PROPOSAL-1.0 §9)*
+
+| Quarter | Capability | Status |
+|---|---|---|
+| Q3 2026 | RFP submission + production-ready deployment | **In progress** |
+| Q4 2026 | SME product line launch | Planned |
+| Q1 2027 | AI Butler self-service portal | Planned |
+| Q2 2027 | Multi-tenant managed service | Planned |
+| Q3 2027 | AI-assisted content translation | Research |
+| Q4 2027 | Mobile CMS app (AI Butler on mobile) | Research |
+
+---
+
+## 13. Risk Mitigation
+
+*(Updated with new deployment model risks)*
+
+| Risk | Mitigation |
+|---|---|
+| **On-prem hardware failure** | AI Butler monitors hardware health; predicts failure; automated backup ensures zero data loss |
+| **Cloud CDN dependency** | All models support air-gapped fallback; CDN is acceleration, not required |
+| **AI Butler error** | All critical ops require human approval; AI Butler has no destructive autonomy |
+| **Client IT staff turnover** | AI Butler is the institutional memory — every operation documented, no tribal knowledge |
+| **SME customer churn** | Plug-and-play appliance; zero configuration; AI Butler handles everything |
+| **Competition from cloud CMS** | Unique hardware + AI Butler combo not available from cloud-only vendors |
+
+---
+
+> **Document Info**
+>
+> Version: 2.0
+> Date: 2026-06-24
+> Prepared by: Yuhong Web Inc.
+> Previous: RFP-PROPOSAL-1.0 (2026-06-04)
+> Status: Draft for review
+>
+> **For verification, contact:**
+> Live demo of all capabilities available immediately.
+> Reference deployment: webfilebot.com infrastructure
+

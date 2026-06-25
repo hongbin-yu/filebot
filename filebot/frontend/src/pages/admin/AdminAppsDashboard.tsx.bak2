@@ -1,0 +1,234 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import appService, { App, CreateAppRequest } from '../../services/app.service';
+import CreateAppModal from '../../components/apps/CreateAppModal';
+import EditAppModal from '../../components/apps/EditAppModal';
+import { showToast } from '../../components/common/ToastNotification';
+
+const AdminAppsDashboard: React.FC = () => {
+  const [apps, setApps] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load application data
+  useEffect(() => {
+    const loadApps = async () => {
+      try {
+        setLoading(true);
+        const appsData = await appService.getApps();
+        setApps(appsData);
+      } catch (err) {
+        console.error('Failed to load applications:', err);
+        setError('Unable to load application list. Please check your network connection or log in again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadApps();
+  }, []);
+
+  // Create application modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  // Edit application modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingApp, setEditingApp] = useState<App | null>(null);
+
+  // Handle create application
+  const handleCreateApp = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  // Handle create success
+  const handleCreateSuccess = (newApp: App) => {
+    // Add new application to list
+    setApps(prevApps => [...prevApps, newApp]);
+  };
+
+  // Close modal
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  // Handle edit success
+  const handleEditSuccess = (updatedApp: App) => {
+    // Update corresponding application in list
+    setApps(prevApps => prevApps.map(app => 
+      app.id === updatedApp.id ? updatedApp : app
+    ));
+  };
+
+  // Close edit modal
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingApp(null);
+  };
+
+  // Handle delete application
+  const handleDeleteApp = async (appId: string, appName: string) => {
+    const confirmed = await window.wetYesOrNo(`Are you sure you want to delete the application "${appName}"? This action will delete all associated folders and documents and cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await appService.deleteApp(appId);
+      // Remove deleted application from list
+      setApps(prevApps => prevApps.filter(app => app.id !== appId));
+    } catch (err) {
+      console.error('Failed to delete application:', err);
+      showToast('Failed to delete application. Please try again later.', 'error');
+    }
+  };
+
+  // Handle edit application
+  const handleEditApp = (appId: string) => {
+    const appToEdit = apps.find(app => app.id === appId);
+    if (appToEdit) {
+      setEditingApp(appToEdit);
+      setIsEditModalOpen(true);
+    } else {
+      showToast('Application to edit not found', 'error');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:24}}>
+          <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
+          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
+            + Create Application
+          </button>
+        </div>
+        <div className="fb-d-flex fb-justify-center fb-align-center" style={{height:256}}>
+          <div className="text-center">
+            <div className="fb-spinner" style={{height:48,width:48,borderWidth:2,borderColor:"#2563eb",borderRadius:"50%"}}></div>
+            <p className="mt-4 text-gray-600">Loading applications...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:24}}>
+          <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
+          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
+            + Create Application
+          </button>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h3 className="text-lg font-medium text-red-800 mb-2">Load Failed</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <div className="fb-d-flex fb-justify-between fb-align-center" style={{marginBottom:24}}>
+        <h1 className="text-2xl font-bold text-gray-800">Application Management</h1>
+        <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={handleCreateApp}>
+          + Create Application
+        </button>
+      </div>
+
+      {apps.length === 0 ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
+          <h3 className="text-lg font-medium text-yellow-800 mb-2">No applications yet</h3>
+          <p className="text-yellow-700 mb-4">You haven't created any applications yet. Click the button above to create your first application.</p>
+          <button className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700" onClick={handleCreateApp}>
+            Create First Application
+          </button>
+        </div>
+      ) : (
+        <div className="panel panel-default">
+          <div className="p-4 border-b">
+            <h2 className="text-lg font-semibold">All Applications ({apps.length})</h2>
+          </div>
+          
+          <div className="divide-y">
+            {apps.map(app => (
+              <div key={app.id} className="p-4 hover:bg-gray-50">
+                <div className="fb-d-flex fb-justify-between fb-align-center">
+                  <div>
+                    <Link 
+                      to={`/admin/apps/${app.slug || app.id}`}
+                      className="text-lg font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      {app.name}
+                    </Link>
+                    <p className="text-gray-600 mt-1">{app.description || 'No description'}</p>
+                    <div className="mt-2 text-sm text-gray-500">
+                      <span>ID: {app.id}</span>
+                      {app.slug && <span className="ml-4">Slug: {app.slug}</span>}
+                    </div>
+                  </div>
+                  <div className="fb-d-flex fb-gap-1">
+                    <Link
+                      to={`/admin/permissions?resource_type=app&resource_id=${app.id}`}
+                      className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200"
+                    >
+                      Permissions
+                    </Link>
+                    <button 
+                      onClick={() => handleEditApp(app.id)}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteApp(app.id, app.name)}
+                      className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+        <h3 className="font-medium text-blue-800">New Architecture Information</h3>
+        <p className="text-blue-700 mt-1">
+          FileBot has been simplified to a two-layer structure: Application → Folder → Document. The drawer layer has been removed.
+        </p>
+        <div className="mt-2 text-sm text-blue-600">
+          <p>• Admin URL prefix: <code>/admin/apps</code></p>
+          <p>• Client URL prefix: <code>/apps</code> (public portal)</p>
+          <p>• Data has been cleared, starting from scratch</p>
+        </div>
+      </div>
+
+      {/* Create Application Modal */}
+      <CreateAppModal 
+        isOpen={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onSuccess={handleCreateSuccess}
+      />
+
+      {/* Edit Application Modal */}
+      <EditAppModal 
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        onSuccess={handleEditSuccess}
+        app={editingApp}
+      />
+    </div>
+  );
+};
+
+export default AdminAppsDashboard;
