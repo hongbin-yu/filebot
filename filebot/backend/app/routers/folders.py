@@ -175,8 +175,12 @@ def get_folders(
     elif parent_folder_path is not None:
         query = query.filter(Folder.parent_folder_path == parent_folder_path)
     else:
-        # 默认只返回顶层文件夹
-        query = query.filter(Folder.parent_folder_path == None)
+        # Default: root folders for the specified app, or NULL parent (backward compat)
+        if app_slug:
+            query = query.filter(Folder.parent_folder_path == '/' + app_slug)
+        else:
+            # No app specified — only superusers can see all root folders
+            query = query.filter(Folder.parent_folder_path == None)
 
     folders = query.order_by(Folder.order_index, Folder.name).offset(skip).limit(limit).all()
     return folders
@@ -216,7 +220,7 @@ def create_folder(
         path=folder_data.path or path,
         description=folder_data.description,
         app_id=str(folder_data.app_id),
-        parent_folder_path=folder_data.parent_folder_path or None,
+        parent_folder_path=folder_data.parent_folder_path or '/' + app.slug,
         is_system_folder=folder_data.is_system_folder,
         order_index=folder_data.order_index,
         thumbnail_size=folder_data.thumbnail_size,
@@ -294,9 +298,8 @@ def get_folder_tree(
             ))
         return result
 
-    # Start from root folders (parent_folder_path IS NULL for the app)
-    # This handles the case where root folder path differs from /{app.slug}
-    return build_tree(None)
+    # Start from root folders (parent_folder_path = /{app.slug})
+    return build_tree('/' + app.slug)
 
 
 @router.get("/{folder_path:path}", response_model=FolderResponse)

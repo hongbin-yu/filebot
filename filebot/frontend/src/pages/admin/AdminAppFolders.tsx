@@ -99,13 +99,9 @@ const AdminAppFolders: React.FC = () => {
   // Load top-level folders for sidebar (direct children only, like ClientAppFolders)
   const loadFolders = async (appIdentifier: string, appId?: string) => {
     try {
-      // Fetch only direct top-level folders: null parent (new-style) + app root path parent (legacy)
-      const [rootFolders, legacyRootFolders] = await Promise.all([
-        folderService.getFolders(appIdentifier, { limit: 200 }),
-        folderService.getFolders(appIdentifier, { parent_folder_path: '/' + appIdentifier, limit: 200 })
-      ]);
-      const topLevel = [...rootFolders, ...legacyRootFolders];
-      setFolders(topLevel);
+      // Fetch only direct top-level folders: parent_folder_path = /{appSlug}
+      const rootFolders = await folderService.getFolders(appIdentifier, { limit: 200 });
+      setFolders(rootFolders);
       
       // URL → state sync is handled by the [search] useEffect below.
       // Do NOT read folder from URL here — it captures stale `search` in closures,

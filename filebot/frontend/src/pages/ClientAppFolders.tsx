@@ -75,11 +75,7 @@ const ClientAppFolders: React.FC = () => {
       try {
         setFoldersLoading(true);
         const rootData = await folderService.getFolders(appSlug, {});
-        const legacyData = await folderService.getFolders(appSlug, { parent_folder_path: '/' + appSlug });
-        const paths = new Set(rootData.map(f => f.path));
-        const merged = [...rootData];
-        for (const f of legacyData) { if (!paths.has(f.path)) { merged.push(f); paths.add(f.path); } }
-        setFolders(merged);
+        setFolders(rootData);
       } catch { setFolders([]); }
       finally { setFoldersLoading(false); }
     })();
@@ -332,7 +328,7 @@ const ClientAppFolders: React.FC = () => {
 
   const breadcrumbs = buildBreadcrumbs();
   const rootFolders = currentFolderPath ? [] : folders.filter(f =>
-    f.parent_folder_path === '/' + appSlug || f.parent_folder_path === null || f.parent_folder_path === undefined
+    f.parent_folder_path === '/' + appSlug
   );
 
   return (
