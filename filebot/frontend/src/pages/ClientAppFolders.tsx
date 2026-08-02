@@ -213,6 +213,25 @@ const ClientAppFolders: React.FC = () => {
     } catch (err: any) { showToast(`Delete failed: ${err.message || 'Unknown error'}`, 'error'); }
   };
 
+  // Publish / Unpublish — 所有文档均支持
+  const handleTogglePublish = async (doc: Document) => {
+    const docPath = doc.path || doc.storage_path || doc.id;
+    const docName = doc.title || doc.original_filename || docPath;
+    const isPublished = doc.publish_status === 'PUBLISHED';
+    const newStatus = isPublished ? 'UNPUBLISHED' : 'PUBLISHED';
+    const action = isPublished ? 'unpublish' : 'publish';
+    if (!(await window.wetYesOrNo(`${isPublished ? 'Unpublish' : 'Publish'} "${docName}"?`))) return;
+    try {
+      await documentService.updateDocument(docPath, { publish_status: newStatus as 'PUBLISHED' | 'UNPUBLISHED' });
+      setDocuments(prev => prev.map(d =>
+        (d.path || d.storage_path || d.id) === docPath ? { ...d, publish_status: newStatus as 'PUBLISHED' | 'UNPUBLISHED' } : d
+      ));
+      showToast(isPublished ? `📤 "${docName}" unpublished` : `📢 "${docName}" published`, 'success');
+    } catch (err: any) {
+      showToast(`${action === 'publish' ? 'Publish' : 'Unpublish'} failed: ${err.message || 'Unknown error'}`, 'error');
+    }
+  };
+
   const handlePreviewDocument = (doc: Document) => {
     const docPath = doc.path || doc.storage_path;
     navigate(`/documents/${(docPath || '').replace(/^\//, '')}`);
@@ -568,6 +587,14 @@ const ClientAppFolders: React.FC = () => {
                             </td>
                             <td style={{ verticalAlign: 'middle' }}>
                               <div className="fb-d-flex fb-gap-1" style={{ gap: 4 }}>
+                                {doc.publish_status === 'PUBLISHED' ? (
+                                    <button className="btn btn-xs btn-warning"
+                                      onClick={() => handleTogglePublish(doc)} title="Unpublish">Unpublish</button>
+                                  ) : (
+                                    <button className="btn btn-xs btn-success"
+                                      onClick={() => handleTogglePublish(doc)} title="Publish">Publish</button>
+                                  )
+                                }
                                 <button className="btn btn-xs btn-default"
                                   onClick={() => handleEditDoc(doc)} title="Edit">Edit</button>
                                 <button className="btn btn-xs btn-danger"
