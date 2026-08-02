@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pathlib import Path
 import logging
 
 from app.db.database import get_db
+from app.core.config import settings
 from app.core.security import get_current_active_user, has_app_access, has_folder_access
 from app.models.user import User
 from app.models.app import App
@@ -24,6 +26,9 @@ logger = logging.getLogger(__name__)
 def get_app_or_check_permission(app_id: str, current_user: User, db: Session, required_level: str = "read") -> App:
     """获取应用并检查权限"""
     app = db.query(App).filter(App.id == app_id).first()
+    if not app:
+        # 兼容客户端传 slug 作为 app_id（GET /folders/ 已支持 app_slug，这里保持一致）
+        app = db.query(App).filter(App.slug == app_id).first()
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -195,9 +200,9 @@ def create_folder(
     """创建文件夹（基于路径层级）"""
     app = get_app_or_check_permission(str(folder_data.app_id), current_user, db, "write")
 
-    # 检查同级同名冲突
+    # 检查同级同名冲突（app_id 统一用解析后的 UUID，兼容 slug 入参）
     existing = db.query(Folder).filter(
-        Folder.app_id == str(folder_data.app_id),
+        Folder.app_id == app.id,
         Folder.parent_folder_path == folder_data.parent_folder_path,
         Folder.name == folder_data.name
     ).first()
@@ -219,7 +224,7 @@ def create_folder(
         title=folder_data.title or folder_data.name,
         path=folder_data.path or path,
         description=folder_data.description,
-        app_id=str(folder_data.app_id),
+        app_id=app.id,  # 存 UUID（客户端可能传 slug）
         parent_folder_path=folder_data.parent_folder_path or '/' + app.slug,
         is_system_folder=folder_data.is_system_folder,
         order_index=folder_data.order_index,
@@ -408,14 +413,33 @@ def get_effective_thumbnail_size(
     return {"path": path, "thumbnail_size": "128x128"}
 
 
+def _delete_storage_file(path: str):
+    """Delete a single storage file by its relative path, silently skip missing."""
+    if not path:
+        return
+    try:
+        fp = Path(settings.DATA_ROOT) / path
+        if fp.exists():
+            fp.unlink()
+            logging.info(f"Deleted storage file: {fp}")
+    except Exception as e:
+        logging.warning(f"Failed to delete storage file {path}: {e}")
+
+
 def _recursive_delete(folder_path: str, db: Session):
-    """递归删除文件夹及其下所有内容"""
+    """递归删除文件夹及其下所有内容（DB + 存储文件）"""
     subfolders = db.query(Folder).filter(Folder.parent_folder_path == folder_path).all()
     for sf in subfolders:
         _recursive_delete(sf.path, db)
 
-    # 删除该文件夹下所有文档
-    db.query(Document).filter(Document.folder_path == folder_path).delete()
+    # 删除该文件夹下所有文档（先删物理文件，再删DB记录）
+    docs = db.query(Document).filter(Document.folder_path == folder_path).all()
+    for doc in docs:
+        _delete_storage_file(doc.storage_path)
+        _delete_storage_file(doc.full_storage_path)
+        _delete_storage_file(doc.converted_pdf_path)
+        _delete_storage_file(doc.thumbnail_path)
+        db.delete(doc)
 
     # 删除当前文件夹
     folder = db.query(Folder).filter(Folder.path == folder_path).first()
