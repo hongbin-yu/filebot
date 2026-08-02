@@ -16,6 +16,19 @@ function formatSize(bytes: number): string {
   return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+/**
+ * 将文档路径转为公开发布路径（8003 发布服务器 URL 路径）。
+ * 文档 path 存在多种内部前缀：/content/dam/...（无需处理）、
+ * /publish/content/dam/...（剥 /publish）、/boarding/canadasite/content/...（剥 app 前缀）。
+ * 统一规则：优先从 /content 开始截取；否则剥掉 /publish；否则原样。
+ * 与后端 path_utils.get_publish_relative_path 保持一致。
+ */
+function toPublicPath(p: string): string {
+  const ci = p.indexOf('/content');
+  if (ci >= 0) return p.slice(ci);
+  return p.replace(/^\/publish/, '');
+}
+
 function formatDate(dateStr: string): string {
   if (!dateStr) return '-';
   try { return new Date(dateStr).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' }); }
@@ -544,7 +557,7 @@ const ClientAppFolders: React.FC = () => {
                         const token = localStorage.getItem('access_token');
                         const encodedPath = encodeURIComponent(doc.path || doc.storage_path);
                         const publishUrl = doc.publish_status === 'PUBLISHED' && doc.path
-                          ? `${window.location.protocol}//${window.location.hostname}:8003${doc.path.replace('/publish', '')}`
+                          ? `${window.location.protocol}//${window.location.hostname}:8003${toPublicPath(doc.path)}`
                           : null;
                         const docViewUrl = publishUrl || (doc.file_type === 'html'
                           ? `/api/v1/documents/${encodedPath}/preview/html?token=${token}`

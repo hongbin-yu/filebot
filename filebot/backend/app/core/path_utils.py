@@ -410,6 +410,35 @@ def get_static_relative_path(document, settings) -> Optional[str]:
     return rel
 
 
+def get_publish_relative_path(document) -> Optional[str]:
+    """
+    计算文档在发布目录中的相对路径（即 8003 公开 URL 路径）。
+
+    文档 path 存在多种内部前缀风格：
+      /content/dam/...                 （canada.ca 内容路径，无需处理）
+      /publish/content/dam/...         （旧发布路径，剥掉 /publish）
+      /boarding/canadasite/content/... （app 前缀，剥掉 /boarding/{site}）
+
+    统一规则：优先从 path 中的 /content 开始截取；否则剥掉 /publish；
+    否则原样（仅剥前导 /）。与前端 ClientAppFolders 的 toPublicPath 保持一致。
+
+    Returns:
+        发布目录相对路径（无前导 /），无法确定时返回 None
+    """
+    p = getattr(document, 'path', None)
+    if not p:
+        return None
+    ci = p.find('/content')
+    if ci >= 0:
+        rel = p[ci:].lstrip('/')
+    else:
+        rel = p.replace('/publish', '', 1).lstrip('/')
+    if not rel or rel.startswith('..') or rel.startswith('/'):
+        logger.warning(f"无法计算发布相对路径: {p}")
+        return None
+    return rel
+
+
 def copy_to_static_directory(
     document,
     settings,
@@ -446,10 +475,13 @@ def copy_to_static_directory(
             }
         
         # 确定目标路径
-        # 使用文档的storage_path（新系统）或构建路径
+        # 优先使用文档 path 的公开形式（去掉 /boarding/{site}、/publish 前缀），
+        # 与 8003 发布服务器的 URL 结构保持一致；失败时回退 storage_path 计算。
         if document.storage_path:
-            # 新系统：从storage_path计算相对路径（兼容相对/绝对两种格式）
-            target_relative_path = get_static_relative_path(document, settings)
+            target_relative_path = get_publish_relative_path(document)
+            if not target_relative_path:
+                # 回退：从storage_path计算相对路径（兼容相对/绝对两种格式）
+                target_relative_path = get_static_relative_path(document, settings)
             if not target_relative_path:
                 return {
                     'success': False,
@@ -532,9 +564,13 @@ def remove_from_static_directory(
             static_root = Path(settings.STATIC_FILES_PATH)
         
         # 确定静态文件路径
+        # 优先使用文档 path 的公开形式（与发布时 copy_to_static_directory 一致），
+        # 保证 Unpublish 删除的位置 = Publish 复制的位置 = 8003 URL 的位置。
         if document.storage_path:
-            # 新系统：从storage_path计算相对路径（兼容相对/绝对两种格式）
-            target_relative_path = get_static_relative_path(document, settings)
+            target_relative_path = get_publish_relative_path(document)
+            if not target_relative_path:
+                # 回退：从storage_path计算相对路径（兼容相对/绝对两种格式）
+                target_relative_path = get_static_relative_path(document, settings)
             if not target_relative_path:
                 return {
                     'success': False,
