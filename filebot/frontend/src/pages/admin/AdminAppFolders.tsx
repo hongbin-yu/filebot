@@ -41,6 +41,7 @@ const AdminAppFolders: React.FC = () => {
   // Website import form
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [crawlDepth, setCrawlDepth] = useState(1);
+  const [skipIfPageExists, setSkipIfPageExists] = useState(true);
   const [importingWebsite, setImportingWebsite] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
@@ -395,6 +396,37 @@ const AdminAppFolders: React.FC = () => {
     }
   };
   
+  // Handle toggle publish status (Publish / Unpublish)
+  const handleTogglePublish = async (document: Document) => {
+    const isPublished = document.publish_status === 'PUBLISHED';
+    const docName = document.title || document.original_filename || document.path;
+    if (!(await window.wetYesOrNo(
+      isPublished
+        ? `Unpublish "${docName}"? It will no longer be publicly accessible.`
+        : `Publish "${docName}"? It will be publicly accessible via its URL.`
+    ))) {
+      return;
+    }
+
+    try {
+      const docId = document.path || document.storage_path || document.id;
+      if (!docId) {
+        showToast('Document has no identifier', 'error');
+        return;
+      }
+      await documentService.updateDocument(docId, {
+        publish_status: isPublished ? 'UNPUBLISHED' : 'PUBLISHED'
+      });
+      if (currentFolderPath) {
+        await loadDocuments(currentFolderPath);
+      }
+      showToast(isPublished ? 'Document unpublished' : 'Document published', 'success');
+    } catch (error) {
+      console.error('Failed to toggle publish status:', error);
+      showToast('Failed to update publish status. Check network or permissions.', 'error');
+    }
+  };
+
   // Handle edit document
   const handleEditDocument = (doc: any) => {
     setEditingDocument(doc);
@@ -612,6 +644,22 @@ const AdminAppFolders: React.FC = () => {
       return;
     }
     
+    // 确认：爬取大型网站可能需要较长时间
+    const siteName = new URL(websiteUrl).hostname;
+    const depthDesc = getDepthDescription(crawlDepth);
+    const confirmMsg =
+      `⚠️ 即将爬取网站: ${siteName}\n\n` +
+      `深度: ${crawlDepth} - ${depthDesc}\n` +
+      `目标文件夹: ${currentFolder?.name || currentFolderPath}\n\n` +
+      `重要提醒:\n` +
+      `• 网站规模越大，所需时间越长\n` +
+      `• 深度 ≥ 3 可能会爬取数百甚至上千页面\n` +
+      `• 爬取期间请勿关闭此页面\n\n` +
+      `确认开始爬取?`;
+    if (!(await window.wetYesOrNo(confirmMsg, '⚠️ 确认爬取网站'))) {
+      return;
+    }
+    
     setImportingWebsite(true);
     setImportError(null);
     
@@ -623,7 +671,8 @@ const AdminAppFolders: React.FC = () => {
         folder_path: currentFolderPath,
         include_images: true,
         follow_external_links: false,
-        respect_robots_txt: true
+        respect_robots_txt: true,
+        skip_if_exists: skipIfPageExists
       };
       
       // Call backend API
@@ -637,6 +686,7 @@ const AdminAppFolders: React.FC = () => {
       setShowImportWebsiteModal(false);
       setWebsiteUrl('');
       setCrawlDepth(1);
+      setSkipIfPageExists(true);
       // Auto-clear success message
       setTimeout(() => setImportSuccess(null), 8000);
     } catch (error: any) {
@@ -1148,6 +1198,13 @@ const AdminAppFolders: React.FC = () => {
                                     Edit
                                   </button>
                                   <button 
+                                    className="fb-link" style={{color: doc.publish_status === 'PUBLISHED' ? '#d97706' : '#059669', fontWeight: 500}}
+                                    onClick={() => handleTogglePublish(doc)}
+                                    title={doc.publish_status === 'PUBLISHED' ? 'Unpublish this document' : 'Publish this document'}
+                                  >
+                                    {doc.publish_status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                                  </button>
+                                  <button 
                                     className="fb-link" style={{color:"#dc2626"}}
                                     onClick={() => handleDeleteDocument(doc)}
                                   >
@@ -1528,6 +1585,18 @@ const AdminAppFolders: React.FC = () => {
                     <p  style={{ fontSize:"0.875rem", marginTop:4 }}>
                       Depth {crawlDepth}: {getDepthDescription(crawlDepth)}
                     </p>
+                  </div>
+                  
+                  <div className="checkbox" style={{marginBottom:12}}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={skipIfPageExists}
+                        onChange={(e) => setSkipIfPageExists(e.target.checked)}
+                        disabled={importingWebsite}
+                      />{' '}
+                      Skip if page exists
+                    </label>
                   </div>
                   
                   <div style={{ background:"#f9fafb", padding:12, borderRadius:6 }}>

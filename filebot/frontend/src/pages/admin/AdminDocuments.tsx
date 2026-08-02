@@ -209,6 +209,31 @@ const AdminDocuments: React.FC = () => {
     }
   };
 
+  // Toggle document publish status (Publish / Unpublish)
+  const handleTogglePublish = async (doc: Document) => {
+    const isPublished = doc.publish_status === 'PUBLISHED';
+    const docName = doc.title || doc.original_filename || doc.path;
+    const docUrl = doc.storage_path ? `\nURL: /${doc.storage_path.replace(/^\/+/, '')}` : '';
+    const confirmed = await window.wetYesOrNo(
+      isPublished
+        ? `Unpublish "${docName}"? It will no longer be publicly accessible.${docUrl}`
+        : `Publish "${docName}"? It will be publicly accessible via its URL.${docUrl}`
+    );
+    if (!confirmed) return;
+
+    try {
+      const docId = doc.path || doc.storage_path || doc.id;
+      const updatedDoc = await documentService.updateDocument(docId, {
+        publish_status: isPublished ? 'UNPUBLISHED' : 'PUBLISHED'
+      });
+      setDocuments(docs => docs.map(d => d.path === updatedDoc.path ? updatedDoc : d));
+      showToast(isPublished ? 'Document unpublished' : 'Document published', 'success');
+    } catch (err: any) {
+      console.error('Toggle publish failed:', err);
+      showToast(`Publish action failed: ${err.message || 'Unknown error'}`, 'error');
+    }
+  };
+
   // DataTable column definitions
   const columns = useMemo(() => [
     {
@@ -265,7 +290,7 @@ const AdminDocuments: React.FC = () => {
     },
     {
       name: 'Actions',
-      width: '260px',
+      width: '370px',
       cell: (row: Document) => (
         <div className="fb-d-flex fb-gap-1">
           <button type="button"
@@ -281,8 +306,15 @@ const AdminDocuments: React.FC = () => {
             Edit
           </button>
           <button type="button"
+            onClick={() => handleTogglePublish(row)}
+            className="fb-link" style={{fontSize:"0.875rem",fontWeight:500,color: row.publish_status === 'PUBLISHED' ? '#d97706' : '#059669',background:"transparent",border:"none",padding:0,cursor:"pointer"}}
+            title={row.publish_status === 'PUBLISHED' ? 'Unpublish this document' : 'Publish this document'}
+          >
+            {row.publish_status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+          </button>
+          <button type="button"
             onClick={() => handleImportToWebBot(row)}
-            className="fb-link" style={{fontSize:"0.875rem",fontWeight:500,color:"#059669",background:"transparent",border:"none",padding:0,cursor:"pointer"}}
+            className="fb-link" style={{fontSize:"0.875rem",fontWeight:500,color:"#7c3aed",background:"transparent",border:"none",padding:0,cursor:"pointer"}}
             title="Import this page to WebBot"
           >
             WebBot
