@@ -384,6 +384,32 @@ def validate_path_system(document, db, settings) -> dict:
 
 # ========== 静态文件管理函数 ==========
 
+def get_static_relative_path(document, settings) -> Optional[str]:
+    """
+    计算文档在静态目录中的相对路径
+
+    storage_path 可能是相对路径（相对 DATA_ROOT）也可能是绝对路径。
+    统一转换为相对 DATA_ROOT 的相对路径，避免 pathlib 拼接绝对路径时
+    覆盖 static_root，导致复制/删除操作落到源文件上（数据丢失风险）。
+    """
+    sp = document.storage_path
+    if not sp:
+        return None
+    data_root = Path(settings.DATA_ROOT).resolve()
+    p = Path(sp)
+    if not p.is_absolute():
+        p = data_root / p
+    try:
+        rel = os.path.relpath(p.resolve(), data_root)
+    except ValueError:
+        logger.warning(f"无法计算静态相对路径（跨盘符）: {sp}")
+        return None
+    if rel == '.' or rel.startswith('..'):
+        logger.warning(f"storage_path 不在 DATA_ROOT 内，跳过静态操作: {sp}")
+        return None
+    return rel
+
+
 def copy_to_static_directory(
     document,
     settings,
@@ -422,8 +448,14 @@ def copy_to_static_directory(
         # 确定目标路径
         # 使用文档的storage_path（新系统）或构建路径
         if document.storage_path:
-            # 新系统：直接从storage_path获取相对路径
-            target_relative_path = document.storage_path
+            # 新系统：从storage_path计算相对路径（兼容相对/绝对两种格式）
+            target_relative_path = get_static_relative_path(document, settings)
+            if not target_relative_path:
+                return {
+                    'success': False,
+                    'error': '无法从 storage_path 计算静态相对路径',
+                    'document_id': str(document.path)
+                }
         else:
             # 旧系统：需要构建路径
             # 获取应用和文件夹信息
@@ -501,8 +533,14 @@ def remove_from_static_directory(
         
         # 确定静态文件路径
         if document.storage_path:
-            # 新系统：直接从storage_path获取相对路径
-            target_relative_path = document.storage_path
+            # 新系统：从storage_path计算相对路径（兼容相对/绝对两种格式）
+            target_relative_path = get_static_relative_path(document, settings)
+            if not target_relative_path:
+                return {
+                    'success': False,
+                    'error': '无法从 storage_path 计算静态相对路径',
+                    'document_id': str(document.path)
+                }
         else:
             # 旧系统：需要构建路径
             folder = document.folder

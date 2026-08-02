@@ -2974,7 +2974,12 @@ def update_document(
     
     if 'publish_status' in update_data:
         new_publish_status = update_data['publish_status']
-        publish_status_changed = (old_publish_status != new_publish_status)
+        # 注意：schemas/document.py 与 models/document.py 各定义了一个同名
+        # PublishStatus 枚举（str-Enum vs 普通 Enum），直接比较永远不相等。
+        # 统一取 .value 按字符串比较。
+        old_publish_value = old_publish_status.value if old_publish_status is not None else None
+        new_publish_value = getattr(new_publish_status, 'value', new_publish_status)
+        publish_status_changed = (old_publish_value != new_publish_value)
     
     for field, value in update_data.items():
         setattr(document, field, value)
@@ -2988,7 +2993,7 @@ def update_document(
     # Handle publish status changes
     if publish_status_changed:
         try:
-            if new_publish_status == PublishStatus.PUBLISHED:
+            if getattr(new_publish_status, 'value', new_publish_status) == PublishStatus.PUBLISHED.value:
                 # Document published: copy to static directory
                 result = copy_to_static_directory(document, settings)
                 if not result.get('success'):
@@ -2998,7 +3003,7 @@ def update_document(
                     # Static URL generated dynamically via get_static_file_url
                     # No need to store in database
                         
-            elif old_publish_status == PublishStatus.PUBLISHED:
+            elif getattr(old_publish_status, 'value', old_publish_status) == PublishStatus.PUBLISHED.value:
                 # Document unpublished: delete from static directory
                 result = remove_from_static_directory(document, settings)
                 if not result.get('success'):
