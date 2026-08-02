@@ -557,7 +557,7 @@ const ClientAppFolders: React.FC = () => {
                         const token = localStorage.getItem('access_token');
                         const encodedPath = encodeURIComponent(doc.path || doc.storage_path);
                         const publishUrl = doc.publish_status === 'PUBLISHED' && doc.path
-                          ? `${window.location.protocol}//${window.location.hostname}:8003${toPublicPath(doc.path)}`
+                          ? `${window.location.protocol}//${window.location.hostname}${toPublicPath(doc.path)}`
                           : null;
                         const docViewUrl = publishUrl || (doc.file_type === 'html'
                           ? `/api/v1/documents/${encodedPath}/preview/html?token=${token}`
