@@ -191,6 +191,33 @@ def get_folders(
     return folders
 
 
+def _ensure_folder_chain(db: Session, app, folder_path: str, current_user: User) -> Folder:
+    """确保文件夹路径及其所有祖先都存在（自愈缺失的根/中间文件夹，修复 FK 违例）"""
+    path = (folder_path or "").strip().rstrip('/')
+    if not path or path == '/':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid folder path: {folder_path}")
+    existing = db.query(Folder).filter(Folder.path == path).first()
+    if existing:
+        return existing
+    if '/' not in path[1:]:
+        # 应用根目录（如 /78431）：挂在全局根 /publish 下（若存在），否则 parent=NULL
+        publish = db.query(Folder).filter(Folder.path == '/publish').first()
+        parent = publish if publish else None
+    else:
+        parent = _ensure_folder_chain(db, app, path.rsplit('/', 1)[0], current_user)
+    folder = Folder(
+        name=path.rsplit('/', 1)[-1],
+        title=path.rsplit('/', 1)[-1],
+        path=path,
+        app_id=app.id,
+        parent_folder_path=parent.path if parent else None,
+        created_by=current_user.username if current_user else "system",
+    )
+    db.add(folder)
+    db.flush()
+    return folder
+
+
 @router.post("/", response_model=FolderResponse, status_code=status.HTTP_201_CREATED)
 def create_folder(
     folder_data: FolderCreate,
@@ -200,10 +227,14 @@ def create_folder(
     """创建文件夹（基于路径层级）"""
     app = get_app_or_check_permission(str(folder_data.app_id), current_user, db, "write")
 
-    # 检查同级同名冲突（app_id 统一用解析后的 UUID，兼容 slug 入参）
+    # 解析父路径（缺失时自动补建祖先链，自愈 FK 违例）
+    parent_path = folder_data.parent_folder_path or ('/' + app.slug)
+    parent = _ensure_folder_chain(db, app, parent_path, current_user)
+
+    # 检查同级同名冲突（基于归一化后的父路径）
     existing = db.query(Folder).filter(
         Folder.app_id == app.id,
-        Folder.parent_folder_path == folder_data.parent_folder_path,
+        Folder.parent_folder_path == parent.path,
         Folder.name == folder_data.name
     ).first()
     if existing:
@@ -212,20 +243,22 @@ def create_folder(
             detail=f"Folder '{folder_data.name}' already exists at same level"
         )
 
-    # 自动生成路径
-    if folder_data.parent_folder_path:
-        parent = get_folder_or_404(folder_data.parent_folder_path, db)
-        path = f"{parent.path.rstrip('/')}/{folder_data.name}"
+    # 自动生成路径（客户端显式传 path 时保留，并确保其祖先链存在）
+    if folder_data.path:
+        path = folder_data.path
+        anc = path.rstrip('/').rsplit('/', 1)[0]
+        if anc and anc != parent.path:
+            parent = _ensure_folder_chain(db, app, anc, current_user)
     else:
-        path = f"/{app.slug}/{folder_data.name}"
+        path = f"{parent.path.rstrip('/')}/{folder_data.name}"
 
     folder = Folder(
         name=folder_data.name,
         title=folder_data.title or folder_data.name,
-        path=folder_data.path or path,
+        path=path,
         description=folder_data.description,
         app_id=app.id,  # 存 UUID（客户端可能传 slug）
-        parent_folder_path=folder_data.parent_folder_path or '/' + app.slug,
+        parent_folder_path=parent.path,
         is_system_folder=folder_data.is_system_folder,
         order_index=folder_data.order_index,
         thumbnail_size=folder_data.thumbnail_size,
