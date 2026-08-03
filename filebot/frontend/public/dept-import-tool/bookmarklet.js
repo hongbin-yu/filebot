@@ -2,6 +2,8 @@
   if (window.__DEPT_IMPORT_LOADED) return;
   window.__DEPT_IMPORT_LOADED = true;
 
+  var BOOKMARKLET_VERSION = '2026-08-02-v7';
+
 
 
   var css = document.createElement('style');
@@ -114,6 +116,7 @@
     return select;
   }
 
+  makeInput('d_url', 'Page URL (single page)', 'https://www.canada.ca/en/services.html');
   makeInput('d_sitemap', 'Sitemap URL', 'https://canada.ca/sitemap.xml');
   makeInput('d_api', 'FileBot API', 'https://10.0.0.91/api/v1/import-page');
   makeInput('d_token', 'API Token (use Bearer prefix)', 'Bearer xxx');
@@ -192,6 +195,7 @@
 
   var allImages = {};
   var pendingImages = [];
+  var abortController = null;
 
   function addLog(text, cls) {
     var d = document.createElement('div');
@@ -319,7 +323,7 @@
     return '/boarding/canadasite/content/dam' + src;
   }
 
-  async function importImageList(items, api, delay, token) {
+  async function importImageList(items, api, delay, token, signal) {
     var replaceMap = {};
     if (items.length === 0) return replaceMap;
 
@@ -333,7 +337,7 @@
       addLog('Image [' + (i+1) + '/' + items.length + '] ' + imgUrl, 'img');
 
       try {
-        var imgResp = await fetch(imgUrl);
+        var imgResp = await fetch(imgUrl, { signal: signal });
         if (!imgResp.ok) throw new Error('HTTP ' + imgResp.status);
 
         var blob = await imgResp.blob();
@@ -350,6 +354,7 @@
         var resp = await fetch(api, {
           method: 'POST',
           headers: headers,
+          signal: signal,
           body: JSON.stringify(payload)
         });
 
@@ -358,8 +363,14 @@
         }
 
         var respJson = await resp.json();
-        if (respJson.stored_filename) {
-          // Strip _jcr_content from stored filename
+        if (respJson.path) {
+          // Use the full document path returned by the backend
+          // (e.g. /boarding/canadasite/content/dam/.../photo.jpeg),
+          // which preserves the original extension (.jpeg stays .jpeg)
+          // instead of a root-level bare filename.
+          replaceMap[imgUrl] = respJson.path;
+        } else if (respJson.stored_filename) {
+          // Fallback: strip _jcr_content from stored filename
           var sf = respJson.stored_filename;
           var jcrIdx = sf.indexOf('/_jcr_content');
           if (jcrIdx !== -1) {
@@ -376,6 +387,7 @@
         imgOk++;
         addLog('Image saved → ' + (replaceMap[imgUrl] || '/?'), 'ok');
       } catch(e) {
+        if (e.name === 'AbortError') throw e;
         imgFail++;
         addLog('Image error: ' + e.message, 'err');
       }
@@ -389,11 +401,11 @@
     return replaceMap;
   }
 
-  async function flushImages(api, delay, token) {
+  async function flushImages(api, delay, token, signal) {
     if (pendingImages.length === 0) return {};
     var batch = pendingImages.slice();
     pendingImages = [];
-    return await importImageList(batch, api, delay, token);
+    return await importImageList(batch, api, delay, token, signal);
   }
 
   function blobToBase64(blob) {
@@ -423,34 +435,52 @@
   $('d_start').onclick = async function() {
     if (running) return;
     running = true;
+    abortController = new AbortController();
     $('d_start').disabled = true;
     $('d_stop').disabled = false;
 
     allImages = {};
     pendingImages = [];
 
-    addLog('Parsing sitemap...', 'info');
+    var singleUrl = $('d_url').value.trim();
+    var urls, lastmods;
 
-    try {
-      var resp = await fetch($('d_sitemap').value.trim());
-      var xml = await resp.text();
-      var parser = new DOMParser();
-      var doc = parser.parseFromString(xml, 'text/xml');
-      var urls = [].slice.call(doc.querySelectorAll('loc')).map(function(el) { return el.textContent.trim(); });
+    if (singleUrl) {
+      // Single page import
+      urls = [singleUrl];
+      lastmods = {};
+      $('d_total').textContent = '1 page';
+      addLog('Importing single page: ' + singleUrl, 'info');
+    } else {
+      addLog('Parsing sitemap...', 'info');
+      try {
+        var resp = await fetch($('d_sitemap').value.trim(), { signal: abortController.signal });
+        var xml = await resp.text();
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(xml, 'text/xml');
+        urls = [].slice.call(doc.querySelectorAll('loc')).map(function(el) { return el.textContent.trim(); });
 
-      var lastmods = {};
-      [].slice.call(doc.querySelectorAll('url')).forEach(function(el) {
-        var loc = el.querySelector('loc');
-        var lm = el.querySelector('lastmod');
-        if (loc && lm) {
-          lastmods[loc.textContent.trim()] = lm.textContent.trim();
+        lastmods = {};
+        [].slice.call(doc.querySelectorAll('url')).forEach(function(el) {
+          var loc = el.querySelector('loc');
+          var lm = el.querySelector('lastmod');
+          if (loc && lm) {
+            lastmods[loc.textContent.trim()] = lm.textContent.trim();
+          }
+        });
+        $('d_total').textContent = urls.length + ' pages';
+        addLog('Found ' + urls.length + ' pages', 'info');
+        if (Object.keys(lastmods).length > 0) {
+          addLog('Sitemap has lastmod dates for ' + Object.keys(lastmods).length + ' pages', 'info');
         }
-      });
-      $('d_total').textContent = urls.length + ' pages';
-      addLog('Found ' + urls.length + ' pages', 'info');
-      if (Object.keys(lastmods).length > 0) {
-        addLog('Sitemap has lastmod dates for ' + Object.keys(lastmods).length + ' pages', 'info');
+      } catch(e) {
+        addLog('Sitemap error: ' + e.message, 'err');
+        $('d_start').disabled = false;
+        $('d_stop').disabled = true;
+        running = false;
+        return;
       }
+    }
 
       var api = $('d_api').value.trim();
       var checkApi = api.replace('/import-page', '/check-urls');
@@ -474,7 +504,7 @@
         if (batch.length === 0) return null;
         try {
           var cr = await fetch(checkApi, {
-            method: 'POST', headers: authHeaders,
+            method: 'POST', headers: authHeaders, signal: abortController.signal,
             body: JSON.stringify({ urls: batch })
           });
           if (cr.ok) {
@@ -544,48 +574,90 @@
         if (shouldImport) {
           addLog('[' + (i+1) + '/' + urls.length + '] ' + url, '');
           try {
-            var pageResp = await fetch(url);
-            var html = await pageResp.text();
+            // Fetch page content — cross-origin redirect (e.g., canada.ca → cbsa) will throw CORS error.
+            // Catch and delegate to backend which resolves the actual redirect target.
+            var pageResp = await fetch(url, { signal: abortController.signal });
+            if (pageResp.status === 200) {
+              var html = await pageResp.text();
 
-            var imgFound = collectImages(html, url);
-            if (imgFound > 0) {
-              addLog('+' + imgFound + ' images collected', 'info');
-              updateStats();
+              var imgFound = collectImages(html, url);
+              if (imgFound > 0) {
+                addLog('+' + imgFound + ' images collected', 'info');
+                updateStats();
 
-              var replaceMap = await flushImages(api, delay, $('d_token').value.trim());
-              for (var oldUrl in replaceMap) {
-                html = html.split(oldUrl).join(replaceMap[oldUrl]);
-                addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
+                var replaceMap = await flushImages(api, delay, $('d_token').value.trim(), abortController.signal);
+                for (var oldUrl in replaceMap) {
+                  html = html.split(oldUrl).join(replaceMap[oldUrl]);
+                  addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
+                }
               }
-            }
 
-            // Transform any remaining canada.ca image URLs that weren't uploaded
-            var transformedCount = 0;
-            html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'])/gi, function(m, pre, imgSrc, post) {
-              var result = transformCanadaCaImagePath(imgSrc);
-              if (result !== imgSrc) {
-                transformedCount++;
-                addLog('Transform: ' + imgSrc.slice(-40) + ' → ' + result, 'img');
+              // Transform any remaining canada.ca image URLs that weren't uploaded
+              var transformedCount = 0;
+              html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'])/gi, function(m, pre, imgSrc, post) {
+                var result = transformCanadaCaImagePath(imgSrc);
+                if (result !== imgSrc) {
+                  transformedCount++;
+                  addLog('Transform: ' + imgSrc.slice(-40) + ' → ' + result, 'img');
+                }
+                return pre + result + post;
+              });
+              if (transformedCount > 0) {
+                addLog('Transformed ' + transformedCount + ' remaining image paths', 'info');
               }
-              return pre + result + post;
-            });
-            if (transformedCount > 0) {
-              addLog('Transformed ' + transformedCount + ' remaining image paths', 'info');
-            }
 
-            var uploadResp = await fetch(api, {
-              method: 'POST',
-              headers: authHeaders,
-              body: JSON.stringify({ url: url, html: html, title: '' })
-            });
-            if (!uploadResp.ok) {
-              throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+              var uploadResp = await fetch(api, {
+                method: 'POST',
+                headers: authHeaders,
+                signal: abortController.signal,
+                body: JSON.stringify({ url: url, html: html, title: '' })
+              });
+              if (!uploadResp.ok) {
+                throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+              }
+              done++;
+              addLog('OK', 'ok');
+            } else {
+              addLog('Unexpected status ' + pageResp.status + ': ' + url, 'err');
+              failed++;
             }
-            done++;
-            addLog('OK', 'ok');
           } catch(e) {
-            failed++;
-            addLog('Error: ' + e.message, 'err');
+            if (e.name === 'AbortError') throw e;
+            // fetch failed — likely cross-origin redirect (CORS). Resolve target via backend.
+            addLog('🔀 Resolving redirect target...', 'warn');
+            try {
+              var resolveResp = await fetch(api.replace('/import-page', '/resolve-redirect'), {
+                method: 'POST',
+                headers: authHeaders,
+                signal: abortController.signal,
+                body: JSON.stringify({ url: url })
+              });
+              if (!resolveResp.ok) {
+                throw new Error('resolve-redirect HTTP ' + resolveResp.status);
+              }
+              var resolveData = await resolveResp.json();
+              var redirectTarget = resolveData.redirect_url;
+              if (!redirectTarget) {
+                addLog('Could not resolve redirect for: ' + url, 'err');
+                failed++;
+              } else {
+                var uploadResp = await fetch(api, {
+                  method: 'POST',
+                  headers: authHeaders,
+                  signal: abortController.signal,
+                  body: JSON.stringify({ url: url, html: '<html><head><title>Redirect</title></head><body></body></html>', title: 'Redirect: ' + url, redirect_to: redirectTarget })
+                });
+                if (!uploadResp.ok) {
+                  throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+                }
+                done++;
+                addLog('Redirect recorded → ' + redirectTarget, 'ok');
+              }
+            } catch(e2) {
+              if (e2.name === 'AbortError') throw e2;
+              failed++;
+              addLog('Error: ' + e2.message, 'err');
+            }
           }
           updateStats();
           if (i < urls.length - 1 && running) {
@@ -596,13 +668,10 @@
 
       if (pendingImages.length > 0) {
         addLog('Importing remaining images...', 'info');
-        await flushImages(api, delay, $('d_token').value.trim());
+        await flushImages(api, delay, $('d_token').value.trim(), abortController.signal);
       }
 
       addLog(running ? 'Done!' : 'Stopped (all page images saved)', running ? 'ok' : 'info');
-    } catch(e) {
-      addLog('Error: ' + e.message, 'err');
-    }
 
     running = false;
     $('d_start').disabled = false;
@@ -611,8 +680,9 @@
 
   $('d_stop').onclick = function() {
     running = false;
+    if (abortController) abortController.abort();
     addLog('Stopping...', 'info');
   };
 
-  addLog('Ready', 'info');
+  addLog('🌾 Import v' + BOOKMARKLET_VERSION + ' ready', 'info');
 })();
