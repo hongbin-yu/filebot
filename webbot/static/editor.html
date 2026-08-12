@@ -17,7 +17,8 @@
     <!-- TinyMCE WYSIWYG Editor (local installation) -->
 	<script src="/etc/designs/canada/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
     <!-- Simple custom styles for editor -->
-    <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/editor.css?v=20260704">
+<script src="/static/js/axe.min.js"></script>
 <script src="/static/js/webbot-auth.js"></script>
 <script src="/static/js/wet-alert.js?v=0260605"></script>
 </head>
@@ -84,6 +85,27 @@
                             <div class="resource-upload-progress-bar" id="resource-upload-progress-bar"></div>
                         </div>
                         <span id="resource-upload-msg" class="resource-upload-msg"></span>
+                    </div>
+                </div>
+                <div class="resource-search-row" id="resource-category-row" style="display:none;">
+                    <div class="resource-category-field">
+                        <span class="resource-path-label">🏷️ Category</span>
+                        <select id="resource-category-select" class="form-control">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="resource-search-row" id="resource-folder-row" style="display:none;">
+                    <div class="resource-path-field">
+                        <span class="resource-path-label">📂 Folder</span>
+                        <input type="text" id="resource-folder-input" class="form-control" placeholder="Folder path (default = file_path, editable)" title="Search folder; defaults to page file_path, editable">
+                    </div>
+                </div>
+                <div class="resource-search-row" id="resource-doc-aitag-row" style="display:none;">
+                    <div class="resource-title-field">
+                        <span class="resource-path-label">🏷️ AI Tag</span>
+                        <input type="text" id="resource-doc-aitag-input" class="form-control" placeholder="Filter by AI tag..." list="doc-ai-tag-suggestions" autocomplete="off">
+                        <datalist id="doc-ai-tag-suggestions"></datalist>
                     </div>
                 </div>
                 <div class="resource-search-row">
@@ -236,6 +258,14 @@
                     <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
                     Preview
                 </button>
+                <button id="accessibility-check-btn" class="btn btn-warning" title="Check WCAG 2.1 AA accessibility violations">
+                    <span aria-hidden="true">♿</span>
+                    Check A11y
+                </button>
+                <button id="translate-btn" class="btn btn-default btn-sm" title="Auto-translate from alternate language" style="display: none;">
+                    <span class="glyphicon glyphicon-globe" aria-hidden="true"></span>
+                    Translate
+                </button>
                 <button id="save-page" class="btn btn-success">
                     <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
                     Save Page
@@ -282,7 +312,7 @@
     <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
 
     <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
-    <script src="/static/js/editor.js?v=20260622-lock"></script>
+    <script src="/static/js/editor.js?v=20260812-fb1"></script>
 
     <!-- Initialize after all scripts are loaded -->
     <!-- Simple Metadata Editor (Backend Use Only) -->
@@ -324,6 +354,27 @@
                             <input type="text" id="other-language-path" class="form-control"
                                    placeholder="/canadasite/fr/page">
                             <small>Path to the alternate language version (e.g. FR page for an EN page)</small>
+                        </div>
+
+                        <hr>
+                        <h5>Redirect Settings</h5>
+
+                        <div class="form-group">
+                            <label for="redirect-to">Redirect to:</label>
+                            <input type="text" id="redirect-to" class="form-control"
+                                   placeholder="/en/new-page-location">
+                            <small>If set, this page will redirect visitors to the specified URL. Pages with a redirect target use the redirect template when published.</small>
+                        </div>
+
+                        <hr>
+                        <h5>Page Template</h5>
+
+                        <div class="form-group">
+                            <label for="metadata-page-template">Page Template:</label>
+                            <select id="metadata-page-template" class="form-control">
+                                <option value="">(Default page template)</option>
+                            </select>
+                            <small>Mustache template used when publishing this page. Leave as default to use the global template.</small>
                         </div>
                     </div>
 

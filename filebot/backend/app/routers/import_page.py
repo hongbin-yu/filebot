@@ -20,12 +20,18 @@ Usage:
 import json
 import logging
 import os
+import queue
 import re
+import threading
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
+
+import sqlalchemy
 
 import requests as http_requests
 from fastapi import APIRouter, Depends, HTTPException
@@ -45,6 +51,49 @@ WEBBOT_API_BASE = os.environ.get("WEBBOT_API_BASE", "http://localhost:8000")
 
 logger = logging.getLogger(__name__)
 
+# ── WebBot Token Cache (shared across all import requests) ──────────────
+_webbot_token_cache = {"token": None, "expires_at": 0}
+_webbot_token_lock = threading.Lock()
+
+# ── Background Import Queue ────────────────────────────────────────────
+# WebBot pushes are offloaded here so the bookmarklet returns quickly.
+# This uses a simple in-process thread; no Redis required.
+_import_worker_thread: threading.Thread = None
+_import_worker_lock = threading.Lock()
+_import_task_queue = queue.Queue(maxsize=2000)
+
+
+def _start_import_worker():
+    """Start the background worker thread (idempotent)."""
+    global _import_worker_thread
+    with _import_worker_lock:
+        if _import_worker_thread is not None and _import_worker_thread.is_alive():
+            return
+        _import_worker_thread = threading.Thread(target=_import_worker_loop, daemon=True)
+        _import_worker_thread.start()
+        logger.info("Background import worker started")
+
+
+def _import_worker_loop():
+    """Background worker: processes queued import tasks in FIFO order."""
+    while True:
+        try:
+            task = _import_task_queue.get()
+            if task is None:
+                break  # sentinel — allows clean shutdown
+            _process_import_task(task)
+        except Exception:
+            logger.exception("Import worker: unhandled error")
+
+
+def _process_import_task(task):
+    """Process one post-import task (currently: WebBot push)."""
+    req, title, target_folder_path, stored_filename, absolute_path = task
+    try:
+        _push_to_webbot_with_token(req, title, target_folder_path, stored_filename, absolute_path)
+    except Exception:
+        logger.exception(f"Import worker: WebBot push failed for {req.url}")
+
 router = APIRouter()
 
 # Max path segments for folder depth
@@ -52,12 +101,14 @@ MAX_PATH_DEPTH = 10
 
 
 class ImportPageRequest(BaseModel):
-    url: str = Field(..., description="Full URL of the page being imported (e.g. https://www.canada.ca/en/...)")
+    url: str = Field("", description="Full URL of the page being imported (e.g. https://www.canada.ca/en/...). Can be empty if save_snapshot is set.")
     html: str = Field("", description="Raw HTML content of the page (required if is_image is False)")
     title: str = Field("", description="Page title (optional — auto-extracted from HTML if empty)")
     folder_path: str = Field("", description="Target folder path in FileBot (optional — auto-detected from URL)")
     is_image: bool = Field(False, description="Set to true if this is an image upload")
     image_data: str = Field("", description="Base64-encoded image data (required if is_image is True)")
+    redirect_to: Optional[str] = Field(None, description="If set, this page is a redirect. Value is the redirect target URL. When set, backend stores only metadata, no content.")
+    save_snapshot: Optional[dict] = Field(None, description="If set, saves a client-side snapshot (bookmarklet baseline). Expected: {sitemap_url, snapshot: {pages, images}}")
 
 
 class ImportPageResponse(BaseModel):
@@ -68,6 +119,7 @@ class ImportPageResponse(BaseModel):
     stored_filename: str
     file_size: int
     url: str
+    redirect_to: str = ""
 
 
 def extract_title_from_html(html: str) -> str:
@@ -220,78 +272,122 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
     
     logger.info(f"Found {len(image_urls)} images to process")
     
-    # ── Step 3: Process each image ──
+    # ── Step 3: Download ALL images in parallel ──
     # Track what to rewrite: for non-DAM images, replace rel_path with doc_path
     rewrite_map = {}  # rel_path → doc_path  (only for non-DAM)
     
+    # Phase 3a: Concurrent download — this is the bottleneck for slow pages
+    # We use a ThreadPoolExecutor so N image downloads happen concurrently
+    # instead of sequentially. SQLite serializes writes anyway, so the
+    # HTTP fetch phase is where parallelism matters most.
+    MAX_CONCURRENT_DOWNLOADS = min(len(image_urls), 10)  # cap to avoid rate-limit hammering
+    
+    download_results = {}  # doc_path → {content, content_type, rel_path, doc_path, remote_url, needs_rewrite}
+    
+    # First pass: skip already-existing images to avoid redundant work
     for rel_path, info in sorted(image_urls.items()):
-        doc_path = info["doc_path"]
-        remote_url = info["remote"]
-        
-        # Skip if document already exists
-        existing = db.query(Document).filter(Document.path == doc_path).first()
+        existing = db.query(Document).filter(Document.path == info["doc_path"]).first()
         if existing:
-            logger.info(f"  ⏭️  Image already exists: {doc_path}")
+            logger.info(f"  ⏭️  Image already exists: {info['doc_path']}")
             if info["needs_rewrite"]:
-                rewrite_map[rel_path] = doc_path
-            continue
-        
-        # Download from canada.ca
+                rewrite_map[rel_path] = info["doc_path"]
+        else:
+            download_results[info["doc_path"]] = {
+                "rel_path": rel_path,
+                "doc_path": info["doc_path"],
+                "remote_url": info["remote"],
+                "needs_rewrite": info["needs_rewrite"],
+            }
+    
+    def _download_one(doc_path: str, remote_url: str) -> dict:
+        """Download a single image. Returns result dict or error dict."""
         try:
-            resp = http_requests.get(remote_url, timeout=30,
-                                      headers={"User-Agent": "FileBot-Import/1.0"})
+            resp = http_requests.get(
+                remote_url, timeout=30,
+                headers={"User-Agent": "FileBot-Import/1.0"},
+            )
             if resp.status_code != 200:
-                logger.warning(f"  ⚠️  Failed to download {rel_path} (HTTP {resp.status_code})")
-                errors += 1
-                continue
+                return {"doc_path": doc_path, "error": f"HTTP {resp.status_code}"}
+            content_type = resp.headers.get("Content-Type", "application/octet-stream")
+            url_path = urlparse(remote_url).path
+            orig_ext = os.path.splitext(url_path)[1].lower()
+            return {
+                "doc_path": doc_path,
+                "content": resp.content,
+                "content_type": content_type,
+                "url_ext": orig_ext,
+            }
         except Exception as e:
-            logger.warning(f"  ⚠️  Failed to download {remote_url}: {e}")
+            return {"doc_path": doc_path, "error": str(e)}
+    
+    to_download = [
+        (d["doc_path"], d["remote_url"])
+        for d in download_results.values()
+    ]
+    
+    if to_download:
+        with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_DOWNLOADS) as pool:
+            futures = {
+                pool.submit(_download_one, dp, url): dp
+                for dp, url in to_download
+            }
+            for future in as_completed(futures):
+                result = future.result()
+                dp = result["doc_path"]
+                if "error" in result:
+                    logger.warning(f"  ⚠️  Failed to download {dp}: {result['error']}")
+                    download_results[dp]["error"] = True
+                else:
+                    download_results[dp]["content"] = result["content"]
+                    download_results[dp]["content_type"] = result["content_type"]
+                    download_results[dp]["url_ext"] = result["url_ext"]
+    
+    # ── Step 4: Process downloaded images sequentially (DB writes) ──
+    valid_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.tif', '.ico'}
+    ft_map = {
+        '.png': FileType.PNG, '.jpg': FileType.JPEG, '.jpeg': FileType.JPEG,
+        '.gif': FileType.GIF, '.webp': FileType.WEBP, '.bmp': FileType.BMP,
+        '.svg': FileType.SVG, '.tiff': FileType.TIFF, '.tif': FileType.TIFF,
+        '.ico': FileType.OTHER,
+    }
+    ext_map = {
+        'image/png': '.png', 'image/jpeg': '.jpg', 'image/jpg': '.jpg',
+        'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.bmp',
+        'image/svg+xml': '.svg', 'image/tiff': '.tiff', 'image/x-icon': '.ico',
+    }
+    
+    for d in download_results.values():
+        if d.get("error"):
             errors += 1
             continue
         
-        content = resp.content
-        content_type = resp.headers.get("Content-Type", "application/octet-stream")
-        file_size = len(content)
+        content = d.get("content")
+        if content is None:
+            errors += 1
+            continue
         
-        # Determine file extension from URL or content type
-        url_path = urlparse(remote_url).path
-        orig_ext = os.path.splitext(url_path)[1].lower()
-        valid_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.tif', '.ico'}
-        if orig_ext in valid_exts:
-            ext = orig_ext
+        file_size = len(content)
+        content_type = d.get("content_type", "application/octet-stream")
+        doc_path = d["doc_path"]
+        rel_path = d["rel_path"]
+        
+        url_ext = d.get("url_ext", "")
+        if url_ext in valid_exts:
+            ext = url_ext
         else:
-            ext_map = {
-                'image/png': '.png', 'image/jpeg': '.jpg', 'image/jpg': '.jpg',
-                'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.bmp',
-                'image/svg+xml': '.svg', 'image/tiff': '.tiff', 'image/x-icon': '.ico',
-            }
             ext = ext_map.get(content_type, '.png')
         
-        # Map to FileType enum
-        ft_map = {
-            '.png': FileType.PNG, '.jpg': FileType.JPEG, '.jpeg': FileType.JPEG,
-            '.gif': FileType.GIF, '.webp': FileType.WEBP, '.bmp': FileType.BMP,
-            '.svg': FileType.SVG, '.tiff': FileType.TIFF, '.tif': FileType.TIFF,
-            '.ico': FileType.OTHER,
-        }
         file_type = ft_map.get(ext, FileType.PNG)
         
-        # Build storage path: files/boarding/canadasite/content/dam/...
         storage_rel = doc_path.lstrip('/')
         storage_rel = f"files/boarding/canadasite/{storage_rel}"
+        abs_path = data_root / storage_rel
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        abs_path.write_bytes(content)
         
-        # Save to disk
-        absolute_path = data_root / storage_rel
-        absolute_path.parent.mkdir(parents=True, exist_ok=True)
-        absolute_path.write_bytes(content)
-        
-        # Determine folder_path (parent of doc_path)
         folder_path = str(Path(doc_path).parent)
-
-        # ── Ensure folder hierarchy exists in DB ──
-        # The folder may not have a corresponding record in the folders table,
-        # which would violate FK constraint (documents.folder_path → folders.path).
-        # Recursively create all parent folder records.
+        
+        # Ensure folder hierarchy exists in DB
         try:
             boarding_app = db.query(App).filter(App.slug == 'boarding').first()
             root_app_id = boarding_app.id if boarding_app else None
@@ -318,7 +414,7 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
                     db.flush()
         except Exception as e:
             logger.warning(f"  ⚠️  Folder creation warning for {folder_path}: {e}")
-
+        
         page_id = str(uuid.uuid4())[:8]
         timestamp = datetime.now()
         
@@ -337,7 +433,7 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
                 status=DocumentStatus.ACTIVE,
                 publish_status=PublishStatus.PUBLISHED,
                 document_metadata={
-                    "source_url": remote_url,
+                    "source_url": d["remote_url"],
                     "imported_at": timestamp.isoformat(),
                     "import_method": "bookmarklet_image_download",
                     "url": doc_path,
@@ -350,7 +446,7 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
             db.commit()
             downloaded += 1
             logger.info(f"  ✅ Downloaded & stored: {doc_path} ({file_size} bytes, {content_type})")
-            if info["needs_rewrite"]:
+            if d.get("needs_rewrite"):
                 rewrite_map[rel_path] = doc_path
         except Exception as e:
             db.rollback()
@@ -468,15 +564,18 @@ def get_or_create_default_app() -> str:
         db.close()
 
 
-def _push_to_webbot(req: ImportPageRequest, title: str,
-                    target_folder_path: str, stored_filename: str,
-                    absolute_path: Path):
+def _get_webbot_token() -> str:
     """
-    Push the imported page to WebBot (port 8000) so it appears in the
-    WebBot page tree.  Non-fatal: errors are logged but never raise.
+    Get a cached WebBot auth token, refreshing only when close to expiry.
+    This eliminates `n * login` overhead when N concurrent publishers
+    push pages to WebBot simultaneously.
     """
-    try:
-        # 1. Login to WebBot
+    with _webbot_token_lock:
+        now = time.time()
+        # Refresh 2 minutes before expiry (typical tokens: 7 days)
+        if _webbot_token_cache["token"] and now < _webbot_token_cache["expires_at"] - 120:
+            return _webbot_token_cache["token"]
+
         login_resp = http_requests.post(
             f"{WEBBOT_API_BASE}/api/v1/auth/login",
             data={"username": "admin", "password": "admin123"},
@@ -484,16 +583,71 @@ def _push_to_webbot(req: ImportPageRequest, title: str,
         )
         if login_resp.status_code != 200:
             logger.warning(f"WebBot login failed: {login_resp.status_code} {login_resp.text[:200]}")
-            return
-        webbot_token = login_resp.json()["access_token"]
+            raise HTTPException(status_code=502, detail="WebBot login failed")
 
-        # 2. Transform FileBot path to WebBot path
-        #    FileBot: /boarding/canadesite/en/...
-        #    WebBot:  /canadesite/en/...
-        if target_folder_path.startswith("/boarding/"):
-            webbot_path = target_folder_path[len("/boarding"):]
+        data = login_resp.json()
+        token = data["access_token"]
+        # JWT tokens typically expire in ACCESS_TOKEN_EXPIRE_MINUTES (default: 7 days)
+        expires_in = data.get("expires_in", 7 * 24 * 3600)
+        _webbot_token_cache["token"] = token
+        _webbot_token_cache["expires_at"] = now + expires_in
+        logger.info("🔄 Refreshed WebBot auth token")
+        return token
+
+
+def _push_to_webbot_with_token(req: ImportPageRequest, title: str,
+                                target_folder_path: str, stored_filename: str,
+                                absolute_path: Path):
+    """
+    Push the imported page to WebBot (port 8000) so it appears in the
+    WebBot page tree. Uses cached auth token — no login per request.
+    Non-fatal: errors are logged but never raise.
+    """
+    try:
+        webbot_token = _get_webbot_token()
+
+        # 2. Build full WebBot page path from folder + stored filename
+        #    target_folder_path: /boarding/canadesite/fr/services/defense
+        #    stored_filename:    securiserfrontiere.html
+        #    webbot_page_path:   /canadasite/fr/services/defense/securiserfrontiere
+        if stored_filename:
+            page_name = stored_filename
+            if page_name.endswith('.html'):
+                page_name = page_name[:-5]
+            # Full path = (folder path - /boarding) + / + page name (no .html)
+            if target_folder_path.startswith("/boarding/"):
+                folder_path = target_folder_path[len("/boarding"):]
+            else:
+                folder_path = target_folder_path
+            webbot_path = folder_path.rstrip('/') + '/' + page_name
         else:
-            webbot_path = target_folder_path
+            # Fallback if no filename (should not happen)
+            if target_folder_path.startswith("/boarding/"):
+                webbot_path = target_folder_path[len("/boarding"):]
+            else:
+                webbot_path = target_folder_path
+
+        # For redirect pages: use PUT to update existing page metadata
+        if req.redirect_to:
+            redirect_webbot_path = webbot_path
+            logger.info(f"🔀 Updating redirect metadata on WebBot page: {redirect_webbot_path}")
+            redirect_payload = {
+                "metadata": {
+                    "redirect_to": req.redirect_to,
+                    "import_method": "bookmarklet",
+                },
+            }
+            put_resp = http_requests.put(
+                f"{WEBBOT_API_BASE}/api/v1/pages/{redirect_webbot_path}",
+                json=redirect_payload,
+                headers={"Authorization": f"Bearer {webbot_token}"},
+                timeout=15,
+            )
+            if put_resp.status_code in (200, 201):
+                logger.info(f"   ✅ Redirect metadata updated: {redirect_webbot_path} -> {req.redirect_to}")
+            else:
+                logger.warning(f"   ⚠️ Redirect update status {put_resp.status_code}: {put_resp.text[:200]}")
+            return  # Done for redirects - don't try to overwrite real content
 
         # Build language from URL path
         parsed = urlparse(req.url)
@@ -510,31 +664,38 @@ def _push_to_webbot(req: ImportPageRequest, title: str,
             m = re.search(pattern, html_content, re.I | re.S)
             return m.group(1).strip() if m else ""
 
-        # other_language_path: <link rel="alternate" hreflang="fr" href="/fr/...">
+        # other_language_path: <link rel="alternate" hreflang="{other}" ...> of the OTHER language
         #   → webbot path: prepend /canadasite
+        # Only accept the other language's alternate (en page → hreflang="fr"; fr page → hreflang="en").
+        # Never accept the page's own alternate (self-link) as other_language_path.
         other_language_path = ""
-        fr_link = re.search(
-            r'<link[^>]*rel=[\"\']alternate[\"\'][^>]*hreflang=[\"\']fr[\"\'][^>]*href=[\"\']([^\"\']+)[\"\']',
-            html_content, re.I
-        )
-        if not fr_link:
-            fr_link = re.search(
-                r'<link[^>]*hreflang=[\"\']fr[\"\'][^>]*rel=[\"\']alternate[\"\'][^>]*href=[\"\']([^\"\']+)[\"\']',
+        other_hreflang = {"en": "fr", "fr": "en"}.get(lang)
+        if other_hreflang:
+            alt_link = re.search(
+                rf'<link[^>]*rel=[\"\']alternate[\"\'][^>]*hreflang=[\"\']{other_hreflang}[\"\'][^>]*href=[\"\']([^\"\']+)[\"\']',
                 html_content, re.I
             )
-        if fr_link:
-            fr_path = fr_link.group(1)
-            # Strip full domain prefix if present
-            fr_path = re.sub(r'^https?://(www\.)?canada\.ca', '', fr_path, flags=re.I)
-            # Strip .html suffix
-            if fr_path.endswith('.html'):
-                fr_path = fr_path[:-5]
-            # Convert /fr/... → /canadasite/fr/...
-            fr_path = fr_path.rstrip('/')
-            if fr_path.startswith('/'):
-                other_language_path = '/canadasite' + fr_path
-            else:
-                other_language_path = '/canadasite/' + fr_path
+            if not alt_link:
+                alt_link = re.search(
+                    rf'<link[^>]*hreflang=[\"\']{other_hreflang}[\"\'][^>]*rel=[\"\']alternate[\"\'][^>]*href=[\"\']([^\"\']+)[\"\']',
+                    html_content, re.I
+                )
+            if alt_link:
+                alt_path = alt_link.group(1)
+                # Strip full domain prefix if present
+                alt_path = re.sub(r'^https?://(www\.)?canada\.ca', '', alt_path, flags=re.I)
+                # Strip .html suffix
+                if alt_path.endswith('.html'):
+                    alt_path = alt_path[:-5]
+                # Convert /fr/... → /canadasite/fr/...
+                alt_path = alt_path.rstrip('/')
+                if alt_path.startswith('/'):
+                    other_language_path = '/canadasite' + alt_path
+                else:
+                    other_language_path = '/canadasite/' + alt_path
+                # Final guard: never self-point
+                if other_language_path == webbot_path:
+                    other_language_path = ""
 
         # subjects from <meta name="dcterms.subject" content="...">
         subjects = _extract_meta_content(
@@ -546,40 +707,64 @@ def _push_to_webbot(req: ImportPageRequest, title: str,
             r'<meta[^>]*name=[\"\']dcterms\.audience[\"\'][^>]*content=[\"\']([^\"\']+)[\"\']'
         )
 
-        # 3. Create page in WebBot
-        page_payload = {
-            "title": title,
-            "path": webbot_path,
-            "content": html_content,
-            "language": lang,
-            "other_language_path": other_language_path or None,
-            "status": "published",
-            "skip_if_exists": True,
-            "metadata": {
-                "source_url": req.url,
-                "file_path": str(absolute_path),
-                "imported_at": datetime.now().isoformat(),
-                "import_method": "bookmarklet",
-            },
+        # 3. Upsert page in WebBot — direct DB write, same as import-to-webbot.
+        #    Existing pages get UPDATED (content/title/metadata/last_modified),
+        #    not skipped, so bookmarklet re-imports refresh WebBot content.
+        from app.routers.import_to_webbot import ensure_page_exists, get_webbot_conn
+
+        # file_path 语义 = FileBot 资源目录路径，格式 /canadasite/content/dam/{页面路径}
+        # 注意：只给 file_path 元数据加 /content/dam 前缀；webbot_path 保持页面树路径（修复 2026-08-09：之前改写了 webbot_path 本身，导致 bookmarklet 导入页面进了 DAM 树，页面树看不到）
+        file_path = webbot_path
+        if file_path.startswith("/canadasite/") and "/content/dam" not in file_path:
+            file_path = file_path.replace("/canadasite/", "/canadasite/content/dam/", 1)
+
+        parent_path = '/'.join(webbot_path.rstrip('/').split('/')[:-1]) or None
+        metadata = {
+            "source_url": req.url,
+            "file_path": file_path,  # 资源目录路径(如 /canadasite/content/dam/en/services/jobs)，非磁盘绝对路径(曾导致 Resources/Images 找不到图)
+            "imported_at": datetime.now().isoformat(),
+            "import_method": "bookmarklet",
         }
-
-        # Add subjects/audience to metadata if present
+        if req.redirect_to:
+            metadata["redirect_to"] = req.redirect_to
         if subjects:
-            page_payload["metadata"]["subjects"] = subjects
+            metadata["subjects"] = subjects
         if audience:
-            page_payload["metadata"]["audience"] = audience
+            metadata["audience"] = audience
 
-        create_resp = http_requests.post(
-            f"{WEBBOT_API_BASE}/api/v1/pages/",
-            json=page_payload,
-            headers={"Authorization": f"Bearer {webbot_token}"},
-            timeout=30,
-        )
+        conn = get_webbot_conn()
+        try:
+            cursor = conn.cursor()
+            existing = cursor.execute(
+                "SELECT hide_in_navigation, metadata FROM webbot_page WHERE path = ?",
+                (webbot_path,),
+            ).fetchone()
 
-        if create_resp.status_code in (200, 201):
-            logger.info(f"✅ WebBot page created/updated: {webbot_path}")
-        else:
-            logger.warning(f"WebBot create page returned {create_resp.status_code}: {create_resp.text[:300]}")
+            # Preserve editor-set metadata (merge import fields on top)
+            if existing and existing["metadata"]:
+                try:
+                    old_meta = json.loads(existing["metadata"]) if isinstance(existing["metadata"], str) else dict(existing["metadata"] or {})
+                    old_meta.update(metadata)
+                    metadata = old_meta
+                except Exception:
+                    pass
+
+            result = ensure_page_exists(
+                cursor,
+                path=webbot_path,
+                parent_path=parent_path,
+                title=title,
+                content=html_content,
+                language=lang,
+                status="published",
+                metadata=metadata,
+                hide_in_nav=bool(existing and existing["hide_in_navigation"]),
+                other_language_path=other_language_path or None,
+            )
+            conn.commit()
+            logger.info(f"✅ WebBot page {result}: {webbot_path}")
+        finally:
+            conn.close()
 
     except Exception as e:
         logger.warning(f"WebBot push failed (non-fatal): {e}")
@@ -622,6 +807,7 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
         'image/svg+xml': 'svg',
         'image/tiff': 'tiff',
     }
+    valid_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.tif', '.ico'}
     ext = ext_map.get(mime_type, 'png')
 
     # FileType mapping
@@ -693,6 +879,13 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
 
     # Use the ORIGINAL filename from the URL, not the truncated path
     basename = original_filename
+    # Preserve the original extension when it's a known image extension
+    # (e.g. photo.jpeg stays photo.jpeg instead of being forced to .jpg),
+    # so the stored file matches the extension referenced in the HTML.
+    orig_ext = os.path.splitext(basename)[1].lower()
+    if orig_ext in valid_exts:
+        ext = orig_ext[1:]
+        file_type = ft_map.get(ext, FileType.OTHER)
     # Remove existing extension if any, use our ext
     basename = re.sub(r'\.[^./]+$', '', basename)
     # Keep dots in the base name (e.g. image.img.jpg → image.img)
@@ -859,12 +1052,98 @@ def check_urls(
         return CheckUrlsResponse(existing={}, checked=len(req.urls))
 
 
+
+
+# ── Redirect Target Resolver ────────────────────────────────────────
+
+def _resolve_redirect_target(url: str) -> Optional[str]:
+    """Fetch the URL (following redirects) to discover the final target URL.
+    
+    When the bookmarklet encounters an opaqueredirect (CORS opaque), it cannot 
+    see the Location header. The backend handles resolution instead.
+    Returns the final resolved URL, or None on failure.
+    """
+    if not url:
+        return None
+    try:
+        resp = http_requests.get(
+            url,
+            timeout=15,
+            allow_redirects=True,
+            headers={"User-Agent": "FileBot-Import/1.0 (redirect resolver)"},
+        )
+        if resp.status_code == 200 and resp.url != url:
+            logger.info(f"  🔀 Redirect resolved: {url} \u2192 {resp.url}")
+            return resp.url
+        elif resp.status_code == 200:
+            logger.info(f"  🔀 Redirect marked but no actual redirect for {url}")
+            return None
+        else:
+            logger.warning(f"  \u26a0\ufe0f  Redirect resolver got HTTP {resp.status_code} for {url}")
+            return None
+    except Exception as e:
+        logger.warning(f"  \u26a0\ufe0f  Redirect resolver failed for {url}: {e}")
+        return None
+
+class ResolveRedirectRequest(BaseModel):
+    url: str = Field(..., description="URL to resolve redirect target for")
+
+class ResolveRedirectResponse(BaseModel):
+    redirect_url: Optional[str] = Field(None, description="Final redirect target URL, or null if not a redirect")
+
+@router.post("/resolve-redirect", response_model=ResolveRedirectResponse)
+def resolve_redirect(
+    req: ResolveRedirectRequest,
+    current_user: User = Depends(get_current_active_user_allow_query),
+):
+    """Resolve the redirect target of a URL server-side (no CORS issues).
+    
+    Called by the bookmarklet when it detects a 3xx redirect via redirect: "manual".
+    The backend can freely follow redirects and return the final URL.
+    """
+    if not req.url:
+        return ResolveRedirectResponse(redirect_url=None)
+    target = _resolve_redirect_target(req.url)
+    return ResolveRedirectResponse(redirect_url=target)
+
+
+
+
+class ResolveRedirectRequest(BaseModel):
+    url: str = Field(..., description="URL to resolve redirect target for")
+
+class ResolveRedirectResponse(BaseModel):
+    redirect_url: Optional[str] = Field(None, description="Final redirect target URL, or null if not a redirect")
+
+
+@router.post("/resolve-redirect", response_model=ResolveRedirectResponse)
+def resolve_redirect(
+    req: ResolveRedirectRequest,
+    current_user: User = Depends(get_current_active_user_allow_query),
+):
+    """Resolve the redirect target of a URL server-side (no CORS issues).
+    
+    Called by the bookmarklet when it detects a 3xx redirect via redirect: "manual".
+    The backend can freely follow redirects and return the final URL.
+    """
+    if not req.url:
+        return ResolveRedirectResponse(redirect_url=None)
+    target = _resolve_redirect_target(req.url)
+    return ResolveRedirectResponse(redirect_url=target)
+
 @router.post("/import-page", response_model=ImportPageResponse)
 def import_page(
     req: ImportPageRequest,
     current_user: User = Depends(get_current_active_user_allow_query),
 ):
     """Import a page (URL + HTML content) into FileBot as a new document."""
+
+    # Ensure background import worker is running (handles WebBot push)
+    _start_import_worker()
+
+    # ── Snapshot save (bookmarklet baseline) — check BEFORE url check ──
+    if req.save_snapshot:
+        _save_bookmarklet_snapshot(req.save_snapshot)
 
     if not req.url:
         raise HTTPException(status_code=400, detail="url is required")
@@ -928,7 +1207,7 @@ def import_page(
                                 path=seg_path,
                                 parent_folder_path=parent_path,
                                 name=folder_segments[i],
-                                app_id=app_id,
+            
                                 created_by=str(current_user.id),
                             )
                             db.add(folder)
@@ -1018,6 +1297,62 @@ def import_page(
     absolute_dir.mkdir(parents=True, exist_ok=True)
     absolute_path = absolute_dir / stored_filename
 
+    # ── Redirect: only update redirect_to, skip content ──
+    if req.redirect_to:
+        db = next(get_db())
+        try:
+            existing_doc = db.query(Document).filter(Document.path == doc_path).first()
+            if existing_doc:
+                existing_doc.document_metadata = {
+                    **(existing_doc.document_metadata or {}),
+                    "redirect_to": req.redirect_to,
+                    "import_method": "bookmarklet",
+                }
+            else:
+                doc = Document(
+                    path=doc_path,
+                    title=title,
+                    folder_path=str(Path(doc_path).parent) or "",
+
+                    original_filename=stored_filename,
+                    stored_filename=stored_filename,
+                    file_size=0,
+                    file_type=FileType.HTML,
+                    mime_type="text/html",
+                    storage_path=str(absolute_path),
+                    status=DocumentStatus.ACTIVE,
+                    publish_status=PublishStatus.UNPUBLISHED,
+                    document_metadata={
+                        "redirect_to": req.redirect_to,
+                        "import_method": "bookmarklet",
+                    },
+                    uploaded_by=str(current_user.id),
+                )
+                db.add(doc)
+            db.commit()
+            logger.info(f"🔄 Redirect recorded: {req.url} → {req.redirect_to}")
+        finally:
+            db.close()
+
+        # Queue WebBot push in background (non-blocking)
+        try:
+            _import_task_queue.put_nowait((
+                req, title, target_folder_path, stored_filename, absolute_path,
+            ))
+        except Exception:
+            pass  # queue full — non-fatal, page already saved
+
+        return ImportPageResponse(
+            success=True,
+            path=doc_path,
+            folder_path=str(Path(doc_path).parent) or "",
+            title=title,
+            stored_filename=stored_filename,
+            file_size=0,
+            url=req.url,
+            redirect_to=req.redirect_to or "",
+        )
+
     # Download and store /content/dam/ images locally before saving HTML
     # This ensures images are available from the local file server,
     # without needing to access canada.ca CDN for image serving.
@@ -1054,14 +1389,21 @@ def import_page(
                 **(existing_doc.document_metadata or {}),
                 "source_url": req.url,
                 "imported_at": datetime.now().isoformat(),
+                **({"redirect_to": req.redirect_to} if req.redirect_to else {}),
             }
             db.commit()
 
-            # Push to WebBot even for updates
-            _push_to_webbot(ImportPageRequest(
-                url=req.url, html=req.html, title=title,
-                folder_path=req.folder_path, is_image=False
-            ), title, target_folder_path, stored_filename, absolute_path)
+            # Queue WebBot push in background (non-blocking)
+            try:
+                _import_task_queue.put_nowait((
+                    ImportPageRequest(
+                        url=req.url, html=req.html, title=title,
+                        folder_path=req.folder_path, is_image=False
+                    ),
+                    title, target_folder_path, stored_filename, absolute_path,
+                ))
+            except Exception:
+                pass  # queue full — non-fatal, page already saved
 
             return ImportPageResponse(
                 success=True,
@@ -1071,6 +1413,7 @@ def import_page(
                 stored_filename=stored_filename,
                 file_size=file_size,
                 url=req.url,
+                redirect_to=req.redirect_to or "",
             )
 
         doc = Document(
@@ -1089,6 +1432,7 @@ def import_page(
                 "source_url": req.url,
                 "imported_at": datetime.now().isoformat(),
                 "import_method": "bookmarklet",
+                **({"redirect_to": req.redirect_to} if req.redirect_to else {}),
             },
             uploaded_by=str(current_user.id),
         )
@@ -1098,6 +1442,18 @@ def import_page(
 
         logger.info(f"📄 Created document: {doc_path}")
 
+    except sqlalchemy.exc.IntegrityError as e:
+        db.rollback()
+        logger.warning(f"⚠️ Duplicate import (concurrent): {req.url}")
+        return ImportPageResponse(
+            success=True,
+            path=doc_path,
+            folder_path=doc_folder_path,
+            title=title,
+            stored_filename=stored_filename,
+            file_size=file_size,
+            url=req.url,
+        )
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to create document for {req.url}: {e}")
@@ -1105,8 +1461,13 @@ def import_page(
     finally:
         db.close()
 
-    # ── Push to WebBot ────────────────────────────────────────────────
-    _push_to_webbot(req, title, target_folder_path, stored_filename, absolute_path)
+    # ── Queue WebBot push in background ───────────────────────────────
+    try:
+        _import_task_queue.put_nowait((
+            req, title, target_folder_path, stored_filename, absolute_path,
+        ))
+    except Exception:
+        pass  # queue full — non-fatal, page already saved
 
     return ImportPageResponse(
         success=True,
@@ -1116,4 +1477,96 @@ def import_page(
         stored_filename=stored_filename,
         file_size=file_size,
         url=req.url,
+            redirect_to=req.redirect_to or "",
+    )
+
+# ── Snapshot Import (for client-generated bookmarklet snapshots) ─────────
+SNAPSHOT_DIR = "/opt/webfilebot/sitemap_snapshots"
+
+
+class ImportSnapshotRequest(BaseModel):
+    sitemap_url: str = Field(..., description="Sitemap URL (e.g. https://www.canada.ca/en/army.sitemap.xml)")
+    snapshot: dict = Field(..., description="Snapshot: {pages: {url: lastmod}, images: [url, ...]}")
+
+
+class ImportSnapshotResponse(BaseModel):
+    success: bool
+    path: str
+    pages: int
+    images: int
+
+
+
+def _save_bookmarklet_snapshot(snapshot_data: dict) -> None:
+    """Save a snapshot from bookmarklet data (used via import-page endpoint)."""
+    sitemap_url = snapshot_data.get("sitemap_url", "")
+    snap_content = snapshot_data.get("snapshot", {})
+    if not sitemap_url or not snap_content:
+        logger.warning("_save_bookmarklet_snapshot: missing sitemap_url or snapshot data")
+        return
+    from urllib.parse import urlparse as _urlparse
+    _parsed = _urlparse(sitemap_url)
+    _path = _parsed.path.rstrip("/")
+    _parts = _path.split("/")
+    _slug = _parts[-1].replace(".sitemap.xml", "").replace(".xml", "")
+    _lang = "en"
+    for _p in _parts:
+        if _p in ("en", "fr"):
+            _lang = _p
+    _spath = os.path.join(SNAPSHOT_DIR, f"{_slug}_{_lang}.sitemap.json")
+    os.makedirs(os.path.dirname(_spath), exist_ok=True)
+    _pages = len(snap_content.get("pages", {}))
+    _images = len(snap_content.get("images", []))
+    import json as _json
+    with open(_spath, "w", encoding="utf-8") as _f:
+        _json.dump(snap_content, _f, indent=2, ensure_ascii=False)
+    logger.info(f"📸 快照已保存: {_spath} (pages={_pages}, images={_images}, filesize={os.path.getsize(_spath)} bytes)")
+
+@router.post("/save-snapshot", response_model=ImportSnapshotResponse)
+@router.post("/import-snapshot", response_model=ImportSnapshotResponse)
+def import_snapshot(
+    req: ImportSnapshotRequest,
+    current_user: User = Depends(get_current_active_user_allow_query),
+):
+    """
+    Save a client-generated snapshot for incremental sync baseline.
+    
+    The bookmarklet generates this during its initial full crawl:
+      { pages: {"https://...": "lastmod", ...}, images: ["https://...img.jpg", ...] }
+    
+    Saved to sitemap_snapshots/{slug}_{lang}.sitemap.json, same format and path
+    as incremental_sync.py uses, so the next server-side incremental run can
+    compare against the client snapshot instead of re-fetching the sitemap XML.
+    """
+    from urllib.parse import urlparse as _urlparse
+
+    # Derive filename same way as incremental_sync.py::snapshot_path()
+    _parsed = _urlparse(req.sitemap_url)
+    _path = _parsed.path.rstrip("/")
+    _parts = _path.split("/")
+    _slug = _parts[-1].replace(".sitemap.xml", "").replace(".xml", "")
+    _lang = "en"
+    for _p in _parts:
+        if _p in ("en", "fr"):
+            _lang = _p
+
+    _spath = os.path.join(SNAPSHOT_DIR, f"{_slug}_{_lang}.sitemap.json")
+    os.makedirs(os.path.dirname(_spath), exist_ok=True)
+
+    _pages = len(req.snapshot.get("pages", {}))
+    _images = len(req.snapshot.get("images", []))
+
+    with open(_spath, "w", encoding="utf-8") as _f:
+        json.dump(req.snapshot, _f, indent=2, ensure_ascii=False)
+
+    logger.info(
+        f"📸 快照已保存: {_spath} (pages={_pages}, images={_images}, "
+        f"filesize={os.path.getsize(_spath)} bytes)"
+    )
+
+    return ImportSnapshotResponse(
+        success=True,
+        path=_spath,
+        pages=_pages,
+        images=_images,
     )

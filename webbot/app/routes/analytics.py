@@ -68,10 +68,10 @@ async def get_analytics():
     c.execute("SELECT COUNT(*) FROM webbot_page WHERE other_language_path IS NOT NULL AND other_language_path != ''")
     paired = c.fetchone()[0]
 
-    c.execute("SELECT COUNT(*) FROM webbot_page WHERE path LIKE '/canadasite/en/%' AND (other_language_path IS NULL OR other_language_path = '')")
+    c.execute("SELECT COUNT(*) FROM webbot_page WHERE path LIKE '/canadasite/en/%' AND (other_language_path IS NULL OR other_language_path = '') AND status = 'published' AND (json_extract(metadata, '$.redirect_to') IS NULL OR json_extract(metadata, '$.redirect_to') = '')")
     en_missing_fr = c.fetchone()[0]
 
-    c.execute("SELECT COUNT(*) FROM webbot_page WHERE path LIKE '/canadasite/fr/%' AND (other_language_path IS NULL OR other_language_path = '')")
+    c.execute("SELECT COUNT(*) FROM webbot_page WHERE path LIKE '/canadasite/fr/%' AND (other_language_path IS NULL OR other_language_path = '') AND status = 'published' AND (json_extract(metadata, '$.redirect_to') IS NULL OR json_extract(metadata, '$.redirect_to') = '')")
     fr_missing_en = c.fetchone()[0]
 
     # Top pages missing FR (for detail)
@@ -80,6 +80,8 @@ async def get_analytics():
         FROM webbot_page
         WHERE path LIKE '/canadasite/en/%'
           AND (other_language_path IS NULL OR other_language_path = '')
+          AND status = 'published'
+          AND (json_extract(metadata, '$.redirect_to') IS NULL OR json_extract(metadata, '$.redirect_to') = '')
         ORDER BY last_modified DESC
         LIMIT 20
     """)
@@ -88,12 +90,35 @@ async def get_analytics():
         for r in c.fetchall()
     ]
 
+    # === Broken alternate-language references (other_language_path points to a page that does not exist) ===
+    c.execute("""
+        SELECT COUNT(*)
+        FROM webbot_page p
+        LEFT JOIN webbot_page q ON q.path = p.other_language_path
+        WHERE p.other_language_path IS NOT NULL AND p.other_language_path != ''
+          AND q.id IS NULL
+    """)
+    broken_reference_count = c.fetchone()[0]
+
+    c.execute("""
+        SELECT p.path, p.title, p.other_language_path, p.last_modified
+        FROM webbot_page p
+        LEFT JOIN webbot_page q ON q.path = p.other_language_path
+        WHERE p.other_language_path IS NOT NULL AND p.other_language_path != ''
+          AND q.id IS NULL
+        ORDER BY p.last_modified DESC
+        LIMIT 20
+    """)
+    broken_references = [
+        {"path": r["path"], "title": r["title"], "other_language_path": r["other_language_path"], "last_modified": r["last_modified"]}
+        for r in c.fetchall()
+    ]
+
     # === Templates ===
     c.execute("""
-        SELECT publish_template, COUNT(*) as cnt
+        SELECT COALESCE(NULLIF(publish_template, ''), '(Default page template)') AS publish_template, COUNT(*) as cnt
         FROM webbot_page
-        WHERE publish_template IS NOT NULL AND publish_template != ''
-        GROUP BY publish_template
+        GROUP BY COALESCE(NULLIF(publish_template, ''), '(Default page template)')
         ORDER BY cnt DESC
         LIMIT 20
     """)
@@ -166,6 +191,8 @@ async def get_analytics():
             "fr_missing_en": fr_missing_en,
             "fr_missing_en_percent": round(fr_missing_en / fr * 100, 1) if fr else 0,
             "recent_missing_fr": missing_fr_list,
+            "broken_reference_count": broken_reference_count,
+            "broken_references": broken_references,
         },
         templates=template_data,
         tag_usage={

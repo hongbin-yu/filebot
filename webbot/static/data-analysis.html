@@ -159,6 +159,12 @@ function renderDashboard(d) {
             '<div class="stat-row"><span class="s-label">EN missing FR</span><span class="s-value"><span class="badge badge-red">' + d.translation_gaps.en_missing_fr + ' (' + d.translation_gaps.en_missing_fr_percent + '%)</span></span></div>' +
             '<div class="stat-row"><span class="s-label">FR missing EN</span><span class="s-value"><span class="badge badge-orange">' + d.translation_gaps.fr_missing_en + ' (' + d.translation_gaps.fr_missing_en_percent + '%)</span></span></div>' +
             '<div class="stat-row"><span class="s-label">Paired pages</span><span class="s-value"><span class="badge badge-green">' + d.translation_gaps.paired_pages + '</span></span></div>' +
+            '<div class="stat-row"><span class="s-label">Broken alternate links</span><span class="s-value"><span class="badge badge-red">' + d.translation_gaps.broken_reference_count + '</span></span></div>' +
+            (d.translation_gaps.broken_references.length ? '<h4 style="font-size:12px;margin:12px 0 6px;color:#666;">Recent broken alternate links:</h4><div class="missing-list">' +
+                d.translation_gaps.broken_references.map(function(b) {
+                    return '<div class="missing-item"><div class="mi-title">' + esc(b.title || b.path) + '</div><div class="mi-path">' + esc(b.path) + ' → ' + esc(b.other_language_path) + '</div></div>';
+                }).join('') +
+            '</div>' : '') +
             (d.translation_gaps.recent_missing_fr.length ? '<h4 style="font-size:12px;margin:12px 0 6px;color:#666;">Recent EN pages missing FR:</h4><div class="missing-list">' +
                 d.translation_gaps.recent_missing_fr.map(function(p) {
                     return '<div class="missing-item"><div class="mi-title">' + esc(p.title) + '</div><div class="mi-path">' + esc(p.path) + '</div></div>';

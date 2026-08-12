@@ -9,6 +9,16 @@ function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Auth header helper — injects Bearer token from localStorage if available
+function authHeaders(extra) {
+    var h = extra || {};
+    try {
+        var token = localStorage.getItem('access_token');
+        if (token) h['Authorization'] = 'Bearer ' + token;
+    } catch(e) {}
+    return h;
+}
+
 /**
  * Auto-derive FileBot image path from page path.
  * Page path: /canadasite/en/section/subsection/...
@@ -95,6 +105,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 let columnsContainer, loadingEl, errorContainer, pageStats, breadcrumbNav;
 let btnCreate, btnEdit, btnPreview, btnMove, btnPublish, btnUnpublish, btnDelete, btnRefresh;
+let btnApprove, btnUnapprove;
 
 function initDom() {
     columnsContainer = $('#columns-container');
@@ -116,6 +127,8 @@ function initDom() {
     btnMove = $('#btn-top-move');
     btnPublish = $('#btn-top-publish');
     btnUnpublish = $('#btn-top-unpublish');
+    btnApprove = $('#btn-top-approve');
+    btnUnapprove = $('#btn-top-unapprove');
     btnDelete = $('#btn-top-delete');
     btnRefresh = $('#btn-top-refresh');
     btnProperties = $('#btn-top-properties');
@@ -362,7 +375,8 @@ async function performDelete(pagePath, pageTitle) {
         }
 
         var resp = await fetch(url, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: authHeaders()
         });
         if (!resp.ok) {
             var errData = null;
@@ -403,15 +417,51 @@ async function performDelete(pagePath, pageTitle) {
 // ============================================================================
 // Publish page — POST to backend, show toast + refresh status
 // ============================================================================
+async function publishByPath(pagePath) {
+    showToast('Publishing page "' + pagePath + '"...', 'info');
+    try {
+        var resp = await fetch('/api/v1/pages/publish?path=' + encodeURIComponent(pagePath), {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        if (!resp.ok) {
+            var errData = null;
+            try { errData = await resp.json(); } catch(e) {}
+            throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+        }
+        showToast('Page "' + pagePath + '" is published', 'success');
+    } catch (err) {
+        showToast('Failed to publish "' + pagePath + '": ' + err.message, 'danger');
+    }
+}
+
+async function publishWithOtherLang(pageData) {
+    var otherLangPath = pageData.other_language_path;
+    if (otherLangPath && otherLangPath.trim()) {
+        var confirmed = await showConfirmDialog(
+            'Publish other language page?\n\n' +
+            'Other language: ' + otherLangPath.trim() + '\n\n' +
+            'Press OK to publish both pages, Cancel to publish only the current page.'
+        );
+        if (confirmed) {
+            await performPublish(pageData);
+            await publishByPath(otherLangPath.trim());
+            return;
+        }
+    }
+    await performPublish(pageData);
+}
+
 async function performPublish(pageData) {
     var pagePath = pageData.path;
-    var pageName = pageData.title || pageData.name;
+    var pageName = pageTitle(pageData);
 
     showToast('Publishing "' + pageName + '"...', 'info');
 
     try {
         var resp = await fetch('/api/v1/pages/publish?path=' + encodeURIComponent(pagePath), {
-            method: 'POST'
+            method: 'POST',
+            headers: authHeaders()
         });
 
         if (!resp.ok) {
@@ -435,20 +485,61 @@ async function performPublish(pageData) {
     }
 }
 
+async function unpublishByPath(pagePath) {
+    showToast('Unpublishing page "' + pagePath + '"...', 'info');
+    try {
+        var resp = await fetch('/api/v1/pages/unpublish?path=' + encodeURIComponent(pagePath), {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        if (!resp.ok) {
+            var errData = null;
+            try { errData = await resp.json(); } catch(e) {}
+            throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+        }
+        showToast('Page "' + pagePath + '" is unpublished', 'success');
+    } catch (err) {
+        showToast('Failed to unpublish "' + pagePath + '": ' + err.message, 'danger');
+    }
+}
+
+async function unpublishWithOtherLang(pageData) {
+    var otherLangPath = pageData.other_language_path;
+    if (otherLangPath && otherLangPath.trim()) {
+        var confirmed = await showConfirmDialog(
+            'Unpublish other language page?\n\n' +
+            'Other language: ' + otherLangPath.trim() + '\n\n' +
+            'Press OK to unpublish both pages, Cancel to unpublish only the current page.'
+        );
+        if (confirmed) {
+            await performUnpublish(pageData);
+            await unpublishByPath(otherLangPath.trim());
+            return;
+        }
+    }
+    await performUnpublish(pageData);
+}
+
 // ============================================================================
 async function performUnpublish(pageData) {
     var pagePath = pageData.path;
-    var pageTitle = pageTitle ? pageTitle : pageData.name;
+    var pageName = pageTitle(pageData);
 
-    if (!confirm('Unpublish "' + (pageTitle || pageData.name) + '"? This will remove the published page from the public site.')) {
+    var confirmed = await showConfirmDialog(
+        'Unpublish "' + pageName + '"? This will remove the published page from the public site.',
+        'Unpublish',
+        'Cancel'
+    );
+    if (!confirmed) {
         return;
     }
 
-    showToast('Unpublishing "' + (pageTitle || pageData.name) + '"...', 'info');
+    showToast('Unpublishing "' + pageName + '"...', 'info');
 
     try {
         var resp = await fetch('/api/v1/pages/unpublish?path=' + encodeURIComponent(pagePath), {
-            method: 'POST'
+            method: 'POST',
+            headers: authHeaders()
         });
 
         if (!resp.ok) {
@@ -463,7 +554,7 @@ async function performUnpublish(pageData) {
         pageData.status = 'draft';
         pageData.last_published = null;
 
-        showToast('"' + (pageTitle || pageData.name) + '" unpublished!', 'success');
+        showToast('"' + pageName + '" unpublished!', 'success');
 
         // Re-render to reflect status change
         renderColumns();
@@ -533,6 +624,15 @@ function renderColumn(columnIndex, title, pages, parentPath) {
         titleSpan.className = 'page-title';
         titleSpan.textContent = pageTitle(page);
         link.appendChild(titleSpan);
+
+        // Out-of-sync badge (bilingual pair)
+        if (page.out_of_sync) {
+            var syncBadge = document.createElement('span');
+            syncBadge.className = 'out-of-sync-badge';
+            syncBadge.textContent = '⚠ Out of sync';
+            syncBadge.title = 'This page was modified after its other-language version. Use Publish both to sync.';
+            link.appendChild(syncBadge);
+        }
 
         // Path (small font below title)
         var pathSpan = document.createElement('span');
@@ -619,14 +719,15 @@ async function selectPage(page, columnIndex) {
     selectedPageId = page.id;
     selectedPageData = page;
     lastActivePath = page.path; // track for state retention
+    loadTopApprovalStatus(page.path);
 
     try {
         showLoading();
         var children = await fetchChildren(page.path);
         hideLoading();
 
-        if (currentPath.length < 2) {
-            // Levels 1-2: drill-down, single column replaces content
+        if (columnsCache.length <= 1) {
+            // Single-column: drill-down, always append to path
             currentPath.push(page);
             columnsCache = [{
                 title: pageTitle(page),
@@ -634,7 +735,7 @@ async function selectPage(page, columnIndex) {
                 parentPath: page.path
             }];
         } else {
-            // Levels 3+: multi-column
+            // Multi-column: clicking column N replaces path[N+1]
             // Column N holds path entry N+1 (col 0 = entry 1, col 1 = entry 2, etc.)
             var keepCount = columnIndex + 2;
             currentPath = currentPath.slice(0, keepCount);
@@ -700,6 +801,7 @@ function goToPath(index) {
     selectedPageId = currentPath[index].id;
     selectedPageData = currentPath[index];
     lastActivePath = currentPath[index].path;
+    loadTopApprovalStatus(currentPath[index].path);
 
     // Truncate path to this level
     currentPath = currentPath.slice(0, index + 1);
@@ -708,7 +810,7 @@ function goToPath(index) {
     var lastPage = currentPath[currentPath.length - 1];
     var children = loadedPaths[lastPage.path] || [];
 
-    if (currentPath.length <= 2) {
+    if (currentPath.length <= 4) {
         columnsCache = [{
             title: pageTitle(lastPage),
             pages: children,
@@ -745,12 +847,16 @@ function updateButtons() {
     btnUnpublish.disabled = !isPublished;
     btnDelete.disabled = !hasSelection;
     btnProperties.disabled = !hasSelection;
+    btnApprove.disabled = !hasSelection;
+    btnUnapprove.disabled = !hasSelection;
 
     btnEdit.className = hasSelection ? 'btn btn-edit' : 'btn btn-edit disabled';
     btnPreview.className = hasSelection ? 'btn btn-info' : 'btn btn-info disabled';
     btnMove.className = canMove ? 'btn btn-move' : 'btn btn-move disabled';
     btnPublish.className = hasSelection ? 'btn btn-publish' : 'btn btn-publish disabled';
     btnUnpublish.className = isPublished ? 'btn btn-warning' : 'btn btn-warning disabled';
+    btnApprove.className = hasSelection ? 'btn btn-success' : 'btn btn-success disabled';
+    btnUnapprove.className = hasSelection ? 'btn btn-warning' : 'btn btn-warning disabled';
     btnDelete.className = hasSelection ? 'btn btn-delete' : 'btn btn-delete disabled';
     btnProperties.className = hasSelection ? 'btn btn-primary' : 'btn btn-primary disabled';
 
@@ -760,6 +866,8 @@ function updateButtons() {
     btnMove.title = canMove ? 'Move selected page' : (isPublished ? 'Cannot move a published page' : 'Select a page to move');
     btnPublish.title = hasSelection ? 'Publish selected page' : 'Select a page to publish';
     btnUnpublish.title = isPublished ? 'Unpublish selected page' : (hasSelection ? 'Page is not published' : 'Select a published page to unpublish');
+    btnApprove.title = hasSelection ? 'Approve selected page for publish' : 'Select a page to approve';
+    btnUnapprove.title = hasSelection ? 'Revoke approval for selected page' : 'Select a page to revoke approval';
     btnDelete.title = hasSelection ? 'Delete selected page' : 'Select a page to delete';
     btnProperties.title = hasSelection ? 'View/edit page properties' : 'Select a page to view properties';
 }
@@ -888,7 +996,7 @@ function setupButtons() {
     // ============================================================================
     btnPublish.addEventListener('click', function() {
         if (selectedPageData) {
-            performPublish(selectedPageData);
+            publishWithOtherLang(selectedPageData);
         }
     });
 
@@ -897,7 +1005,22 @@ function setupButtons() {
     // ============================================================================
     btnUnpublish.addEventListener('click', function() {
         if (selectedPageData) {
-            performUnpublish(selectedPageData);
+            unpublishWithOtherLang(selectedPageData);
+        }
+    });
+
+    // ============================================================================
+    // APPROVE / REVOKE buttons (top bar — mirrors Properties Approval, syncs other language)
+    // ============================================================================
+    btnApprove.addEventListener('click', function() {
+        if (selectedPageData) {
+            approveWithOtherLang(selectedPageData);
+        }
+    });
+
+    btnUnapprove.addEventListener('click', function() {
+        if (selectedPageData) {
+            unapproveWithOtherLang(selectedPageData);
         }
     });
 
@@ -987,6 +1110,10 @@ function setupButtons() {
                 var filePath = data.file_path || (data.metadata && data.metadata.file_path) || '';
                 setPropVal('prop-filepath', filePath);
 
+                // Redirect to (from metadata)
+                var redirectTo = data.metadata && data.metadata.redirect_to || '';
+                setPropVal('prop-redirect-to', redirectTo);
+
                 // Auto-image checkbox: setup first (clone), then sync state
                 setTimeout(function() {
                     setupAutoImageCheckbox(thePath);
@@ -1015,6 +1142,12 @@ function setupButtons() {
                 var hideNavEl = document.getElementById('prop-hide-nav');
                 if (hideNavEl && data.hide_in_navigation !== undefined) {
                     hideNavEl.checked = !!data.hide_in_navigation;
+                }
+
+                // Has feedback (from metadata)
+                var hasFeedbackEl = document.getElementById('prop-has-feedback');
+                if (hasFeedbackEl && data.metadata && data.metadata.has_feedback !== undefined) {
+                    hasFeedbackEl.checked = !!data.metadata.has_feedback;
                 }
 
                 // Template dropdown
@@ -1122,10 +1255,14 @@ function setupButtons() {
                 title: getPropVal('prop-title') || undefined,
                 status: document.getElementById('prop-status') ? document.getElementById('prop-status').value : undefined,
                 file_path: filePath || undefined,
-                metadata: { auto_image_path: !!(autoImageChk && autoImageChk.checked) },
+                metadata: {
+                    auto_image_path: !!(autoImageChk && autoImageChk.checked),
+                    redirect_to: getPropVal('prop-redirect-to') || undefined,
+                    has_feedback: !!document.getElementById('prop-has-feedback') ? document.getElementById('prop-has-feedback').checked : undefined
+                },
                 other_language_path: otherLang.trim(),
                 hide_in_navigation: document.getElementById('prop-hide-nav') ? document.getElementById('prop-hide-nav').checked : undefined,
-                publish_template: document.getElementById('prop-template') ? document.getElementById('prop-template').value || undefined : undefined
+                publish_template: document.getElementById('prop-template') ? document.getElementById('prop-template').value : undefined
             };
 
             // Remove undefined values
@@ -1152,7 +1289,7 @@ function setupButtons() {
 
             fetch('/api/v1/pages/' + encodeURIComponent(pagePath), {
                 method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
+                headers: authHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify(payload)
             })
             .then(function(r) {
@@ -1163,7 +1300,7 @@ function setupButtons() {
                 // Also save tags via tags API
                 return fetch('/api/v1/tags/page/' + encodeURIComponent(pagePath), {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authHeaders({'Content-Type': 'application/json'}),
                     body: JSON.stringify({tag_paths: selectedTags})
                 });
             })
@@ -1174,13 +1311,26 @@ function setupButtons() {
             .then(function() {
                 showToast('✅ Properties and tags saved!', 'success');
                 hideModal(modal);
-                // Refresh current view without jumping to root
-                loadedPaths = {};
-                var restorePath = currentPath.slice(); // copy
-                if (restorePath.length > 0) {
-                    initNavigationAt(restorePath);
-                } else {
-                    initNavigation();
+                // Targeted refresh: update current page data only, no full tree rebuild
+                if (selectedPageData) {
+                    if (payload.title) selectedPageData.title = payload.title;
+                    if (payload.status) selectedPageData.status = payload.status;
+                }
+                var pageId = selectedPageData ? selectedPageData.id : null;
+                if (pageId) {
+                    columnsCache.forEach(function(col) {
+                        col.pages.forEach(function(p) {
+                            if (p.id === pageId) {
+                                if (payload.title) p.title = payload.title;
+                                if (payload.status) p.status = payload.status;
+                            }
+                        });
+                    });
+                    currentPath.forEach(function(cp) {
+                        if (cp.id === pageId && payload.title) cp.title = payload.title;
+                    });
+                    updateBreadcrumb();
+                    highlightSelectedPage();
                 }
             })
             .catch(function(err) {
@@ -1276,7 +1426,7 @@ function setupButtons() {
 
         fetch(url, {
             method: 'POST',
-            headers: { 'Accept': 'application/json' }
+            headers: authHeaders({ 'Accept': 'application/json' })
         })
         .then(function(resp) {
             if (!resp.ok) {
@@ -1324,7 +1474,7 @@ function setupButtons() {
         createPageError.style.display = 'none';
         createPageSuccess.style.display = 'none';
         createPageSaveBtn.disabled = false;
-        createPageSaveBtn.textContent = 'Create & Edit';
+        createPageSaveBtn.textContent = 'Create';
         var parentInfoText = document.getElementById('parentInfoText');
         if (parentInfoText) parentInfoText.textContent = '';
         if (parentPath) {
@@ -1558,7 +1708,7 @@ function setupButtons() {
                 bodyData.skip_if_exists = true;
                 var resp = await fetch('/api/v1/pages/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(bodyData)
                 });
                 if (resp.ok) {
@@ -1627,16 +1777,6 @@ function setupButtons() {
             if (frTitle && !frResult.created && !frResult.skipped) msgs.push('(French page was not created — check FR fields.)');
             showToast(msgs.join(' | '), 'success');
 
-            // Refresh navigation
-            loadedPaths = {};
-            columnsCache = [];
-
-            // Open English page editor in new tab (if EN was created)
-            if (enResult.created || enResult.path) {
-                var editorUrl = '/static/editor.html?pageId=' + encodeURIComponent(actualPagePath);
-                window.open(editorUrl, 'editor');
-            }
-
             // Close the Create dialog
             hideModal(createPageModal);
 
@@ -1646,7 +1786,7 @@ function setupButtons() {
         } catch (err) {
             showToast('Failed to create page: ' + err.message, 'danger');
             createPageSaveBtn.disabled = false;
-            createPageSaveBtn.textContent = 'Create & Edit';
+            createPageSaveBtn.textContent = 'Create';
         }
     });
 
@@ -1981,22 +2121,20 @@ async function initNavigationAt(pathToRestore) {
         currentPath = [];
         columnsCache = [];
 
-        // Walk through each level to load children
+        // Load all path entries' children first (needed for breadcrumb nav)
         for (var i = 0; i < pathToRestore.length; i++) {
-            var entry = pathToRestore[i];
-            currentPath.push(entry);
-
-            var children = await fetchChildren(entry.path);
-
-            // Build column for this level's children (except last level = selected page)
-            if (columnsCache.length < MAX_COLUMNS) {
-                columnsCache.push({
-                    title: pageTitle(entry),
-                    pages: children,
-                    parentPath: entry.path
-                });
-            }
+            currentPath.push(pathToRestore[i]);
+            await fetchChildren(pathToRestore[i].path);
         }
+
+        // Always restore to single-column mode (same as before save)
+        var lastEntry = pathToRestore[pathToRestore.length - 1];
+        var lastChildren = loadedPaths[lastEntry.path] || [];
+        columnsCache = [{
+            title: pageTitle(lastEntry),
+            pages: lastChildren,
+            parentPath: lastEntry.path
+        }];
 
         renderColumns();
         hideLoading();
@@ -2009,7 +2147,21 @@ async function initNavigationAt(pathToRestore) {
 }
 
 // ============================================================================
-// 10. STATS
+// 10. REFRESH
+// ============================================================================
+async function refreshTree() {
+    loadedPaths = {};
+    columnsCache = [];
+    var restorePath = currentPath.slice();
+    if (restorePath.length > 0) {
+        return initNavigationAt(restorePath);
+    } else {
+        return initNavigation();
+    }
+}
+
+// ============================================================================
+// 12. STATS
 // ============================================================================
 async function updateStats() {
     if (!pageStats) return;
@@ -2023,7 +2175,7 @@ async function updateStats() {
 }
 
 // ============================================================================
-// 11. INIT
+// 13. INIT
 // ============================================================================
 async function initNavigation(initialPath) {
     showLoading();
@@ -2058,7 +2210,7 @@ async function initNavigation(initialPath) {
 }
 
 // ============================================================================
-// 12. BOOT
+// 14. BOOT
 // ============================================================================
 function getUrlParam(name) {
     var params = new URLSearchParams(window.location.search);
@@ -2275,7 +2427,8 @@ function setSchedule() {
     
     fetch('/api/v1/pages/schedule?path=' + encodeURIComponent(path) +
           '&scheduled_publish=' + encodeURIComponent(isoStr), {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: authHeaders()
     })
     .then(r => r.json())
     .then(data => {
@@ -2291,7 +2444,8 @@ function cancelSchedule() {
     const path = currentPagePathForVersion;
     if (!path) return;
     fetch('/api/v1/pages/cancelschedule?path=' + encodeURIComponent(path), {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: authHeaders()
     })
     .then(r => r.json())
     .then(data => {
@@ -2343,7 +2497,8 @@ function approvePage() {
     if (!path) return;
     if (!confirm('Approve this page for publish?')) return;
     fetch('/api/v1/pages/approve?path=' + encodeURIComponent(path) + '&approved_by=' + encodeURIComponent('current_user'), {
-        method: 'POST'
+        method: 'POST',
+        headers: authHeaders()
     })
     .then(r => r.json())
     .then(data => {
@@ -2359,7 +2514,8 @@ function unapprovePage() {
     if (!path) return;
     if (!confirm('Revoke approval for this page?')) return;
     fetch('/api/v1/pages/unapprove?path=' + encodeURIComponent(path), {
-        method: 'POST'
+        method: 'POST',
+        headers: authHeaders()
     })
     .then(r => r.json())
     .then(data => {
@@ -2368,6 +2524,103 @@ function unapprovePage() {
         }
     })
     .catch(() => showWetAlert('Failed to revoke approval'));
+}
+
+// ============================================================================
+// Top-bar Approve / Revoke — mirrors Properties Approval, syncs other language
+// ============================================================================
+function loadTopApprovalStatus(pagePath) {
+    if (!pagePath) {
+        btnApprove.disabled = true;
+        btnUnapprove.disabled = true;
+        return;
+    }
+    fetch('/api/v1/pages/approval-status?path=' + encodeURIComponent(pagePath))
+        .then(r => r.json())
+        .then(data => {
+            btnApprove.disabled = !!data.approved;
+            btnUnapprove.disabled = !data.approved;
+        })
+        .catch(() => {
+            btnApprove.disabled = true;
+            btnUnapprove.disabled = true;
+        });
+}
+
+async function approveByPath(pagePath) {
+    try {
+        var resp = await fetch('/api/v1/pages/approve?path=' + encodeURIComponent(pagePath) + '&approved_by=' + encodeURIComponent('current_user'), {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        if (!resp.ok) {
+            var errData = null;
+            try { errData = await resp.json(); } catch(e) {}
+            throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+        }
+        showToast('Page "' + pagePath + '" approved', 'success');
+        return true;
+    } catch (err) {
+        showToast('Failed to approve "' + pagePath + '": ' + err.message, 'danger');
+        return false;
+    }
+}
+
+async function unapproveByPath(pagePath) {
+    try {
+        var resp = await fetch('/api/v1/pages/unapprove?path=' + encodeURIComponent(pagePath), {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        if (!resp.ok) {
+            var errData = null;
+            try { errData = await resp.json(); } catch(e) {}
+            throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+        }
+        showToast('Page "' + pagePath + '" approval revoked', 'success');
+        return true;
+    } catch (err) {
+        showToast('Failed to revoke approval for "' + pagePath + '": ' + err.message, 'danger');
+        return false;
+    }
+}
+
+async function approveWithOtherLang(pageData) {
+    var otherLangPath = pageData.other_language_path;
+    if (otherLangPath && otherLangPath.trim()) {
+        var confirmed = await showConfirmDialog(
+            'Approve other language page?\n\n' +
+            'Other language: ' + otherLangPath.trim() + '\n\n' +
+            'Press OK to approve both pages, Cancel to approve only the current page.'
+        );
+        if (confirmed) {
+            await approveByPath(pageData.path);
+            await approveByPath(otherLangPath.trim());
+            loadTopApprovalStatus(pageData.path);
+            return;
+        }
+    }
+    await approveByPath(pageData.path);
+    loadTopApprovalStatus(pageData.path);
+}
+
+async function unapproveWithOtherLang(pageData) {
+    var otherLangPath = pageData.other_language_path;
+    if (otherLangPath && otherLangPath.trim()) {
+        var confirmed = await showConfirmDialog(
+            'Revoke approval for other language page?\n\n' +
+            'Other language: ' + otherLangPath.trim() + '\n\n' +
+            'Press OK to revoke both pages, Cancel to revoke only the current page.'
+        );
+        if (confirmed) {
+            await unapproveByPath(pageData.path);
+            await unapproveByPath(otherLangPath.trim());
+            loadTopApprovalStatus(pageData.path);
+            return;
+        }
+    }
+    await unapproveByPath(pageData.path);
+    loadTopApprovalStatus(pageData.path);
 }
 
 // ============================================================================
@@ -2424,9 +2677,7 @@ function lockPage() {
         'Lock', 'Cancel'
     ).then(function(confirmed) {
         if (!confirmed) return;
-        var token = localStorage.getItem('access_token');
-        var headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
+        var headers = authHeaders({ 'Content-Type': 'application/json' });
         fetch('/api/v1/pages/lock?path=' + encodeURIComponent(path) + '&locked_by=admin', {
             method: 'POST',
             headers: headers
@@ -2450,9 +2701,7 @@ function unlockPage() {
         'Unlock', 'Cancel'
     ).then(function(confirmed) {
         if (!confirmed) return;
-        var token = localStorage.getItem('access_token');
-        var headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
+        var headers = authHeaders({ 'Content-Type': 'application/json' });
         fetch('/api/v1/pages/unlock?path=' + encodeURIComponent(path), {
             method: 'POST',
             headers: headers

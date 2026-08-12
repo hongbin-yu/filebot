@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
     <!-- AEM Style Navigation CSS -->
-    <link rel="stylesheet" href="css/navigation.css?v=2">
+    <link rel="stylesheet" href="css/navigation.css?v=5">
 <script src="/static/js/webbot-auth.js"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
@@ -62,6 +62,12 @@
                 </button>
                 <button id="btn-top-move" class="btn btn-move" disabled title="Move selected page">
                     Move
+                </button>
+                <button id="btn-top-approve" class="btn btn-success" disabled title="Approve selected page for publish">
+                    ✅ Approve
+                </button>
+                <button id="btn-top-unapprove" class="btn btn-warning" disabled title="Revoke approval for selected page">
+                    ⛔ Revoke
                 </button>
                 <button id="btn-top-publish" class="btn btn-publish" disabled title="Publish selected page">
                     Publish
@@ -116,18 +122,22 @@
         </div>
     </section>
 
-    <section id="wet-confirm-modal" class="modal-dialog modal-content overlay-def mfp-hide" aria-hidden="true" role="dialog">
-        <div class="modal-header">
-            <h2 class="modal-title">Confirm</h2>
+    <div class="modal fade" id="wet-confirm-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm</h5>
+                </div>
+                <div class="modal-body">
+                    <p id="wet-confirm-message"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="wet-confirm-yes">Yes</button>
+                    <button type="button" class="btn btn-default" id="wet-confirm-no">No</button>
+                </div>
+            </div>
         </div>
-        <div class="modal-body">
-            <p id="wet-confirm-message"></p>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="wet-confirm-yes">Yes</button>
-            <button type="button" class="btn btn-default" id="wet-confirm-no">No</button>
-        </div>
-    </section>
+    </div>
 
     <!-- Create New Page Modal -->
     <div class="modal fade" id="createPageModal" tabindex="-1" role="dialog" aria-labelledby="createPageModalLabel" aria-hidden="true">
@@ -233,20 +243,20 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Page ID:</label>
-                        <input type="text" id="prop-id" class="form-control" readonly>
+                        <input type="text" id="prop-id" class="form-control" readonly size="100">
                     </div>
                     <div class="form-group">
                         <label for="prop-title">Title:</label>
-                        <input type="text" id="prop-title" class="form-control" placeholder="Page title">
+                        <input type="text" id="prop-title" class="form-control" placeholder="Page title" size="100">
                     </div>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="prop-language">Language:</label>
                                 <input type="text" id="prop-language" class="form-control" readonly>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="prop-status">Status:</label>
                                 <select id="prop-status" class="form-control">
@@ -260,15 +270,15 @@
                     </div>
                     <div class="form-group">
                         <label for="prop-path">Path:</label>
-                        <input type="text" id="prop-path" class="form-control" readonly>
+                        <input type="text" id="prop-path" class="form-control" readonly size="100">
                     </div>
                     <div class="form-group">
                         <label for="prop-parent">Parent Path:</label>
-                        <input type="text" id="prop-parent" class="form-control" readonly>
+                        <input type="text" id="prop-parent" class="form-control" readonly size="100">
                     </div>
                     <div class="form-group">
                         <label for="prop-filepath">Image Location (FileBot):</label>
-                        <input type="text" id="prop-filepath" class="form-control" placeholder="/canadasite/images/en/...">
+                        <input type="text" id="prop-filepath" class="form-control" placeholder="/canadasite/images/en/..." size="100">
                         <small class="form-text text-muted">Path for FileBot image storage. Leave empty to inherit from ancestor.</small>
                     </div>
                     <div class="checkbox">
@@ -280,13 +290,13 @@
                         </label>
                     </div>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="prop-created-by">Created By:</label>
                                 <input type="text" id="prop-created-by" class="form-control" readonly>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="prop-created-at">Created At:</label>
                                 <input type="text" id="prop-created-at" class="form-control" readonly>
@@ -294,13 +304,13 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="prop-updated-at">Last Modified:</label>
                                 <input type="text" id="prop-updated-at" class="form-control" readonly>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="prop-published-at">Published At:</label>
                                 <input type="text" id="prop-published-at" class="form-control" readonly>
@@ -321,6 +331,12 @@
                         <label>
                             <input type="checkbox" id="prop-hide-nav"> Hide in Navigation
                         </label>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="prop-has-feedback"> Has feedback
+                        </label>
+                        <small class="form-text text-muted">Show the feedback block on the published page (page template must reference has_feedback).</small>
                     </div>
                     <div class="form-group">
                         <label for="prop-template">Page Template:</label>
@@ -412,6 +428,13 @@
                             <button type="button" class="btn btn-sm btn-default" onclick="cancelSchedule()">Cancel</button>
                             <span id="prop-schedule-status" style="font-size:13px;color:#888;"></span>
                         </div>
+                    </div>
+
+                    <!-- 🔀 Redirect Settings -->
+                    <div class="form-group">
+                        <label>🔀 Redirect to</label>
+                        <input type="text" id="prop-redirect-to" class="form-control" placeholder="/en/new-page-location" size="100">
+                        <small class="form-text text-muted">If set, this page will redirect visitors to the specified URL. Leave empty for normal pages.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -538,7 +561,7 @@
 
     <!-- Navigation JavaScript -->
     <script src="js/wet-alert.js?v=0260616-1321"></script>
-    <script src="js/navigation.js?v=20260617-1"></script>
+    <script src="js/navigation.js?v=20260812-fb1"></script>
     <script>
         // Hide WET-BOEW/GCWeb dynamically-injected header/footer
         (function() {
@@ -562,6 +585,41 @@
             setTimeout(hideWetBoewElements, 500);
             setTimeout(hideWetBoewElements, 2000);
         })();
+
+        // Ensure scrolling works even if WET framework overrides CSS
+        (function() {
+            function fixScroll() {
+                /* Only fix main element overflow — body/html handled by CSS */
+                var main = document.querySelector('main');
+                if (main) {
+                    main.style.setProperty('overflow', 'visible', 'important');
+                    main.style.setProperty('overflow-y', 'visible', 'important');
+                }
+            }
+            fixScroll();
+            document.addEventListener('wb-ready.wb', fixScroll);
+            setTimeout(fixScroll, 500);
+            setTimeout(fixScroll, 2000);
+        })();
     </script>
+
+    <!-- FINAL OVERRIDE: ensure scrollable at all costs -->
+    <style>
+        main, main.container, .container, .aem-navigation-container,
+        #wb-main, [property="mainContentOfPage"] {
+            overflow: visible !important;
+            overflow-y: visible !important;
+            max-height: none !important;
+            height: auto !important;
+        }
+        .aem-columns-grid, .navigation-column, .aem-column {
+            overflow: visible !important;
+        }
+        .column-body {
+            max-height: none !important;
+            overflow-y: visible !important;
+        }
+    </style>
+
 </body>
 </html>

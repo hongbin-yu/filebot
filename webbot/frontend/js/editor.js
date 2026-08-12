@@ -151,6 +151,15 @@
             // Event listeners
             previewPageBtn.addEventListener('click', previewPage);
             if (topPreviewBtn) topPreviewBtn.addEventListener('click', previewPage);
+            const a11yBtn = document.getElementById('accessibility-check-btn');
+            if (a11yBtn) a11yBtn.addEventListener('click', function() {
+                const editor = window.tinyMceEditor || (typeof tinymce !== 'undefined' && tinymce.activeEditor);
+                if (editor) {
+                    runAccessibilityCheck(editor);
+                } else {
+                    alert('Editor not ready yet. Please try again.');
+                }
+            });
             savePageBtn.addEventListener('click', savePage);
             if (savePageTopBtn) {
                 savePageTopBtn.addEventListener('click', savePage);
@@ -602,6 +611,7 @@
                 selector: '#wysiwyg-editor-container',
                 height: 1500,
                 menubar: 'file edit view insert format tools table help',
+                toolbar_mode: 'wrap',
                 base_url: '/etc/designs/canada/gcweb/external/tinymce/tinymce/js/tinymce/',
                 plugins: [
                     'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
@@ -609,11 +619,11 @@
                     'insertdatetime', 'media', 'table', 'help', 'wordcount',
                     'pagebreak'
                 ],
-                toolbar: 'undo redo | styleselect | bold italic underline | ' +
+                toolbar: 'accessibilityCheck | undo redo | styleselect | bold italic underline | ' +
                          'alignleft aligncenter alignright alignjustify | ' +
                          'bullist numlist outdent indent | link image media table | ' +
                          'blockquote pagebreak | charmap preview searchreplace visualblocks | ' +
-                         'code fullscreen help | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertFeatures insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | insertByPath | deleteComponent | aiAssistant',
+                         'code fullscreen help | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertFeatures insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | insertByPath | deleteComponent | aiAssistant | ',
                 content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
                 // Load Canada.ca CSS for editor content (makes editing look like preview)
                 content_css: [
@@ -639,6 +649,32 @@
                 images_upload_handler: function(blobInfo, progress) {
                     console.log('小米 TinyMCE images_upload_handler 触发');
                     return new Promise(function(resolve, reject) {
+                        // 标记当前 blob 图片，避免后备巡检/observer 重复上传同一张图
+                        try {
+                            var blobUri = blobInfo.blobUri();
+                            var ed0 = window.tinyMceEditor;
+                            if (blobUri && ed0) {
+                                ed0.dom.select('img[src="' + blobUri + '"]').forEach(function(im) {
+                                    im.setAttribute('data-iu', '1');
+                                });
+                            }
+                        } catch(e) {}
+
+                        // 构建包含文件夹路径的 URL（回退方案）
+                        function buildDamUrl(json) {
+                            var folderPath = json.folder_path || '';
+                            var subPath = '';
+                            if (folderPath) {
+                                var damIdx = folderPath.indexOf('/content/dam/');
+                                if (damIdx >= 0) {
+                                    subPath = folderPath.substring(damIdx + '/content/dam/'.length);
+                                }
+                            }
+                            return subPath
+                                ? '/content/dam/' + subPath + '/' + json.stored_filename
+                                : '/content/dam/' + json.stored_filename;
+                        }
+
                         var xhr = new XMLHttpRequest();
                         xhr.withCredentials = false;
                         xhr.open('POST', URL_CONFIG.filebot.upload);
@@ -660,22 +696,33 @@
                                     reject('Invalid response: no stored_filename');
                                     return;
                                 }
-                                // 构建包含文件夹路径的 URL
-                                var folderPath = json.folder_path || '';
-                                var subPath = '';
-                                if (folderPath) {
-                                    var damIdx = folderPath.indexOf('/content/dam/');
-                                    if (damIdx >= 0) {
-                                        subPath = folderPath.substring(damIdx + '/content/dam/'.length);
-                                    }
-                                }
-                                var url = subPath
-                                    ? '/content/dam/' + subPath + '/' + json.stored_filename
-                                    : '/content/dam/' + json.stored_filename;
-                                console.log('小米 upload complete, URL:', url);
-                                // 刷新左侧资源列表
-                                if (typeof loadFiles === 'function') setTimeout(loadFiles, 500);
-                                resolve(url);
+                                // 自动发布图片并解析出正确公共路径（与其它上传路径保持一致），
+                                // 确保编辑器 HTML 中的 img src 被替换为上传后的新路径
+                                publishDocumentAndSetPublicUrl(json.id, json.stored_filename, blobInfo.filename())
+                                    .then(function(publishedDoc) {
+                                        var url = getPublicUrlFromDocument(publishedDoc || json) || buildDamUrl(json);
+                                        console.log('小米 upload complete, URL:', url);
+                                        // 再标记一次，防止 observer 在 resolve 前重复上传
+                                        try {
+                                            var bu = blobInfo.blobUri();
+                                            var ed1 = window.tinyMceEditor;
+                                            if (bu && ed1) {
+                                                ed1.dom.select('img[src="' + bu + '"]').forEach(function(im) {
+                                                    im.setAttribute('data-iu', '1');
+                                                });
+                                            }
+                                        } catch(e2) {}
+                                        // 刷新左侧资源列表
+                                        if (typeof loadFiles === 'function') setTimeout(loadFiles, 500);
+                                        resolve(url);
+                                    })
+                                    .catch(function() {
+                                        // 发布失败时回退到旧逻辑，保证图片至少有一个 src
+                                        var url = buildDamUrl(json);
+                                        console.log('小米 upload complete (unpublished fallback), URL:', url);
+                                        if (typeof loadFiles === 'function') setTimeout(loadFiles, 500);
+                                        resolve(url);
+                                    });
                             } catch(e) {
                                 reject('JSON parse error: ' + e.message);
                             }
@@ -909,6 +956,33 @@
                         }
                     });
 
+                    // Accessibility Check button using aXe-core
+                    // Alternative: use toolbar button API instead (more explicit for TinyMCE 6)
+                    // Register accessibility check button
+                    // Add accessibility check button using TinyMCE 6 API
+                    try {
+                        editor.ui.registry.addButton('accessibilityCheck', {
+                            text: 'A11y',
+                            tooltip: 'Check WCAG Accessibility',
+                            onAction: function() {
+                                runAccessibilityCheck(editor);
+                            }
+                        });
+                        // Verify it was added
+                        console.log('[A11Y] Button registered. Available:', !!editor.ui.registry.get('accessibilityCheck'));
+                    } catch(e) {
+                        console.error('[A11Y] Button registration failed:', e.message);
+                    }
+
+                    // Also add to the Tools menu
+                    editor.ui.registry.addMenuItem('accessibilityCheckMenu', {
+                        text: '♿ Check Accessibility',
+                        icon: 'preview',
+                        onAction: function() {
+                            runAccessibilityCheck(editor);
+                        }
+                    });
+
                     // Override TinyMCE preview command to use our previewPage function
                     editor.addCommand('mcePreview', function() {
                         console.log('TinyMCE preview command overridden, calling previewPage()');
@@ -965,7 +1039,13 @@
                             var src = imgEl.getAttribute('src') || imgEl.src;
                             if (!src || (!src.startsWith('blob:') && !src.startsWith('data:image/'))) return;
                             if (imgEl.getAttribute('data-iu')) return;
-                            imgEl.setAttribute('data-iu', '1');
+                            // 给 TinyMCE 原生上传一点时间完成，避免同一张图被上传两次、
+                            // 以及 HTML src 被两条路径互相覆盖的问题
+                            setTimeout(function() {
+                                var curSrc = imgEl.getAttribute('src') || imgEl.src;
+                                if (!curSrc || (!curSrc.startsWith('blob:') && !curSrc.startsWith('data:image/'))) return; // TinyMCE 已处理
+                                if (imgEl.getAttribute('data-iu')) return;
+                                imgEl.setAttribute('data-iu', '1');
                             var fname = imgEl.getAttribute('alt') || ('image-' + Date.now() + '.png');
                             iframeWin.fetch(src).then(function(r) {
                                 if (!r.ok) throw new Error('fetch'); return r.blob();
@@ -984,6 +1064,7 @@
                                 var pu = getPublicUrlFromDocument(pd);
                                 if (pu) { editor.dom.setAttrib(imgEl, 'src', pu); imgEl.removeAttribute('data-iu'); }
                             }).catch(function() { imgEl.removeAttribute('data-iu'); });
+                            }, 1500);
                         }
 
                         // 后备定时巡检
@@ -1424,6 +1505,11 @@
                         // If URL is already a full URL (http/https), return it directly
                         // This could be a CDN URL or external service URL
                         if (url.startsWith('http://') || url.startsWith('https://')) {
+                            // 未发布的 canada.ca 公共 URL 不可用（文件未真正上线）→ 回退本地 proxy 读本地文件
+                            if (/canada\.ca/.test(url) && doc.publish_status !== 'PUBLISHED') {
+                                console.log('Unpublished canada.ca URL, falling back to local proxy:', url);
+                                return null;
+                            }
                             console.log('Returning full URL from metadata:', url);
                             return url;
                         } else {
@@ -1477,8 +1563,13 @@
                 return publicUrl;
             }
 
-            // Fallback: construct /content/dam/ URL using stored_filename or id
+            // Fallback: construct proxy URL from storage_path (full path), else stored_filename
             // Always use WebBot proxy path for unified access control
+            if (doc.storage_path) {
+                const proxyUrl = pathToDamUrl(doc.storage_path) + '?thumbnail=1&v=20260809-cachefix';
+                console.log('getImageThumbnailUrl: Using proxy URL from storage_path:', proxyUrl);
+                return proxyUrl;
+            }
             if (doc.stored_filename) {
                 const proxyUrl = `/content/dam/${doc.stored_filename}`;
                 console.log('getImageThumbnailUrl: Using proxy URL with stored_filename:', proxyUrl);
@@ -1985,9 +2076,12 @@
 
                     // Ensure Resources sidebar path reflects the effective file_path
                     var rpInput = document.getElementById('resource-path-input');
+                    var rfInput = document.getElementById('resource-folder-input');
                     var pageLocationDAM = effectiveFilePathInfo.file_path || (page.path ? page.path.replace('/canadasite/', '/canadasite/content/dam/') : '');
                     if (rpInput && pageLocationDAM) {
                         rpInput.value = pageLocationDAM;
+                        // Folder defaults to file_path but stays user-editable
+                        if (rfInput) rfInput.value = pageLocationDAM;
                         // Trigger re-search if sidebar is open
                         var rs = document.getElementById('resource-sidebar');
                         if (rs && !rs.classList.contains('hidden')) {
@@ -2009,8 +2103,14 @@
 
                 // Clean the page content to remove header/footer before editing
                 console.log('Calling cleanContent with content length:', page.content?.length);
-                const cleanedContent = cleanContent(page.content || '', pageId);
+                var cleanedContent = cleanContent(page.content || '', pageId);
                 console.log('cleanContent returned, length:', cleanedContent?.length);
+
+                // For template pages: wrap in <main> so editor matches published rendering
+                if (isTemplatePage(cleanedContent)) {
+                    cleanedContent = wrapInMainTag(cleanedContent);
+                    console.log('Template page: wrapped in <main> tag, new length:', cleanedContent?.length);
+                }
 
                 // Populate form with cleaned content
                 // editorTitleEl.value = page.title || ''; // Title field removed from UI
@@ -2093,6 +2193,27 @@
                 // Remove previously injected template CSS (marked with data-template-css)
                 const oldLinks = doc.querySelectorAll('link[data-template-css]');
                 oldLinks.forEach(function(el) { el.remove(); });
+
+                // Inject GCDS loader into TinyMCE iframe (for gcds-* components like gcds-card)
+                // The loader dynamically loads gcds.css + gcds.esm.js from the GCDS CDN,
+                // registering the custom elements inside the iframe so components render in WYSIWYG.
+                // Always inject, even when template-assets returns empty.
+                const oldGcds = doc.querySelectorAll('script[data-template-gcds]');
+                oldGcds.forEach(function(el) { el.remove(); });
+                const gcdsScript = doc.createElement('script');
+                gcdsScript.src = '/etc/designs/canada/wet-boew/js/gcdsloader.min.js';
+                gcdsScript.setAttribute('data-template-gcds', 'true');
+                doc.head.appendChild(gcdsScript);
+
+                // Simulate WET data-wb-randomize (toggle:hide mode) inside the editor iframe.
+                // In the real page WET JS picks one random item and removes its 'hide' class;
+                // without this, all randomize items stay hidden and their images appear "missing".
+                const oldSim = doc.querySelectorAll('script[data-template-wet-sim]');
+                oldSim.forEach(function(el) { el.remove(); });
+                const simScript = doc.createElement('script');
+                simScript.setAttribute('data-template-wet-sim', 'true');
+                simScript.textContent = "(function(){var c=document.querySelectorAll('[data-wb-randomize]');for(var i=0;i<c.length;i++){var items=c[i].children;if(items.length){var pick=items[Math.floor(Math.random()*items.length)];pick.classList.remove('hide');}}})();";
+                doc.head.appendChild(simScript);
 
                 // Inject new CSS
                 if (assets.css_urls && assets.css_urls.length) {
@@ -3043,16 +3164,12 @@
                         });
                     });
 
-                    // Try to find main content area - prioritize Canada.ca main element
-                    // NOTE: keep only specific selectors; avoid generic ones (like .container, #wb-cont)
-                    // that match non-main sections (e.g., banner containers) and cause content loss on save
+                    // Try to find <main> element; if none exists, use full body content.
+                    // Never guess with class/ID selectors — they match structural divs,
+                    // not the main content area, causing silent content loss on save.
                     const mainSelectors = [
                         'main[property="mainContentOfPage"]',
-                        'main',
-                        '.mwstext.section',           // Canada.ca content area
-                        '.row.profile',               // Canada.ca profile/content container
-                        '#main-content',
-                        '.container.main'
+                        'main'
                     ];
 
                     let mainElement = null;
@@ -3308,6 +3425,40 @@
             }
         }
 
+        // Check if current page is a template page (show <main> wrapper in editor for visual match)
+        function isTemplatePage(content) {
+            if (!currentPageData) return false;
+            // No publish_template → page needs <main> wrapper in editor
+            if (currentPageData.publish_template == null || currentPageData.publish_template === '') {
+                return true;
+            }
+            return false;
+        }
+
+        var MAIN_TAG_OPEN = '<main property="mainContentOfPage" resource="#wb-main" typeof="WebPageElement" class="container">';
+        var MAIN_TAG_CLOSE = '</main>';
+
+        function wrapInMainTag(content) {
+            if (!content) return content;
+            var trimmed = content.trim();
+            if (trimmed.indexOf('<main') === 0 && trimmed.lastIndexOf('</main>') === trimmed.length - 7) {
+                return content;
+            }
+            return MAIN_TAG_OPEN + '\n' + content + '\n' + MAIN_TAG_CLOSE;
+        }
+
+        function unwrapMainTag(content) {
+            if (!content) return content;
+            var trimmed = content.trim();
+            var re = /^<main\s[^>]*>\s*([\s\S]*?)\s*<\/main>$/i;
+            var m = trimmed.match(re);
+            if (m) return m[1];
+            re = /^<main[^>]*>\s*([\s\S]*?)\s*<\/main>$/i;
+            m = trimmed.match(re);
+            if (m) return m[1];
+            return content;
+        }
+
         // Preview page content using the backend template renderer
         async function previewPage() {
             if (!currentPageId || !currentPageData) {
@@ -3315,109 +3466,20 @@
                 return;
             }
 
-            // Synchronize editor content before preview
-            syncEditorContent();
-
-            // Get current content from editor
-            const content = getCurrentContent();
-            console.log('previewPage: content length from getCurrentContent:', content?.length);
-
-            if (!content) {
-                console.log('previewPage: content is empty, showing error');
-                showError('No content to preview.');
+            // New/unsaved pages can't be previewed via the saved-content GET endpoint
+            if (isNewPage) {
+                showError('Please save the page first, then preview.');
                 return;
             }
 
-            console.log('Previewing page:', currentPageId);
-            showLoading(true);
+            // Sync editor content to textarea (keeps editor state consistent)
+            syncEditorContent();
 
-            try {
-                // Call backend preview endpoint which uses the page-template
-                const response = await fetch(`/api/v1/pages/preview?path=${encodeURIComponent(currentPageId)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: content })
-                });
-
-                if (!response.ok) {
-                    const errText = await response.text();
-                    console.error('Preview API error:', response.status, errText);
-                    showError(`Preview failed (${response.status}). Falling back to local rendering.`);
-                    // Fallback to local preview
-                    previewPageLocal();
-                    return;
-                }
-
-                const renderedHtml = await response.text();
-
-                // Wrap in preview container with actions
-                const previewHtml = `
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>Preview: ${currentPageData.title || 'Untitled Page'}</title>
-                        <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
-                        <style>
-                            .preview-actions {
-                                position: fixed;
-                                bottom: 0;
-                                left: 0;
-                                right: 0;
-                                padding: 12px 20px;
-                                background: #f8f9fa;
-                                border-top: 2px solid #ddd;
-                                text-align: center;
-                                z-index: 9999;
-                                box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-                            }
-                            .preview-actions .btn {
-                                padding: 8px 20px;
-                                border: none;
-                                border-radius: 4px;
-                                cursor: pointer;
-                                font-size: 14px;
-                                margin: 0 5px;
-                            }
-                            .btn-primary { background: #007bff; color: white; }
-                            body { padding-bottom: 60px; }
-                        </style>
-                    </head>
-                    <body>
-                        ${renderedHtml}
-                        <div class="preview-actions">
-                            <button class="btn btn-primary" onclick="window.print()">Print Preview</button>
-                            <button class="btn" onclick="window.close()">Close Preview</button>
-                        </div>
-                        <script src="/etc/designs/canada/wet-boew/js/jquery/2.2.4/jquery.min.js"><\/script>
-                        <script src="/etc/designs/canada/wet-boew/js/wet-boew.min.js" defer><\/script>
-                        <script src="/etc/designs/canada/wet-boew/js/theme.min.js" defer><\/script>
-                    </body>
-                    </html>
-                `;
-
-                const previewWindow = window.open('', '_blank');
-                if (!previewWindow) {
-                    showError('Preview window was blocked by browser. Please allow popups for this site.');
-                    return;
-                }
-                previewWindow.document.write(previewHtml);
-                previewWindow.document.close();
-                previewWindow.focus();
-
-            } catch (error) {
-                console.error('previewPage error:', error);
-                showError('Preview failed. Falling back to local rendering.');
-                previewPageLocal();
-            } finally {
-                hideLoading();
-                if (currentPageData) {
-                    editorFormEl.style.display = 'block';
-                    editorActionsEl.style.display = 'block';
-                    if (savePageTopBtn) savePageTopBtn.style.display = '';
-                    noPageSelectedEl.style.display = 'none';
-                }
+            // Same backend preview URL as navigation.html — identical rendering, and a
+            // real URL popup is far less likely to be blocked than a blank window.
+            const previewWindow = window.open('/api/v1/pages/preview?path=' + encodeURIComponent(currentPageId), '_blank');
+            if (!previewWindow) {
+                showError('Preview window was blocked by browser. Please allow popups for this site.');
             }
         }
 
@@ -3426,6 +3488,7 @@
             if (!currentPageId || !currentPageData) return;
 
             let content = getCurrentContent();
+            content = unwrapMainTag(content);
             const title = currentPageData?.title || 'Untitled Page';
 
             if (!content) {
@@ -3766,10 +3829,13 @@
                 if (tinyMceEditor) {
                     content = tinyMceEditor.getContent();
                     console.log('Getting content from TinyMCE editor');
+                    // Strip <main> wrapper if present (added for template-page editor display)
+                    content = unwrapMainTag(content);
                     // Fix any '../' paths that TinyMCE may have added to href attributes
                     content = content.replace(/(href=["'])(?:\.\.\/)+/gi, '$1/');
                 } else {
                     content = editorContentEl.value;
+                    content = unwrapMainTag(content);
                     console.log('Getting content from textarea');
                 }
 
@@ -3789,7 +3855,7 @@
                 }
                 
                 // 第二步:后台启动图片上传(不阻塞保存)
-                if (content && (content.includes('data:image/') || content.includes('blob:'))) {
+                if (content && (content.includes('data:image/') || content.includes('blob:') || content.includes('localhost:'))) {
                     console.log('Starting background image upload...');
                     processImagesInHtmlContent(processedContent)
                         .then(async function(newContent) {
@@ -5399,8 +5465,8 @@
             }
         }
 
-        // Start initialization
-        setTimeout(initializeComponentsWhenReady, 1000);
+        // Start initialization — DISABLED: Components & Templates buttons removed from TinyMCE toolbar
+        // setTimeout(initializeComponentsWhenReady, 1000);
 
         // Get component HTML by type
         function getComponentHTML(componentType) {
@@ -9828,10 +9894,10 @@
             });
 
             // Save metadata
-            metadataSave.addEventListener('click', function() {
+            metadataSave.addEventListener('click', async function() {
                 console.log('Saving metadata');
-                saveMetadataFromForm();
-                closeModal();
+                const ok = await saveMetadataFromForm();
+                if (ok !== false) closeModal();
             });
 
             // Description character counter
@@ -9889,6 +9955,51 @@
         }
 
         // Load current metadata into form
+        // Populate page template dropdown in Metadata modal (same source as navigation properties)
+        let _pageTemplatePopulated = false;
+        function populatePageTemplateSelect(sel, desiredValue) {
+            if (!sel) return;
+            if (_pageTemplatePopulated && sel.options.length > 1) { sel.value = desiredValue || ''; return; }
+            _pageTemplatePopulated = true;
+            sel.disabled = true;
+            var templateBase = '/canadasite/mustache-templates/page-template';
+            var seen = new Set();
+            function cleanLabel(text) { return text ? text.replace(/^Mustache Template:\s*/i, '') : text; }
+            function addTemplateItem(path, label) {
+                if (seen.has(path)) return;
+                seen.add(path);
+                var opt = document.createElement('option');
+                opt.value = path;
+                opt.textContent = cleanLabel(label);
+                sel.appendChild(opt);
+            }
+            fetch('/api/v1/pages/by-path/' + encodeURI(templateBase.slice(1)) + '/children')
+                .then(function(r) { if (r.ok) return r.json(); throw new Error('status ' + r.status); })
+                .then(function(children) {
+                    sel.disabled = false;
+                    while (sel.options.length > 1) sel.remove(1);
+                    addTemplateItem(templateBase, 'page-template');
+                    children.forEach(function(c) {
+                        var label = c.title || c.path.split('/').pop() || c.id;
+                        addTemplateItem(c.path, label);
+                        fetch('/api/v1/pages/by-path/' + encodeURI(c.path.replace(/^\//, '')) + '/children')
+                            .then(function(r2) { if (r2.ok) return r2.json(); return []; })
+                            .then(function(grandchildren) {
+                                grandchildren.forEach(function(gc) {
+                                    var gLabel = (label + ' / ' + (gc.title || gc.path.split('/').pop() || gc.id));
+                                    addTemplateItem(gc.path, gLabel);
+                                });
+                            })
+                            .catch(function() {});
+                    });
+                    sel.value = desiredValue || '';
+                })
+                .catch(function(err) {
+                    sel.disabled = false;
+                    console.warn('Failed to load template list:', err);
+                });
+        }
+
         function loadMetadataIntoForm() {
             console.log('loadMetadataIntoForm called');
             const metadata = metadataManager.getMetadata();
@@ -9977,9 +10088,19 @@
             if (twitterTitleInput) twitterTitleInput.value = metadata.twitterCard?.title || metadata.title || currentPageData?.title || '';
             if (twitterDescInput) twitterDescInput.value = metadata.twitterCard?.description || metadata.description || '';
 
+            // Page template
+            const pageTemplateSel = document.getElementById('metadata-page-template');
+            if (pageTemplateSel) {
+                populatePageTemplateSelect(pageTemplateSel, currentPageData?.publish_template || '');
+            }
+
             // Other language path
             const otherLangInput = document.getElementById('other-language-path');
             if (otherLangInput) otherLangInput.value = currentPageData?.other_language_path || '';
+
+            // Redirect to
+            const redirectInput = document.getElementById('redirect-to');
+            if (redirectInput) redirectInput.value = metadata.redirect_to || '';
 
             // Approval Status and Lock Status
             const approvalSelect = document.getElementById('metadata-approval-status');
@@ -9997,8 +10118,48 @@
             console.log('Metadata loaded into form');
         }
 
+        // Persist metadata changes to the backend immediately (PUT partial update)
+        async function persistMetadataNow() {
+            if (!currentPageData) return null;
+            // Build API URL (same logic as savePage)
+            let apiUrl;
+            if (currentPageId && currentPageId.includes('/')) {
+                apiUrl = `${API_BASE}${currentPageId}`;
+            } else {
+                let pageIdToUse = currentPageId || (currentPageData && currentPageData.id);
+                let parentPath = currentPageData?.parent_path;
+                if (parentPath) {
+                    const normalizedParent = parentPath.startsWith('/') ? parentPath : `/${parentPath}`;
+                    const cleanParent = normalizedParent.replace(/\/$/, '');
+                    apiUrl = `${API_BASE}${cleanParent}/${encodeURIComponent(pageIdToUse)}`;
+                } else {
+                    apiUrl = `${API_BASE}/${encodeURIComponent(pageIdToUse)}`;
+                }
+            }
+            const patchData = {
+                navigation_title: currentPageData?.navigation_title ?? '',
+                hide_in_navigation: currentPageData?.hide_in_navigation ?? false,
+                other_language_path: currentPageData?.other_language_path ?? null,
+                metadata: currentPageData?.metadata || {}
+            };
+            const pageTemplateSel = document.getElementById('metadata-page-template');
+            if (pageTemplateSel) {
+                patchData.publish_template = pageTemplateSel.value;
+            }
+            const resp = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(patchData)
+            });
+            if (!resp.ok) {
+                const errBody = await resp.json().catch(() => ({}));
+                throw new Error(errBody.detail || `HTTP ${resp.status}`);
+            }
+            return resp.json();
+        }
+
         // Save metadata from form to currentPageData
-        function saveMetadataFromForm() {
+        async function saveMetadataFromForm() {
             console.log('saveMetadataFromForm called');
             if (!currentPageData) {
                 console.error('currentPageData not available');
@@ -10053,10 +10214,27 @@
                 metadataManager.updateField('htmlLang', htmlLangInput.value.trim());
             }
 
+            // Page template
+            const pageTemplateSel = document.getElementById('metadata-page-template');
+            if (pageTemplateSel) {
+                currentPageData.publish_template = pageTemplateSel.value;
+            }
+
             // Other language path
             const otherLangInput = document.getElementById('other-language-path');
             if (otherLangInput) {
                 currentPageData.other_language_path = otherLangInput.value.trim() || null;
+            }
+
+            // Redirect to
+            const redirectInput = document.getElementById('redirect-to');
+            if (redirectInput) {
+                const val = redirectInput.value.trim();
+                if (val) {
+                    metadataManager.updateField('redirect_to', val);
+                } else {
+                    metadataManager.updateField('redirect_to', '');
+                }
             }
 
             // Hide in navigation
@@ -10169,8 +10347,17 @@
                 updatePageTitleDisplay();
             }
 
-            // Show success message
-            showSuccess('Metadata saved successfully! It will be included when you save the page.');
+            // Persist to backend immediately so closing the modal does not lose changes
+            try {
+                await persistMetadataNow();
+                // Show success message
+                showSuccess('✅ Metadata saved successfully!');
+                return true;
+            } catch (e) {
+                console.error('Metadata persist failed:', e);
+                showError('❌ Metadata failed to save: ' + e.message);
+                return false;
+            }
         }
 
         // Helper function to update page title display
@@ -11050,6 +11237,11 @@
 
         // Save custom template changes
         function saveCustomTemplateChanges(instanceId) {
+            // Lock check: prevent saving when page is locked
+            if (isPageLocked()) {
+                showWetAlert('🔒 The template is locked to view only.');
+                return;
+            }
             const templateContent = document.getElementById('custom-template-content').value.trim();
             const dataText = document.getElementById('custom-template-data').value;
 
@@ -11847,6 +12039,11 @@
 
         // Delete component with confirmation
         function deleteComponent(wrapper) {
+            // Lock check: prevent deleting when page is locked
+            if (isPageLocked()) {
+                showWetAlert('🔒 The template is locked to view only.');
+                return;
+            }
             if (!confirm('Are you sure you want to delete this component?')) {
                 return;
             }
@@ -11999,6 +12196,11 @@
 
         // Save template changes from editor
         function saveTemplateChanges(templateId, instanceId) {
+            // Lock check: prevent saving when page is locked
+            if (isPageLocked()) {
+                showWetAlert('🔒 The template is locked to view only.');
+                return;
+            }
             // Use window.templateRegistry first, fallback to templateRegistry
             const registry = window.templateRegistry || templateRegistry;
             const templateInfo = registry[templateId];
@@ -12631,14 +12833,13 @@
         // End Quick Edit HTML
         // ===========================================================================
 
-        // Initialize template system when document is ready
-        $(document).ready(function() {
-            // Wait a bit for everything to load, then start retry logic
-            setTimeout(() => {
-                console.log('Starting template button initialization...');
-                initializeTemplateButtonWhenReady();
-            }, 1000);
-        });
+        // Initialize template system when document is ready — DISABLED: Template button removed from TinyMCE toolbar
+        // $(document).ready(function() {
+        //     setTimeout(() => {
+        //         console.log('Starting template button initialization...');
+        //         initializeTemplateButtonWhenReady();
+        //     }, 1000);
+        // });
 
         // Add template command to AI assistant
         if (window.aiAssistantCommands) {
@@ -12783,6 +12984,7 @@
         (function initResourceSidebar() {
             const resourceTypeSelect = document.getElementById('resource-type-select');
             const pathInput = document.getElementById('resource-path-input');
+            const folderInput = document.getElementById('resource-folder-input');
             const searchInput = document.getElementById('resource-search-input');
             const searchBtn = document.getElementById('resource-search-btn');
             const resultsEl = document.getElementById('resource-results');
@@ -12793,6 +12995,7 @@
             var categorySelect = document.getElementById('resource-category-select');
             var categoryDatalist = document.getElementById('resource-category-datalist');
             var categoryRow = document.getElementById('resource-category-row');
+            var folderRow = document.getElementById('resource-folder-row');
             var docAiTagInput = document.getElementById('resource-doc-aitag-input');
             var docAiTagDatalist = document.getElementById('doc-ai-tag-suggestions');
             var docAiTagRow = document.getElementById('resource-doc-aitag-row');
@@ -12803,8 +13006,18 @@
                 if (categoryRow) {
                     categoryRow.style.display = (resourceTypeSelect && resourceTypeSelect.value === 'images') ? '' : 'none';
                 }
+                // Folder row: shown in images mode, editable (defaults to file_path)
+                if (folderRow) {
+                    folderRow.style.display = (resourceTypeSelect && resourceTypeSelect.value === 'images') ? '' : 'none';
+                }
                 try {
-                    var fp = (pathInput && pathInput.value) ? pathInput.value.trim() : '';
+                    // Images: use editable Folder value; others: Path input
+                    var fp = '';
+                    if (resourceTypeSelect && resourceTypeSelect.value === 'images') {
+                        fp = (folderInput && folderInput.value) ? folderInput.value.trim() : ((pathInput && pathInput.value) ? pathInput.value.trim() : '');
+                    } else {
+                        fp = (pathInput && pathInput.value) ? pathInput.value.trim() : '';
+                    }
                     var params = new URLSearchParams({ from: 'clip' });
                     if (fp) params.append('path', fp);
                     var url = '/api/v1/search/categories?' + params.toString();
@@ -12912,6 +13125,8 @@
                 var path = getCurrentPathPrefix();
                 if (path) {
                     pathInput.value = path;
+                    // Folder defaults to file_path but stays user-editable
+                    if (folderInput) folderInput.value = path;
                     loadAICategories();
                     loadDocAITags();
                 }
@@ -12920,7 +13135,8 @@
             // Trigger search
             function doSearch() {
                 var type = resourceTypeSelect.value;
-                var pathVal = pathInput.value.trim();
+                // Images: use editable Folder value as the search path (defaults to file_path)
+                var pathVal = (type === 'images' && folderInput && folderInput.value.trim()) ? folderInput.value.trim() : pathInput.value.trim();
                 var titleVal = searchInput.value.trim();
                 var categoryVal = categorySelect ? categorySelect.value : '';
                 // If input matches an AI category label, use it as category filter
@@ -13059,6 +13275,11 @@
                     if (damIdx >= 0) {
                         return '/' + storagePath.substring(damIdx);
                     }
+                    // AEM 设计资源（etc/designs 等无 content/dam 段）→ 走 /boarding/ proxy 读本地文件
+                    var bIdx = storagePath.indexOf('boarding/');
+                    if (bIdx >= 0) {
+                        return '/' + storagePath.substring(bIdx);
+                    }
                     // Strip leading prefixes ('boarding/', 'boarding/canadasite/')
                     var path = storagePath.replace(/^boarding\/?/, '').replace(/^canadasite\/?/, '');
                     // Find 'canada/' segment as marker (works for Canada-site paths)
@@ -13074,16 +13295,19 @@
                 var cardsHtml = '';
                 filtered.forEach(function(doc) {
                     var storagePath = doc.storage_path || doc.path || '';
-                    var damUrl = pathToDamUrl(storagePath);
+                    // 优先使用上传/发布后的正确公共路径（document_metadata.url），
+                    // 未发布文档回退到 storage_path 推导的 DAM 路径
+                    var damUrl = getPublicUrlFromDocument(doc) || pathToDamUrl(storagePath);
                     var filename = doc.title || doc.original_filename || 'image';
                     var fileSize = doc.file_size;
                     var hasThumb = doc.thumbnail_status === 'GENERATED';
                     cardsHtml += '<div class="image-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
                     cardsHtml += '<div class="image-card-thumb">';
                     if (hasThumb) {
-                        cardsHtml += '<img src="' + damUrl + '?thumbnail=1" alt="' + filename + '" loading="lazy">';
+                        cardsHtml += '<img src="' + damUrl + '?thumbnail=1&v=20260809-cachefix" alt="' + filename + '" loading="lazy">';
                     } else {
-                        cardsHtml += '<div class="thumb-placeholder" title="No thumbnail available">🖼️</div>';
+                        // Fallback: use original image until thumbnail is generated
+                        cardsHtml += '<img src="' + damUrl + '" alt="' + filename + '" loading="lazy" style="object-fit: cover;" onerror="this.parentElement.innerHTML=\'<div class=thumb-placeholder>🖼️</div>\'">';
                     }
                     cardsHtml += '</div>';
                     cardsHtml += '<div class="image-card-info">';
@@ -13251,7 +13475,9 @@
                 var html = '<div class="doc-list">';
                 docs.forEach(function(doc) {
                     var storagePath = doc.storage_path || doc.path || '';
-                    var damUrl = pathToDamUrl(storagePath);
+                    // 优先使用上传/发布后的正确公共路径（document_metadata.url），
+                    // 未发布文档回退到 storage_path 推导的 DAM 路径
+                    var damUrl = getPublicUrlFromDocument(doc) || pathToDamUrl(storagePath);
                     var filename = doc.original_filename || doc.title || 'document';
                     var fileSize = doc.file_size;
                     var icon = getFileIcon(doc.mime_type);
@@ -13812,6 +14038,9 @@
                 if (categoryRow) {
                     categoryRow.style.display = (type === 'images') ? '' : 'none';
                 }
+                if (folderRow) {
+                    folderRow.style.display = (type === 'images') ? '' : 'none';
+                }
                 if (docAiTagRow) {
                     if (type === 'documents') {
                         loadDocAITags();
@@ -14207,3 +14436,174 @@
                 console.log('Resource sidebar closed');
             };
         })();
+
+// ═══════════════════════════════════════════════════════════════
+// Accessibility Check (aXe-core WCAG 2.1 AA)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Run aXe-core WCAG check on editor content and display results.
+ */
+function runAccessibilityCheck(editor) {
+    // Ensure aXe is loaded
+    if (typeof axe === 'undefined') {
+        editor.windowManager.alert('aXe-core library not loaded. Please refresh and try again.');
+        return;
+    }
+
+    var content = editor.getContent();
+    if (!content || content.trim() === '') {
+        editor.windowManager.alert('Editor is empty. Add some content first.');
+        return;
+    }
+
+    // Create a hidden DOM container with Canada.ca CSS for proper aXe evaluation
+    var containerId = 'axe-test-container-' + Date.now();
+    var container = document.createElement('div');
+    container.id = containerId;
+    container.innerHTML = '<div class="container"><div class="row"><main class="col-md-9 col-md-push-3">' +
+        content +
+        '</main></div></div>';
+    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:1024px;padding:20px;';
+    document.body.appendChild(container);
+
+    // Run axe-core
+    axe.run(container, {
+        runOnly: ['wcag2a', 'wcag2aa'],
+        resultTypes: ['violations', 'incomplete', 'passes'],
+        elementRef: false
+    }).then(function(results) {
+        // Clean up (safely)
+        if (container && container.parentNode) {
+            container.parentNode.removeChild(container);
+        }
+        showAccessibilityResults(editor, results);
+    }).catch(function(err) {
+        // Clean up (safely)
+        if (container && container.parentNode) {
+            container.parentNode.removeChild(container);
+        }
+        console.error('aXe error:', err);
+        editor.windowManager.alert('Accessibility check failed: ' + err.message);
+    });
+}
+
+/**
+ * Display aXe-core results in a TinyMCE dialog.
+ */
+function showAccessibilityResults(editor, results) {
+    var violations = results.violations || [];
+    var passes = results.passes || [];
+    var incomplete = results.incomplete || [];
+
+    var totalIssues = violations.length + incomplete.length;
+
+    var html = '<div style="padding:16px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;">';
+
+    // Summary header
+    if (totalIssues === 0) {
+        html += '<div style="text-align:center;padding:40px 20px;">';
+        html += '<div style="font-size:64px;margin-bottom:16px;">✅</div>';
+        html += '<h2 style="margin:0 0 8px;color:#2d8a4e;">All WCAG 2.1 AA Checks Passed</h2>';
+        html += '<p style="color:#666;margin:0;">' + passes.length + ' accessibility rules verified — no violations found.</p>';
+        html += '</div>';
+    } else {
+        html += '<div style="margin-bottom:20px;">';
+        html += '<h2 style="margin:0 0 12px;">♿ Accessibility Check Results</h2>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+        html += '<span style="background:#d9534f;color:white;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:bold;">⚠ ' + violations.length + ' Violation' + (violations.length !== 1 ? 's' : '') + '</span>';
+        if (incomplete.length > 0) {
+            html += '<span style="background:#f0ad4e;color:white;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:bold;">🔍 ' + incomplete.length + ' Needs Review</span>';
+        }
+        html += '<span style="background:#5cb85c;color:white;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:bold;">✅ ' + passes.length + ' Passed</span>';
+        html += '</div></div>';
+
+        // Violations list
+        if (violations.length > 0) {
+            html += '<h3 style="color:#d9534f;margin:0 0 10px;font-size:15px;">⛔ Violations to Fix</h3>';
+            violations.forEach(function(v, idx) {
+                var wcagRefs = (v.tags || []).filter(function(t) { return t.indexOf('wcag') === 0; }).join(', ');
+                var nodeInfo = '';
+                if (v.nodes && v.nodes.length > 0) {
+                    var n = v.nodes[0];
+                    var selector = n.target ? n.target.join(', ') : '';
+                    var snippet = n.html ? n.html.substring(0, 120) : '';
+                    nodeInfo = '<div style="margin-top:6px;font-size:12px;color:#666;">';
+                    if (selector) nodeInfo += '<div><strong>Element:</strong> <code style="background:#f5f5f5;padding:1px 4px;border-radius:3px;font-size:11px;">' + escapeHtml(selector) + '</code></div>';
+                    if (snippet) nodeInfo += '<div><strong>HTML:</strong> <code style="background:#f5f5f5;padding:1px 4px;border-radius:3px;font-size:11px;">' + escapeHtml(snippet) + '</code></div>';
+                    nodeInfo += '</div>';
+                }
+                html += '<div style="border:1px solid #e8c8c8;border-radius:6px;padding:12px 14px;margin:0 0 8px;background:#fef8f8;">';
+                html += '<div style="display:flex;justify-content:space-between;align-items:start;">';
+                html += '<div><strong style="color:#c9302c;">' + escapeHtml(v.id) + '</strong>';
+                html += '<span style="margin-left:8px;font-size:13px;">' + escapeHtml(v.help) + '</span></div>';
+                html += '<span style="background:#d9534f;color:white;padding:1px 8px;border-radius:10px;font-size:11px;white-space:nowrap;">' + (v.impact || '') + '</span>';
+                html += '</div>';
+                if (wcagRefs) html += '<div style="margin-top:4px;font-size:12px;color:#888;">📋 ' + wcagRefs + '</div>';
+                html += nodeInfo;
+                if (v.helpUrl) {
+                    html += '<div style="margin-top:4px;"><a href="' + v.helpUrl + '" target="_blank" style="font-size:12px;">📖 Learn how to fix &rarr;</a></div>';
+                }
+                // Show all nodes for this violation
+                if (v.nodes && v.nodes.length > 1) {
+                    html += '<details style="margin-top:6px;font-size:12px;"><summary>' + v.nodes.length + ' occurrences</summary>';
+                    v.nodes.slice(1).forEach(function(n) {
+                        var sel = n.target ? n.target.join(', ') : '';
+                        var snip = n.html ? n.html.substring(0, 80) : '';
+                        if (sel) html += '<div style="margin:4px 0;padding:4px 8px;background:#fff;border-radius:3px;"><code style="font-size:11px;">' + escapeHtml(sel) + '</code></div>';
+                    });
+                    html += '</details>';
+                }
+                html += '</div>';
+            });
+        }
+
+        // Incomplete (needs manual review)
+        if (incomplete.length > 0) {
+            html += '<h3 style="color:#f0ad4e;margin:16px 0 10px;font-size:15px;">🔍 Needs Manual Review</h3>';
+            incomplete.forEach(function(v) {
+                html += '<div style="border:1px solid #f0e0b0;border-radius:6px;padding:10px 14px;margin:0 0 6px;background:#fffdf5;">';
+                html += '<strong>' + escapeHtml(v.id) + '</strong>: ' + escapeHtml(v.help);
+                if (v.helpUrl) {
+                    html += ' &mdash; <a href="' + v.helpUrl + '" target="_blank" style="font-size:12px;">Details</a>';
+                }
+                html += '</div>';
+            });
+        }
+    }
+
+    html += '</div>';
+
+    // Show in TinyMCE dialog
+    editor.windowManager.open({
+        title: totalIssues === 0 ? '✅ Accessibility: All Clear' : '♿ Accessibility Check (' + totalIssues + ' issue' + (totalIssues !== 1 ? 's' : '') + ')',
+        body: {
+            type: 'panel',
+            items: [
+                {
+                    type: 'htmlpanel',
+                    html: html
+                }
+            ]
+        },
+        buttons: [
+            { text: 'Close', type: 'cancel' }
+        ],
+        width: 720,
+        height: 540
+    });
+}
+
+/**
+ * Escape HTML entities for safe display.
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
