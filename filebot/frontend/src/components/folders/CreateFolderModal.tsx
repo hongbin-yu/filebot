@@ -362,7 +362,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                 placeholder={t('folderModal.folderNamePlaceholder')}
                 autoFocus
                 disabled={isSubmitting}
-                maxLength={100}
+                maxLength={255}
               />
               <div className="text-muted" style={{fontSize:"0.75rem",lineHeight:"1rem",marginTop:4}}>
                 {t('folderModal.folderNameHint')}
