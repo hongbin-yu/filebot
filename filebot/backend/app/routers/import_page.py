@@ -878,6 +878,7 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
             target_folder_path = root
 
     # Use the ORIGINAL filename from the URL, not the truncated path
+    # (filename cap raised 64 -> 255 so long URLs are not silently cut; 2026-08-13)
     basename = original_filename
     # Preserve the original extension when it's a known image extension
     # (e.g. photo.jpeg stays photo.jpeg instead of being forced to .jpg),
@@ -889,7 +890,7 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
     # Remove existing extension if any, use our ext
     basename = re.sub(r'\.[^./]+$', '', basename)
     # Keep dots in the base name (e.g. image.img.jpg → image.img)
-    safe_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', basename)[:64]
+    safe_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', basename)[:255]
     stored_filename = f"{safe_name}.{ext}"
 
     # Save to disk
@@ -1286,7 +1287,9 @@ def import_page(
     if url_path.endswith('.html'):
         url_path = url_path[:-5]
     url_basename = os.path.basename(url_path) if url_path and url_path != '/' else 'index'
-    safe_filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', url_basename)[:64]
+    # Cap raised 64 -> 255 (2026-08-13): long URL paths were silently cut
+    # at 64 chars in the leaf filename, truncating the webbot page path.
+    safe_filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', url_basename)[:255]
     stored_filename = f"{safe_filename}.html"
 
     doc_rel_dir = target_folder_path.lstrip('/')
