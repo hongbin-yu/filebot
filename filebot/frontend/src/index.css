@@ -206,10 +206,14 @@ h3 { font-size: 18px; }
 
 /* ── App cards (apps grid) ── */
 .fb-apps-title       { font-size: 1.8em; margin: 0; color: #333; }
-.fb-apps-grid-col     { margin-bottom: 20px; }
-.fb-apps-card         { cursor: pointer; transition: box-shadow .2s; margin-bottom: 0; border-radius: 0; }
+/* Apps grid: native flex equal-height cards (WET .wb-eqht JS plugin can't
+   equalize React cards rendered after page load; resize/refresh only
+   re-triggered it. Flex does it on first paint.) */
+.fb-apps-grid         { display: flex; flex-wrap: wrap; }
+.fb-apps-grid-col     { display: flex; margin-bottom: 20px; }
+.fb-apps-card         { width: 100%; display: flex; flex-direction: column; cursor: pointer; transition: box-shadow .2s; margin-bottom: 0; border-radius: 0; }
 .fb-apps-card:hover   { box-shadow: 0 4px 12px rgba(0,0,0,.15); }
-.fb-apps-card-body    { padding: 20px; }
+.fb-apps-card-body    { flex: 1 1 auto; padding: 20px; }
 .fb-apps-card-row     { margin-bottom: 12px; }
 .fb-apps-card-icon    { font-size: 2em; margin-right: 15px; }
 .fb-apps-card-title   { margin: 0; font-size: 1.15em; font-weight: bold; color: #333; }

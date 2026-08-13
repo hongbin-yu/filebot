@@ -115,9 +115,9 @@ const ClientAppSelection: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="wb-eqht row">
+        <div className="row fb-apps-grid">
           {apps.map(app => (
-            <div className="col-md-4 eqht-trgt fb-apps-grid-col" key={app.id}>
+            <div className="col-md-4 fb-apps-grid-col" key={app.id}>
               <div onClick={() => handleAppClick(app)}
                 className="panel panel-info fb-apps-card"
               >
