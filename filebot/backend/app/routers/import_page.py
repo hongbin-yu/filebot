@@ -17,6 +17,7 @@ Usage:
       "title": "Benefits"
     }'
 """
+import base64
 import json
 import logging
 import os
@@ -28,6 +29,8 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+
+IMPORT_PAGE_VERSION = "2026-08-17-v1"  # restored: referenced by ai.py sitemap import logs
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -1131,6 +1134,51 @@ def resolve_redirect(
         return ResolveRedirectResponse(redirect_url=None)
     target = _resolve_redirect_target(req.url)
     return ResolveRedirectResponse(redirect_url=target)
+
+
+class FetchUrlRequest(BaseModel):
+    url: str = Field(..., description="URL to fetch server-side (page, sitemap or image)")
+
+class FetchUrlResponse(BaseModel):
+    status: int = Field(..., description="HTTP status from the upstream fetch (0 = fetch failed)")
+    final_url: Optional[str] = Field(None, description="Final URL after following redirects")
+    content_type: Optional[str] = Field(None, description="Upstream Content-Type header")
+    html: str = Field("", description="Response body for text/HTML content")
+    image_data: Optional[str] = Field(None, description="Base64-encoded body for binary content (images)")
+    error: Optional[str] = Field(None, description="Error message when status=0")
+
+@router.post("/fetch-url", response_model=FetchUrlResponse)
+def fetch_url(
+    req: FetchUrlRequest,
+    current_user: User = Depends(get_current_active_user_allow_query),
+):
+    """Server-side fetch proxy used by the dept-import-tool bookmarklet.
+
+    Browsers on some networks cannot fetch www.canada.ca directly: the Akamai
+    edge resets the connection (ERR_HTTP2_PROTOCOL_ERROR / HTTP/2 stream
+    INTERNAL_ERROR) or cross-origin redirects produce opaque CORS responses.
+    Fetching from this backend works, so pages, sitemaps and images are fetched
+    here instead of client-side.
+
+    Returns html for text content, base64 image_data for binary content.
+    """
+    if not req.url:
+        return FetchUrlResponse(status=400, error="url is required")
+    try:
+        resp = http_requests.get(
+            req.url,
+            timeout=30,
+            allow_redirects=True,
+            headers={"User-Agent": "FileBot-Import/1.0 (fetch proxy)"},
+        )
+        ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype.startswith("image/") or not ctype.startswith(("text/", "application/xml", "application/json", "application/xhtml")):
+            b64 = base64.b64encode(resp.content).decode("ascii")
+            return FetchUrlResponse(status=resp.status_code, final_url=resp.url, content_type=ctype, image_data=b64)
+        return FetchUrlResponse(status=resp.status_code, final_url=resp.url, content_type=ctype, html=resp.text)
+    except Exception as e:
+        logger.warning(f"fetch-url failed for {req.url}: {e}")
+        return FetchUrlResponse(status=0, error=str(e))
 
 @router.post("/import-page", response_model=ImportPageResponse)
 def import_page(

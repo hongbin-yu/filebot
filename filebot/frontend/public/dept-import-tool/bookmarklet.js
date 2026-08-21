@@ -2,7 +2,7 @@
   if (window.__DEPT_IMPORT_LOADED) return;
   window.__DEPT_IMPORT_LOADED = true;
 
-  var BOOKMARKLET_VERSION = '2026-08-02-v7';
+  var BOOKMARKLET_VERSION = '2026-08-21-v10';
 
 
 
@@ -238,11 +238,14 @@
         if (u.hostname !== pageU.hostname) continue;
       } catch(e) { continue; }
 
-      if (allImages[absUrl]) continue;
+      // Dedup on normalized URL (ignore query/fragment) so the same image
+      // with different query params (e.g. ?w=800) is not uploaded twice.
+      var normKey = absUrl.split('#')[0].split('?')[0];
+      if (allImages[normKey]) continue;
 
       if (!/\.(jpe?g|png|gif|webp|bmp|svg)(\?|#|$)/i.test(absUrl)) continue;
       var alt = (imgs[i].getAttribute('alt') || '').trim();
-      allImages[absUrl] = { alt: alt };
+      allImages[normKey] = { alt: alt };
       pendingImages.push({ url: absUrl, alt: alt });
       added++;
     }
@@ -303,6 +306,12 @@
       src = src.substring('/content/canadasite'.length);
     }
 
+    // For DAM URLs, strip the /content/dam/ prefix (mirror backend logic)
+    // so we don't get /content/dam/content/dam/... in the proxy path.
+    if (src.startsWith('/content/dam/')) {
+      src = src.substring('/content/dam'.length);
+    }
+
     // Strip /_jcr_content and everything after it
     var jcrIdx = src.indexOf('/_jcr_content');
     if (jcrIdx !== -1) {
@@ -337,15 +346,24 @@
       addLog('Image [' + (i+1) + '/' + items.length + '] ' + imgUrl, 'img');
 
       try {
-        var imgResp = await fetch(imgUrl, { signal: signal });
-        if (!imgResp.ok) throw new Error('HTTP ' + imgResp.status);
-
-        var blob = await imgResp.blob();
-        var b64 = await blobToBase64(blob);
-        var mimeType = blob.type || 'image/png';
-
         var headers = { 'Content-Type': 'application/json' };
         if (token) { headers['Authorization'] = token.startsWith('Bearer ') ? token : 'Bearer ' + token; }
+
+        // Fetch image bytes through the backend proxy — direct browser fetches
+        // of canada.ca assets fail on some networks (ERR_HTTP2_PROTOCOL_ERROR).
+        var imgResp = await fetch(api.replace('/import-page', '/fetch-url'), {
+          method: 'POST',
+          headers: headers,
+          signal: signal,
+          body: JSON.stringify({ url: imgUrl })
+        });
+        if (!imgResp.ok) throw new Error('proxy HTTP ' + imgResp.status);
+        var imgJson = await imgResp.json();
+        if (imgJson.status !== 200 || !imgJson.image_data) {
+          throw new Error('proxy status ' + imgJson.status + (imgJson.error ? ' (' + imgJson.error + ')' : ''));
+        }
+        var b64 = imgJson.image_data;
+        var mimeType = (imgJson.content_type || 'image/png').split(';')[0];
 
         var folderPath = computeImageFolderPath(imgUrl, $('d_root').value.trim());
         var payload = { url: imgUrl, html: '', title: imgTitle, is_image: true, image_data: 'data:' + mimeType + ';base64,' + b64 };
@@ -454,8 +472,24 @@
     } else {
       addLog('Parsing sitemap...', 'info');
       try {
-        var resp = await fetch($('d_sitemap').value.trim(), { signal: abortController.signal });
-        var xml = await resp.text();
+        // Fetch the sitemap through the backend proxy — direct browser fetches
+        // of canada.ca fail on some networks (ERR_HTTP2_PROTOCOL_ERROR).
+        var smHeaders = { 'Content-Type': 'application/json' };
+        var smToken = $('d_token').value.trim();
+        if (smToken) { smHeaders['Authorization'] = smToken.startsWith('Bearer ') ? smToken : 'Bearer ' + smToken; }
+        var smApi = $('d_api').value.trim();
+        var resp = await fetch(smApi.replace('/import-page', '/fetch-url'), {
+          method: 'POST',
+          headers: smHeaders,
+          signal: abortController.signal,
+          body: JSON.stringify({ url: $('d_sitemap').value.trim() })
+        });
+        if (!resp.ok) throw new Error('proxy HTTP ' + resp.status);
+        var smJson = await resp.json();
+        if (smJson.status !== 200 || !smJson.html) {
+          throw new Error('proxy status ' + smJson.status + (smJson.error ? ' (' + smJson.error + ')' : ''));
+        }
+        var xml = smJson.html;
         var parser = new DOMParser();
         var doc = parser.parseFromString(xml, 'text/xml');
         urls = [].slice.call(doc.querySelectorAll('loc')).map(function(el) { return el.textContent.trim(); });
@@ -574,51 +608,77 @@
         if (shouldImport) {
           addLog('[' + (i+1) + '/' + urls.length + '] ' + url, '');
           try {
-            // Fetch page content — cross-origin redirect (e.g., canada.ca → cbsa) will throw CORS error.
-            // Catch and delegate to backend which resolves the actual redirect target.
-            var pageResp = await fetch(url, { signal: abortController.signal });
-            if (pageResp.status === 200) {
-              var html = await pageResp.text();
+            // Fetch page content through the backend proxy — direct browser
+            // fetches of canada.ca fail on some networks (ERR_HTTP2_PROTOCOL_ERROR)
+            // and cross-origin redirects (e.g., canada.ca → cbsa) throw CORS errors.
+            var pageResp = await fetch(api.replace('/import-page', '/fetch-url'), {
+              method: 'POST',
+              headers: authHeaders,
+              signal: abortController.signal,
+              body: JSON.stringify({ url: url })
+            });
+            if (!pageResp.ok) throw new Error('proxy HTTP ' + pageResp.status);
+            var pageJson = await pageResp.json();
 
-              var imgFound = collectImages(html, url);
-              if (imgFound > 0) {
-                addLog('+' + imgFound + ' images collected', 'info');
-                updateStats();
-
-                var replaceMap = await flushImages(api, delay, $('d_token').value.trim(), abortController.signal);
-                for (var oldUrl in replaceMap) {
-                  html = html.split(oldUrl).join(replaceMap[oldUrl]);
-                  addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
+            if (pageJson.status === 200 && pageJson.html) {
+              // Server-side redirect detected (proxy followed it): record a stub,
+              // same as the old resolve-redirect flow.
+              if (pageJson.final_url && pageJson.final_url !== url) {
+                var uploadResp = await fetch(api, {
+                  method: 'POST',
+                  headers: authHeaders,
+                  signal: abortController.signal,
+                  body: JSON.stringify({ url: url, html: '<html><head><title>Redirect</title></head><body></body></html>', title: 'Redirect: ' + url, redirect_to: pageJson.final_url })
+                });
+                if (!uploadResp.ok) {
+                  throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
                 }
-              }
+                done++;
+                addLog('Redirect recorded → ' + pageJson.final_url, 'ok');
+              } else {
+                var html = pageJson.html;
 
-              // Transform any remaining canada.ca image URLs that weren't uploaded
-              var transformedCount = 0;
-              html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'])/gi, function(m, pre, imgSrc, post) {
-                var result = transformCanadaCaImagePath(imgSrc);
-                if (result !== imgSrc) {
-                  transformedCount++;
-                  addLog('Transform: ' + imgSrc.slice(-40) + ' → ' + result, 'img');
+                var imgFound = collectImages(html, url);
+                if (imgFound > 0) {
+                  addLog('+' + imgFound + ' images collected', 'info');
+                  updateStats();
+
+                  var replaceMap = await flushImages(api, delay, $('d_token').value.trim(), abortController.signal);
+                  for (var oldUrl in replaceMap) {
+                    html = html.split(oldUrl).join(replaceMap[oldUrl]);
+                    addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
+                  }
                 }
-                return pre + result + post;
-              });
-              if (transformedCount > 0) {
-                addLog('Transformed ' + transformedCount + ' remaining image paths', 'info');
-              }
 
-              var uploadResp = await fetch(api, {
-                method: 'POST',
-                headers: authHeaders,
-                signal: abortController.signal,
-                body: JSON.stringify({ url: url, html: html, title: '' })
-              });
-              if (!uploadResp.ok) {
-                throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+                // Transform any remaining canada.ca image URLs that weren't uploaded
+                var transformedCount = 0;
+                html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'])/gi, function(m, pre, imgSrc, post) {
+                  var result = transformCanadaCaImagePath(imgSrc);
+                  if (result && result !== imgSrc) {
+                    transformedCount++;
+                    addLog('Transform: ' + imgSrc.slice(-40) + ' → ' + result, 'img');
+                  }
+                  // Never emit a dangling arrow or blank src: keep original when result is empty
+                  return pre + (result || imgSrc) + post;
+                });
+                if (transformedCount > 0) {
+                  addLog('Transformed ' + transformedCount + ' remaining image paths', 'info');
+                }
+
+                var uploadResp = await fetch(api, {
+                  method: 'POST',
+                  headers: authHeaders,
+                  signal: abortController.signal,
+                  body: JSON.stringify({ url: url, html: html, title: '' })
+                });
+                if (!uploadResp.ok) {
+                  throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+                }
+                done++;
+                addLog('OK', 'ok');
               }
-              done++;
-              addLog('OK', 'ok');
             } else {
-              addLog('Unexpected status ' + pageResp.status + ': ' + url, 'err');
+              addLog('Unexpected status ' + pageJson.status + ': ' + url, 'err');
               failed++;
             }
           } catch(e) {
