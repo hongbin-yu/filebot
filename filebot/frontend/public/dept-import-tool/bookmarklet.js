@@ -2,7 +2,7 @@
   if (window.__DEPT_IMPORT_LOADED) return;
   window.__DEPT_IMPORT_LOADED = true;
 
-  var BOOKMARKLET_VERSION = '2026-08-21-v10';
+  var BOOKMARKLET_VERSION = '2026-08-21-v11';
 
 
 
@@ -118,7 +118,7 @@
 
   makeInput('d_url', 'Page URL (single page)', 'https://www.canada.ca/en/services.html');
   makeInput('d_sitemap', 'Sitemap URL', 'https://canada.ca/sitemap.xml');
-  makeInput('d_api', 'FileBot API', 'https://10.0.0.91/api/v1/import-page');
+  makeInput('d_api', 'FileBot API', 'https://prod.webfilebot.com/api/v1/import-page');
   makeInput('d_token', 'API Token (use Bearer prefix)', 'Bearer xxx');
   makeInput('d_root', 'Image Root Dir', '/boarding/canadasite/content/dam/cwa-ace');
 
@@ -648,6 +648,18 @@
                     html = html.split(oldUrl).join(replaceMap[oldUrl]);
                     addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
                   }
+                  // AEM pattern pass: AEM publish expands one image into several URL
+                  // variants (src, srcset renditions, data-cmp-src {.width} template),
+                  // all under /_jcr_content/... and all ending in the same filename.
+                  // The exact-string pass above only hits the exact src, so rewrite
+                  // every remaining _jcr_content variant of an uploaded image too.
+                  for (var oldUrl in replaceMap) {
+                    var fn = oldUrl.slice(oldUrl.lastIndexOf('/') + 1);
+                    if (!fn) continue;
+                    var esc = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    var aemRe = new RegExp('(["\'>\\s])([^"\'>\\s]*?_jcr_content[^"\'>\\s]*?' + esc + ')(?=["\'\\s>])', 'g');
+                    html = html.replace(aemRe, function(m, delim, url) { return delim + replaceMap[oldUrl]; });
+                  }
                 }
 
                 // Transform any remaining canada.ca image URLs that weren't uploaded
@@ -683,40 +695,15 @@
             }
           } catch(e) {
             if (e.name === 'AbortError') throw e;
-            // fetch failed — likely cross-origin redirect (CORS). Resolve target via backend.
-            addLog('🔀 Resolving redirect target...', 'warn');
-            try {
-              var resolveResp = await fetch(api.replace('/import-page', '/resolve-redirect'), {
-                method: 'POST',
-                headers: authHeaders,
-                signal: abortController.signal,
-                body: JSON.stringify({ url: url })
-              });
-              if (!resolveResp.ok) {
-                throw new Error('resolve-redirect HTTP ' + resolveResp.status);
-              }
-              var resolveData = await resolveResp.json();
-              var redirectTarget = resolveData.redirect_url;
-              if (!redirectTarget) {
-                addLog('Could not resolve redirect for: ' + url, 'err');
-                failed++;
-              } else {
-                var uploadResp = await fetch(api, {
-                  method: 'POST',
-                  headers: authHeaders,
-                  signal: abortController.signal,
-                  body: JSON.stringify({ url: url, html: '<html><head><title>Redirect</title></head><body></body></html>', title: 'Redirect: ' + url, redirect_to: redirectTarget })
-                });
-                if (!uploadResp.ok) {
-                  throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
-                }
-                done++;
-                addLog('Redirect recorded → ' + redirectTarget, 'ok');
-              }
-            } catch(e2) {
-              if (e2.name === 'AbortError') throw e2;
-              failed++;
-              addLog('Error: ' + e2.message, 'err');
+            // Honest error: the old resolve-redirect fallback was misleading — it
+            // returns null on its own fetch failures too, so "Could not resolve
+            // redirect" was shown for plain proxy errors (e.g. a missing
+            // /api/v1/fetch-url route). Real redirects are already handled above
+            // via final_url != url, so surface the real error instead.
+            failed++;
+            addLog('Error: ' + e.message, 'err');
+            if (e.message.indexOf('proxy HTTP 404') !== -1 || e.message.indexOf('proxy status 404') !== -1) {
+              addLog('Hint: /api/v1/fetch-url may be missing on the server (check nginx routes)', 'warn');
             }
           }
           updateStats();

@@ -2,6 +2,8 @@
   if (window.__DEPT_IMPORT_LOADED) return;
   window.__DEPT_IMPORT_LOADED = true;
 
+  var BOOKMARKLET_VERSION = '2026-08-21-v11';
+
 
 
   var css = document.createElement('style');
@@ -114,6 +116,7 @@
     return select;
   }
 
+  makeInput('d_url', 'Page URL (single page)', 'https://www.canada.ca/en/services.html');
   makeInput('d_sitemap', 'Sitemap URL', 'https://canada.ca/sitemap.xml');
   makeInput('d_api', 'FileBot API', 'https://prod.webfilebot.com/api/v1/import-page');
   makeInput('d_token', 'API Token (use Bearer prefix)', 'Bearer xxx');
@@ -192,6 +195,7 @@
 
   var allImages = {};
   var pendingImages = [];
+  var abortController = null;
 
   function addLog(text, cls) {
     var d = document.createElement('div');
@@ -234,11 +238,14 @@
         if (u.hostname !== pageU.hostname) continue;
       } catch(e) { continue; }
 
-      if (allImages[absUrl]) continue;
+      // Dedup on normalized URL (ignore query/fragment) so the same image
+      // with different query params (e.g. ?w=800) is not uploaded twice.
+      var normKey = absUrl.split('#')[0].split('?')[0];
+      if (allImages[normKey]) continue;
 
       if (!/\.(jpe?g|png|gif|webp|bmp|svg)(\?|#|$)/i.test(absUrl)) continue;
       var alt = (imgs[i].getAttribute('alt') || '').trim();
-      allImages[absUrl] = { alt: alt };
+      allImages[normKey] = { alt: alt };
       pendingImages.push({ url: absUrl, alt: alt });
       added++;
     }
@@ -252,7 +259,7 @@
     try {
       var parsed = new URL(imageUrl);
       var pathname = parsed.pathname;
-      if (!pathname.startsWith('/content/dam/')) return '';
+      if (!pathname.startsWith('/content/dam/')) return '';  // server handles non-DAM
       var jcrIdx = pathname.indexOf('/_jcr_content');
       if (jcrIdx === -1) return '';
       var cleanPath = pathname.substring(0, jcrIdx);
@@ -299,6 +306,12 @@
       src = src.substring('/content/canadasite'.length);
     }
 
+    // For DAM URLs, strip the /content/dam/ prefix (mirror backend logic)
+    // so we don't get /content/dam/content/dam/... in the proxy path.
+    if (src.startsWith('/content/dam/')) {
+      src = src.substring('/content/dam'.length);
+    }
+
     // Strip /_jcr_content and everything after it
     var jcrIdx = src.indexOf('/_jcr_content');
     if (jcrIdx !== -1) {
@@ -319,7 +332,7 @@
     return '/boarding/canadasite/content/dam' + src;
   }
 
-  async function importImageList(items, api, delay, token) {
+  async function importImageList(items, api, delay, token, signal) {
     var replaceMap = {};
     if (items.length === 0) return replaceMap;
 
@@ -333,15 +346,24 @@
       addLog('Image [' + (i+1) + '/' + items.length + '] ' + imgUrl, 'img');
 
       try {
-        var imgResp = await fetch(imgUrl);
-        if (!imgResp.ok) throw new Error('HTTP ' + imgResp.status);
-
-        var blob = await imgResp.blob();
-        var b64 = await blobToBase64(blob);
-        var mimeType = blob.type || 'image/png';
-
         var headers = { 'Content-Type': 'application/json' };
         if (token) { headers['Authorization'] = token.startsWith('Bearer ') ? token : 'Bearer ' + token; }
+
+        // Fetch image bytes through the backend proxy — direct browser fetches
+        // of canada.ca assets fail on some networks (ERR_HTTP2_PROTOCOL_ERROR).
+        var imgResp = await fetch(api.replace('/import-page', '/fetch-url'), {
+          method: 'POST',
+          headers: headers,
+          signal: signal,
+          body: JSON.stringify({ url: imgUrl })
+        });
+        if (!imgResp.ok) throw new Error('proxy HTTP ' + imgResp.status);
+        var imgJson = await imgResp.json();
+        if (imgJson.status !== 200 || !imgJson.image_data) {
+          throw new Error('proxy status ' + imgJson.status + (imgJson.error ? ' (' + imgJson.error + ')' : ''));
+        }
+        var b64 = imgJson.image_data;
+        var mimeType = (imgJson.content_type || 'image/png').split(';')[0];
 
         var folderPath = computeImageFolderPath(imgUrl, $('d_root').value.trim());
         var payload = { url: imgUrl, html: '', title: imgTitle, is_image: true, image_data: 'data:' + mimeType + ';base64,' + b64 };
@@ -350,6 +372,7 @@
         var resp = await fetch(api, {
           method: 'POST',
           headers: headers,
+          signal: signal,
           body: JSON.stringify(payload)
         });
 
@@ -358,13 +381,31 @@
         }
 
         var respJson = await resp.json();
-        if (respJson.stored_filename) {
-          replaceMap[imgUrl] = '/' + respJson.stored_filename;
+        if (respJson.path) {
+          // Use the full document path returned by the backend
+          // (e.g. /boarding/canadasite/content/dam/.../photo.jpeg),
+          // which preserves the original extension (.jpeg stays .jpeg)
+          // instead of a root-level bare filename.
+          replaceMap[imgUrl] = respJson.path;
+        } else if (respJson.stored_filename) {
+          // Fallback: strip _jcr_content from stored filename
+          var sf = respJson.stored_filename;
+          var jcrIdx = sf.indexOf('/_jcr_content');
+          if (jcrIdx !== -1) {
+            var filename = sf.substring(sf.lastIndexOf('/') + 1);
+            var cleaned = sf.substring(0, jcrIdx);
+            if (!cleaned.endsWith('/' + filename)) {
+              cleaned = cleaned + '/' + filename;
+            }
+            sf = cleaned;
+          }
+          replaceMap[imgUrl] = '/' + sf;
         }
 
         imgOk++;
         addLog('Image saved → ' + (replaceMap[imgUrl] || '/?'), 'ok');
       } catch(e) {
+        if (e.name === 'AbortError') throw e;
         imgFail++;
         addLog('Image error: ' + e.message, 'err');
       }
@@ -378,11 +419,11 @@
     return replaceMap;
   }
 
-  async function flushImages(api, delay, token) {
+  async function flushImages(api, delay, token, signal) {
     if (pendingImages.length === 0) return {};
     var batch = pendingImages.slice();
     pendingImages = [];
-    return await importImageList(batch, api, delay, token);
+    return await importImageList(batch, api, delay, token, signal);
   }
 
   function blobToBase64(blob) {
@@ -412,34 +453,68 @@
   $('d_start').onclick = async function() {
     if (running) return;
     running = true;
+    abortController = new AbortController();
     $('d_start').disabled = true;
     $('d_stop').disabled = false;
 
     allImages = {};
     pendingImages = [];
 
-    addLog('Parsing sitemap...', 'info');
+    var singleUrl = $('d_url').value.trim();
+    var urls, lastmods;
 
-    try {
-      var resp = await fetch($('d_sitemap').value.trim());
-      var xml = await resp.text();
-      var parser = new DOMParser();
-      var doc = parser.parseFromString(xml, 'text/xml');
-      var urls = [].slice.call(doc.querySelectorAll('loc')).map(function(el) { return el.textContent.trim(); });
-
-      var lastmods = {};
-      [].slice.call(doc.querySelectorAll('url')).forEach(function(el) {
-        var loc = el.querySelector('loc');
-        var lm = el.querySelector('lastmod');
-        if (loc && lm) {
-          lastmods[loc.textContent.trim()] = lm.textContent.trim();
+    if (singleUrl) {
+      // Single page import
+      urls = [singleUrl];
+      lastmods = {};
+      $('d_total').textContent = '1 page';
+      addLog('Importing single page: ' + singleUrl, 'info');
+    } else {
+      addLog('Parsing sitemap...', 'info');
+      try {
+        // Fetch the sitemap through the backend proxy — direct browser fetches
+        // of canada.ca fail on some networks (ERR_HTTP2_PROTOCOL_ERROR).
+        var smHeaders = { 'Content-Type': 'application/json' };
+        var smToken = $('d_token').value.trim();
+        if (smToken) { smHeaders['Authorization'] = smToken.startsWith('Bearer ') ? smToken : 'Bearer ' + smToken; }
+        var smApi = $('d_api').value.trim();
+        var resp = await fetch(smApi.replace('/import-page', '/fetch-url'), {
+          method: 'POST',
+          headers: smHeaders,
+          signal: abortController.signal,
+          body: JSON.stringify({ url: $('d_sitemap').value.trim() })
+        });
+        if (!resp.ok) throw new Error('proxy HTTP ' + resp.status);
+        var smJson = await resp.json();
+        if (smJson.status !== 200 || !smJson.html) {
+          throw new Error('proxy status ' + smJson.status + (smJson.error ? ' (' + smJson.error + ')' : ''));
         }
-      });
-      $('d_total').textContent = urls.length + ' pages';
-      addLog('Found ' + urls.length + ' pages', 'info');
-      if (Object.keys(lastmods).length > 0) {
-        addLog('Sitemap has lastmod dates for ' + Object.keys(lastmods).length + ' pages', 'info');
+        var xml = smJson.html;
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(xml, 'text/xml');
+        urls = [].slice.call(doc.querySelectorAll('loc')).map(function(el) { return el.textContent.trim(); });
+
+        lastmods = {};
+        [].slice.call(doc.querySelectorAll('url')).forEach(function(el) {
+          var loc = el.querySelector('loc');
+          var lm = el.querySelector('lastmod');
+          if (loc && lm) {
+            lastmods[loc.textContent.trim()] = lm.textContent.trim();
+          }
+        });
+        $('d_total').textContent = urls.length + ' pages';
+        addLog('Found ' + urls.length + ' pages', 'info');
+        if (Object.keys(lastmods).length > 0) {
+          addLog('Sitemap has lastmod dates for ' + Object.keys(lastmods).length + ' pages', 'info');
+        }
+      } catch(e) {
+        addLog('Sitemap error: ' + e.message, 'err');
+        $('d_start').disabled = false;
+        $('d_stop').disabled = true;
+        running = false;
+        return;
       }
+    }
 
       var api = $('d_api').value.trim();
       var checkApi = api.replace('/import-page', '/check-urls');
@@ -463,7 +538,7 @@
         if (batch.length === 0) return null;
         try {
           var cr = await fetch(checkApi, {
-            method: 'POST', headers: authHeaders,
+            method: 'POST', headers: authHeaders, signal: abortController.signal,
             body: JSON.stringify({ urls: batch })
           });
           if (cr.ok) {
@@ -490,6 +565,30 @@
         var url = urls[i];
         var shouldImport = true;
 
+        // Filter by 'since' datetime FIRST (before API calls)
+        var sinceVal = $('d_since').value.trim();
+        if (sinceVal) {
+          var sinceDate = new Date(sinceVal);
+          if (!isNaN(sinceDate.getTime())) {
+            var pageLastmod = lastmods[url];
+            if (pageLastmod) {
+              var modDate = new Date(pageLastmod);
+              if (!isNaN(modDate.getTime()) && modDate <= sinceDate) {
+                skipped++;
+                addLog('[' + (i+1) + '/' + urls.length + '] Skipped (lastmod ' + pageLastmod + ' ≤ ' + sinceVal + '): ' + url, 'info');
+                updateStats();
+                continue;
+              }
+            } else {
+              // d_since is set but page has no lastmod -> skip
+              skipped++;
+              addLog('[' + (i+1) + '/' + urls.length + '] Skipped (no lastmod, d_since set): ' + url, 'info');
+              updateStats();
+              continue;
+            }
+          }
+        }
+
         if (skipExisting) {
           var importedAt = await ensureChecked(url, i);
           if (importedAt !== null) {
@@ -506,77 +605,106 @@
           }
         }
 
-        // Filter by 'since' datetime from sitemap lastmod
-        if (shouldImport) {
-          var sinceVal = $('d_since').value.trim();
-          if (sinceVal) {
-            var sinceDate = new Date(sinceVal);
-            if (!isNaN(sinceDate.getTime())) {
-              var pageLastmod = lastmods[url];
-              if (pageLastmod) {
-                var modDate = new Date(pageLastmod);
-                if (!isNaN(modDate.getTime()) && modDate <= sinceDate) {
-                  skipped++;
-                  addLog('[' + (i+1) + '/' + urls.length + '] Skipped (lastmod ' + pageLastmod + ' ≤ ' + sinceVal + '): ' + url, 'info');
-                  updateStats();
-                  continue;
-                }
-              } else {
-                // d_since is set but page has no lastmod → skip
-                skipped++;
-                addLog('[' + (i+1) + '/' + urls.length + '] Skipped (no lastmod, d_since set): ' + url, 'info');
-                updateStats();
-                continue;
-              }
-            }
-          }
-        }
-
         if (shouldImport) {
           addLog('[' + (i+1) + '/' + urls.length + '] ' + url, '');
           try {
-            var pageResp = await fetch(url);
-            var html = await pageResp.text();
-
-            var imgFound = collectImages(html, url);
-            if (imgFound > 0) {
-              addLog('+' + imgFound + ' images collected', 'info');
-              updateStats();
-
-              var replaceMap = await flushImages(api, delay, $('d_token').value.trim());
-              for (var oldUrl in replaceMap) {
-                html = html.split(oldUrl).join(replaceMap[oldUrl]);
-                addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
-              }
-            }
-
-            // Transform any remaining canada.ca image URLs that weren't uploaded
-            var transformedCount = 0;
-            html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'])/gi, function(m, pre, imgSrc, post) {
-              var result = transformCanadaCaImagePath(imgSrc);
-              if (result !== imgSrc) {
-                transformedCount++;
-                addLog('Transform: ' + imgSrc.slice(-40) + ' → ' + result, 'img');
-              }
-              return pre + result + post;
-            });
-            if (transformedCount > 0) {
-              addLog('Transformed ' + transformedCount + ' remaining image paths', 'info');
-            }
-
-            var uploadResp = await fetch(api, {
+            // Fetch page content through the backend proxy — direct browser
+            // fetches of canada.ca fail on some networks (ERR_HTTP2_PROTOCOL_ERROR)
+            // and cross-origin redirects (e.g., canada.ca → cbsa) throw CORS errors.
+            var pageResp = await fetch(api.replace('/import-page', '/fetch-url'), {
               method: 'POST',
               headers: authHeaders,
-              body: JSON.stringify({ url: url, html: html, title: '' })
+              signal: abortController.signal,
+              body: JSON.stringify({ url: url })
             });
-            if (!uploadResp.ok) {
-              throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+            if (!pageResp.ok) throw new Error('proxy HTTP ' + pageResp.status);
+            var pageJson = await pageResp.json();
+
+            if (pageJson.status === 200 && pageJson.html) {
+              // Server-side redirect detected (proxy followed it): record a stub,
+              // same as the old resolve-redirect flow.
+              if (pageJson.final_url && pageJson.final_url !== url) {
+                var uploadResp = await fetch(api, {
+                  method: 'POST',
+                  headers: authHeaders,
+                  signal: abortController.signal,
+                  body: JSON.stringify({ url: url, html: '<html><head><title>Redirect</title></head><body></body></html>', title: 'Redirect: ' + url, redirect_to: pageJson.final_url })
+                });
+                if (!uploadResp.ok) {
+                  throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+                }
+                done++;
+                addLog('Redirect recorded → ' + pageJson.final_url, 'ok');
+              } else {
+                var html = pageJson.html;
+
+                var imgFound = collectImages(html, url);
+                if (imgFound > 0) {
+                  addLog('+' + imgFound + ' images collected', 'info');
+                  updateStats();
+
+                  var replaceMap = await flushImages(api, delay, $('d_token').value.trim(), abortController.signal);
+                  for (var oldUrl in replaceMap) {
+                    html = html.split(oldUrl).join(replaceMap[oldUrl]);
+                    addLog('Replaced: ' + oldUrl.slice(-40) + ' → ' + replaceMap[oldUrl], 'info');
+                  }
+                  // AEM pattern pass: AEM publish expands one image into several URL
+                  // variants (src, srcset renditions, data-cmp-src {.width} template),
+                  // all under /_jcr_content/... and all ending in the same filename.
+                  // The exact-string pass above only hits the exact src, so rewrite
+                  // every remaining _jcr_content variant of an uploaded image too.
+                  for (var oldUrl in replaceMap) {
+                    var fn = oldUrl.slice(oldUrl.lastIndexOf('/') + 1);
+                    if (!fn) continue;
+                    var esc = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    var aemRe = new RegExp('(["\'>\\s])([^"\'>\\s]*?_jcr_content[^"\'>\\s]*?' + esc + ')(?=["\'\\s>])', 'g');
+                    html = html.replace(aemRe, function(m, delim, url) { return delim + replaceMap[oldUrl]; });
+                  }
+                }
+
+                // Transform any remaining canada.ca image URLs that weren't uploaded
+                var transformedCount = 0;
+                html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'])/gi, function(m, pre, imgSrc, post) {
+                  var result = transformCanadaCaImagePath(imgSrc);
+                  if (result && result !== imgSrc) {
+                    transformedCount++;
+                    addLog('Transform: ' + imgSrc.slice(-40) + ' → ' + result, 'img');
+                  }
+                  // Never emit a dangling arrow or blank src: keep original when result is empty
+                  return pre + (result || imgSrc) + post;
+                });
+                if (transformedCount > 0) {
+                  addLog('Transformed ' + transformedCount + ' remaining image paths', 'info');
+                }
+
+                var uploadResp = await fetch(api, {
+                  method: 'POST',
+                  headers: authHeaders,
+                  signal: abortController.signal,
+                  body: JSON.stringify({ url: url, html: html, title: '' })
+                });
+                if (!uploadResp.ok) {
+                  throw new Error('HTTP ' + uploadResp.status + ': ' + (await uploadResp.text()).slice(0, 80));
+                }
+                done++;
+                addLog('OK', 'ok');
+              }
+            } else {
+              addLog('Unexpected status ' + pageJson.status + ': ' + url, 'err');
+              failed++;
             }
-            done++;
-            addLog('OK', 'ok');
           } catch(e) {
+            if (e.name === 'AbortError') throw e;
+            // Honest error: the old resolve-redirect fallback was misleading — it
+            // returns null on its own fetch failures too, so "Could not resolve
+            // redirect" was shown for plain proxy errors (e.g. a missing
+            // /api/v1/fetch-url route). Real redirects are already handled above
+            // via final_url != url, so surface the real error instead.
             failed++;
             addLog('Error: ' + e.message, 'err');
+            if (e.message.indexOf('proxy HTTP 404') !== -1 || e.message.indexOf('proxy status 404') !== -1) {
+              addLog('Hint: /api/v1/fetch-url may be missing on the server (check nginx routes)', 'warn');
+            }
           }
           updateStats();
           if (i < urls.length - 1 && running) {
@@ -587,13 +715,10 @@
 
       if (pendingImages.length > 0) {
         addLog('Importing remaining images...', 'info');
-        await flushImages(api, delay, $('d_token').value.trim());
+        await flushImages(api, delay, $('d_token').value.trim(), abortController.signal);
       }
 
       addLog(running ? 'Done!' : 'Stopped (all page images saved)', running ? 'ok' : 'info');
-    } catch(e) {
-      addLog('Error: ' + e.message, 'err');
-    }
 
     running = false;
     $('d_start').disabled = false;
@@ -602,8 +727,9 @@
 
   $('d_stop').onclick = function() {
     running = false;
+    if (abortController) abortController.abort();
     addLog('Stopping...', 'info');
   };
 
-  addLog('Ready', 'info');
+  addLog('🌾 Import v' + BOOKMARKLET_VERSION + ' ready', 'info');
 })();
