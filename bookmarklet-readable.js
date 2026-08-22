@@ -2,7 +2,7 @@
   if (window.__DEPT_IMPORT_LOADED) return;
   window.__DEPT_IMPORT_LOADED = true;
 
-  var BOOKMARKLET_VERSION = '2026-08-21-v11';
+  var BOOKMARKLET_VERSION = '2026-08-21-v11.1';
 
 
 
@@ -657,7 +657,7 @@
                     var fn = oldUrl.slice(oldUrl.lastIndexOf('/') + 1);
                     if (!fn) continue;
                     var esc = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    var aemRe = new RegExp('(["\'>\\s])([^"\'>\\s]*?_jcr_content[^"\'>\\s]*?' + esc + ')(?=["\'\\s>])', 'g');
+                    var aemRe = new RegExp('(["\',>\\s])([^"\',>\\s]*?_jcr_content[^"\',>\\s]*?' + esc + ')(?=["\'\\s>])', 'g');
                     html = html.replace(aemRe, function(m, delim, url) { return delim + replaceMap[oldUrl]; });
                   }
                 }
