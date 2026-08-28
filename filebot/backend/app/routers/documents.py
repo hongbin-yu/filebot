@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, 
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import func
+from sqlalchemy import func, or_, cast, String
 from typing import List, Optional, Dict, Any
 import uuid
 import os
@@ -2467,14 +2467,29 @@ def download_document_by_path(
         )
         logger.info("Using public user (anonymous access)")
     
-    # Query all documents for matching URL
-    all_documents = db.query(Document).all()
-    matched_documents = []
-    
     # Paths to try: original + alternatives
     paths_to_try = [path] + alternative_paths
     logger.info(f"Trying path list: {paths_to_try}")
-    
+
+    # FIX(2026-08-19): 不再全表加载（原 db.query(Document).all() 每次请求物化全部
+    # 4.7 万行含 metadata JSON，单次分配 ~2.2GB 且不归还 OS —— 内存泄漏根因）。
+    # 改为列级过滤候选集，下方原有匹配逻辑（endswith / AEM 哈希剥离 / metadata url）不变。
+    filename_frag = path.strip('/').split('/')[-1]
+    stem = filename_frag.rsplit('.', 1)[0]  # 无扩展名，兼容 AEM 哈希后缀（_20260604_074857_...）
+    all_documents = db.query(Document).options(
+        joinedload(Document.folder).joinedload(Folder.app)
+    ).filter(
+        or_(
+            Document.path == path,
+            Document.storage_path == path,
+            Document.path.like(f"%/{filename_frag}"),
+            Document.storage_path.like(f"%/{filename_frag}"),
+            Document.path.like(f"%/{stem}%"),
+            cast(Document.document_metadata["url"], String) == path,
+        )
+    ).limit(500).all()
+    matched_documents = []
+
     for doc in all_documents:
         matched = False
         

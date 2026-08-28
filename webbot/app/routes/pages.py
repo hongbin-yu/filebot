@@ -2,8 +2,8 @@
 Page management routes
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query, Body
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, HTTPException, Depends, Query, Body, BackgroundTasks
+from fastapi.responses import HTMLResponse, RedirectResponse
 import sqlite3
 import json
 import uuid
@@ -12,7 +12,7 @@ import requests
 import re
 import traceback
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import html.parser
 import urllib.parse
 from typing import List, Optional, Dict, Any
@@ -21,9 +21,14 @@ from fastapi import Request as FastAPIRequest
 from app.models import PageCreate, PageUpdate, PageResponse, PageListItem, PageMetadataItem, PreviewRequest, PagePropertiesResponse, PageMetadataResponse, PageStatus
 from app.routes.permission_utils import filter_pages_by_permission, user_can_write_page, user_can_see_page
 from app.routes.auth_security import get_current_active_user
+from app.routes.mustache import render_template as render_mustache_tpl
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/pages", tags=["pages"])
+
+# 2026-08-28: webbot 与 filebot 同机，内部 datasource 一律本机直连（不走公网/Cloudflare 隧道）。
+# 相对路径 datasource（/api/v1/...）拼 LOCAL_API_BASE；绝对 http(s) URL（外部数据源）保持原样。
+LOCAL_API_BASE = os.environ.get("WEBBOT_LOCAL_API_BASE", "http://127.0.0.1:8000")
 
 # Separate router for top-level /api/v1 endpoints (no /pages/ segment)
 router_v1 = APIRouter(prefix="/api/v1", tags=["pages_v1"])
@@ -36,23 +41,39 @@ WEBBOT_DB_PATH = os.environ.get(
 def get_db_connection():
     """Get WebBot database connection"""
     try:
-        conn = sqlite3.connect(WEBBOT_DB_PATH)
+        conn = sqlite3.connect(WEBBOT_DB_PATH, timeout=30)
         conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database connection failed: {e}")
 
+_MUSTACHE_ENTITY_MAP = {"gt": ">", "lt": "<", "amp": "&", "quot": '"', "#39": "'", "#x27": "'"}
+_MUSTACHE_ENTITY_RE = re.compile(r"\{\{&(gt|lt|amp|quot|#39|#x27);")
+
+
+def _unescape_mustache_entities(content: str) -> str:
+    """Restore HTML-escaped entities inside mustache tags.
+
+    Editors (TinyMCE) store '>' as '&gt;' in page content, so a partial written
+    as {{>name?path=.}} is persisted as {{&gt;name?path=.}} and chevron treats it
+    as an undefined variable (renders empty). This restores only entities that
+    appear right after '{{', leaving the rest of the HTML untouched.
+    """
+    if not content or "{{" not in content:
+        return content
+    return _MUSTACHE_ENTITY_RE.sub(
+        lambda m: "{{" + _MUSTACHE_ENTITY_MAP[m.group(1)], content)
+
+
 def generate_page_id(title: str) -> str:
     """Generate page ID from title"""
-    # 简单实现:将标题Transform为小写,Replace空格为连字符
-    import re
-    # 移除特殊字符,只保留字母数字和空格
-    cleaned = re.sub(r'[^a-zA-Z0-9\s]', '', title)
-    # Replace空格为连字符,Transform为小写
+    import re, hashlib
+    # 保留 Unicode 字母数字(含中文等), 只移除标点/符号; 空格转连字符, 转小写
+    cleaned = re.sub(r'[^\w\s-]', '', title, flags=re.UNICODE)
     page_id = re.sub(r'\s+', '-', cleaned.strip()).lower()
-    # If为空,Generate随机ID
+    # If为空(纯标点/符号标题), 用 title 的确定性 hash 而非随机 ID, 保证同名可检测重复
     if not page_id:
-        page_id = f"page-{uuid.uuid4().hex[:8]}"
+        page_id = f"page-{hashlib.sha1(title.encode('utf-8')).hexdigest()[:8]}"
     return page_id
 
 def remove_pagedetails_sections(html: str) -> str:
@@ -217,6 +238,105 @@ def get_ancestor_auto_image_path(page_path: Optional[str], conn) -> Optional[boo
         current_path = extract_parent_path_from_path(current_path)
 
     return None
+
+
+def _parse_ts(value: Optional[str]):
+    """Parse last_modified/updated_at into comparable datetime. Handles both
+    SQLite CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS') and isoformat strings.
+    Always returns timezone-aware UTC datetime (naive inputs assumed UTC) so
+    comparisons never mix naive/aware. Returns None if unparseable."""
+    if not value:
+        return None
+    s = str(value).strip()
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        pass
+    else:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    try:
+        return datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _compute_out_of_sync(conn, self_path: Optional[str], self_ts: Optional[str]) -> bool:
+    """True if this page's latest edit is newer than its linked other-language
+    page has published — i.e. the twin has not yet published a version at least
+    as new as this page's last edit.
+
+    Comparison is date-only: EN/FR pages saved/published on the same calendar
+    day are considered in sync (timestamps will never be identical due to save
+    order). Re-publishing the twin clears the badge because last_published then
+    covers this page's last_modified date.
+    """
+    if not self_path or not self_ts:
+        return False
+    t_self = _parse_ts(self_ts)
+    if not t_self:
+        return False
+    row = conn.execute(
+        "SELECT last_modified, last_published, status FROM webbot_page WHERE path = ?",
+        (self_path,),
+    ).fetchone()
+    if not row or not row["last_modified"]:
+        return False
+    # Only published pages show the badge: draft pages are not live yet,
+    # so an out-of-sync warning has no meaning for them.
+    if row["status"] != "published":
+        return False
+    t_other = _parse_ts(row["last_modified"])
+    if not t_other:
+        return False
+    if t_self.date() <= t_other.date():
+        return False
+    # Twin published after this page's last edit → content is in sync.
+    t_other_pub = _parse_ts(row["last_published"])
+    if t_other_pub and t_other_pub.date() >= t_self.date():
+        return False
+    return True
+
+
+def _compute_is_republish(last_modified: Optional[str], last_published: Optional[str]) -> bool:
+    """True if the page was modified after its last publish (needs republish).
+
+    Never-published pages (last_published is None) return False: they need a
+    first Publish, not a Republish."""
+    if not last_modified or not last_published:
+        return False
+    t_lm = _parse_ts(last_modified)
+    t_lp = _parse_ts(last_published)
+    if t_lm is None or t_lp is None:
+        return False
+    return t_lm > t_lp
+
+
+def _mark_ai_index_pending(conn, path: str) -> None:
+    """P1 of the incremental AI-index plan: mark a just-published page as pending.
+
+    Called inside the publish transaction (before commit) so the marker is atomic
+    with the publish itself. Only pages with last_published set are marked (i.e.
+    truly published). The ai-search index worker consumes this queue and flips the
+    status to indexed / skipped / error.
+
+    Defensive: if the P0 columns are missing (pre-migration DB), this is a no-op
+    with a warning instead of crashing the publish.
+    """
+    try:
+        conn.execute(
+            "UPDATE webbot_page SET ai_index_status = 'pending' "
+            "WHERE path = ? AND last_published IS NOT NULL",
+            (path,),
+        )
+    except sqlite3.OperationalError:
+        logger.warning(
+            "ai_index_status column missing (run app/ai_index_migration.py, P0); "
+            "skipping AI-index marker for %s",
+            path,
+            exc_info=True,
+        )
 
 
 def normalize_path(path: str) -> str:
@@ -409,11 +529,23 @@ def generate_french_path(english_path: str) -> str:
 
 @router.get("/translate")
 async def translate_text(text: str = Query(..., description="English text to translate to French")):
-    """Translate English text to French using Google Translate"""
-    from deep_translator import GoogleTranslator
+    """Translate English text to French using DeepSeek LLM (was GoogleTranslator — unreliable, frequently blocked/rate-limited)."""
+    from app.routes.translate import _call_llm
     try:
-        translated = GoogleTranslator(source='en', target='fr').translate(text)
-        return {"original": text, "translated": translated}
+        system_prompt = (
+            "You are a professional translator specializing in Government of Canada web content. "
+            "Translate the given text from English to Canadian French.\n"
+            "CRITICAL RULES:\n"
+            "1. Return ONLY the translated text — no explanations, no quotes, no markdown wrappers\n"
+            "2. Translate title/heading text naturally and concisely\n"
+            "3. Use Canadian French spelling and terminology (e.g., 'courriel' not 'email', 'cliquez' not 'clique')"
+        )
+        translated = await _call_llm(system_prompt, text)
+        if not translated or not translated.strip():
+            raise HTTPException(status_code=502, detail="Translation returned empty content")
+        return {"original": text, "translated": translated.strip()}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Translation failed: {str(e)}")
 
@@ -516,7 +648,7 @@ async def create_page(page: PageCreate, current_user: dict = Depends(get_current
         other_language_path = page.other_language_path if page.other_language_path else None
 
         # Insert into database
-        now = datetime.now().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         cursor.execute("""
             INSERT INTO webbot_page
             (id, title, description, keywords, content, language, parent_path, path, other_language_path, status, metadata, hide_in_navigation, navigation_title, created_at, last_modified)
@@ -531,7 +663,7 @@ async def create_page(page: PageCreate, current_user: dict = Depends(get_current
             parent_path,
             page_path,
             page.other_language_path if page.other_language_path else other_language_path,
-            page.status.value if isinstance(page.status, PageStatus) else (page.status or PageStatus.DRAFT.value),
+            page.status.value if isinstance(page.status, PageStatus) else (page.status or "draft"),
             json.dumps(metadata_dict) if metadata_dict else "{}",
             1 if page.hide_in_navigation else 0,
             page.navigation_title if page.navigation_title else None,
@@ -566,7 +698,7 @@ async def create_page(page: PageCreate, current_user: dict = Depends(get_current
                         tag_id = existing_tag[0]
                     else:
                         # Create new tag
-                        created_at = datetime.now().isoformat()
+                        created_at = datetime.now(timezone.utc).isoformat()
                         cursor.execute(
                             "INSERT INTO webbot_tag (name, slug, created_at) VALUES (?, ?, ?)",
                             (tag_name, slug, created_at)
@@ -668,6 +800,11 @@ async def get_pages_by_path(
                 meta = page_dict["metadata"]
             # Extract lock_status from metadata
             page_dict["lock_status"] = meta.get("lock_status", "unlocked")
+            # Extract redirectTo from metadata
+            page_dict["redirectTo"] = meta.get("redirect_to", None)
+            # Out-of-sync detection (bilingual pairs)
+            page_dict["out_of_sync"] = _compute_out_of_sync(
+                cursor, page_dict.get("other_language_path"), page_dict.get("last_modified"))
             result.append(PageListItem(**page_dict))
 
         # Filter by user's app permissions
@@ -747,6 +884,11 @@ async def list_pages(
                 meta = page_dict["metadata"]
             # Extract lock_status from metadata
             page_dict["lock_status"] = meta.get("lock_status", "unlocked")
+            # Extract redirectTo from metadata
+            page_dict["redirectTo"] = meta.get("redirect_to", None)
+            # Out-of-sync detection (bilingual pairs)
+            page_dict["out_of_sync"] = _compute_out_of_sync(
+                cursor, page_dict.get("other_language_path"), page_dict.get("last_modified"))
             result.append(PageListItem(**page_dict))
 
         # Filter by user's app permissions
@@ -910,11 +1052,15 @@ async def get_footer(path: str = ""):
 async def get_megamenu(path: str = ""):
     """
     Get megamenu component content
-    Fallback: department-specific (level 4) → language-level (level 3)
+    Lookup order:
+    1. {path}/menu (current path's own menu) — NEW, highest priority
+    2. department-specific megamenu (level 4): /{site}/{lang}/{dept}/megamenu
+    3. language-level megamenu (level 3): /{site}/{lang}/megamenu
 
     Example: for path /canadasite/en/government/about
-    1. First try /canadasite/en/government/megamenu
-    2. If not found, try /canadasite/en/megamenu
+    1. First try /canadasite/en/government/about/menu
+    2. If not found, try /canadasite/en/government/megamenu
+    3. If not found, try /canadasite/en/megamenu
 
     Same rules as header
     """
@@ -932,8 +1078,18 @@ async def get_megamenu(path: str = ""):
         path_used = None
         fallback_level = None
 
-        # level 4: /canadasite/{lang}/{dept}/megamenu
-        if language and dept:
+        # level 1 (NEW): {path}/menu — current path's own menu
+        if normalized_path:
+            l1 = f"{normalized_path}/menu"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l1,))
+            r = cursor.fetchone()
+            if r:
+                content = _unwrap_component(r["content"])
+                path_used = l1
+                fallback_level = "path"
+
+        # level 4: /{site}/{lang}/{dept}/megamenu
+        if not content and language and dept:
             l4 = f"/{site_name}/{language}/{dept}/megamenu"
             cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l4,))
             r = cursor.fetchone()
@@ -942,7 +1098,7 @@ async def get_megamenu(path: str = ""):
                 path_used = l4
                 fallback_level = "fourth"
 
-        # level 3: /canadasite/{lang}/megamenu
+        # level 3: /{site}/{lang}/megamenu
         if not content and language:
             l3 = f"/{site_name}/{language}/megamenu"
             cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l3,))
@@ -1002,7 +1158,7 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
             sys.stderr.flush()
             # 创建硬编码的page响应
             from datetime import datetime
-            now = datetime.now().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             return PageResponse(
                 id="dam",
                 title="Boarding Content DAM Page",
@@ -1026,7 +1182,7 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
         # If路径Root path,返回合成page
         if normalized_path == '/':
             from datetime import datetime
-            now = datetime.now().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             return PageResponse(
                 id='root',
                 title='Root',
@@ -1086,6 +1242,10 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
             if inherited_fp:
                 page_dict['file_path'] = inherited_fp
 
+        # Republish flag: modified after last publish
+        page_dict["is_republish"] = _compute_is_republish(
+            page_dict.get("last_modified"), page_dict.get("last_published"))
+
         print(f"DEBUG: Returning page with id={page_dict.get('id')}, path={page_dict.get('path')}", file=sys.stderr)
         sys.stderr.flush()
         return PageResponse(**page_dict)
@@ -1098,15 +1258,24 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
         conn.close()
 
 @router.get("/by-path/{path:path}/children", response_model=List[PageListItem])
-async def get_page_children_by_path(path: str = "", title: Optional[str] = Query(None), limit: int = Query(30)):
+async def get_page_children_by_path(
+    path: str = "",
+    title: Optional[str] = Query(None),
+    limit: int = Query(30),
+    redirectTo: Optional[str] = Query(None, description="Filter by redirect target (LIKE match). Use ?redirectTo=1 or ?redirectTo=true to return all pages with redirect. Use ?redirectTo=/en/contact to match specific target.")
+):
     """Get children of a page by path
 
     When title is provided, searches ALL descendants (any level) matching title
     and path prefix. Otherwise returns direct children only.
 
+    When redirectTo is set, only returns pages that have a redirect_to
+    parameter in their metadata (useful for building redirect sitemap).
+
     Example: /api/v1/pages/by-path/canadasite/en/children
              /api/v1/pages/by-path/canadasite/en/children?title=Illness
              /api/v1/pages/by-path/canadasite/en/mustache-templates/children
+             /api/v1/pages/by-path/canadasite/en/children?redirectTo=1
     """
     import sys
     conn = get_db_connection()
@@ -1115,7 +1284,7 @@ async def get_page_children_by_path(path: str = "", title: Optional[str] = Query
     try:
         # Normalize path
         normalized_path = normalize_path(path)
-        print(f"DEBUG get_page_children_by_path: path='{path}', normalized='{normalized_path}', title_filter='{title}', limit={limit}", file=sys.stderr)
+        print(f"DEBUG get_page_children_by_path: path='{path}', normalized='{normalized_path}', title_filter='{title}', limit={limit}, redirectTo_filter={redirectTo}", file=sys.stderr)
 
         if title:
             # Title search: return ALL descendants (any level) matching both path prefix and title
@@ -1145,17 +1314,17 @@ async def get_page_children_by_path(path: str = "", title: Optional[str] = Query
                 """)
             else:
                 # 直接通过 path 列查找page(支持任意层级的路径)
-                cursor.execute("SELECT id FROM webbot_page WHERE path = ?", (normalized_path,))
+                cursor.execute("SELECT id, path FROM webbot_page WHERE path = ?", (normalized_path,))
                 parent_page = cursor.fetchone()
                 if not parent_page:
                     raise HTTPException(status_code=404, detail=f"Parent page path not found: {normalized_path}")
 
-                parent_id = parent_page[0]
+                parent_path = parent_page['path']
                 cursor.execute("""
                     SELECT * FROM webbot_page
                     WHERE parent_path = ?
                     ORDER BY last_modified DESC, title ASC
-                """, (parent_id,))
+                """, (parent_path,))
 
         children = cursor.fetchall()
         result = []
@@ -1173,6 +1342,19 @@ async def get_page_children_by_path(path: str = "", title: Optional[str] = Query
                 meta = child_dict["metadata"]
             # Extract lock_status from metadata
             child_dict["lock_status"] = meta.get("lock_status", "unlocked")
+            # Extract redirectTo from metadata (for response field)
+            child_dict["redirectTo"] = meta.get("redirect_to", None)
+            # Out-of-sync detection (bilingual pairs)
+            child_dict["out_of_sync"] = _compute_out_of_sync(
+                cursor, child_dict.get("other_language_path"), child_dict.get("last_modified"))
+            # If redirectTo filter active, match redirect target with LIKE
+            if redirectTo:
+                if not child_dict["redirectTo"]:
+                    continue
+                if redirectTo not in ["1", "true", "yes"]:
+                    # redirectTo is a search term - LIKE match against redirect target
+                    if redirectTo.lower() not in child_dict["redirectTo"].lower():
+                        continue
             result.append(PageListItem(**child_dict))
 
         print(f"DEBUG: Returning {len(result)} child pages", file=sys.stderr)
@@ -1207,7 +1389,7 @@ async def get_page_by_path_param(full_path: str, current_user: dict = Depends(ge
             sys.stderr.flush()
             # 创建硬编码的page响应
             from datetime import datetime
-            now = datetime.now().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             return PageResponse(
                 id="dam",
                 title="Boarding Content DAM Page",
@@ -1231,7 +1413,7 @@ async def get_page_by_path_param(full_path: str, current_user: dict = Depends(ge
         # If路径Root path,返回合成page
         if normalized_path == '/':
             from datetime import datetime
-            now = datetime.now().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             return PageResponse(
                 id='root',
                 title='Root',
@@ -1290,6 +1472,14 @@ async def get_page_by_path_param(full_path: str, current_user: dict = Depends(ge
             inherited_fp = get_ancestor_file_path(normalized_path, conn)
             if inherited_fp:
                 page_dict['file_path'] = inherited_fp
+
+        # Out-of-sync detection (bilingual pairs)
+        page_dict["out_of_sync"] = _compute_out_of_sync(
+            conn, page_dict.get("other_language_path"), page_dict.get("last_modified"))
+
+        # Republish flag: modified after last publish
+        page_dict["is_republish"] = _compute_is_republish(
+            page_dict.get("last_modified"), page_dict.get("last_published"))
 
         print(f"DEBUG: Returning page with id={page_dict.get('id')}, path={page_dict.get('path')}", file=sys.stderr)
         sys.stderr.flush()
@@ -1494,12 +1684,17 @@ async def get_parent_pages(path: str = Query(..., description="Full page path. R
             if row:
                 page_dict = dict(row)
                 _parse_page_dict(page_dict)
+                page_dict["is_republish"] = _compute_is_republish(
+                    page_dict.get("last_modified"), page_dict.get("last_published"))
                 item = PageListItem(**page_dict)
                 # Strip the site prefix (e.g. /canadasite) from breadcrumb path
                 stripped_parts = path_parts[1:d]
                 item.path = "/" + "/".join(stripped_parts)
                 if d == depth:
                     page = item
+                    # Remove invalid /canadasite other_language_path
+                    if page.other_language_path == "/canadasite":
+                        page.other_language_path = None
                 else:
                     # Always include root (Home), but skip other pages with hide_in_navigation
                     is_root = d == 2
@@ -1533,8 +1728,15 @@ async def get_parent_pages(path: str = Query(..., description="Full page path. R
 
         # ─── Fetch megamenu ────────────────────────────────────────────
         megamenu = None
+        # level 1 (NEW): {path}/menu — current path's own menu
+        if normalized:
+            l1 = f"{normalized}/menu"
+            cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l1,))
+            r = cursor.fetchone()
+            if r:
+                megamenu = {"success": True, "content": _unwrap_component(r["content"]), "path_used": l1, "fallback_level": "path", "language": language}
         # level 4: /canadasite/{lang}/{dept}/megamenu
-        if language and dept and len(parts) >= 3:
+        if not megamenu and language and dept and len(parts) >= 3:
             l4 = f"/{site_name}/{language}/{dept}/megamenu"
             cursor.execute("SELECT content FROM webbot_page WHERE id = ?", (l4,))
             r = cursor.fetchone()
@@ -1587,14 +1789,14 @@ async def get_page_children(page_id: str,
             parent_page = cursor.fetchone()
 
             if parent_page:
-                # 找到了父page,使用其ID作为target_parent_path
-                target_parent_path = parent_page['id']
+                # 找到了父page,使用其path作为target_parent_path
+                target_parent_path = parent_page['path']
             else:
                 # Ifparent_path不Full path,可能父Page ID
                 cursor.execute("SELECT id, path FROM webbot_page WHERE id = ?", (parent_path,))
                 parent_page = cursor.fetchone()
                 if parent_page:
-                    target_parent_path = parent_page['id']
+                    target_parent_path = parent_page['path']
                 else:
                     raise HTTPException(
                         status_code=404,
@@ -1607,10 +1809,10 @@ async def get_page_children(page_id: str,
             if not actual_parent:
                 # If找不到,尝试将page_id作为路径查找
                 path_to_try = page_id if page_id.startswith('/') else f'/{page_id}'
-                cursor.execute("SELECT id, parent_path FROM webbot_page WHERE path = ?", (path_to_try.rstrip('/'),))
+                cursor.execute("SELECT id, path, parent_path FROM webbot_page WHERE path = ?", (path_to_try.rstrip('/'),))
                 actual_parent = cursor.fetchone()
                 if actual_parent:
-                    target_parent_path = actual_parent['id']
+                    target_parent_path = actual_parent['path']
                 else:
                     raise HTTPException(
                         status_code=404,
@@ -1621,12 +1823,12 @@ async def get_page_children(page_id: str,
             # 未指定父标识符,需要找到具体的父page
             # 首先尝试将page_id作为路径查找父page
             path_to_try = page_id if page_id.startswith('/') else f'/{page_id}'
-            cursor.execute("SELECT id, parent_path FROM webbot_page WHERE path = ?", (path_to_try.rstrip('/'),))
+            cursor.execute("SELECT id, path, parent_path FROM webbot_page WHERE path = ?", (path_to_try.rstrip('/'),))
             parent_page = cursor.fetchone()
 
             if parent_page:
-                # 找到了page,使用其ID作为target_parent_path
-                target_parent_path = parent_page['id']
+                # 找到page,使用其path作为target_parent_path
+                target_parent_path = parent_page['path']
             else:
                 # 查找parent_path为NULL的page(根page)
                 cursor.execute("SELECT id FROM webbot_page WHERE id = ? AND parent_path IS NULL", (page_id,))
@@ -1664,6 +1866,11 @@ async def get_page_children(page_id: str,
                 meta = child_dict["metadata"]
             # Extract lock_status from metadata
             child_dict["lock_status"] = meta.get("lock_status", "unlocked")
+            # Extract redirectTo from metadata
+            child_dict["redirectTo"] = meta.get("redirect_to", None)
+            # Out-of-sync detection (bilingual pairs)
+            child_dict["out_of_sync"] = _compute_out_of_sync(
+                cursor, child_dict.get("other_language_path"), child_dict.get("last_modified"))
             result.append(PageListItem(**child_dict))
 
         return result
@@ -1783,6 +1990,12 @@ async def get_page_properties(page_id: str,
         except Exception:
             page_dict["tags"] = []
 
+        # Extract redirect_to from metadata to top-level field
+        page_dict["redirect_to"] = page_dict.get("metadata", {}).get("redirect_to", None)
+        # Out-of-sync detection (bilingual pairs)
+        page_dict["out_of_sync"] = _compute_out_of_sync(
+            conn, page_dict.get("other_language_path"), page_dict.get("updated_at") or page_dict.get("last_modified"))
+
         return PagePropertiesResponse(**page_dict)
 
     except sqlite3.Error as e:
@@ -1829,7 +2042,7 @@ async def _render_preview(
     import chevron
     import aiohttp
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -1860,7 +2073,7 @@ async def _render_preview(
         base_url = str(request.base_url).rstrip("/")
 
         # Helper: render a mustache template config from DB
-        async def render_mustache_template(template_path: str, data_source_path: str) -> str:
+        async def render_mustache_template(template_path: str, data_source_path: str, extra_data: Optional[dict] = None) -> str:
             # Substitute {path} placeholder with the current page path for dynamic datasources
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             row = cursor.fetchone()
@@ -1884,14 +2097,35 @@ async def _render_preview(
             data = config.get("data", {})
             datasource = config.get("datasource", config.get("dataresource"))
 
+            # i18n: expand {{labels.KEY[language]}} -> {{labels.KEY.<lang>}} (legacy @i18n syntax)
+            _lang_parts = data_source_path.strip('/').split('/')
+            lang = _lang_parts[1] if len(_lang_parts) > 1 else 'en'
+            if lang not in ('en', 'fr'):
+                lang = 'en'
+            if isinstance(data, dict):
+                data.setdefault('language', lang)
+                data.setdefault('is_en', lang == 'en')
+                data.setdefault('is_fr', lang == 'fr')
+            template = re.sub(
+                r'\{\{\s*([^{}]+?)\[(?:page\.)?language\]\s*\}\}',
+                lambda m: '{{' + m.group(1) + '.' + lang + '}}',
+                template
+            )
+            template = re.sub(
+                r'\{\{\s*([^{}]+?)\[["\'](en|fr)["\']\]\s*\}\}',
+                lambda m: '{{' + m.group(1) + '.' + m.group(2) + '}}',
+                template
+            )
+
             if datasource:
                 # Replace {path} placeholder with the actual page being rendered
                 url = datasource.replace("{path}", data_source_path)
                 if not url.startswith("http"):
-                    url = f"{base_url}{url}"
+                    # 2026-08-28: 内部端点本机直连，不走公网
+                    url = f"{LOCAL_API_BASE}{url}"
                 try:
                     async with aiohttp.ClientSession() as session:
-                        async with session.get(url, timeout=10) as resp:
+                        async with session.get(url, timeout=5) as resp:
                             if resp.status == 200:
                                 ds_data = await resp.json()
                                 data["datasource_loaded"] = True
@@ -1905,19 +2139,41 @@ async def _render_preview(
                     data["datasource_loaded"] = False
                     data["datasource_error"] = str(e)
 
+            if extra_data:
+                data.update(extra_data)
             try:
-                return chevron.render(template, data)
+                return await render_mustache_tpl(template, data, cursor, lang=lang, current_path=data_source_path, base_url=base_url)
             except Exception as e:
                 return f"<!-- Mustache render error: {e} -->"
 
         # 2. Render head, header, footer
         head_html = await render_mustache_template("/canadasite/mustache-templates/gethead", path)
 
-        # Render language-specific headers for page template
-        header_en_html = await render_mustache_template("/canadasite/mustache-templates/getheader_en", path)
-        header_fr_html = await render_mustache_template("/canadasite/mustache-templates/getheader_fr", path)
-        # Set header to the correct language for backward compatibility
-        header_html = header_en_html if page_language == "en" else header_fr_html
+        # Unified i18n header (getheader/getheader-preview only — legacy getheader_en/fr removed).
+        # Approval workflow: unpublished pages render with getheader-preview so the approver
+        # sees edit/approve/publish links on prod.webfilebot.com/{path}. Published pages use
+        # the clean public getheader.
+        _page_status = page.get("status", "")
+        _page_approved = 1 if page.get("approved") else 0
+        _page_is_republish = _compute_is_republish(page.get("last_modified"), page.get("last_published"))
+        if _page_status == "published" and not _page_is_republish:
+            # Clean public header for live, in-sync pages.
+            header_html = await render_mustache_template(
+                "/canadasite/mustache-templates/getheader", path,
+                extra_data={"is_approved": _page_approved, "is_published": True, "is_republish": False}
+            )
+        else:
+            # Preview header: unpublished pages get the approval banner, and
+            # published-but-modified pages get the republish banner — both are
+            # rendered by the getheader-preview template (data-driven).
+            header_html = await render_mustache_template(
+                "/canadasite/mustache-templates/getheader-preview", path,
+                extra_data={
+                    "is_approved": _page_approved,
+                    "is_published": _page_status == "published",
+                    "is_republish": _page_is_republish,
+                }
+            )
 
         # Get footer — walk up path to find nearest footer, then language-level, then site-level
         # For /canadasite/en/auditor-general/our-work/2026-report:
@@ -1984,6 +2240,8 @@ async def _render_preview(
 
         # 3. Clean content
         def extract_content(raw_content: str) -> str:
+            if not raw_content:
+                return ""
             main_match = re.search(r'<main[^>]*>(.*)</main>', raw_content, re.DOTALL | re.IGNORECASE)
             if main_match:
                 raw_content = main_match.group(1)
@@ -2010,7 +2268,7 @@ async def _render_preview(
 
         # 5. Render with template or default
         # Helper: try to render a page template from DB, returns None if not found
-        async def render_page_template(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None, contextual_footer=""):
+        async def render_page_template(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None, page_metadata=None, contextual_footer=""):
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
             if not tmpl_row:
@@ -2018,8 +2276,13 @@ async def _render_preview(
             try:
                 tmpl_config = json.loads(tmpl_row[0])
                 tmpl = tmpl_config.get("template", tmpl_row[0])
+                tmpl_data = tmpl_config.get("data", {})
+                if not isinstance(tmpl_data, dict):
+                    tmpl_data = {}
             except json.JSONDecodeError:
                 tmpl = tmpl_row[0]
+                tmpl_data = {}
+                tmpl_config = {}
             render_data = {
                 "content": content,
                 "head": head,
@@ -2035,7 +2298,69 @@ async def _render_preview(
                 "is_en": lang == "en",
                 "is_fr": lang == "fr",
             }
-            return chevron.render(tmpl, render_data)
+            # Merge template static data (labels etc.) into render context
+            render_data.update(tmpl_data)
+            # Inject page context (for {{page.xxx}} and partials like {{>getheader}})
+            page_ctx = {
+                "path": page_path,
+                "title": title,
+                "language": lang,
+                "other_language_url": None,
+            }
+            if isinstance(page_metadata, dict):
+                olp = page_metadata.get("other_language_path") or page_metadata.get("other_language_url")
+                if olp:
+                    page_ctx["other_language_url"] = olp
+            if not page_ctx["other_language_url"]:
+                parts = page_path.strip("/").split("/")
+                # Handle both /en/xxx and /canadasite/en/xxx path formats
+                lang_idx = None
+                for idx, seg in enumerate(parts):
+                    if seg in ("en", "fr"):
+                        lang_idx = idx
+                        break
+                if lang_idx is not None:
+                    parts[lang_idx] = "fr" if parts[lang_idx] == "en" else "en"
+                    page_ctx["other_language_url"] = "/" + "/".join(parts)
+            render_data["page"] = page_ctx
+            # Load template datasource so partials like {{>getheader}} get parents/page/header/megamenu context
+            tmpl_ds = tmpl_config.get("datasource", tmpl_config.get("dataresource"))
+            if tmpl_ds and isinstance(tmpl_ds, str) and tmpl_ds.strip():
+                ds_url = tmpl_ds.replace("{path}", page_path)
+                if not ds_url.startswith("http"):
+                    # 2026-08-28: 内部端点本机直连，不走公网
+                    ds_url = f"{LOCAL_API_BASE}{ds_url}"
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(ds_url, timeout=5) as resp:
+                            if resp.status == 200:
+                                ds_data = await resp.json()
+                                if isinstance(ds_data, dict):
+                                    render_data = {**render_data, **ds_data}
+                                elif isinstance(ds_data, list):
+                                    render_data["items"] = ds_data
+                except Exception as e:
+                    render_data["datasource_error"] = str(e)
+            # has_feedback from page metadata (compat: metadata may be str or dict)
+            if page_metadata:
+                if isinstance(page_metadata, str):
+                    try:
+                        page_metadata = json.loads(page_metadata)
+                    except json.JSONDecodeError:
+                        page_metadata = {}
+                if isinstance(page_metadata, dict) and page_metadata.get("has_feedback") is not None:
+                    render_data["has_feedback"] = page_metadata["has_feedback"]
+            # NEW (2026-08-19): render page content as a Mustache template too, so dynamic
+            # blocks ({{>template?path=.}}, datasource, {{labels...}}) work inside page content.
+            content = _unescape_mustache_entities(content)
+            if content and "{{" in content:
+                _content_ctx = {k: v for k, v in render_data.items() if k != "content"}
+                try:
+                    content = await render_mustache_tpl(content, _content_ctx, cursor, lang=lang, current_path=page_path, base_url=base_url)
+                    render_data["content"] = content
+                except Exception as e:
+                    logger.warning(f"Content mustache render degraded for {page_path}: {e}")
+            return await render_mustache_tpl(tmpl, render_data, cursor, lang=lang, current_path=page_path, base_url=base_url)
 
         def default_rendered(lang, head, header, footer, content, date_modified):
             return (
@@ -2059,7 +2384,7 @@ async def _render_preview(
             rendered = await render_page_template(
                 page_publish_template, head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html,
+                page_metadata=page.get("metadata"),
                 contextual_footer=contextual_footer
             )
 
@@ -2068,7 +2393,7 @@ async def _render_preview(
             rendered = await render_page_template(
                 "/canadasite/mustache-templates/page-template", head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html,
+                page_metadata=page.get("metadata"),
                 contextual_footer=contextual_footer
             )
 
@@ -2081,9 +2406,41 @@ async def _render_preview(
 
         conn.close()
 
+        # Inject AnalyBot tracking SDK before </head>
+        # Config is external (analy-config.js) so changes don't require republishing
+        analybot_sdk = '''<script src="/etc/designs/canada/analytics/analy-config.js" defer></script>
+<script src="/etc/designs/canada/analytics/analy_v2.js" defer></script>'''
+        rendered = rendered.replace('</head>', analybot_sdk + '\n</head>', 1) if rendered else rendered
+
+        # NOTE: clientlib-base.min.css (Adobe AEM artifact) is intentionally NOT injected.
+
+        # Cache-bust theme.min.css (Cloudflare/browser may hold the older version)
+        rendered = rendered.replace('css/theme.min.css"', 'css/theme.min-20260801.css"') if rendered else rendered
+
         # Inject tracking script before </body>
         track_script = '<script src="/api/v1/track/track.js"></script>'
         rendered = rendered.replace('</body>', track_script + '\n</body>', 1) if rendered else rendered
+
+        # Inject A/B experiment beacon for the demo experiment page (variant B = live DB render)
+        # Reads wb_ab cookie set by nginx split_clients; reports pageview + CTA clicks to /api/v1/track/ab
+        if path == "/canadasite/en/demo/test-page":
+            ab_script = '''<script>
+(function(){
+  function abCookie(){var m=document.cookie.match(/wb_ab=([AB])/);return m?m[1]:'';}
+  function abSend(ev){try{navigator.sendBeacon('/api/v1/track/ab',new Blob([JSON.stringify({experiment_id:'exp-testpage',variant:abCookie(),event_name:ev,path:location.pathname})],{type:'application/json'}));}catch(e){}}
+  abSend('pageview');
+  document.addEventListener('click',function(e){
+    var t=e.target.closest('a.btn,.btn,button,a[role=button]');
+    if(t)abSend('CTA Click');
+  });
+})();
+</script>'''
+            rendered = rendered.replace('</body>', ab_script + '\n</body>', 1) if rendered else rendered
+
+        # NOTE: the republish PREVIEW banner (yellow, with Republish button + live
+        # link) is no longer injected here — it is rendered by the
+        # getheader-preview mustache template (see _render_preview header selection
+        # above), so banner markup stays in one data-driven place.
 
         return HTMLResponse(content=rendered, status_code=200)
     except HTTPException:
@@ -2093,6 +2450,65 @@ async def _render_preview(
         conn.close()
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Preview failed: {str(e)}")
+
+
+@router.get("/template-data")
+async def get_template_data(
+    request: FastAPIRequest,
+    path: str = Query(..., description="Template page path, e.g. /canadasite/mustache-templates/getheader"),
+    page: str = Query("", description="Page path used to substitute {path} in datasource URL"),
+):
+    """
+    Return template static data + datasource merged JSON (i18n labels etc.).
+    Useful for frontend JS to consume template labels/data directly.
+    """
+    import aiohttp
+
+    conn = get_db_connection()
+    try:
+        row = conn.execute("SELECT content FROM webbot_page WHERE path = ?", (path,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Template not found: {path}")
+        try:
+            config = json.loads(row[0])
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail=f"Template content is not JSON: {path}")
+
+        static_data = config.get("data", {})
+        if not isinstance(static_data, dict):
+            static_data = {}
+        datasource = config.get("datasource", config.get("dataresource"))
+        ds_data = None
+        merged = dict(static_data)
+        if datasource:
+            url = datasource.replace("{path}", page) if page else datasource
+            if not url.startswith("http"):
+                # 2026-08-28: 内部端点本机直连，不走公网
+                url = f"{LOCAL_API_BASE}{url}"
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=5) as resp:
+                        if resp.status == 200:
+                            ds_data = await resp.json()
+                            if isinstance(ds_data, dict):
+                                merged = {**merged, **ds_data}
+                            elif isinstance(ds_data, list):
+                                merged["items"] = ds_data
+                            else:
+                                merged["items"] = ds_data
+                            merged["datasource_loaded"] = True
+            except Exception as e:  # noqa: BLE001
+                merged["datasource_loaded"] = False
+                merged["datasource_error"] = str(e)
+
+        return {
+            "template_path": path,
+            "data": static_data,
+            "datasource": ds_data,
+            "merged": merged,
+        }
+    finally:
+        conn.close()
 
 
 @router.get("/template-assets")
@@ -2224,6 +2640,48 @@ async def resolve_file_path(
     finally:
         conn.close()
 
+@router.api_route("/publish-staged", methods=["GET", "POST"], response_model=None)
+async def publish_staged_page(
+    path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact"),
+    redirect: bool = Query(False, description="Redirect back to the public page after staging")
+):
+    """Public DB-only staged publish for the approval workflow (no auth required).
+
+    Approver clicks the Publish link on prod.webfilebot.com/{path} -> this marks the
+    page as published in the DB only (no static files are written). The dynamic render
+    then switches from the preview header (with links) to the clean public header.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, approved FROM webbot_page WHERE path = ?", (path,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Page not found: {path}")
+        if not row["approved"]:
+            raise HTTPException(status_code=403, detail=f"Page '{path}' is not approved yet.")
+        now = datetime.now(timezone.utc).isoformat()
+        cursor.execute(
+            "UPDATE webbot_page SET status = 'published', last_published = ?, last_modified = ? WHERE path = ?",
+            (now, now, path)
+        )
+        # AI-search incremental index: page truly published → queue for indexing
+        _mark_ai_index_pending(conn, path)
+        conn.commit()
+        if redirect:
+            public_path = path.replace("/canadasite", "", 1)
+            return RedirectResponse(url=public_path, status_code=302)
+        return {"success": True, "path": path, "published_at": now}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Publish staged failed: {str(e)}")
+    finally:
+        conn.close()
+
+
 @router.get("/{page_id:path}", response_model=PageResponse)
 async def get_page(page_id: str,
                    parent_path: Optional[str] = Query(None, description="Parent page path or ID, e.g. /en or page ID."),
@@ -2340,7 +2798,8 @@ async def get_page(page_id: str,
 @router.put("/{page_id:path}", response_model=PageResponse)
 async def update_page(page_id: str, page_update: PageUpdate,
                      parent_path: Optional[str] = Query(None, description="Parent page path or ID, e.g. /en or page ID."),
-                     current_user: dict = Depends(get_current_active_user)):
+                     current_user: dict = Depends(get_current_active_user),
+                     background_tasks: BackgroundTasks = None):
     """Update page
 
     Enhanced smart page lookup logic (consistent with GET endpoint):
@@ -2528,7 +2987,7 @@ async def update_page(page_id: str, page_update: PageUpdate,
 
         # Add最后修改时间
         update_fields.append("last_modified = ?")
-        update_values.append(datetime.now().isoformat())
+        update_values.append(datetime.now(timezone.utc).isoformat())
 
         print(f"DEBUG update_page: update_fields={update_fields}", file=sys.stderr)
         sys.stderr.flush()
@@ -2583,15 +3042,15 @@ async def update_page(page_id: str, page_update: PageUpdate,
             # 完整实现将在后续Version中Add
             pass
 
-        # Auto-scan references (if content was updated)
-        if page_update.content is not None:
-            try:
-                from app.services.references import scan_page_references
-                scan_page_references(normalized_path, page_update.content)
-            except Exception as ref_err:
-                print(f"⚠️  Reference scan failed for {normalized_path}: {ref_err}", file=__import__('sys').stderr)
-
         conn.commit()
+
+        # Auto-scan references (if content was updated) — run in BACKGROUND so the
+        # save response never waits for it. page_references is not needed in real time.
+        # (Previously it blocked ~5s on the uncommitted write lock; moved after commit,
+        # and now fully async via BackgroundTasks.)
+        if page_update.content is not None and background_tasks is not None:
+            from app.services.references import scan_page_references
+            background_tasks.add_task(scan_page_references, normalized_path, page_update.content)
 
         # Cascade other_language_path to parent if parent's is empty
         if page_update.other_language_path is not None and existing_page is not None:
@@ -2609,7 +3068,7 @@ async def update_page(page_id: str, page_update: PageUpdate,
                         if parent_row and not parent_row['other_language_path']:
                             cursor.execute(
                                 "UPDATE webbot_page SET other_language_path = ?, last_modified = ? WHERE path = ?",
-                                (parent_other, datetime.now().isoformat(), parent_path_col)
+                                (parent_other, datetime.now(timezone.utc).isoformat(), parent_path_col)
                             )
                             conn.commit()
                             print(f"CASCADED other_language_path to parent {parent_path_col}: {parent_other}", file=sys.stderr)
@@ -2771,15 +3230,26 @@ async def delete_page(
 
 @router.post("/batch-replace")
 async def batch_string_replace(
+    request: FastAPIRequest,
     path: str = Query(..., description="Page path prefix to match, e.g. /canadasite/en"),
     source: str = Query(..., description="String to find"),
     replace: str = Query("", description="Replacement string"),
+    write_static: bool = Query(False, description="Re-render affected PUBLISHED pages to static files (live). Default False = DB-only staged replace."),
+    concurrency: int = Query(8, ge=1, le=50, description="Max parallel static syncs"),
+    dry_run: bool = Query(False, description="Only count affected pages without applying"),
     current_user: dict = Depends(get_current_active_user),
 ):
     """Batch find-and-replace in page content for all pages matching path prefix.
 
     Efficient: uses SQLite REPLACE() directly, no per-page Python loops.
     Only touches pages where INSTR(content, source) > 0.
+
+    Two-stage (same as AI batch publish):
+      - Default (write_static=False): DB-only. Verify on prod.webfilebot.com/en..
+        (dynamic render reads the DB, so the replace is immediately visible there).
+      - write_static=True (--sync): after verification, re-render affected
+        published pages to the static publish directory (live). Draft pages
+        stay DB-only.
     """
     conn = get_db_connection()
     try:
@@ -2796,6 +3266,37 @@ async def batch_string_replace(
         total_matched = stats['total_matched']
         total_affected = stats['total_affected'] or 0
 
+        # Collect affected paths BEFORE the update (needed for optional static sync)
+        cursor.execute('''
+            SELECT path, status FROM webbot_page
+            WHERE path LIKE ? || '%'
+              AND content IS NOT NULL
+              AND INSTR(content, ?) > 0
+        ''', (path, source))
+        affected_rows = cursor.fetchall()
+
+        if dry_run:
+            result = {
+                "dry_run": True,
+                "message": f"Would replace '{source}' with '{replace}' in {len(affected_rows)} page(s)",
+                "path_prefix": path,
+                "source": source,
+                "replace": replace,
+                "pages_matched": total_matched,
+                "pages_affected": len(affected_rows),
+                "write_static": write_static,
+            }
+            if write_static:
+                cursor.execute('''
+                    SELECT COUNT(*) as n FROM webbot_page
+                    WHERE path LIKE ? || '%' AND status = 'published'
+                ''', (path,))
+                result["sync"] = {
+                    "would_sync": cursor.fetchone()["n"],
+                    "scope": "all published pages under prefix",
+                }
+            return result
+
         # Perform the replacement
         cursor.execute('''
             UPDATE webbot_page
@@ -2807,14 +3308,56 @@ async def batch_string_replace(
         ''', (source, replace, path, source))
         conn.commit()
 
-        return {
+        result = {
             "message": f"Replaced '{source}' with '{replace}' in {total_affected} page(s)",
             "path_prefix": path,
             "source": source,
             "replace": replace,
             "pages_matched": total_matched,
             "pages_affected": total_affected,
+            "write_static": write_static,
         }
+
+        # Optional stage 2: sync PUBLISHED pages under prefix to static files (live).
+        # IMPORTANT: do NOT match on INSTR(content, source) here — after a DB-only
+        # replace the old source string may already be gone, so affected=0 and the
+        # static files would never be updated. The DB is the source of truth, so
+        # sync re-renders ALL published pages under the prefix (idempotent).
+        if write_static:
+            import asyncio
+
+            cursor.execute('''
+                SELECT path FROM webbot_page
+                WHERE path LIKE ? || '%' AND status = 'published'
+            ''', (path,))
+            sync_paths = [r["path"] for r in cursor.fetchall()]
+            sem = asyncio.Semaphore(concurrency)
+
+            async def _sync_one(p: str):
+                async with sem:
+                    last_err = None
+                    for attempt in range(3):
+                        try:
+                            await publish_page(request, path=p, output_dir=None, current_user=current_user, strict=True, write_static=True)
+                            return (p, None)
+                        except Exception as exc:  # noqa: BLE001 - collect all failures
+                            last_err = exc
+                            sc = getattr(exc, "status_code", None)
+                            if sc in (403, 404) or attempt == 2:
+                                break
+                            await asyncio.sleep(1.0 + attempt)
+                    detail = getattr(last_err, "detail", None)
+                    return (p, f"{type(last_err).__name__}[{getattr(last_err, 'status_code', '?')}]: {detail or last_err}")
+
+            results = await asyncio.gather(*(_sync_one(p) for p in sync_paths))
+            failed = [{"path": p, "error": err} for p, err in results if err is not None]
+            result["sync"] = {
+                "synced": len(sync_paths) - len(failed),
+                "scope": "all published pages under prefix",
+                "failed": failed,
+            }
+
+        return result
 
     except sqlite3.Error as e:
         conn.rollback()
@@ -3110,7 +3653,7 @@ async def create_bilingual_template(page_data: BilingualTemplateCreate):
             french_path = f"/canadasite/fr/{french_filename}"
 
         # ========== 步骤4: 创建英文page ==========
-        now = datetime.now().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         # 准备Page data
         english_page_data = {
@@ -3245,6 +3788,8 @@ async def publish_page(
     request: FastAPIRequest,
     path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact"),
     output_dir: Optional[str] = Query(None, description="Output directory for static HTML"),
+    strict: bool = Query(False, description="Raise on template/datasource errors instead of degrading silently (used by publish-batch)"),
+    write_static: bool = Query(True, description="Write static file via FileBot publish API (False = DB-only staged publish)"),
     current_user: dict = Depends(get_current_active_user)
 ):
     """
@@ -3254,7 +3799,7 @@ async def publish_page(
     import asyncio
     import aiohttp
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -3276,7 +3821,11 @@ async def publish_page(
         page_title = page.get("navigation_title") or page.get("title", "Untitled")
         page_language = page.get("language", "en")
         page_publish_template = page.get("publish_template", None)
-        page_last_modified = page.get("last_modified", now.isoformat())
+        # 2026-08-28: publish resets last_modified to publish time (user decision:
+        # re-publishing a bilingual pair keeps both pages' last_modified in sync
+        # on the new date). Rendering uses the new timestamp so the published
+        # HTML shows the fresh date modified.
+        page_last_modified = now.isoformat()
         # Load page metadata (includes properties entered via the editor form)
         raw_metadata = page.get("metadata", {})
         if isinstance(raw_metadata, str):
@@ -3318,6 +3867,8 @@ async def publish_page(
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             row = cursor.fetchone()
             if not row:
+                if strict:
+                    raise RuntimeError(f"Template not found: {template_path}")
                 return f"<!-- Template not found: {template_path} -->"
             try:
                 config = json.loads(row[0])
@@ -3330,22 +3881,47 @@ async def publish_page(
                     try:
                         config = json.loads(raw[start:end], strict=False)
                     except:
+                        if strict:
+                            raise RuntimeError(f"Invalid JSON in template: {template_path}")
                         return f"<!-- Invalid JSON in template: {template_path} -->"
                 else:
+                    if strict:
+                        raise RuntimeError(f"No JSON config in template: {template_path}")
                     return f"<!-- No JSON config in template: {template_path} -->"
 
             template = config.get("template", "")
             data = config.get("data", {})
             datasource = config.get("datasource", config.get("dataresource"))
 
+            # i18n: expand {{labels.KEY[language]}} -> {{labels.KEY.<lang>}} (legacy @i18n syntax)
+            _lang_parts = data_source_path.strip('/').split('/')
+            lang = _lang_parts[1] if len(_lang_parts) > 1 else 'en'
+            if lang not in ('en', 'fr'):
+                lang = 'en'
+            if isinstance(data, dict):
+                data.setdefault('language', lang)
+                data.setdefault('is_en', lang == 'en')
+                data.setdefault('is_fr', lang == 'fr')
+            template = re.sub(
+                r'\{\{\s*([^{}]+?)\[(?:page\.)?language\]\s*\}\}',
+                lambda m: '{{' + m.group(1) + '.' + lang + '}}',
+                template
+            )
+            template = re.sub(
+                r'\{\{\s*([^{}]+?)\[["\'](en|fr)["\']\]\s*\}\}',
+                lambda m: '{{' + m.group(1) + '.' + m.group(2) + '}}',
+                template
+            )
+
             if datasource:
                 # Replace {path} placeholder with the actual page being rendered
                 url = datasource.replace("{path}", data_source_path)
                 if not url.startswith("http"):
-                    url = f"{base_url}{url}"
+                    # 2026-08-28: 内部端点本机直连，不走公网
+                    url = f"{LOCAL_API_BASE}{url}"
                 try:
                     async with aiohttp.ClientSession() as session:
-                        async with session.get(url, timeout=10) as resp:
+                        async with session.get(url, timeout=5) as resp:
                             if resp.status == 200:
                                 ds_data = await resp.json()
                                 data["datasource_loaded"] = True
@@ -3355,22 +3931,28 @@ async def publish_page(
                                     data = ds_data
                                 else:
                                     data["items"] = ds_data
+                            else:
+                                raise RuntimeError(f"Datasource HTTP {resp.status}: {url}")
                 except Exception as e:
+                    if strict:
+                        raise RuntimeError(f"Datasource failed for {template_path} ({url}): {e}") from e
+                    logger.warning(f"Datasource degraded for {template_path} ({url}): {e}")
                     data["datasource_loaded"] = False
                     data["datasource_error"] = str(e)
 
             try:
-                return chevron.render(template, data)
+                return await render_mustache_tpl(template, data, cursor, lang=lang, current_path=data_source_path, base_url=base_url)
             except Exception as e:
+                if strict:
+                    raise RuntimeError(f"Mustache render error in {template_path}: {e}") from e
+                logger.warning(f"Mustache render error in {template_path}: {e}")
                 return f"<!-- Mustache render error: {e} -->"
 
         # 3. Render head via gethead template
         head_html = await render_mustache_template("/canadasite/mustache-templates/gethead", path)
 
-        # 4. Render header via getheader template
-        header_en_html = await render_mustache_template("/canadasite/mustache-templates/getheader_en", path)
-        header_fr_html = await render_mustache_template("/canadasite/mustache-templates/getheader_fr", path)
-        header_html = header_en_html if page_language == "en" else header_fr_html
+        # 4. Render header via getheader template (legacy getheader_en/fr removed)
+        header_html = await render_mustache_template("/canadasite/mustache-templates/getheader", path)
 
         # 5. Get footer — try institution-level first, then language-level, then site-level
         def _find_footer_publish(search_path: str) -> str:
@@ -3469,7 +4051,7 @@ async def publish_page(
         #    Otherwise, try default DB template, then hardcoded fallback
 
         # Helper: try to render a page template from DB
-        def render_page_template_fb(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None, page_metadata=None, contextual_footer=""):
+        async def render_page_template_fb(template_path, head, header, footer, content, date_modified, lang, title, page_path, header_en=None, header_fr=None, page_metadata=None, contextual_footer=""):
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
             if not tmpl_row:
@@ -3484,6 +4066,7 @@ async def publish_page(
             except json.JSONDecodeError:
                 tmpl = tmpl_row[0]
                 tmpl_data = {}
+                tmpl_config = {}
             render_data = {
                 "content": content,
                 "head": head,
@@ -3501,6 +4084,48 @@ async def publish_page(
             }
             # Merge template data into render context (properties, extension, etc.)
             render_data.update(tmpl_data)
+            # Inject page context (for {{page.xxx}} and partials like {{>getheader}})
+            page_ctx = {
+                "path": page_path,
+                "title": title,
+                "language": lang,
+                "other_language_url": None,
+            }
+            if isinstance(page_metadata, dict):
+                olp = page_metadata.get("other_language_path") or page_metadata.get("other_language_url")
+                if olp:
+                    page_ctx["other_language_url"] = olp
+            if not page_ctx["other_language_url"]:
+                parts = page_path.strip("/").split("/")
+                # Handle both /en/xxx and /canadasite/en/xxx path formats
+                lang_idx = None
+                for idx, seg in enumerate(parts):
+                    if seg in ("en", "fr"):
+                        lang_idx = idx
+                        break
+                if lang_idx is not None:
+                    parts[lang_idx] = "fr" if parts[lang_idx] == "en" else "en"
+                    page_ctx["other_language_url"] = "/" + "/".join(parts)
+            render_data["page"] = page_ctx
+            # Load template datasource so partials like {{>getheader}} get parents/page/header/megamenu context
+            tmpl_ds = tmpl_config.get("datasource", tmpl_config.get("dataresource"))
+            if tmpl_ds and isinstance(tmpl_ds, str) and tmpl_ds.strip():
+                ds_url = tmpl_ds.replace("{path}", page_path)
+                if not ds_url.startswith("http"):
+                    # 2026-08-28: 内部端点本机直连，不走公网
+                    ds_url = f"{LOCAL_API_BASE}{ds_url}"
+                try:
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(ds_url, timeout=5) as resp:
+                            if resp.status == 200:
+                                ds_data = await resp.json()
+                                if isinstance(ds_data, dict):
+                                    render_data = {**render_data, **ds_data}
+                                elif isinstance(ds_data, list):
+                                    render_data["items"] = ds_data
+                except Exception as e:
+                    print(f"调试: 页面模板datasource加载失败: {tmpl_ds} - {str(e)}")
             # Merge page metadata into render context (includes properties entered via form)
             if page_metadata and isinstance(page_metadata, dict):
                 # Put raw metadata fields at top level (for mustache access)
@@ -3508,15 +4133,32 @@ async def publish_page(
                     render_data["page_properties"] = page_metadata["properties"]
                 if page_metadata.get("file_path"):
                     render_data["file_path"] = page_metadata["file_path"]
+                if page_metadata.get("redirect_to"):
+                    render_data["redirect_to"] = page_metadata["redirect_to"]
+                if page_metadata.get("has_feedback") is not None:
+                    render_data["has_feedback"] = page_metadata["has_feedback"]
                 # Also pass full metadata as 'metadata' for template use
                 render_data["metadata"] = page_metadata
-            return chevron.render(tmpl, render_data)
+            # NEW (2026-08-19): render page content as a Mustache template too, so dynamic
+            # blocks ({{>template?path=.}}, datasource, {{labels...}}) work inside page content.
+            content = _unescape_mustache_entities(content)
+            if content and "{{" in content:
+                _content_ctx = {k: v for k, v in render_data.items() if k != "content"}
+                try:
+                    content = await render_mustache_tpl(content, _content_ctx, cursor, lang=lang, current_path=page_path, base_url=base_url)
+                    render_data["content"] = content
+                except Exception as e:
+                    if strict:
+                        raise RuntimeError(f"Content mustache render error in {page_path}: {e}") from e
+                    logger.warning(f"Content mustache render degraded for {page_path}: {e}")
+            # 2026-08-28: 修复重复渲染 —— 同一模板只渲染一次
+            return await render_mustache_tpl(tmpl, render_data, cursor, lang=lang, current_path=page_path, base_url=base_url)
 
         full_html = None
         publish_ext = ".html"  # default extension
 
         # Helper to render a template AND extract extension from its config
-        def render_and_get_ext(template_path, *args, **kwargs):
+        async def render_and_get_ext(template_path, *args, **kwargs):
             # Load template config to check for extension field
             cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (template_path,))
             tmpl_row = cursor.fetchone()
@@ -3534,27 +4176,34 @@ async def publish_page(
                         ext = f".{ext}"
                 except (json.JSONDecodeError, Exception):
                     pass
-            html = render_page_template_fb(template_path, *args, **kwargs)
+            html = await render_page_template_fb(template_path, *args, **kwargs)
             # Also load page metadata properties into render_and_get_ext's return if template has properties
             # (properties are already handled inside render_page_template_fb via page_metadata param)
             return html, ext
 
+        # 0) Redirect: if page has redirect_to set, use redirect template
+        if page_metadata.get("redirect_to"):
+            full_html, publish_ext = await render_and_get_ext(
+                "/canadasite/mustache-templates/page-template/redirect-template", head_html, header_html, footer_html,
+                cleaned_content, date_modified_str, page_language, page_title, path,
+                page_metadata=page_metadata,
+                contextual_footer=contextual_footer
+            )
+
         # 1) Try per-page publish_template
-        if page_publish_template:
-            full_html, publish_ext = render_and_get_ext(
+        if not full_html and page_publish_template:
+            full_html, publish_ext = await render_and_get_ext(
                 page_publish_template, head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html,
                 page_metadata=page_metadata,
                 contextual_footer=contextual_footer
             )
 
         # 2) Try default language-specific template from DB
         if not full_html:
-            full_html, publish_ext = render_and_get_ext(
+            full_html, publish_ext = await render_and_get_ext(
                 "/canadasite/mustache-templates/page-template", head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
-                header_en=header_en_html, header_fr=header_fr_html,
                 page_metadata=page_metadata,
                 contextual_footer=contextual_footer
             )
@@ -3577,28 +4226,71 @@ async def publish_page(
             )
             publish_ext = ".html"
 
-                # 9. Save to FileBot publish directory via FileBot API
+        # Inject AnalyBot tracking SDK before </head>
+        # Config is external (analy-config.js) so changes don't require republishing
+        analybot_sdk = '''<script src="/etc/designs/canada/analytics/analy-config.js" defer></script>
+<script src="/etc/designs/canada/analytics/analy_v2.js" defer></script>'''
+        full_html = full_html.replace('</head>', analybot_sdk + '\n</head>', 1) if full_html else full_html
+
+        # NOTE: clientlib-base.min.css (Adobe AEM artifact) is intentionally NOT injected.
+
+        # Cache-bust theme.min.css (v19.1.0 -> v19.4.0; Cloudflare/browser may hold the old one)
+        # Versioned URL = new cache key, guarantees visitors get the updated stylesheet
+        full_html = full_html.replace('css/theme.min.css"', 'css/theme.min-20260801.css"') if full_html else full_html
+
+        # Batch path rewrite for published static files:
+        #   /content/canadasite/ -> /
+        #   /canadasite/ -> /
+        # Published site root == canadasite site root, so internal links must be root-relative.
+        # Order matters: longest prefix first, so /content/canadasite/ is not mangled.
+        if full_html:
+            full_html = full_html.replace('/content/canadasite/', '/')
+            full_html = full_html.replace('/canadasite/', '/')
+
+        # 9. Save to FileBot publish directory via FileBot API
         # 调用FileBot的publish app接口来写入发布文件
-        filebot_publish_url = "http://localhost:8001/api/v1/pages/publish"
-        fb_params = {"path": path, "extension": publish_ext}
-        if output_dir:
-            fb_params["output_dir"] = output_dir
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                filebot_publish_url,
-                params=fb_params,
-                json={"html_content": full_html, "title": page_title},
-                headers={"X-WebBot-Access": "true"}
-            ) as fb_resp:
-                if fb_resp.status != 200:
-                    fb_error = await fb_resp.text()
-                    logger.error(f"FileBot publish failed ({fb_resp.status}): {fb_error}")
-                    raise HTTPException(
-                        status_code=502,
-                        detail=f"FileBot publish failed: {fb_error}"
-                    )
-                fb_result = await fb_resp.json()
-                output_file = fb_result.get("output_file", "")
+        # Staged publish (write_static=False): DB-only — static files are LIVE, so AI batch
+        # publish goes to the DB first, gets verified on prod.webfilebot.com/en.. (dynamic
+        # render), and only then is synced to static files with write_static=True.
+        output_file = ""
+        if write_static:
+            # FileBot backend (8001) runs uvicorn --limit-max-requests 120: workers
+            # rotate after 120 requests, which briefly drops connections. Retry a
+            # few times so a rotation window does not fail the user's publish.
+            filebot_publish_url = "http://localhost:8001/api/v1/pages/publish"
+            fb_params = {"path": path, "extension": publish_ext}
+            if output_dir:
+                fb_params["output_dir"] = output_dir
+            last_fb_err: Optional[Exception] = None
+            for attempt in range(1, 4):
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(
+                            filebot_publish_url,
+                            params=fb_params,
+                            json={"html_content": full_html, "title": page_title},
+                            headers={"X-WebBot-Access": "true"},
+                            timeout=aiohttp.ClientTimeout(total=30)
+                        ) as fb_resp:
+                            if fb_resp.status != 200:
+                                fb_error = await fb_resp.text()
+                                logger.error(f"FileBot publish failed ({fb_resp.status}): {fb_error}")
+                                raise HTTPException(
+                                    status_code=502,
+                                    detail=f"FileBot publish failed: {fb_error}"
+                                )
+                            fb_result = await fb_resp.json()
+                            output_file = fb_result.get("output_file", "")
+                            break
+                except (aiohttp.ClientConnectionError, aiohttp.ServerDisconnectedError, asyncio.TimeoutError) as e:
+                    last_fb_err = e
+                    logger.warning(f"FileBot publish attempt {attempt}/3 failed: {e}; retrying in {attempt}s...")
+                    await asyncio.sleep(attempt)
+            else:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"FileBot publish failed after 3 attempts: {last_fb_err}"
+                )
 
         # 10. Save version snapshot (非阻塞)
         try:
@@ -3622,11 +4314,18 @@ async def publish_page(
         except Exception as ve:
             logger.error(f"Version snapshot failed (non-fatal): {ve}")
 
-        # 11. Update page status to "published"
+        # 11. Update page status to "published". 2026-08-28: publish also resets
+        # last_modified to the publish timestamp (user decision) so that
+        # re-publishing a bilingual pair puts both pages on the same new date
+        # and the Out-of-Sync badge clears. The twin page keeps its own
+        # last_published untouched (it is updated when the twin is published).
+        publish_ts = datetime.now(timezone.utc).isoformat()
         cursor.execute(
-            "UPDATE webbot_page SET status = 'published', last_published = ? WHERE path = ?",
-            (now.isoformat(), path)
+            "UPDATE webbot_page SET status = 'published', last_published = ?, last_modified = ? WHERE path = ?",
+            (publish_ts, now.isoformat(), path)
         )
+        # AI-search incremental index: page truly published → queue for indexing
+        _mark_ai_index_pending(conn, path)
         conn.commit()
 
         return {
@@ -3634,7 +4333,7 @@ async def publish_page(
             "path": path,
             "output_file": output_file,
             "date_modified": date_modified_str,
-            "published_at": now.isoformat(),
+            "published_at": publish_ts,
             "html_length": len(full_html)
         }
 
@@ -3647,6 +4346,66 @@ async def publish_page(
         raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")
     finally:
         conn.close()
+
+
+@router.post("/publish-batch", response_model=Dict[str, Any])
+async def publish_batch(
+    request: FastAPIRequest,
+    lang: str = Query("both", description="Language filter: en, fr, or both"),
+    prefix: str = Query("/canadasite", description="Publish all pages under this path prefix"),
+    status: str = Query("published", description="Page status to republish (e.g. published, draft)"),
+    dry_run: bool = Query(False, description="Only count pages without publishing"),
+    concurrency: int = Query(8, ge=1, le=50, description="Max parallel publishes"),
+    write_static: bool = Query(True, description="Write static files (True) or DB-only staged publish (False)"),
+    current_user: dict = Depends(get_current_active_user),
+):
+    """Batch republish: all pages with a given status under a prefix (e.g. after shared header/footer changes).
+
+    Reuses publish_page for every page so single-page behaviour stays identical.
+    Only pages with status matching the `status` param are published (default: published).
+    Pages with hide_in_navigation=true are skipped.
+    Returns per-page failures so they can be inspected and retried.
+    """
+    import asyncio
+
+    conn = get_db_connection()
+    try:
+        base = prefix.rstrip("/")
+        if lang in ("en", "fr"):
+            base = base + "/" + lang
+        rows = conn.execute(
+            "SELECT path FROM webbot_page WHERE status = ? AND COALESCE(hide_in_navigation, 0) != 1 AND (path = ? OR path LIKE ?)",
+            (status, base, base + "/%"),
+        ).fetchall()
+        paths = [r["path"] for r in rows]
+    finally:
+        conn.close()
+
+    total = len(paths)
+    if dry_run:
+        return {"dry_run": True, "total": total, "success": 0, "failed": []}
+
+    sem = asyncio.Semaphore(concurrency)
+
+    async def _publish_one(path: str):
+        async with sem:
+            last_err = None
+            for attempt in range(3):
+                try:
+                    await publish_page(request, path=path, output_dir=None, current_user=current_user, strict=True, write_static=write_static)
+                    return (path, None)
+                except Exception as exc:  # noqa: BLE001 - collect all failures for the report
+                    last_err = exc
+                    sc = getattr(exc, "status_code", None)
+                    if sc in (403, 404) or attempt == 2:
+                        break
+                    await asyncio.sleep(1.0 + attempt)  # backoff before retry
+            detail = getattr(last_err, "detail", None)
+            return (path, f"{type(last_err).__name__}[{getattr(last_err, 'status_code', '?')}]: {detail or last_err}")
+
+    results = await asyncio.gather(*(_publish_one(p) for p in paths))
+    failed = [{"path": p, "error": err} for p, err in results if err is not None]
+    return {"dry_run": False, "total": total, "success": total - len(failed), "failed": failed, "write_static": write_static}
 
 
 @router.post("/unpublish")
@@ -3981,6 +4740,7 @@ async def batch_fix_other_lang_paths(current_user: dict = Depends(get_current_ac
         def __init__(self):
             super().__init__()
             self.alt_href = None
+            self.alt_lang = None
             self._in_wb_lng = False
             self._depth = 0
 
@@ -3995,6 +4755,7 @@ async def batch_fix_other_lang_paths(current_user: dict = Depends(get_current_ac
                     self._depth += 1
                 if tag == 'a' and d.get('lang') in ('fr', 'en'):
                     self.alt_href = d.get('href', '')
+                    self.alt_lang = d.get('lang')
 
         def handle_endtag(self, tag):
             if self._in_wb_lng:
@@ -4003,7 +4764,7 @@ async def batch_fix_other_lang_paths(current_user: dict = Depends(get_current_ac
                     if self._depth == 0:
                         self._in_wb_lng = False
 
-    def _extract_path(html_content):
+    def _extract_path(html_content, page_path):
         if not html_content:
             return None
         p = _WbLngParser()
@@ -4011,11 +4772,18 @@ async def batch_fix_other_lang_paths(current_user: dict = Depends(get_current_ac
             p.feed(html_content)
         except Exception:
             return None
-        if p.alt_href:
+        if p.alt_href and p.alt_lang:
+            # Only accept a link to the OTHER language (never the page's own language / own path)
+            page_lang = page_path.split('/')[2] if page_path.startswith('/canadasite/') else None
+            if p.alt_lang == page_lang:
+                return None
             href = urllib.parse.urlparse(p.alt_href).path.rstrip('/')
             if href.endswith('.html'):
                 href = href[:-5]
-            return f'/canadasite{href}'
+            alt_path = f'/canadasite{href}'
+            if alt_path == page_path:
+                return None
+            return alt_path
         return None
 
     conn = get_db_connection()
@@ -4033,7 +4801,7 @@ async def batch_fix_other_lang_paths(current_user: dict = Depends(get_current_ac
             path = row['path']
             content = row['content']
             try:
-                alt_path = _extract_path(content)
+                alt_path = _extract_path(content, path)
                 if alt_path:
                     cursor.execute(
                         "UPDATE webbot_page SET other_language_path = ?, last_modified = datetime('now') WHERE path = ?",

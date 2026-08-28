@@ -352,3 +352,100 @@ async def get_tracking_summary():
         "today_views": today_views,
         "first_record_date": first_record,
     }
+
+
+# ═══════════════ A/B test event tracking ═══════════════
+# 实验分流后由页面埋点脚本上报（pageview / 自定义事件如 CTA Click）
+
+def _ensure_ab_table():
+    """Create ab_event_log table if not exists."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS ab_event_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            experiment_id TEXT NOT NULL,
+            variant TEXT DEFAULT '',
+            event_name TEXT DEFAULT 'pageview',
+            path TEXT DEFAULT '',
+            ip_hash TEXT DEFAULT '',
+            user_agent TEXT DEFAULT '',
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_ab_exp ON ab_event_log(experiment_id, event_name)")
+    conn.commit()
+    conn.close()
+
+
+@router.post("/ab")
+async def track_ab_event(request: Request):
+    """Receive A/B experiment event (pageview / CTA Click) from the tracking snippet.
+
+    sendBeacon sends Content-Type: text/plain, so parse JSON manually like track_pageview.
+    """
+    _ensure_ab_table()
+    try:
+        body = await request.json()
+    except Exception:
+        try:
+            raw = await request.body()
+            body = json.loads(raw.decode())
+        except Exception:
+            return Response(content='{"ok":false,"error":"invalid json"}', status_code=400, media_type="application/json")
+
+    experiment_id = body.get("experiment_id", "")
+    variant = body.get("variant", "")
+    event_name = body.get("event_name", "pageview")
+    path = body.get("path", "")
+    if not experiment_id:
+        return Response(content='{"ok":false,"error":"experiment_id required"}', status_code=400, media_type="application/json")
+
+    ip_raw = request.client.host if request.client and request.client.host else "unknown"
+    ip_hash = hashlib.sha256(ip_raw.encode()).hexdigest()[:16]
+    user_agent = request.headers.get("user-agent", "")
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO ab_event_log (experiment_id, variant, event_name, path, ip_hash, user_agent)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (experiment_id, variant, event_name, path, ip_hash, user_agent))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "experiment_id": experiment_id, "variant": variant, "event_name": event_name}
+
+
+@router.get("/ab/stats/{experiment_id}")
+async def ab_stats(experiment_id: str, days: int = 30):
+    """Aggregate A/B experiment events by variant."""
+    _ensure_ab_table()
+    conn = get_db()
+    c = conn.cursor()
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+    rows = c.execute("""
+        SELECT variant, event_name, COUNT(*) as cnt, COUNT(DISTINCT ip_hash) as uniq
+        FROM ab_event_log
+        WHERE experiment_id = ? AND timestamp >= ?
+        GROUP BY variant, event_name
+    """, (experiment_id, cutoff)).fetchall()
+
+    variants = {}
+    for r in rows:
+        v = r["variant"] or "?"
+        variants.setdefault(v, {"visitors": 0, "conversions": 0, "unique_visitors": 0})
+        if r["event_name"] == "pageview":
+            variants[v]["visitors"] = r["cnt"]
+            variants[v]["unique_visitors"] = r["uniq"]
+        else:
+            variants[v]["conversions"] = r["cnt"]
+    for v in variants:
+        vis = variants[v]["visitors"]
+        conv = variants[v]["conversions"]
+        variants[v]["conversion_rate"] = round(conv / vis * 100, 2) if vis else 0.0
+
+    c.execute("SELECT COUNT(*) FROM ab_event_log WHERE experiment_id = ? AND timestamp >= ?", (experiment_id, cutoff))
+    total = c.fetchone()[0]
+    conn.close()
+    return {"experiment_id": experiment_id, "days": days, "total_events": total, "variants": variants}

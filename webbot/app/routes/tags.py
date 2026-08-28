@@ -8,6 +8,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 import sqlite3
 import json
+from datetime import datetime
 
 router = APIRouter(prefix="/api/v1/tags", tags=["tags"])
 
@@ -76,6 +77,383 @@ async def get_page_dcterms(
 # ============================================================================
 # Page-Tag assignment
 # ============================================================================
+
+# OAG/BVG 报告 metadata 字段 → 对应 tag 分类路径（用于 slug 计算与反查限定）
+OAG_METADATA_FIELDS = {
+    "report_type": "/canadasite/tags/custom/oag-bvg/report-type",
+    "issue_year": "/canadasite/tags/custom/oag-bvg/issue-year",
+    "issues": "/canadasite/tags/custom/oag-bvg/issues",
+    "location": "/canadasite/tags/custom/oag-bvg/location",
+    "media_type": "/canadasite/tags/custom/oag-bvg/media-type",
+    "status": "/canadasite/tags/custom/oag-bvg/status",
+    "topics": "/canadasite/tags/custom/oag-bvg/topics",
+    "department": "/canadasite/tags/custom/oag-bvg/department",
+    "ministers": "/canadasite/tags/custom/oag-bvg/ministers",
+    "audited_entities": "/canadasite/tags/institutions",
+}
+
+
+@router.get("/page-properties")
+async def get_page_tag_properties_by_query(
+    path: str = Query(..., description="Page path, e.g. /canadasite/en/oag/...")
+):
+    """返回页面中引用的 custom tag 完整属性（query 形式，供 mustache datasource 使用）。"""
+    conn = get_db()
+    try:
+        result = fetch_page_tag_properties(conn, path)
+        if result is None:
+            raise HTTPException(404, f"Page not found: {path}")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Page tag properties failed: {e}")
+    finally:
+        conn.close()
+
+
+@router.get("/page/{page_path:path}/properties")
+async def get_page_tag_properties(page_path: str):
+    """返回页面中引用的 custom tag 完整属性（RESTful path 版本）。"""
+    conn = get_db()
+    try:
+        if not page_path.startswith("/"):
+            page_path = "/" + page_path
+        result = fetch_page_tag_properties(conn, page_path)
+        if result is None:
+            raise HTTPException(404, f"Page not found: {page_path}")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Page tag properties failed: {e}")
+    finally:
+        conn.close()
+
+
+def fetch_page_tag_properties(executor, page_path: str):
+    """带继承版本：department/ministers/location 缺失时沿祖先路径向上取（最近优先，到 /canadasite/en 为止）。"""
+    result = _load_page_props(executor, page_path)
+    if result is None:
+        return None
+    INHERIT_FIELDS = ("department", "ministers", "location")
+    missing = [f for f in INHERIT_FIELDS if not result["tags"].get(f)]
+    parts = [p for p in page_path.split("/") if p]
+    while len(parts) > 2 and missing:
+        parts = parts[:-1]
+        parent_path = "/" + "/".join(parts)
+        parent = _load_page_props(executor, parent_path)
+        if parent is None:
+            continue
+        still = []
+        for f in missing:
+            if parent["tags"].get(f):
+                result["tags"][f] = parent["tags"][f]
+            else:
+                still.append(f)
+        missing = still
+    return result
+
+
+def _load_page_props(executor, page_path: str):
+    """共享查询：返回页面 metadata 中引用的 custom tag 完整属性。
+
+    双通道匹配：
+    1. 有 {field}_key → 按 tag id 直接查表（新弹窗保存的数据）
+    2. 纯文本（旧自由文本/未补 key）→ 按 title_en 反查（限定在字段对应分类路径内）
+    匹配不到的文本进 unresolved 保留原文，模板仍可显示。
+    """
+    page = executor.execute(
+        "SELECT id, path, language, metadata FROM webbot_page WHERE path = ?",
+        (page_path,)
+    ).fetchone()
+    if page is None:
+        return None
+    meta = {}
+    if page["metadata"]:
+        try:
+            meta = json.loads(page["metadata"])
+        except (ValueError, TypeError):
+            meta = {}
+
+    tags = {}
+    unresolved = {}
+    for field, cat_path in OAG_METADATA_FIELDS.items():
+        keys = meta.get(field + "_key")
+        texts = meta.get(field)
+        key_list = keys if isinstance(keys, list) else ([keys] if keys else [])
+        text_list = [t for t in (texts if isinstance(texts, list) else ([texts] if texts else [])) if t]
+
+        items = []
+        seen_ids = set()
+
+        # 通道 1：按 key 查属性（_key 存的是去前缀 slug，如 'auditor-general-reports'；
+        # 也兼容完整 tag id 格式）。slug → path = cat_path + '/' + key。
+        if key_list:
+            ph = ",".join("?" for _ in key_list)
+            path_candidates = [cat_path + "/" + k for k in key_list]
+            ph2 = ",".join("?" for _ in path_candidates)
+            rows = executor.execute(
+                f"SELECT id, path, title_en, title_fr, type FROM webbot_tag "
+                f"WHERE id IN ({ph}) OR path IN ({ph2})",
+                key_list + path_candidates
+            ).fetchall()
+            by_id = {r["id"]: r for r in rows}
+            by_path = {r["path"]: r for r in rows}
+            for k in key_list:
+                r = by_id.get(k) or by_path.get(cat_path + "/" + k)
+                if r:
+                    items.append(_tag_props(r, cat_path, "key"))
+                    seen_ids.add(r["id"])
+                else:
+                    unresolved.setdefault(field, []).append(k)
+
+        # 通道 2：纯文本按 title_en 反查（限定分类路径内，大小写不敏感）
+        if text_list:
+            ph = ",".join("?" for _ in text_list)
+            rows = executor.execute(
+                f"SELECT id, path, title_en, title_fr, type FROM webbot_tag "
+                f"WHERE LOWER(title_en) IN ({ph}) AND (path = ? OR path LIKE ?)",
+                [t.strip().lower() for t in text_list] + [cat_path, cat_path + "/%"]
+            ).fetchall()
+            by_title = {}
+            for r in rows:
+                by_title.setdefault(r["title_en"].strip().lower(), r)
+            for t in text_list:
+                r = by_title.get(t.strip().lower())
+                if r and r["id"] not in seen_ids:
+                    items.append(_tag_props(r, cat_path, "title"))
+                    seen_ids.add(r["id"])
+                elif not r:
+                    if field in ("department", "ministers", "location"):
+                        # 无分类/反查不到的字段：文本透传，模板可直接显示原文
+                        items.append({
+                            "id": None,
+                            "path": "",
+                            "slug": t.strip(),
+                            "title_en": t.strip(),
+                            "title_fr": "",
+                            "type": "text",
+                            "matched": "text",
+                        })
+                    else:
+                        unresolved.setdefault(field, []).append(t)
+
+        tags[field] = items
+
+    return {
+        "path": page["path"],
+        "language": page["language"],
+        "is_en": page["language"] == "en",
+        "tabling_date": _format_tabling_date(meta),
+        "tabling_date_iso": meta.get("tabling_date_iso", ""),
+        "subjects": meta.get("subjects", ""),
+        "tags": tags,
+        "unresolved": unresolved,
+    }
+
+
+
+def _parse_page_meta(raw) -> dict:
+    """页面 metadata JSON 字符串 → dict（非法/空 → {}）"""
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        return {}
+
+
+def _parse_page_tags(executor, meta):
+    """双通道解析页面 metadata 中的 OAG custom tag 属性。
+
+    1. 有 {field}_key → 按 tag id 直接查表（新弹窗保存的数据）
+    2. 纯文本（旧自由文本/未补 key）→ 按 title_en 反查（限定在字段对应分类路径内）
+    匹配不到的文本进 unresolved 保留原文，模板仍可显示。
+    """
+    tags = {}
+    unresolved = {}
+    for field, cat_path in OAG_METADATA_FIELDS.items():
+        keys = meta.get(field + "_key")
+        texts = meta.get(field)
+        key_list = keys if isinstance(keys, list) else ([keys] if keys else [])
+        text_list = [t for t in (texts if isinstance(texts, list) else ([texts] if texts else [])) if t]
+
+        items = []
+        seen_ids = set()
+
+        # 通道 1：按 key 查属性（_key 存的是去前缀 slug，如 'auditor-general-reports'；
+        # 也兼容完整 tag id 格式）。slug → path = cat_path + '/' + key。
+        if key_list:
+            ph = ",".join("?" for _ in key_list)
+            path_candidates = [cat_path + "/" + k for k in key_list]
+            ph2 = ",".join("?" for _ in path_candidates)
+            rows = executor.execute(
+                f"SELECT id, path, title_en, title_fr, type FROM webbot_tag "
+                f"WHERE id IN ({ph}) OR path IN ({ph2})",
+                key_list + path_candidates
+            ).fetchall()
+            by_id = {r["id"]: r for r in rows}
+            by_path = {r["path"]: r for r in rows}
+            for k in key_list:
+                r = by_id.get(k) or by_path.get(cat_path + "/" + k)
+                if r:
+                    items.append(_tag_props(r, cat_path, "key"))
+                    seen_ids.add(r["id"])
+                else:
+                    unresolved.setdefault(field, []).append(k)
+
+        # 通道 2：纯文本按 title_en 反查（限定分类路径内，大小写不敏感）
+        if text_list:
+            ph = ",".join("?" for _ in text_list)
+            rows = executor.execute(
+                f"SELECT id, path, title_en, title_fr, type FROM webbot_tag "
+                f"WHERE LOWER(title_en) IN ({ph}) AND (path = ? OR path LIKE ?)",
+                [t.strip().lower() for t in text_list] + [cat_path, cat_path + "/%"]
+            ).fetchall()
+            by_title = {}
+            for r in rows:
+                by_title.setdefault(r["title_en"].strip().lower(), r)
+            for t in text_list:
+                r = by_title.get(t.strip().lower())
+                if r and r["id"] not in seen_ids:
+                    items.append(_tag_props(r, cat_path, "title"))
+                    seen_ids.add(r["id"])
+                elif not r:
+                    unresolved.setdefault(field, []).append(t)
+
+        tags[field] = items
+
+    return tags, unresolved
+
+
+@router.get("/oag-page-properties")
+async def get_oag_page_properties(
+    path: str = Query(..., description="Parent page path, e.g. /canadasite/en/auditor-general/our-work/audit-reports")
+):
+    """输入父页面 path，返回其直接子页面的 OAG 属性列表。
+
+    每个 item 包含：path、canada_ca_url（去 /canadasite 前缀的相对 URL）、
+    thumbnail（metadata.thumbnail，editor metadata Advanced tab 新增字段）。
+
+    Examples:
+    - GET /api/v1/tags/oag-page-properties?path=/canadasite/en/auditor-general/our-work/audit-reports
+    """
+    conn = get_db()
+    try:
+        if not path.startswith("/"):
+            path = "/" + path
+        normalized = path.rstrip("/") or "/"
+
+        # 直接子页面
+        rows = conn.execute(
+            "SELECT path, language, title, metadata FROM webbot_page WHERE parent_path = ? ORDER BY title ASC",
+            (normalized,)
+        ).fetchall()
+        items = [_oag_page_item(conn, r) for r in rows]
+
+        if not items:
+            # path 本身也不存在才 404；页面存在但无子页面 → 空列表
+            page = conn.execute(
+                "SELECT path FROM webbot_page WHERE path = ?", (normalized,)
+            ).fetchone()
+            if page is None:
+                raise HTTPException(404, f"No pages found for path: {path}")
+        return {"path": normalized, "count": len(items), "pages": items}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OAG page properties failed: {e}")
+    finally:
+        conn.close()
+
+
+def _oag_page_item(executor, row) -> dict:
+    """页面行 → OAG 属性 dict：path / canada_ca_url / thumbnail / language / is_en /
+    tabling_date / tabling_date_iso / subjects / tags（8 个 OAG 分类，双通道解析）"""
+    p = row["path"]
+    meta = _parse_page_meta(row["metadata"])
+    tags, _ = _parse_page_tags(executor, meta)
+    # id 只需 path 最后一段（slug），如 commentaries-on-financial-audits
+    for field_items in tags.values():
+        for it in field_items:
+            it["id"] = it["path"].rsplit("/", 1)[-1]
+    return {
+        "path": p,
+        "title": row["title"],
+        "canada_ca_url": p[len("/canadasite"):] if p.startswith("/canadasite") else None,
+        "thumbnail": meta.get("thumbnail", "") or "",
+        "language": row["language"],
+        "is_en": row["language"] == "en",
+        "tabling_date": _format_tabling_date(meta),
+        "tabling_date_iso": meta.get("tabling_date_iso", "") or "",
+        "subjects": meta.get("subjects", "") or "",
+        "tags": tags,
+    }
+
+
+def _format_tabling_date(meta) -> str:
+    """tabling date 统一输出 MMM dd, yyyy（如 May 04, 2026）。优先从 iso 解析。"""
+    iso = meta.get("tabling_date_iso", "") or ""
+    if iso:
+        try:
+            return datetime.strptime(iso[:10], "%Y-%m-%d").strftime("%b %d, %Y")
+        except (ValueError, TypeError):
+            pass
+    return meta.get("tabling_date", "") or ""
+
+
+def _tag_props(r, cat_path: str, matched: str) -> dict:
+    """tag 行 → 属性 dict（slug = path 去掉分类父路径前缀）"""
+    return {
+        "id": r["id"],
+        "path": r["path"],
+        "slug": r["path"][len(cat_path) + 1:],
+        "title_en": r["title_en"],
+        "title_fr": r["title_fr"],
+        "type": r["type"],
+        "matched": matched,
+    }
+
+
+@router.get("/page/{page_path:path}/dcterms")
+async def get_page_dcterms_by_path(page_path: str):
+    """获取页面标签的 dcterms 元数据（RESTful path 版本）"""
+    conn = get_db()
+    try:
+        if not page_path.startswith("/"):
+            page_path = "/" + page_path
+        page = conn.execute("SELECT id FROM webbot_page WHERE path = ?", (page_path,)).fetchone()
+        if not page:
+            raise HTTPException(404, f"Page not found: {page_path}")
+        rows = conn.execute("""
+            SELECT t.title_en, t.title_fr, t.type FROM webbot_tag t
+            INNER JOIN webbot_page_tags pt ON pt.tag_id = t.id
+            WHERE pt.page_id = ?
+        """, (page["id"],)).fetchall()
+        result = {}
+        subjects = []
+        audiences = []
+        type_val = None
+        for r in rows:
+            tag_type = r["type"]
+            title_en = r["title_en"]
+            if tag_type == "subject":
+                subjects.append(title_en)
+            elif tag_type == "audience":
+                audiences.append(title_en)
+            elif tag_type == "type":
+                type_val = title_en
+        if subjects:
+            result["subjects"] = ";".join(subjects)
+        if audiences:
+            result["audience"] = ";".join(audiences)
+        if type_val:
+            result["type"] = type_val
+        return result
+    finally:
+        conn.close()
+
 
 @router.get("/page/{page_path:path}")
 async def get_page_tags(page_path: str):
@@ -363,5 +741,257 @@ async def delete_tag(path: str = Query(..., description="Tag path to delete")):
         conn.execute("DELETE FROM webbot_tag WHERE id = ?", (tag_id,))
         conn.commit()
         return {"deleted": path}
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# Tag-based page search
+# ============================================================================
+
+
+@router.get("/search")
+async def search_pages_by_tags(
+    subjects: Optional[str] = Query(None, description="Comma-separated subject tag names (matches title_en)"),
+    audiences: Optional[str] = Query(None, description="Comma-separated audience tag names"),
+    types: Optional[str] = Query(None, description="Comma-separated type tag names"),
+    tags: Optional[str] = Query(None, description="Comma-separated tag names (any type)"),
+    path: Optional[str] = Query(None, description="Page path prefix (LIKE 'path%')"),
+    operator: str = Query("AND", description="Matching logic: AND (all tags must match) or OR (any tag matches)"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+):
+    """Search pages by tags with optional path prefix filter.
+
+    Supports AND/OR matching across multiple tag types.
+    Tag names match against title_en field (case-insensitive ILIKE).
+
+    Examples:
+    - GET /api/v1/tags/search?subjects=health,transport&audiences=business
+    - GET /api/v1/tags/search?subjects=health&path=/canadasite/en
+    - GET /api/v1/tags/search?tags=funding,grants&operator=OR
+    """
+    conn = get_db()
+    try:
+        # Collect all tag names
+        tag_names = []
+        if subjects:
+            tag_names.extend([s.strip() for s in subjects.split(",") if s.strip()])
+        if audiences:
+            tag_names.extend([a.strip() for a in audiences.split(",") if a.strip()])
+        if types:
+            tag_names.extend([t.strip() for t in types.split(",") if t.strip()])
+        if tags:
+            tag_names.extend([t.strip() for t in tags.split(",") if t.strip()])
+
+        if not tag_names:
+            raise HTTPException(400, "At least one tag filter required (subjects, audiences, types, or tags)")
+
+        # Find matching tag IDs (case-insensitive)
+        placeholders = ",".join("?" for _ in tag_names)
+        tag_rows = conn.execute(
+            f"SELECT id, title_en, type, path FROM webbot_tag WHERE LOWER(title_en) IN ({placeholders})",
+            [n.lower() for n in tag_names]
+        ).fetchall()
+
+        if not tag_rows:
+            return {"total": 0, "pages": [], "matched_tags": [], "not_found": tag_names}
+
+        matched_tag_ids = [r["id"] for r in tag_rows]
+        matched_tag_names = [r["title_en"] for r in tag_rows]
+        matched_lower = set(n.lower() for n in matched_tag_names)
+        not_found = [n for n in tag_names if n.lower() not in matched_lower]
+        matched_tag_names = list(dict.fromkeys(matched_tag_names))  # deduplicate
+
+        # Build page query
+        if operator.upper() == "AND":
+            # All tags must match on the same page
+            page_sql = f"""
+                SELECT pt.page_id FROM webbot_page_tags pt
+                WHERE pt.tag_id IN ({','.join('?' for _ in matched_tag_ids)})
+                GROUP BY pt.page_id
+                HAVING COUNT(DISTINCT pt.tag_id) = ?
+            """
+            page_params = matched_tag_ids + [len(matched_tag_ids)]
+        else:
+            # Any tag matches
+            page_sql = f"""
+                SELECT DISTINCT pt.page_id FROM webbot_page_tags pt
+                WHERE pt.tag_id IN ({','.join('?' for _ in matched_tag_ids)})
+            """
+            page_params = matched_tag_ids
+
+        # Wrap with page details + path filter
+        if path:
+            path_prefix = path if path.startswith("/") else "/" + path
+            count_sql = f"""
+                SELECT COUNT(*) as total FROM webbot_page wp
+                WHERE wp.id IN ({page_sql})
+                AND wp.path LIKE ?
+            """
+            data_sql = f"""
+                SELECT wp.id, wp.path, wp.title, wp.parent_path, wp.status,
+                       wp.description, wp.last_published,
+                       wp.created_at, wp.last_modified
+                FROM webbot_page wp
+                WHERE wp.id IN ({page_sql})
+                AND wp.path LIKE ?
+                ORDER BY wp.last_published DESC
+                LIMIT ? OFFSET ?
+            """
+            count_params = page_params + [f"{path_prefix}%"]
+            data_params = page_params + [f"{path_prefix}%", limit, skip]
+        else:
+            count_sql = f"""
+                SELECT COUNT(*) as total FROM webbot_page wp
+                WHERE wp.id IN ({page_sql})
+            """
+            data_sql = f"""
+                SELECT wp.id, wp.path, wp.title, wp.parent_path, wp.status,
+                       wp.description, wp.last_published,
+                       wp.created_at, wp.last_modified
+                FROM webbot_page wp
+                WHERE wp.id IN ({page_sql})
+                ORDER BY wp.last_published DESC
+                LIMIT ? OFFSET ?
+            """
+            count_params = list(page_params)
+            data_params = page_params + [limit, skip]
+
+        total = conn.execute(count_sql, count_params).fetchone()["total"]
+        page_rows = conn.execute(data_sql, data_params).fetchall()
+
+        # Attach tags to each page
+        pages = []
+        _dept_cache = {}
+        for pr in page_rows:
+            p = dict(pr)
+            tag_rows = conn.execute("""
+                SELECT t.title_en, t.title_fr, t.type, t.path
+                FROM webbot_tag t
+                INNER JOIN webbot_page_tags pt ON pt.tag_id = t.id
+                WHERE pt.page_id = ?
+                ORDER BY t.type, t.title_en
+            """, (p["id"],)).fetchall()
+            def _title_dict(t):
+                d = {"en": t["title_en"]}
+                if t["title_fr"]:
+                    d["fr"] = t["title_fr"]
+                return {"title": d}
+
+            p["subjects"] = [_title_dict(t) for t in tag_rows if t["type"] == "subject"]
+            p["audiences"] = [_title_dict(t) for t in tag_rows if t["type"] == "audience"]
+            p["types"] = [_title_dict(t) for t in tag_rows if t["type"] == "type"]
+            # department 级（语言下一级）页面信息：path + department/ministers/location 原文
+            _parts = [pp for pp in p["path"].split("/") if pp]
+            if len(_parts) >= 3:
+                _dept_path = "/" + "/".join(_parts[:3])
+                if _dept_path not in _dept_cache:
+                    _drow = conn.execute(
+                        "SELECT metadata FROM webbot_page WHERE path = ?", (_dept_path,)
+                    ).fetchone()
+                    try:
+                        _dmeta = json.loads(_drow["metadata"]) if _drow and _drow["metadata"] else {}
+                    except (ValueError, TypeError):
+                        _dmeta = {}
+                    _dept_cache[_dept_path] = _dmeta
+                _dmeta = _dept_cache[_dept_path]
+                p["department"] = {
+                    "path": _dept_path,
+                    "department": _dmeta.get("department", ""),
+                    "ministers": _dmeta.get("ministers", ""),
+                    "location": _dmeta.get("location", ""),
+                }
+            else:
+                p["department"] = None
+            pages.append(p)
+
+        return {
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+            "pages": pages,
+            "matched_tags": matched_tag_names,
+            "not_found": not_found,
+            "properties": fetch_page_tag_properties(conn, path) if path else None
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Tag search failed: {e}")
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# OAG/BVG custom tags — aggregated properties for report metadata
+# ============================================================================
+
+OAG_BVG_CATEGORIES = [
+    ("report_type", "Report type", "/canadasite/tags/custom/oag-bvg/report-type"),
+    ("issue_year", "Issue year", "/canadasite/tags/custom/oag-bvg/issue-year"),
+    ("issues", "Issues", "/canadasite/tags/custom/oag-bvg/issues"),
+    ("location", "Location", "/canadasite/tags/custom/oag-bvg/location"),
+    ("media_type", "Media type", "/canadasite/tags/custom/oag-bvg/media-type"),
+    ("status", "Status", "/canadasite/tags/custom/oag-bvg/status"),
+    ("topics", "Topics", "/canadasite/tags/custom/oag-bvg/topics"),
+    ("department", "Department", "/canadasite/tags/custom/oag-bvg/department"),
+    ("ministers", "Ministers", "/canadasite/tags/custom/oag-bvg/ministers"),
+    ("audited_entities", "Audited entities", "/canadasite/tags/institutions"),
+]
+
+
+def fetch_oag_bvg_tags(executor):
+    """共享查询：返回 OAG/BVG 报告 metadata 的全部 custom tag 分类及属性。
+
+    executor 可为 sqlite3.Connection 或 Cursor（需 row_factory=sqlite3.Row）。
+    供 /api/v1/tags/oag-bvg endpoint 与 mustache 本地数据源共用。
+    """
+    result = {"categories": {}}
+    for key, label, cat_path in OAG_BVG_CATEGORIES:
+        rows = executor.execute(
+            """SELECT t.id, t.path, t.title_en, t.title_fr, t.type, t.parent_path,
+                      (SELECT COUNT(*) FROM webbot_page_tags pt WHERE pt.tag_id = t.id) AS page_count
+               FROM webbot_tag t
+               WHERE t.path = ? OR t.path LIKE ?
+               ORDER BY t.title_en COLLATE NOCASE, t.path""",
+            (cat_path, cat_path + "/%")
+        ).fetchall()
+        tags = []
+        for r in rows:
+            if r["path"] == cat_path:
+                continue  # 分类目录自身不是可选项
+            tags.append({
+                "id": r["id"],
+                "path": r["path"],
+                "slug": r["path"][len(cat_path) + 1:],
+                "title_en": r["title_en"],
+                "title_fr": r["title_fr"],
+                "type": r["type"],
+                "parent_path": r["parent_path"],
+                "page_count": r["page_count"],
+            })
+        result["categories"][key] = {
+            "label": label,
+            "path": cat_path,
+            "count": len(tags),
+            "tags": tags,
+        }
+    return result
+
+
+@router.get("/oag-bvg")
+async def list_oag_bvg_tags():
+    """返回 OAG/BVG 报告 metadata 的全部 custom tag 分类及属性（一次加载）。
+
+    每个分类递归包含其下所有 tag（含子层级，如 location/alberta/...），
+    每个 tag 带 id / path / slug / title_en / title_fr / type / page_count。
+    """
+    conn = get_db()
+    try:
+        return fetch_oag_bvg_tags(conn)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OAG/BVG tags failed: {e}")
     finally:
         conn.close()

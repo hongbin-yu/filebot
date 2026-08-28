@@ -257,6 +257,42 @@
         .empty-state h3 { font-size: 18px; margin-bottom: 8px; }
         .loading { text-align: center; padding: 30px; color: #888; }
 
+        /* WET modal sections: hidden by default (no WET CSS loaded on this page) */
+        .mfp-hide { display: none !important; }
+
+        /* Pagination bar */
+        .pagination-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border-top: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #555;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pagination-bar .pagination-info { color: #777; }
+        .pagination-bar .pagination-controls { display: flex; align-items: center; gap: 8px; }
+        .pagination-bar button {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            color: #2572b4;
+        }
+        .pagination-bar button:hover:not(:disabled) { background: #e8f0fe; border-color: #2572b4; }
+        .pagination-bar button:disabled { opacity: 0.4; cursor: default; }
+        .pagination-bar .page-num {
+            min-width: 90px;
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+        }
+
         @media (max-width: 768px) {
             .page-header, .page-row {
                 grid-template-columns: 2fr 1fr 80px;
@@ -351,6 +387,8 @@
         let currentPagePath = null;
         let currentVersions = [];
         let compareSelections = new Set();
+        let currentPage = 1;
+        const PAGE_SIZE = 50;
         const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
 
         async function loadSummary() {
@@ -386,7 +424,13 @@
                 container.innerHTML = '<div class="empty-state"><h3>📭 No Versioned Pages</h3><p>Publish a page first to create version snapshots.</p></div>';
                 return;
             }
-            container.innerHTML = pages.map(p => `
+            const totalPages = Math.max(1, Math.ceil(pages.length / PAGE_SIZE));
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const slice = pages.slice(start, start + PAGE_SIZE);
+
+            container.innerHTML = slice.map(p => `
                 <div class="page-row">
                     <span class="path" onclick="viewPageHistory('${p.page_path}')">${p.page_path}</span>
                     <span class="v-num">${p.version_count}</span>
@@ -394,12 +438,31 @@
                     <span class="v-size">${formatBytes(p.latest_size)}</span>
                     <span><button class="btn-view" onclick="viewPageHistory('${p.page_path}')">View</button></span>
                 </div>
-            `).join('');
+            `).join('') + paginationBar(pages.length, totalPages, start + 1, start + slice.length);
+        }
+
+        function paginationBar(total, totalPages, from, to) {
+            return `<div class="pagination-bar">
+                <span class="pagination-info">Showing ${from}–${to} of ${total} pages</span>
+                <span class="pagination-controls">
+                    <button onclick="goPage(currentPage - 1)" ${currentPage <= 1 ? 'disabled' : ''}>← Prev</button>
+                    <span class="page-num">Page ${currentPage} / ${totalPages}</span>
+                    <button onclick="goPage(currentPage + 1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next →</button>
+                </span>
+            </div>`;
+        }
+
+        function goPage(p) {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allPages.filter(x => x.page_path.toLowerCase().includes(q));
+            currentPage = p;
+            renderPageList(filtered);
         }
 
         function filterPages() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             const filtered = allPages.filter(p => p.page_path.toLowerCase().includes(q));
+            currentPage = 1;
             renderPageList(filtered);
         }
 

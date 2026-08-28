@@ -34,13 +34,17 @@ BOILERPLATE_PREFIXES = ("/gcweb-assets/", "/etc/designs/", "/content/dam/")
 
 # ── Database helpers ──────────────────────────────────────────
 
-_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "webbot.db")
+_DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "webbot.db")
+)
 
 
 def _get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(_DB_PATH)
+    conn = sqlite3.connect(_DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=15000")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 

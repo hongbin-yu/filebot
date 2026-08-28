@@ -88,6 +88,22 @@ const AdminTasks: React.FC = () => {
     }
   };
 
+  const handleCancelTask = async (taskId: string) => {
+    const confirmMsg = `Stop task ${taskId}?\nPages being crawled will not be saved.`;
+    if (!(await window.wetYesOrNo(confirmMsg, 'Stop Crawl Task'))) return;
+
+    try {
+      await aiService.cancelCrawlTask(taskId);
+      showToast(`Task ${taskId} 已停止`, 'success');
+      // 立即刷新状态
+      const status = await aiService.getCrawlStatus(taskId);
+      setTasks(prev => prev.map(t => t.task_id === taskId ? status : t));
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || err.message || '停止失败';
+      showToast(detail, 'error');
+    }
+  };
+
   const refreshAllTasks = async () => {
     try {
       setLoading(true);
@@ -316,7 +332,7 @@ const AdminTasks: React.FC = () => {
                             <div  style={{fontSize:"0.875rem"}}>
                               Updated: {formatTime(task.updated_at)}
                             </div>
-                            <div style={{ paddingTop:8 }}>
+                            <div style={{ paddingTop:8, display:'flex', gap:8 }}>
                               <button
                                 onClick={() => refreshTaskStatus(task.task_id)}
                                 disabled={isRefreshing}
@@ -324,6 +340,15 @@ const AdminTasks: React.FC = () => {
                               >
                                 {isRefreshing ? 'Refreshing...' : 'Refresh'}
                               </button>
+                              {(task.status === 'pending' || task.status === 'crawling' || task.status === 'processing') && (
+                                <button
+                                  onClick={() => handleCancelTask(task.task_id)}
+                                  disabled={isRefreshing}
+                                  className="fb-align-center fb-label" style={{ paddingTop:6,paddingBottom:6, display:"inline-flex", paddingLeft:12, border:"1px solid #e5e7eb", borderColor:"#fca5a5", fontSize:"0.75rem", borderRadius:8, color:"#dc2626", background:"#fef2f2" }}
+                                >
+                                  🛑 Stop
+                                </button>
+                              )}
                             </div>
                           </div>
                         </td>

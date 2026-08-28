@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>AnalyBot - A/B Testing & Analytics - Canada.ca CMS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5; color: #333; padding: 20px 30px;
+        }
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #2572b4;
+        }
+        .header h1 { font-size: 22px; color: #2572b4; }
+        .header h1 small { font-size: 13px; color: #999; font-weight: normal; margin-left: 10px; }
+        .header .back-link {
+            padding: 6px 14px; background: #f0f0f0; border: 1px solid #ddd;
+            border-radius: 4px; text-decoration: none; color: #555; font-size: 13px;
+        }
+        .header .back-link:hover { background: #e5e5e5; }
+
+        .layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+        @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: white; border: 1px solid #e0e0e0; border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .panel-header {
+            padding: 12px 16px; background: #fafafa; border-bottom: 1px solid #e0e0e0;
+            border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;
+        }
+        .panel-header h3 { font-size: 14px; font-weight: 600; }
+        .panel-body { padding: 16px; }
+
+        /* experiment list */
+        .exp-item {
+            padding: 12px 14px; border-bottom: 1px solid #f0f0f0; cursor: pointer;
+            transition: background 0.15s; border-left: 3px solid transparent;
+        }
+        .exp-item:hover { background: #f8fafc; }
+        .exp-item.active { background: #eef5fb; border-left-color: #2572b4; }
+        .exp-item .exp-name { font-size: 13px; font-weight: 600; color: #333; }
+        .exp-item .exp-meta { font-size: 11px; color: #999; margin-top: 3px; }
+        .exp-item .exp-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-running { background: #d4edda; color: #155724; }
+        .badge-completed { background: #e6f2ff; color: #2572b4; }
+        .badge-draft { background: #e9ecef; color: #495057; }
+        .badge-stopped { background: #f8d7da; color: #721c24; }
+        .badge-blue { background: #e6f2ff; color: #2572b4; }
+        .badge-green { background: #d4edda; color: #155724; }
+        .badge-orange { background: #fff3cd; color: #856404; }
+        .badge-gray { background: #e9ecef; color: #495057; }
+
+        .btn {
+            display: inline-block; padding: 7px 14px; border: none; border-radius: 4px;
+            font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none;
+        }
+        .btn-primary { background: #2572b4; color: white; }
+        .btn-primary:hover { background: #1d5f99; }
+        .btn-secondary { background: #e9ecef; color: #495057; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        /* dashboard */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
+        .card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .card .label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card .value { font-size: 24px; font-weight: 700; color: #2572b4; margin: 5px 0 0 0; }
+        .card .sub { font-size: 11px; color: #aaa; margin-top: 3px; }
+        .card .value.variant-b { color: #1b6c1c; }
+        .card .value.variant-a { color: #2572b4; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .bar { display: flex; align-items: center; margin-bottom: 10px; gap: 8px; }
+        .bar .bar-label { width: 150px; font-size: 12px; color: #555; text-align: right; flex-shrink: 0; }
+        .bar .bar-track { flex: 1; height: 26px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+        .bar .bar-track .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s; }
+        .bar .bar-value { width: 90px; font-size: 12px; color: #555; flex-shrink: 0; font-weight: 600; }
+        .bar-fill.a { background: #2572b4; }
+        .bar-fill.b { background: #1b6c1c; }
+
+        .conclusion {
+            display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+            background: #f0f7f0; border: 1px solid #c8e0c8; border-radius: 8px; margin-bottom: 18px;
+        }
+        .conclusion .winner { font-size: 15px; font-weight: 700; color: #1b6c1c; }
+        .conclusion .detail { font-size: 12px; color: #555; }
+        .conclusion .conf { margin-left: auto; text-align: right; }
+        .conclusion .conf .cval { font-size: 20px; font-weight: 700; color: #1b6c1c; }
+        .conclusion .conf .clabel { font-size: 11px; color: #888; }
+
+        .sel-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .sel-group label { font-size: 11px; color: #888; display: block; margin-bottom: 4px; }
+        .sel-group select {
+            padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: white;
+        }
+
+        .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+            background: #eef5fb; border: 1px solid #cfe0f0; border-radius: 14px; font-size: 12px; color: #2572b4;
+        }
+        .chip .x { cursor: pointer; color: #999; font-weight: 700; }
+        .chip .x:hover { color: #dc3545; }
+        .add-input { display: flex; gap: 6px; margin-top: 10px; }
+        .add-input input {
+            flex: 1; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
+        }
+
+        .trend-wrap { position: relative; }
+        .trend-wrap svg { width: 100%; height: auto; display: block; }
+        .legend { display: flex; gap: 16px; font-size: 12px; color: #666; margin-top: 6px; }
+        .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+        .legend .dot.a { background: #2572b4; }
+        .legend .dot.b { background: #1b6c1c; }
+
+        .notify {
+            display: none; padding: 12px 16px; border-radius: 6px; margin-bottom: 18px;
+            font-size: 13px; font-weight: 600;
+        }
+        .notify.show { display: block; }
+        .notify.warn { background: #fff3cd; border: 1px solid #ffeaa3; color: #856404; }
+        .notify.info { background: #e6f2ff; border: 1px solid #c4e0f7; color: #2572b4; }
+
+        .audit-item { padding: 7px 0; border-bottom: 1px solid #f5f5f5; font-size: 12px; display: flex; gap: 10px; }
+        .audit-item:last-child { border-bottom: none; }
+        .audit-item .at { color: #aaa; flex-shrink: 0; font-family: monospace; font-size: 11px; }
+        .audit-item .ad { color: #444; }
+        .audit-list { max-height: 170px; overflow-y: auto; }
+
+        /* modal */
+        .modal-mask {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            z-index: 100; align-items: center; justify-content: center;
+        }
+        .modal-mask.show { display: flex; }
+        .modal {
+            background: white; border-radius: 10px; width: 520px; max-width: 94vw;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        }
+        .modal-head { padding: 16px 20px; border-bottom: 1px solid #eee; font-size: 16px; font-weight: 700; }
+        .modal-body { padding: 18px 20px; }
+        .modal-foot { padding: 14px 20px; border-top: 1px solid #eee; text-align: right; display: flex; gap: 10px; justify-content: flex-end; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 5px; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .split-row { display: flex; align-items: center; gap: 12px; }
+        .split-row input[type=range] { flex: 1; }
+        .split-row .split-val { font-size: 14px; font-weight: 700; color: #2572b4; width: 46px; text-align: center; }
+
+        .variant-box {
+            border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 12px; font-size: 12px;
+        }
+        .variant-box .vb-title { font-weight: 700; margin-bottom: 3px; }
+        .variant-box.a .vb-title { color: #2572b4; }
+        .variant-box.b .vb-title { color: #1b6c1c; }
+        .variant-box .vb-desc { color: #666; }
+
+        .hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+        .muted { color: #999; font-size: 12px; }
+        .mt10 { margin-top: 10px; }
+        .mt16 { margin-top: 16px; }
+        .mb10 { margin-bottom: 10px; }
+    </style>
+    <script src="/static/js/webbot-auth.js"></script>
+</head>
+<body>
+
+<div class="header">
+    <h1>📈 AnalyBot <small>A/B Testing &amp; Analytics · Canada.ca CMS</small></h1>
+    <a href="/static/navigation.html" class="back-link">← Back to Content Manager</a>
+</div>
+
+<div id="notify" class="notify warn"></div>
+
+<div class="layout">
+    <!-- left: experiments list -->
+    <div class="panel">
+        <div class="panel-header">
+            <h3>🧪 Experiments</h3>
+            <button class="btn btn-primary btn-sm" id="btn-create-exp">+ New Experiment</button>
+        </div>
+        <div class="panel-body" style="padding:0;" id="exp-list"></div>
+    </div>
+
+    <!-- right: detail dashboard -->
+    <div id="detail-panel">
+        <div class="panel">
+            <div class="panel-header">
+                <h3 id="detail-title">Select an experiment</h3>
+                <span id="detail-status"></span>
+            </div>
+            <div class="panel-body">
+                <div id="detail-body" class="muted">Choose an experiment from the list, or create a new one.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create experiment modal -->
+<div class="modal-mask" id="modal-mask">
+    <div class="modal">
+        <div class="modal-head">Create Experiment</div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Experiment Name</label>
+                <input type="text" id="f-name" value="Passport CTA Button Test">
+            </div>
+            <div class="form-group">
+                <label>Page Under Test</label>
+                <select id="f-page">
+                    <option>/en/passport/renewal</option>
+                    <option>/en/passport/apply</option>
+                    <option>/en/services</option>
+                    <option>/en/immigration</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="variant-box a">
+                    <div class="vb-title">Variant A · Control</div>
+                    <div class="vb-desc">Current version</div>
+                    <input type="text" id="f-va" value="Current blue button" style="margin-top:6px;width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;">
+                </div>
+                <div class="variant-box b">
+                    <div class="vb-title">Variant B · Treatment</div>
+                    <div class="vb-desc">New version</div>
+                    <input type="text" id="f-vb" value="Green &quot;Apply Now&quot; button" style="margin-top:6px;width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;">
+                </div>
+            </div>
+            <div class="form-group mt16">
+                <label>Traffic Split</label>
+                <div class="split-row">
+                    <span class="muted">A</span>
+                    <input type="range" id="f-split" min="10" max="90" value="50">
+                    <span class="split-val" id="f-split-val">50/50</span>
+                    <span class="muted">B</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-secondary" id="btn-cancel-exp">Cancel</button>
+            <button class="btn btn-primary" id="btn-confirm-exp">Create &amp; Start</button>
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================
+ * AnalyBot — A/B Testing & Analytics (demo build, mock data)
+ * Pure frontend. Data is simulated; no backend dependency.
+ * ============================================================ */
+
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString('en-US');
+
+const DEFAULT_HISTORY = (aRate, bRate) => {
+    const pts = [];
+    let a = aRate - 0.35, b = bRate - 0.55;
+    for (let i = 0; i < 14; i++) {
+        a += 0.05; b += 0.08;
+        pts.push({ a: Math.max(0.6, a), b: Math.max(0.6, b) });
+    }
+    return pts;
+};
+
+let experiments = [
+    {
+        id: 'exp-passport-cta',
+        name: 'Passport CTA Button Test',
+        page: '/en/passport/renewal',
+        status: 'running',
+        split: 50,
+        variants: {
+            A: { label: 'Variant A (Control)', desc: 'Current blue button', visitors: 12480, conversions: 287 },
+            B: { label: 'Variant B', desc: 'Green "Apply Now" button', visitors: 12501, conversions: 388 },
+        },
+        events: ['CTA Click'],
+        confidence: 95.2,
+        history: DEFAULT_HISTORY(2.30, 3.10),
+        createdAt: '2026-08-10 09:14',
+        audit: [
+            ['2026-08-10 09:14', 'Experiment created by rita.lou — traffic split 50/50'],
+            ['2026-08-10 09:15', 'Conversion event "CTA Click" defined'],
+            ['2026-08-12 11:02', 'Weekly report scheduled (Mondays 08:00)'],
+        ],
+    },
+    {
+        id: 'exp-homepage-banner',
+        name: 'Homepage Banner Test',
+        page: '/en',
+        status: 'completed',
+        split: 50,
+        variants: {
+            A: { label: 'Variant A (Control)', desc: 'Current banner', visitors: 42110, conversions: 1263 },
+            B: { label: 'Variant B', desc: 'New banner — "Find services faster"', visitors: 42089, conversions: 1420 },
+        },
+        events: ['Banner Click'],
+        confidence: 99.1,
+        history: DEFAULT_HISTORY(2.95, 3.40),
+        createdAt: '2026-07-28 10:02',
+        winner: 'B',
+        audit: [
+            ['2026-07-28 10:02', 'Experiment created by hongbin.yu'],
+            ['2026-08-02 08:00', 'Variant B declared winner (+12.4% conversion, 99% confidence)'],
+            ['2026-08-02 08:05', 'Variant B promoted to production'],
+        ],
+    },
+    {
+        id: 'exp-services-search',
+        name: 'Services Search Layout Test',
+        page: '/en/services',
+        status: 'draft',
+        split: 50,
+        variants: {
+            A: { label: 'Variant A (Control)', desc: 'Current layout', visitors: 0, conversions: 0 },
+            B: { label: 'Variant B', desc: 'Card-based layout', visitors: 0, conversions: 0 },
+        },
+        events: ['Search Result Click'],
+        confidence: 0,
+        history: DEFAULT_HISTORY(2.0, 2.0),
+        createdAt: '2026-08-15 16:40',
+        audit: [
+            ['2026-08-15 16:40', 'Draft created by rita.lou — pending review'],
+        ],
+    },
+];
+
+let activeId = 'exp-passport-cta';
+let timer = null;
+let degrading = false;
+
+const STATUS_BADGE = {
+    running: '<span class="badge badge-running">● Running</span>',
+    completed: '<span class="badge badge-completed">✓ Completed</span>',
+    draft: '<span class="badge badge-draft">Draft</span>',
+    stopped: '<span class="badge badge-stopped">■ Stopped</span>',
+};
+
+/* ---------- notify ---------- */
+function notify(msg, type) {
+    const el = $('notify');
+    el.className = 'notify ' + (type || 'warn') + ' show';
+    el.textContent = msg;
+    clearTimeout(notify._t);
+    notify._t = setTimeout(() => el.className = 'notify', 6000);
+}
+
+/* ---------- experiment list ---------- */
+function renderList() {
+    const wrap = $('exp-list');
+    wrap.innerHTML = '';
+    experiments.forEach(exp => {
+        const div = document.createElement('div');
+        div.className = 'exp-item' + (exp.id === activeId ? ' active' : '');
+        const meta = exp.status === 'completed'
+            ? `Winner: Variant ${exp.winner} · +12.4% conversion`
+            : `${exp.page} · Split ${exp.split}/${100 - exp.split}`;
+        div.innerHTML = `
+            <div class="exp-name">${exp.name}</div>
+            <div class="exp-meta">${meta}</div>
+            <div class="exp-row">${STATUS_BADGE[exp.status] || ''}</div>`;
+        div.onclick = () => { activeId = exp.id; renderList(); renderDetail(); };
+        wrap.appendChild(div);
+    });
+}
+
+/* ---------- segments (mock multipliers) ---------- */
+function segmentMultiplier() {
+    const devEl = $('seg-device');
+    const langEl = $('seg-lang');
+    if (!devEl || !langEl) return { mA: 1.0, mB: 1.0, mV: 1.0 };
+    const dev = devEl.value;
+    const lang = langEl.value;
+    let mA = 1.0, mB = 1.0, mV = 1.0;
+    if (dev === 'mobile') { mB = 1.22; mV = 0.55; }   // 55% of traffic is mobile; B shines here
+    if (dev === 'desktop') { mA = 1.08; mV = 0.45; }
+    if (lang === 'en') { mA *= 1.05; mB *= 1.05; }
+    if (lang === 'fr') { mA *= 0.85; mB *= 0.85; }
+    return { mA, mB, mV };
+}
+
+/* ---------- dashboard ---------- */
+function rateOf(exp, key) {
+    const v = exp.variants[key];
+    return v.visitors > 0 ? (v.conversions / v.visitors * 100) : 0;
+}
+
+function trendSvg(exp) {
+    const W = 560, H = 170, PAD = 28;
+    const rates = exp.history.map(p => Math.max(p.a, p.b));
+    const maxR = Math.max(4.2, ...rates) + 0.5;
+    const pts = (key) => exp.history.map((p, i) => {
+        const x = PAD + i * (W - PAD * 2) / Math.max(1, exp.history.length - 1);
+        const y = H - PAD - (p[key] / maxR) * (H - PAD * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const last = exp.history[exp.history.length - 1];
+    const grid = [1, 2, 3, 4].map(g => {
+        const y = H - PAD - (g / maxR) * (H - PAD * 2);
+        return `<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#f0f0f0" stroke-width="1"/><text x="2" y="${y + 3}" font-size="9" fill="#bbb">${g}%</text>`;
+    }).join('');
+    const lastPt = (key) => {
+        const p = exp.history[exp.history.length - 1];
+        const x = PAD + (exp.history.length - 1) * (W - PAD * 2) / Math.max(1, exp.history.length - 1);
+        const y = H - PAD - (p[key] / maxR) * (H - PAD * 2);
+        return `<circle cx="${x}" cy="${y}" r="4" fill="${key === 'a' ? '#2572b4' : '#1b6c1c'}"/>`;
+    };
+    return `
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+            ${grid}
+            <polyline points="${pts('a')}" fill="none" stroke="#2572b4" stroke-width="2.5" stroke-linejoin="round"/>
+            <polyline points="${pts('b')}" fill="none" stroke="#1b6c1c" stroke-width="2.5" stroke-linejoin="round"/>
+            ${lastPt('a')}${lastPt('b')}
+        </svg>
+        <div class="legend">
+            <span><span class="dot a"></span>Variant A (Control) — last 14 days: ${last.a.toFixed(2)}%</span>
+            <span><span class="dot b"></span>Variant B — last 14 days: ${last.b.toFixed(2)}%</span>
+        </div>`;
+}
+
+function renderDetail() {
+    const exp = experiments.find(e => e.id === activeId);
+    if (!exp) return;
+    $('detail-title').textContent = exp.name;
+    $('detail-status').innerHTML = STATUS_BADGE[exp.status] || '';
+    // preserve current segment selection across re-renders (live tick rebuilds DOM)
+    const segDev = ($('seg-device') || {}).value || 'all';
+    const segLang = ($('seg-lang') || {}).value || 'all';
+    const m = segmentMultiplier();
+    const body = $('detail-body');
+
+    if (exp.status === 'draft') {
+        body.innerHTML = `
+            <div class="muted mb10">Draft experiment — not yet collecting data.</div>
+            <div class="form-row">
+                <div class="variant-box a"><div class="vb-title">Variant A · Control</div><div class="vb-desc">${exp.variants.A.desc}</div></div>
+                <div class="variant-box b"><div class="vb-title">Variant B · Treatment</div><div class="vb-desc">${exp.variants.B.desc}</div></div>
+            </div>
+            <div class="mt16" style="display:flex;gap:10px;">
+                <button class="btn btn-primary" id="btn-start-exp">Start Experiment</button>
+                <button class="btn btn-secondary" id="btn-edit-exp">Edit</button>
+            </div>`;
+        $('btn-start-exp').onclick = () => {
+            exp.status = 'running';
+            exp.variants.A.visitors = 40; exp.variants.B.visitors = 40;
+            exp.variants.A.conversions = 1; exp.variants.B.conversions = 2;
+            exp.confidence = 0;
+            exp.audit.push([nowTs(), 'Experiment started — traffic split 50/50']);
+            notify(`Experiment "${exp.name}" is now live. Traffic split 50/50.`, 'info');
+            renderList(); renderDetail(); startTick();
+        };
+        $('btn-edit-exp').onclick = () => openModal(exp);
+        return;
+    }
+
+    const rA = rateOf(exp, 'A'), rB = rateOf(exp, 'B');
+    const visitorsA = Math.round(exp.variants.A.visitors * m.mV);
+    const visitorsB = Math.round(exp.variants.B.visitors * m.mV);
+    const convA = Math.round(exp.variants.A.conversions * m.mA);
+    const convB = Math.round(exp.variants.B.conversions * m.mB);
+    const rAM = convA / visitorsA * 100, rBM = convB / visitorsB * 100;
+
+    const stopped = exp.status === 'stopped';
+    const winner = rBM >= rAM ? 'B' : 'A';
+    const wRate = winner === 'B' ? rBM : rAM;
+    const lRate = winner === 'B' ? rAM : rBM;
+    const uplift = lRate > 0 ? (wRate - lRate) / lRate * 100 : 0;
+
+    const conclusion = stopped
+        ? `<div class="conclusion" style="background:#fdf3f3;border-color:#f0c8c8;">
+             <span class="winner" style="color:#721c24;">■ Experiment stopped</span>
+             <span class="detail">Variant B dropped below the performance threshold and was auto-stopped. Team notified. No traffic wasted.</span>
+           </div>`
+        : `<div class="conclusion">
+             <span class="winner">Variant ${winner} is winning</span>
+             <span class="detail">${wRate.toFixed(2)}% vs ${lRate.toFixed(2)}% conversion · ${uplift >= 0 ? '+' : ''}${uplift.toFixed(1)}% relative uplift</span>
+             <span class="conf"><span class="cval">${exp.confidence.toFixed(1)}%</span><br><span class="clabel">confidence</span></span>
+           </div>`;
+
+    body.innerHTML = `
+        <div class="sel-row mb10">
+            <div class="sel-group">
+                <label>Page under test</label>
+                <select id="d-page" disabled>
+                    <option>${exp.page}</option>
+                </select>
+            </div>
+            <div class="sel-group">
+                <label>Traffic split</label>
+                <select id="d-split" disabled>
+                    <option>${exp.split}% A / ${100 - exp.split}% B</option>
+                </select>
+            </div>
+            <div class="sel-group">
+                <label>Segment · Device</label>
+                <select id="seg-device">
+                    <option value="all"${segDev === 'all' ? ' selected' : ''}>All devices</option>
+                    <option value="mobile"${segDev === 'mobile' ? ' selected' : ''}>Mobile</option>
+                    <option value="desktop"${segDev === 'desktop' ? ' selected' : ''}>Desktop</option>
+                </select>
+            </div>
+            <div class="sel-group">
+                <label>Segment · Language</label>
+                <select id="seg-lang">
+                    <option value="all"${segLang === 'all' ? ' selected' : ''}>All languages</option>
+                    <option value="en"${segLang === 'en' ? ' selected' : ''}>English</option>
+                    <option value="fr"${segLang === 'fr' ? ' selected' : ''}>French</option>
+                </select>
+            </div>
+        </div>
+
+        ${conclusion}
+
+        <div class="stats-grid">
+            <div class="card"><div class="label">Visitors · A</div><div class="value variant-a">${fmt(visitorsA)}</div><div class="sub">${exp.split}% of traffic</div></div>
+            <div class="card"><div class="label">Visitors · B</div><div class="value variant-b">${fmt(visitorsB)}</div><div class="sub">${100 - exp.split}% of traffic</div></div>
+            <div class="card"><div class="label">Conversions · A</div><div class="value variant-a">${fmt(convA)}</div><div class="sub">CTA Click</div></div>
+            <div class="card"><div class="label">Conversions · B</div><div class="value variant-b">${fmt(convB)}</div><div class="sub">CTA Click</div></div>
+            <div class="card"><div class="label">Conversion Rate · A</div><div class="value variant-a">${rAM.toFixed(2)}%</div><div class="sub">${(convA / Math.max(1, visitorsA) * 100).toFixed(2)}% of visitors</div></div>
+            <div class="card"><div class="label">Conversion Rate · B</div><div class="value variant-b">${rBM.toFixed(2)}%</div><div class="sub">${(convB / Math.max(1, visitorsB) * 100).toFixed(2)}% of visitors</div></div>
+        </div>
+
+        <div class="grid-2">
+            <div class="panel">
+                <div class="panel-header"><h3>Conversion rate — A vs B</h3></div>
+                <div class="panel-body">
+                    <div class="bar">
+                        <div class="bar-label">Variant A · Control</div>
+                        <div class="bar-track"><div class="bar-fill a" style="width:${Math.min(100, rAM / 4.5 * 100)}%"></div></div>
+                        <div class="bar-value">${rAM.toFixed(2)}%</div>
+                    </div>
+                    <div class="bar">
+                        <div class="bar-label">Variant B · Treatment</div>
+                        <div class="bar-track"><div class="bar-fill b" style="width:${Math.min(100, rBM / 4.5 * 100)}%"></div></div>
+                        <div class="bar-value">${rBM.toFixed(2)}%</div>
+                    </div>
+                    <div class="hint mt10">Scale: 0 – 4.5% conversion</div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header"><h3>Conversion trend — last 14 days</h3></div>
+                <div class="panel-body trend-wrap">${trendSvg(exp)}</div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="panel">
+                <div class="panel-header"><h3>⚡ Conversion Events</h3></div>
+                <div class="panel-body">
+                    ${exp.events.map(ev => `<div class="chip">${ev} <span class="x" data-ev="${ev}">✕</span></div>`).join('')}
+                    <div class="add-input">
+                        <input type="text" id="ev-input" placeholder="Add event, e.g. Form Submit">
+                        <button class="btn btn-secondary btn-sm" id="ev-add">Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header"><h3>🕵️ Audit Trail</h3></div>
+                <div class="panel-body audit-list" id="audit-list">
+                    ${exp.audit.slice().reverse().map(a => `<div class="audit-item"><span class="at">${a[0]}</span><span class="ad">${a[1]}</span></div>`).join('')}
+                </div>
+            </div>
+        </div>
+
+        <div class="mt16" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btn-export">⬇ Export Report (CSV)</button>
+            <button class="btn btn-secondary" id="btn-schedule">📅 Schedule Weekly Report</button>
+            ${exp.status === 'running' && !degrading
+                ? `<button class="btn btn-danger" id="btn-degrade" style="margin-left:auto;">⚡ Simulate: Variant B degrading</button>`
+                : ''}
+        </div>`;
+
+    /* wire events */
+    $('seg-device').onchange = renderDetail;
+    $('seg-lang').onchange = renderDetail;
+
+    document.querySelectorAll('.chip .x').forEach(x => {
+        x.onclick = () => {
+            exp.events = exp.events.filter(e => e !== x.dataset.ev);
+            exp.audit.push([nowTs(), `Conversion event "${x.dataset.ev}" removed`]);
+            renderDetail();
+        };
+    });
+    $('ev-add').onclick = () => {
+        const v = $('ev-input').value.trim();
+        if (!v) return;
+        exp.events.push(v);
+        exp.audit.push([nowTs(), `Conversion event "${v}" defined`]);
+        renderDetail();
+    };
+    $('btn-export').onclick = () => exportCsv(exp, { rA: rAM, rB: rBM, visitorsA, visitorsB, convA, convB });
+    $('btn-schedule').onclick = () => {
+        exp.audit.push([nowTs(), 'Weekly report scheduled (Mondays 08:00 → rita.lou@example.ca)']);
+        notify('📅 Weekly report scheduled — every Monday 08:00, emailed to the team.', 'info');
+        renderDetail();
+    };
+    if ($('btn-degrade')) $('btn-degrade').onclick = () => startDegrade(exp);
+}
+
+function exportCsv(exp, d) {
+    const rows = [
+        ['Experiment', exp.name],
+        ['Page', exp.page],
+        ['Segment', `${$('seg-device').value} / ${$('seg-lang').value}`],
+        [],
+        ['Metric', 'Variant A (Control)', 'Variant B'],
+        ['Visitors', d.visitorsA, d.visitorsB],
+        ['Conversions', d.convA, d.convB],
+        ['Conversion Rate (%)', d.rA.toFixed(2), d.rB.toFixed(2)],
+        ['Confidence (%)', '', exp.confidence.toFixed(1)],
+    ];
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = exp.name.replace(/\s+/g, '-').toLowerCase() + '-report.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    exp.audit.push([nowTs(), 'Report exported (CSV)']);
+    notify('⬇ Report exported — CSV downloaded.', 'info');
+    renderDetail();
+}
+
+/* ---------- simulate degrade ---------- */
+function startDegrade(exp) {
+    degrading = true;
+    notify('⚡ Simulating: Variant B conversion rate dropping below threshold...', 'warn');
+    exp.audit.push([nowTs(), 'Alert: Variant B conversion rate degrading']);
+    renderDetail();
+    let steps = 0;
+    const iv = setInterval(() => {
+        steps++;
+        const b = exp.variants.B;
+        b.conversions = Math.max(0, b.conversions - Math.round(b.visitors * 0.0016));
+        b.visitors += 6;
+        if (steps >= 7 || rateOf(exp, 'B') < rateOf(exp, 'A') - 0.4) {
+            clearInterval(iv);
+            exp.status = 'stopped';
+            exp.audit.push([nowTs(), 'AUTO-STOP: Variant B stopped due to poor performance — team notified']);
+            notify(`■ Experiment "${exp.name}" — Variant B stopped due to poor performance. Team notified.`, 'warn');
+            degrading = false;
+            renderList(); renderDetail();
+            stopTick();
+        } else {
+            renderDetail();
+        }
+    }, 900);
+}
+
+/* ---------- live tick ---------- */
+function nowTs() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function startTick() {
+    if (timer) return;
+    timer = setInterval(() => {
+        experiments.filter(e => e.status === 'running').forEach(exp => {
+            const vA = exp.variants.A, vB = exp.variants.B;
+            const incA = 6 + Math.floor(Math.random() * 14);
+            const incB = 6 + Math.floor(Math.random() * 14);
+            vA.visitors += incA; vB.visitors += incB;
+            if (Math.random() < 0.023) vA.conversions += 1;
+            if (Math.random() < 0.031) vB.conversions += 1;
+            if (exp.confidence < 95.4) exp.confidence = Math.min(95.4, exp.confidence + 0.05 + Math.random() * 0.08);
+            const last = exp.history[exp.history.length - 1];
+            exp.history.push({
+                a: +(last.a + (Math.random() - 0.42) * 0.06).toFixed(3),
+                b: +(last.b + (Math.random() - 0.38) * 0.06).toFixed(3),
+            });
+            if (exp.history.length > 20) exp.history.shift();
+        });
+        if (activeId && experiments.find(e => e.id === activeId).status === 'running') renderDetail();
+    }, 2000);
+}
+
+function stopTick() {
+    if (timer) { clearInterval(timer); timer = null; }
+}
+
+/* ---------- modal ---------- */
+function openModal(exp) {
+    if (exp) {
+        $('f-name').value = exp.name;
+        $('f-page').value = exp.page;
+        $('f-va').value = exp.variants.A.desc;
+        $('f-vb').value = exp.variants.B.desc;
+        $('f-split').value = exp.split;
+        $('f-split-val').textContent = exp.split + '/' + (100 - exp.split);
+    }
+    $('modal-mask').classList.add('show');
+}
+
+$('btn-create-exp').onclick = () => openModal(null);
+$('btn-cancel-exp').onclick = () => $('modal-mask').classList.remove('show');
+$('modal-mask').onclick = (e) => { if (e.target === $('modal-mask')) $('modal-mask').classList.remove('show'); };
+$('f-split').oninput = () => $('f-split-val').textContent = $('f-split').value + '/' + (100 - +$('f-split').value);
+
+$('btn-confirm-exp').onclick = () => {
+    const name = $('f-name').value.trim() || 'Untitled Experiment';
+    const page = $('f-page').value;
+    const split = +$('f-split').value;
+    const id = 'exp-' + Date.now().toString(36);
+    const exp = {
+        id,
+        name,
+        page,
+        status: 'running',
+        split,
+        variants: {
+            A: { label: 'Variant A (Control)', desc: $('f-va').value.trim() || 'Current version', visitors: 42, conversions: 1 },
+            B: { label: 'Variant B', desc: $('f-vb').value.trim() || 'New version', visitors: 42, conversions: 2 },
+        },
+        events: ['CTA Click'],
+        confidence: 0,
+        history: DEFAULT_HISTORY(2.3, 3.1),
+        createdAt: nowTs(),
+        audit: [[nowTs(), `Experiment created by current user — traffic split ${split}/${100 - split}`]],
+    };
+    experiments.unshift(exp);
+    activeId = id;
+    $('modal-mask').classList.remove('show');
+    notify(`✅ Experiment "${name}" is live. Traffic split ${split}/${100 - split}.`, 'info');
+    renderList(); renderDetail(); startTick();
+};
+
+/* ---------- init ---------- */
+renderList();
+renderDetail();
+startTick();
+</script>
+</body>
+</html>

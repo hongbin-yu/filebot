@@ -82,6 +82,7 @@ class SearchChunkResult(BaseModel):
     text: str
     source_url: str
     char_count: int
+    description: Optional[str] = None
     similarity: float
 
 
@@ -123,7 +124,7 @@ def ai_search(
             params = [query_emb.tolist(), lang, query_emb.tolist(), top_k]
 
         sql = f"""
-            SELECT page_title, heading, text, source_url, char_count,
+            SELECT page_title, heading, text, source_url, char_count, description,
                    1 - (embedding <=> %s::vector) as similarity
             FROM search_chunks
             WHERE language = %s{site_filter}
@@ -146,6 +147,7 @@ def ai_search(
                 text=r["text"],
                 source_url=r["source_url"],
                 char_count=r["char_count"],
+                description=r.get("description"),
                 similarity=round(float(r["similarity"]) * 100, 1),
             )
             for r in rows

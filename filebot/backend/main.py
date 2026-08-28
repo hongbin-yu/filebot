@@ -64,26 +64,7 @@ app = FastAPI(
 # 配置CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174", 
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "http://172.29.152.245:8000",
-        "http://localhost:8003",
-        "http://127.0.0.1:8003",
-        # Intranet access
-        "http://10.0.0.91:5174",
-        "http://10.0.0.91:8000",
-        "http://10.0.0.91:8001",
-        "http://10.0.0.91:8003",
-        "https://www.canada.ca",
-        "https://canada.ca"
-    ],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|172\.29\.152\.245|10\.0\.0\.\d+|([a-zA-Z0-9-]+\.)*canada\.ca)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

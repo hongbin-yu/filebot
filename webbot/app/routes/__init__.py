@@ -118,4 +118,20 @@ except ImportError as e:
     TRANSLATE_ENABLED = False
     translate_router = None
 
-__all__ = ["pages_router", "pages_v1_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "tags_router", "analytics_router", "versions_router", "schedule_router", "mail_router", "feedback_router", "track_router", "references_router", "translate_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED", "TAGS_ENABLED", "ANALYTICS_ENABLED", "VERSIONS_ENABLED", "SCHEDULE_ENABLED", "MAIL_ENABLED", "FEEDBACK_ENABLED", "TRACK_ENABLED", "REFERENCES_ENABLED", "TRANSLATE_ENABLED"]
+try:
+    from .experiments import router as experiments_router
+    EXPERIMENTS_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  Experiments route import failed: {e}")
+    EXPERIMENTS_ENABLED = False
+    experiments_router = None
+
+try:
+    from .io import router as io_router
+    IO_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  IO route import failed: {e}")
+    IO_ENABLED = False
+    io_router = None
+
+__all__ = ["pages_router", "pages_v1_router", "ai_router", "files_router", "components_router", "mustache_router", "auth_router", "search_router", "tags_router", "analytics_router", "versions_router", "schedule_router", "mail_router", "feedback_router", "track_router", "references_router", "translate_router", "experiments_router", "io_router", "COMPONENTS_ENABLED", "FILES_ENABLED", "MUSTACHE_ENABLED", "AUTH_ENABLED", "SEARCH_ENABLED", "TAGS_ENABLED", "ANALYTICS_ENABLED", "VERSIONS_ENABLED", "SCHEDULE_ENABLED", "MAIL_ENABLED", "FEEDBACK_ENABLED", "TRACK_ENABLED", "REFERENCES_ENABLED", "TRANSLATE_ENABLED"]

@@ -3,6 +3,7 @@ WebBot Schedule API — 页面定时发布管理
 """
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from typing import Optional
 import sqlite3
 from datetime import datetime
@@ -91,10 +92,11 @@ async def list_scheduled():
 
 # ==================== 审批管理 ====================
 
-@router.post("/approve")
+@router.api_route("/approve", methods=["GET", "POST"])
 async def approve_page(
     path: str = Query(..., description="Full page path, e.g. /canadasite/en/contact"),
-    approved_by: str = Query("system", description="Who approved this page")
+    approved_by: str = Query("system", description="Who approved this page"),
+    redirect: bool = Query(False, description="Redirect back to the public page after approval")
 ):
     """Approve a page, enabling it for publish"""
     conn = get_db()
@@ -109,7 +111,62 @@ async def approve_page(
             (now, approved_by, path)
         )
         conn.commit()
+        if redirect:
+            public_path = path.replace("/canadasite", "", 1)
+            return RedirectResponse(url=public_path, status_code=302)
         return {"success": True, "path": path, "approved": True, "approved_at": now, "approved_by": approved_by}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@router.post("/approve-batch")
+async def approve_batch(
+    lang: str = Query("both", description="Language filter: en, fr, or both"),
+    prefix: str = Query("/canadasite", description="Approve all pages under this path prefix"),
+    approved_by: str = Query("ai-approve", description="Who approved these pages"),
+    dry_run: bool = Query(False, description="Only count pages without approving"),
+):
+    """Batch approve: mark all pages under a prefix as approved (enables publish).
+
+    Mirrors publish-batch semantics: optional language filter, dry-run counting.
+    """
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        base = prefix.rstrip("/")
+        if lang in ("en", "fr"):
+            base = base + "/" + lang
+        cursor.execute(
+            "SELECT path FROM webbot_page WHERE path = ? OR path LIKE ?",
+            (base, base + "/%"),
+        )
+        paths = [r["path"] for r in cursor.fetchall()]
+        total = len(paths)
+        if dry_run:
+            return {"dry_run": True, "total": total, "approved": 0, "failed": []}
+        now = datetime.now().isoformat()
+        failed = []
+        for p in paths:
+            try:
+                cursor.execute(
+                    "UPDATE webbot_page SET approved = 1, approved_at = ?, approved_by = ? WHERE path = ?",
+                    (now, approved_by, p),
+                )
+            except Exception as e:  # noqa: BLE001 - collect failures per page
+                failed.append({"path": p, "error": str(e)})
+        conn.commit()
+        return {
+            "dry_run": False,
+            "total": total,
+            "approved": total - len(failed),
+            "failed": failed,
+            "approved_by": approved_by,
+            "approved_at": now,
+        }
     except HTTPException:
         raise
     except Exception as e:

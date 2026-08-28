@@ -1,5 +1,5 @@
 """WebBot Pydantic models"""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -149,6 +149,15 @@ class PageResponse(BaseModel):
     content: Optional[str] = None
     language: str = "en"
     path: Optional[str] = None
+
+    @computed_field
+    @property
+    def canada_ca_url(self) -> Optional[str]:
+        """Relative Canada.ca path by stripping /canadasite prefix"""
+        if self.path and self.path.startswith('/canadasite'):
+            return self.path[len('/canadasite'):]
+        return None
+
     parent_path: Optional[str] = None
     other_language_path: Optional[str] = None
     file_path: Optional[str] = Field(None, description="FileBot image storage path. If empty, inherits from ancestor pages.")
@@ -162,6 +171,8 @@ class PageResponse(BaseModel):
     created_at: datetime
     last_modified: datetime
     last_published: Optional[datetime] = None
+    out_of_sync: bool = Field(False, description="True if this page was modified after its linked other-language page")
+    is_republish: Optional[bool] = Field(None, description="True if last_modified > last_published (page edited after last publish, needs republish)")
     class Config:
         from_attributes = True
 
@@ -175,7 +186,7 @@ class PagePropertiesResponse(BaseModel):
     """页面属性响应"""
     id: str
     title: str = ""
-    description: str = ""
+    description: Optional[str] = ""
     language: str = "en"
     status: str = "draft"
     created_by: Optional[str] = None
@@ -188,6 +199,8 @@ class PagePropertiesResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     publish_template: Optional[str] = None
     tags: List[str] = []
+    redirect_to: Optional[str] = Field(None, description="Redirect target URL from metadata")
+    out_of_sync: bool = Field(False, description="True if this page was modified after its linked other-language page")
 
 
 class PageListItem(BaseModel):
@@ -198,13 +211,43 @@ class PageListItem(BaseModel):
     language: str = "en"
     status: str = "draft"
     path: Optional[str] = None
+
+    @computed_field
+    @property
+    def canada_ca_url(self) -> Optional[str]:
+        """Relative Canada.ca path by stripping /canadasite prefix"""
+        if self.path and self.path.startswith('/canadasite'):
+            return self.path[len('/canadasite'):]
+        return None
+
+    @computed_field
+    @property
+    def other_language_url(self) -> Optional[str]:
+        """Public URL of the linked other-language page (Canada.ca relative path)."""
+        if not self.other_language_path:
+            return None
+        if self.other_language_path.startswith('/canadasite'):
+            return self.other_language_path[len('/canadasite'):]
+        return self.other_language_path
+
     parent_path: Optional[str] = None
     other_language_path: Optional[str] = None
     has_children: bool = False
+    hide_in_navigation: bool = False
+    navigation_title: Optional[str] = None
     created_at: Optional[str] = None
     last_modified: Optional[str] = None
+    last_published: Optional[str] = None
     tags: List[str] = []
     lock_status: Optional[str] = None
+    redirectTo: Optional[str] = Field(None, description="Redirect target URL if page has redirect_to in metadata")
+    out_of_sync: bool = Field(False, description="True if this page was modified after its linked other-language page")
+    is_republish: Optional[bool] = Field(None, description="True if last_modified > last_published (page edited after last publish, needs republish)")
+
+    @computed_field
+    @property
+    def isPublished(self) -> bool:
+        return self.status == 'published'
 
 
 class PageMetadataItem(BaseModel):

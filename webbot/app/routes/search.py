@@ -8,6 +8,9 @@ Usage in mustache-editor:
 
 import os
 import logging
+import sqlite3
+import re
+import unicodedata
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
 
@@ -102,11 +105,18 @@ def search_documents(
                 params.append(app_id)
 
             if mime_type:
-                if '%' in mime_type or '_' in mime_type:
+                if ',' in mime_type:
+                    # Comma-separated list: mime_type IN (list) — supports multi-type filters (e.g. pdf,audio,video)
+                    parts = [p.strip() for p in mime_type.split(',') if p.strip()]
+                    if parts:
+                        conditions.append("mime_type = ANY(%s)")
+                        params.append(parts)
+                elif '%' in mime_type or '_' in mime_type:
                     conditions.append("mime_type LIKE %s")
+                    params.append(mime_type)
                 else:
                     conditions.append("mime_type = %s")
-                params.append(mime_type)
+                    params.append(mime_type)
 
             if file_type:
                 conditions.append("file_type = %s")
@@ -282,5 +292,136 @@ def get_ai_categories(
     except Exception as e:
         logger.error(f"Categories query failed: {e}")
         raise HTTPException(status_code=500, detail=f"Categories query failed: {e}")
+    finally:
+        conn.close()
+
+
+# ── Institution → pages lookup (webbot.db tag tree + path convention) ──────
+# Institution list: /canadasite/tags/institutions (webbot_tag table, type=institutions)
+# Institution content: path LIKE '/canadasite/en/{segment}/news%'
+# NOTE: tag slug != path segment for big departments (see ALIAS below).
+
+WEBBOT_DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
+
+# tag slug -> canada.ca path segment
+_INST_ALIAS = {
+    "department-of-employment-and-social-development": "employment-social-development",
+    "department-of-health": "health-canada",
+    "department-of-citizenship-and-immigration": "immigration-refugees-citizenship",
+    "department-of-the-environment": "environment-climate-change",
+    "department-national-defense": "department-national-defence",
+    "royal-navy": "navy",
+    "royal-air-force": "air-force",
+    "public-health-agency-of-canada": "public-health",
+}
+
+# common shorthand / alternate names -> tag slug
+_INST_COMMON_NAMES = {
+    "cra": "revenue-agency",
+    "cbsa": "canada-border-services-agency",
+    "esdc": "department-of-employment-and-social-development",
+    "ircc": "department-of-citizenship-and-immigration",
+    "eccc": "department-of-the-environment",
+    "environment-canada": "department-of-the-environment",
+    "phac": "public-health-agency-of-canada",
+    "hc": "department-of-health",
+    "rcmp": "royal-mounted-police",
+    "dnd": "department-national-defense",
+    "national-defence": "department-national-defense",
+}
+
+
+def _inst_norm(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.lower().strip()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+def _load_institution_tags(conn):
+    rows = conn.execute(
+        "SELECT path, title_en, title_fr FROM webbot_tag "
+        "WHERE path LIKE '/canadasite/tags/institutions/%'"
+    ).fetchall()
+    return {r[0].rsplit("/", 1)[-1]: (r[1], r[2]) for r in rows}
+
+
+def _lookup_institution(q: str, tags: Dict[str, tuple]):
+    """Free-text -> list of (tag_slug, title_en, title_fr, segment)."""
+    n = _inst_norm(q)
+    if not n:
+        return []
+    if n in _INST_COMMON_NAMES:
+        slug = _INST_COMMON_NAMES[n]
+        if slug in tags:
+            en, fr = tags[slug]
+            return [(slug, en, fr, _INST_ALIAS.get(slug, slug))]
+    if n in tags:
+        en, fr = tags[n]
+        return [(n, en, fr, _INST_ALIAS.get(n, n))]
+    cands = []
+    for slug, (en, fr) in tags.items():
+        if n == _inst_norm(en) or n == _inst_norm(fr):
+            cands.append((slug, en, fr, _INST_ALIAS.get(slug, slug)))
+    if cands:
+        return cands
+    for slug, (en, fr) in tags.items():
+        if n in _inst_norm(en) or n in _inst_norm(fr):
+            cands.append((slug, en, fr, _INST_ALIAS.get(slug, slug)))
+    return cands
+
+
+@router.get("/institution-news")
+def search_institution_news(
+    q: str = Query(..., min_length=1, description="Institution name, free text (e.g. 'Health Canada', 'CRA')"),
+    news_only: bool = Query(True, description="Only /news% pages (default true)"),
+    limit: int = Query(50, ge=1, le=200, description="Max pages returned per institution"),
+):
+    """User types an institution -> we match it -> we return its pages (editable).
+
+    Institution list source: webbot_tag tree /canadasite/tags/institutions.
+    Content convention: path LIKE '/canadasite/en/{segment}/news%'.
+    Pages link to the editor via edit_url (/static/editor.html{path}).
+    """
+    try:
+        conn = sqlite3.connect(WEBBOT_DB_PATH, timeout=30)
+        conn.row_factory = sqlite3.Row
+        tags = _load_institution_tags(conn)
+        hits = _lookup_institution(q, tags)
+        matches = []
+        for slug, en, fr, segment in hits:
+            pattern = f"/canadasite/en/{segment}/news%" if news_only else f"/canadasite/en/{segment}/%"
+            rows = conn.execute(
+                "SELECT path, title, language, last_published FROM webbot_page "
+                "WHERE path LIKE ? AND language != 'dir' AND status = 'published' "
+                "ORDER BY path LIMIT ?",
+                (pattern, limit),
+            ).fetchall()
+            pages = [
+                {
+                    "path": r["path"],
+                    "title": r["title"],
+                    "language": r["language"],
+                    "last_published": str(r["last_published"]) if r["last_published"] else None,
+                    "edit_url": "/static/editor.html" + r["path"],
+                }
+                for r in rows
+            ]
+            matches.append({
+                "slug": slug,
+                "name_en": en,
+                "name_fr": fr,
+                "segment": segment,
+                "news_only": news_only,
+                "page_count": len(pages),
+                "pages": pages,
+            })
+        return {"query": q, "match_count": len(matches), "matches": matches}
+    except sqlite3.Error as e:
+        logger.error(f"Institution search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Institution search failed: {e}")
     finally:
         conn.close()

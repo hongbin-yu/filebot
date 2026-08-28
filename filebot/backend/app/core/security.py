@@ -360,6 +360,10 @@ async def get_current_active_user_allow_query(
     if not token:
         token = request.query_params.get("token")
     
+    # 如果还没找到，尝试cookie（支持bookmarklet跨域请求带cookie）
+    if not token:
+        token = request.cookies.get("filebot_token")
+    
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

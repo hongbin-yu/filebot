@@ -150,7 +150,13 @@
         }
 
         .page-info {
-            /* (styles removed - moved to Resource menu) */
+            width: 100%;
+            flex-basis: 100%;
+            font-size: 13px;
+            color: #555;
+            padding: 6px 0;
+            border-top: 1px solid #e0e0e0;
+            line-height: 1.8;
         }
 
         .editor-content {

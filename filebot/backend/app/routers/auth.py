@@ -64,7 +64,7 @@ def login(
         path="/",
         httponly=True,
         secure=True,
-        samesite="lax"
+        samesite="none"
     )
     return response
 

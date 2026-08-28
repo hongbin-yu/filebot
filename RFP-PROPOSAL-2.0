@@ -20,7 +20,9 @@
 > - Publish preview — running on intranet
 > - PostgreSQL with pgvector — running on intranet
 > - **29,304 Canada.ca pages** already imported and indexed for semantic search
+> - AI AI full text search with Ollama/Phi3 (local) — live
 > - AI Q&A with both OpenAI (cloud) and Ollama/Phi3 (local) — live
+> - AI Image tagging with Ollama/Phi3 (local) — live
 > - Dedicated production server (Ubuntu 24.04, Docker, nginx SSL) — live and serving
 > - AI Butler (OpenClaw Gateway) — live on production server
 >
@@ -99,38 +101,38 @@ Our approach is designed for today's content management needs:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Client Site / On-Premise                       │
+│                    Client Site / On-Premise                      │
 │                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
+│  ┌───────────────────────────────────────────────────────────┐   │
 │  │  WEBBOT CMS SERVER (Dedicated Appliance)                  │   │
 │  │  ──────────────────────────────────────────────           │   │
-│  │                                                            │   │
+│  │                                                           │   │
 │  │  ┌──────────────────┐  ┌──────────────────┐               │   │
 │  │  │  WebBot CMS      │  │  FileBot Assets  │               │   │
 │  │  │  (Content Mgmt)  │  │  (File Mgmt)     │               │   │
-│  │  │                   │  │                   │               │   │
-│  │  │  • WYSIWYG Editor │  │  • File Storage  │               │   │
-│  │  │  • Mustache       │  │  • Conversion    │               │   │
-│  │  │  • Component Lib  │  │  • Document Mgmt │               │   │
-│  │  │  • Version Mgmt   │  │  • Naming Rules  │               │   │
-│  │  │  • User Perms     │  │  • Thumbnails    │               │   │
+│  │  │                  │  │                  │               │   │
+│  │  │  • WYSIWYG Editor│  │  • File Storage  │               │   │
+│  │  │  • Mustache      │  │  • Conversion    │               │   │
+│  │  │  • Component Lib │  │  • Document Mgmt │               │   │
+│  │  │  • Version Mgmt  │  │  • Naming Rules  │               │   │
+│  │  │  • User Perms    │  │  • Thumbnails    │               │   │
 │  │  └────────┬─────────┘  └────────┬─────────┘               │   │
-│  │           │                      │                         │   │
-│  │           └──────────┬───────────┘                         │   │
+│  │           │                     │                         │   │
+│  │           └──────────┬──────────┘                         │   │
 │  │                      ▼                                    │   │
 │  │  ┌──────────────────────────────────────────────────┐     │   │
 │  │  │  AI BUTLER (OpenClaw Gateway)                    │     │   │
 │  │  │  ───────────────────────────────                 │     │   │
-│  │  │  • Server Monitoring & Health Checks              │     │   │
-│  │  │  • Automated Backups & Verification               │     │   │
-│  │  │  • Security Patching (human-approved)             │     │   │
-│  │  │  • Incident Detection & Triage                    │     │   │
-│  │  │  • Configuration Management & Audit               │     │   │
-│  │  │  • Natural Language Interface for Ops             │     │   │
+│  │  │  • Server Monitoring & Health Checks             │     │   │
+│  │  │  • Automated Backups & Verification              │     │   │
+│  │  │  • Security Patching (human-approved)            │     │   │
+│  │  │  • Incident Detection & Triage                   │     │   │
+│  │  │  • Configuration Management & Audit              │     │   │
+│  │  │  • Natural Language Interface for Ops            │     │   │
 │  │  └──────────────────────────────────────────────────┘     │   │
-│  │                                                            │   │
-│  │  Infrastructure: Docker (nginx SSL) + PostgreSQL + SQLite  │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  │                                                           │   │
+│  │  Infrastructure: Docker (nginx SSL) + PostgreSQL + SQLite │   │
+│  └───────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────┘
                             │
             ┌───────────────┼───────────────┐
@@ -141,7 +143,7 @@ Our approach is designed for today's content management needs:
    │              │ │              │ │              │
    │ Static HTML  │ │ Full stack   │ │ Fully        │
    │ Accelerated  │ │ remotely     │ │ isolated     │
-   │ Global       │ │ operated     │ │ Zero external │
+   │ Global       │ │ operated     │ │ Zero external│
    └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
@@ -209,8 +211,8 @@ Our Data Center                   Client Access
 │ AI Butler (active)  │    │ Editors access via  │
 │ PostgreSQL (PGP)    │    │ browser (HTTPS)     │
 │                     │    │                     │
-│ AI Butler monitors  │    │ SLA: 99.9% uptime  │
-│ All maintenance    │    │ Backups included    │
+│ AI Butler monitors  │    │ SLA: 99.9% uptime   │
+│ All maintenance     │    │ Backups included    │
 └─────────────────────┘    └─────────────────────┘
 ```
 
@@ -408,14 +410,14 @@ The recommended model for Canada.ca — local CMS admin for security, cloud CDN 
 **Architecture:**
 ```
 ┌─────────────────────┐        ┌─────────────────────────┐
-│ Client Site          │        │ Cloud                   │
-│                      │        │                         │
-│ WebBot CMS (Admin)   │───────►│ Publish Server (static) │
-│ FileBot Assets       │  sync  │ CDN (Cloudflare, etc.)  │
-│ AI Butler (ops)      │        │                         │
-│ PostgreSQL (data)    │        │ No API exposure         │
-│                      │        │ Cache-only delivery     │
-│ Internal network only│        │ Global acceleration     │
+│ Client Site         │        │ Cloud                   │
+│                     │        │                         │
+│ WebBot CMS (Admin)  │───────►│ Publish Server (static) │
+│ FileBot Assets      │  sync  │ CDN (Cloudflare, etc.)  │
+│ AI Butler (ops)     │        │                         │
+│ PostgreSQL (data)   │        │ No API exposure         │
+│                     │        │ Cache-only delivery     │
+│Internal network only│        │ Global acceleration     │
 └─────────────────────┘        └─────────────────────────┘
 ```
 
@@ -460,18 +462,18 @@ The AI Butler (OpenClaw Gateway) runs as a service on the server, with:
 │             │                                         │
 │    ┌────────┼────────┬────────┬────────┐              │
 │    ▼        ▼        ▼        ▼        ▼              │
-│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐        │
-│ │System│ │Docker│ │Post- │ │Backup│ │Log   │        │
-│ │  OS  │ │      │ │greSQL│ │      │ │Watch │        │
-│ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘        │
+│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐          │
+│ │System│ │Docker│ │Post- │ │Backup│ │Log   │          │
+│ │  OS  │ │      │ │greSQL│ │      │ │Watch │          │
+│ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘          │
 │                                                       │
-│ Communication:                                       │
-│ • Telegram/Signal/Email — send alerts &              │
-│   request approvals                                  │
-│ • SSH — execute server commands                      │
-│ • Docker API — manage containers                     │
-│ • PostgreSQL — query database health                 │
-│ • HTTP — check service health endpoints              │
+│ Communication:                                        │
+│ • Telegram/Signal/Email — send alerts &               │
+│   request approvals                                   │
+│ • SSH — execute server commands                       │
+│ • Docker API — manage containers                      │
+│ • PostgreSQL — query database health                  │
+│ • HTTP — check service health endpoints               │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -567,7 +569,244 @@ Small and medium enterprises (SMEs) face a content management gap:
 
 ## 8. Migration Strategy
 
-*(See RFP-PROPOSAL-1.0 §5 — unchanged)*
+### 8.1 The Migration Problem
+
+Government procurement understands one universal truth about AEM:
+
+> **AEM migration took two years and involved multiple agencies working together.**
+
+This is not a coincidence. AEM's architecture makes migration intrinsically difficult:
+
+| AEM Migration Barrier | Why It Hurts |
+|---|---|
+| **Component mapping** | Every page is a tree of Java components; migrating requires rebuilding each component in the target system |
+| **Content structure** | JCR (Java Content Repository) is proprietary; extracting content means custom export/import scripts |
+| **Binary assets** | DAM (Digital Asset Manager) stores binaries in a CQ-managed blob store; preserving paths requires manual mapping |
+| **Template lock-in** | GCWeb components are implemented as AEM templates; re-implementing them in any new system is months of work |
+| **Migration = rewrite** | There is no "lift and shift" for AEM — it is always a full re-platform |
+| **Regression risk** | After migration, every page must be re-validated for correctness |
+
+**The result**: Departments stay on AEM not because it is good, but because leaving is too painful.
+
+### 8.2 Our Approach: Zero-Transformation Migration
+
+Our platform was designed with migration as a first-class feature, not an afterthought. The fundamental insight is simple:
+
+> **HTML is the universal content format. If you can view a page in a browser, we can import it — preserving structure, paths, and assets — without any transformation.**
+
+**How it works:**
+
+```
+AEM Output (already HTML)
+    │
+    ▼
+┌─────────────────────────────────────────────┐
+│  STEP 1: Crawl & Capture                    │
+│  ──────────────────────────────             │
+│  • Sitemap-based full crawl (no component   │
+│    knowledge required)                      │
+│  • Captures final rendered HTML + all       │
+│    assets (images, PDFs, CSS, JS)           │
+│  • Preserves original paths and filenames   │
+│  • Zero server-side access needed           │
+│  • 29,304 Canada.ca pages imported & live   │
+└───────────────────┬─────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────┐
+│  STEP 2: Zero Transformation                │
+│  ────────────────────────────               │
+│  • HTML is stored as-is (no conversion)     │
+│  • Asset paths are preserved (images link   │
+│    to same relative paths)                  │
+│  • Directory structure matches source       │
+│  • No component mapping / re-implementation │
+│  • **AEM is not required for this step**    │
+└───────────────────┬─────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────┐
+│  STEP 3: Edit & Enhance                     │
+│  ────────────────────────────               │
+│  • Pages become editable in WebBot WYSIWYG  │
+│  • Components can be replaced/upgraded      │
+│    individually (not a full rewrite)        │
+│  • Edit in place — same URL, same structure │
+│  • GCWeb/WET framework already supported    │
+└───────────────────┬─────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────┐
+│  STEP 4: Publish                            │
+│  ────────────────                           │
+│  • Static HTML output (CDN-ready)           │
+│  • Same public URLs as before               │
+│  • 3-5 min publish vs. AEM's ~2 hours       │
+│  • Old AEM and new platform can serve       │
+│    simultaneously during transition         │
+└─────────────────────────────────────────────┘
+```
+
+**Why this is different from every other CMS migration:**
+
+| Aspect | Traditional CMS Migration | Our Zero-Transformation Approach |
+|---|---|---|
+| **What is transferred** | Components, templates, data models | Final rendered HTML + assets |
+| **AEM access required** | Full admin access, export tools | None (crawl public site or staging) |
+| **Component knowledge** | Must know every component's schema | Not needed (HTML is the interface) |
+| **Edge case handling** | Each template variant needs code | None — HTML is already rendered |
+| **Validation burden** | Every page must be visually compared | Visual comparison is optional — same output |
+| **Rollback** | Complex (restore old system + data) | Trivial (keep old AEM running, switch DNS back) |
+
+### 8.3 Phased Migration Plan
+
+**Phase 0 — Proof of Capability (Week 1-2)**
+
+```
+Goal: Demonstrate migration works on real Canada.ca data
+
+Action:
+• Crawl a single department's sitemap (e.g., Service Canada)
+• Import all pages and assets into WebBot
+• Show editor can open, edit, and republish any page
+• Measure: full department in our system within 1-2 days
+
+Risk: Zero — data is read-only copy; AEM unchanged
+"""
+```
+
+**Phase 1 — Parallel Run (Month 1-2)**
+
+```
+Goal: New platform runs alongside AEM; no user impact
+
+Action:
+• Full crawl of ALL Canada.ca public pages (done: 29,304 pages)
+• Deploy WebBot CMS on local appliance (on-premise or hybrid)
+• Editors access WebBot alongside AEM for training
+• All publishing still through AEM; WebBot is shadow copy
+
+Status: Already completed — 29,304 pages imported and searchable
+"""
+```
+
+**Phase 2 — Department-by-Department Gradual Cutover (Month 3-4)**
+
+```
+Goal: One department at a time; never more than a day's risk
+
+For each department:
+1. Confirm pages are imported and editable in WebBot
+2. Run WebBot + AEM in parallel — both systems serve same content
+3. Switch department's DNS/route to WebBot for public traffic
+4. Monitor for 48 hours; any issue → flip DNS back to AEM
+5. Confirm cutover, stop AEM serving for that department
+
+Each department lives on AEM until it is ready to move.
+No department is delayed by another department's complexity.
+"""
+```
+
+**Phase 3 — Full Migration (Month 5-6)**
+
+```
+Goal: All departments on new platform; AEM decommissioned
+
+Action:
+• All departments running on WebBot
+• AI Butler monitors system health across all departments
+• Batch migrate remaining edge cases (specialized reports, analytics integrations)
+• Archive AEM instance (read-only) for compliance
+"""
+```
+
+### 8.4 Risk-Reduction Design Principles
+
+**1. No Big Bang**
+
+Canada.ca's AEM migration took two years largely because it was an _all-or-nothing_ effort. Our approach is the opposite:
+
+- Each department migrates independently
+- A department can be in Phase 0, Phase 1, or Phase 2 simultaneously
+- A problem with one department does not block others
+- Timeline: 1-2 days per department, not months
+
+**2. Inherent Rollback**
+
+Because our platform stores pages as HTML files with original URLs:
+
+- Rollback = republish old HTML or switch DNS back to AEM
+- No data transformation to "undo"
+- Can run parallel for as long as needed (months to years)
+- Old AEM stays operational until all departments confirm readiness
+
+**3. Crawl, Don't Export**
+
+Traditional migration requires:
+- AEM admin credentials
+- Export tools or scripts
+- Content package creation
+- Import procedure on target system
+
+Our approach requires:
+- **A sitemap URL** — that's it
+
+We crawl from the outside — the same way search engines see Canada.ca. This means:
+- No AEM access needed (anytime, anywhere)
+- No disruption to existing operations
+- Can be done before any purchase decision (Phase 0)
+- Works for live AND staging environments
+
+**4. Human-Readable Audit**
+
+Every imported page can be verified by:
+1. Open original page in AEM staging
+2. Open imported page in WebBot
+3. Compare — HTML structure is identical
+
+No "trust the migration script" — everything is visual and verifiable.
+
+### 8.5 Migration Timeline (Compared)
+
+| Milestone | Traditional (AEM Migration) | Our Platform |
+|---|---|---|
+| **Full crawl of Canada.ca** | 2-3 months (export tools + manual QA) | **1-2 days (automated sitemap crawl)** |
+| **First department live** | 6-12 months | **1-2 weeks (Phase 0 → Phase 2)** |
+| **All departments live** | 18-24 months | **3-4 months** |
+| **Full rollback capability** | During first 30 days only | **Throughout entire process** |
+| **AEM decommission** | After full migration verified | **Per-department, incremental** |
+
+### 8.6 Migration Without Vendor Lock
+
+A common government concern: "If we migrate to a proprietary platform, we trade AEM lock-in for another lock-in."
+
+Our platform avoids this by design:
+
+```
+Content stored as:  HTML files on disk
+                    PostgreSQL (relational data)
+                    File system (assets)
+
+Export format:      Standard WARC (web archive)
+                    Standard HTML + file copy
+                    Standard SQL dump
+
+To leave:           Copy the files to your new system
+                    No transformation needed
+                    No proprietary format to decode
+```
+
+Our migration path in and out is the same: **HTML files + assets on disk.**
+
+### 8.7 Summary
+
+The single most important difference between our platform and AEM is not a feature count — it is the migration story:
+
+> **With AEM, migration is a multi-year project that requires multiple agencies working together.**
+>
+> **With our platform, migration is a sitemap URL and a weekend.**
+
+This is not theoretical. **29,304 Canada.ca pages have already been imported** using this exact method.
 
 ---
 

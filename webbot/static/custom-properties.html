@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom metadata properties</title>
+<style>
+    body { margin: 0; font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif; background: #f5f5f5; color: #333; }
+    header { background: #26374a; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    header h1 { font-size: 20px; margin: 0; }
+    header .path { font-size: 13px; opacity: .85; word-break: break-all; }
+    header .spacer { flex: 1; }
+    header a { color: #8bc34a; font-size: 13px; text-decoration: none; }
+    .wrap { max-width: 880px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px; margin-bottom: 16px; }
+    .card h2 { font-size: 15px; margin: 0 0 4px; color: #26374a; }
+    .card .hint { font-size: 12px; color: #777; margin: 0 0 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+    .field { display: flex; flex-direction: column; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .field select, .field input { padding: 7px 9px; border: 1px solid #c9c9c9; border-radius: 4px; font-size: 14px; background: #fff; }
+    .field select[multiple] { min-height: 110px; }
+    .field .note { font-size: 11px; color: #888; margin-top: 3px; }
+    .actions { display: flex; align-items: center; gap: 12px; }
+    button.save { background: #26374a; color: #fff; border: none; border-radius: 4px; padding: 10px 28px; font-size: 14px; cursor: pointer; }
+    button.save:hover { background: #1d2c3c; }
+    button.save:disabled { opacity: .5; cursor: default; }
+    #status { font-size: 13px; }
+    #status.ok { color: #2e7d32; }
+    #status.err { color: #c62828; }
+</style>
+</head>
+<body>
+<header>
+    <h1>📄 Custom metadata properties</h1>
+    <span class="path" id="page-path">…</span>
+    <span class="spacer"></span>
+    <a id="back-link" href="/static/editor.html">← Back to editor</a>
+</header>
+<div class="wrap">
+    <div class="card">
+        <h2 id="cfg-title">Custom metadata properties</h2>
+        <p class="hint" id="cfg-hint"></p>
+        <div class="grid" id="form-grid"></div>
+        <div style="margin-top:20px;" class="actions">
+            <button class="save" id="save-btn">Save</button>
+            <span id="status"></span>
+        </div>
+    </div>
+</div>
+<script src="custom-properties-configs.js"></script>
+<script>
+(function () {
+    'use strict';
+    var token = localStorage.getItem('access_token');
+    if (!token) { location.href = '/static/login.html?next=' + encodeURIComponent(location.pathname + location.search); return; }
+    var API = '/api/v1';
+    var params = new URLSearchParams(location.search);
+    var pagePath = params.get('path') || '';
+    var cfgId = params.get('cfg') || 'oag';
+    var statusEl = document.getElementById('status');
+    function setStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = cls || ''; }
+
+    var cfg = (window.CUSTOM_PROPERTIES_CONFIGS || {})[cfgId];
+    if (!cfg) { setStatus('Unknown cfg "' + cfgId + '" — add it to custom-properties-configs.js', 'err'); return; }
+    if (!pagePath) { setStatus('Missing ?path= parameter', 'err'); return; }
+    document.getElementById('page-path').textContent = pagePath;
+    document.getElementById('cfg-title').textContent = cfg.title || 'Custom metadata properties';
+    document.getElementById('cfg-hint').textContent = cfg.hint || '';
+
+    var fields = cfg.fields || [];
+    var dateField = cfg.dateField || null;
+
+    // ---- form rendering (config-driven) ----
+    var grid = document.getElementById('form-grid');
+    fields.forEach(function(f) {
+        var div = document.createElement('div');
+        div.className = 'field' + (f.multi ? ' full' : '');
+        var label = document.createElement('label');
+        label.textContent = f.title;
+        label.htmlFor = 'f-' + f.name;
+        var sel = document.createElement('select');
+        sel.id = 'f-' + f.name;
+        if (f.multi) {
+            sel.multiple = true;
+            var note = document.createElement('span');
+            note.className = 'note';
+            note.textContent = 'Ctrl/Cmd+click to select multiple';
+            div.appendChild(label); div.appendChild(sel); div.appendChild(note);
+        } else {
+            div.appendChild(label); div.appendChild(sel);
+        }
+        grid.appendChild(div);
+    });
+    if (dateField) {
+        var div = document.createElement('div');
+        div.className = 'field';
+        var label = document.createElement('label');
+        label.textContent = dateField.title;
+        label.htmlFor = 'f-' + dateField.name;
+        var inp = document.createElement('input');
+        inp.type = 'date';
+        inp.id = 'f-' + dateField.name;
+        div.appendChild(label); div.appendChild(inp);
+        grid.appendChild(div);
+    }
+
+    // ---- data helpers ----
+    function arr(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
+    function emptyData() {
+        var d = {};
+        fields.forEach(function(f) {
+            if (f.multi) { d[f.name] = []; d[f.name + '_key'] = []; }
+            else { d[f.name] = ''; d[f.name + '_key'] = ''; }
+        });
+        if (dateField) { d[dateField.name] = ''; d[dateField.name + '_iso'] = ''; }
+        return d;
+    }
+    function fieldByName(n) {
+        for (var i = 0; i < fields.length; i++) if (fields[i].name === n) return fields[i];
+        return null;
+    }
+
+    // ---- parse content section (config-driven) ----
+    function parseSectionFromHtml(html) {
+        var data = emptyData();
+        try {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var section = doc.querySelector(cfg.sectionSelector);
+            if (!section) return data;
+            if (dateField) {
+                var time = section.querySelector('time');
+                if (time) { data[dateField.name + '_iso'] = time.getAttribute('datetime') || ''; data[dateField.name] = (time.textContent || '').trim(); }
+            }
+            var dts = section.querySelectorAll('dt');
+            var used = {};
+            fields.forEach(function(f) {
+                if (f.render === 'p-label') {
+                    var p = section.querySelector('.' + (f.labelClass || ''));
+                    if (p) {
+                        data[f.name + '_key'] = p.getAttribute(f.keyAttr || 'data-key') || '';
+                        data[f.name] = (p.textContent || '').trim();
+                    }
+                    return;
+                }
+                var dt = null;
+                for (var i = 0; i < dts.length; i++) {
+                    if (used[i]) continue;
+                    if ((dts[i].textContent || '').trim().toLowerCase().indexOf(f.dtMatch || f.name) >= 0) { dt = dts[i]; used[i] = true; break; }
+                }
+                if (!dt) return;
+                var dds = [], ddKeys = [];
+                var node = dt.nextElementSibling;
+                while (node && node.tagName === 'DD') { dds.push((node.textContent || '').trim()); ddKeys.push(node.getAttribute('data-tag-key') || ''); node = node.nextElementSibling; }
+                if (f.multi) { data[f.name] = dds; data[f.name + '_key'] = ddKeys; }
+                else { data[f.name] = dds[0] || ''; data[f.name + '_key'] = ddKeys[0] || ''; }
+            });
+        } catch (e) { console.error('parseSectionFromHtml', e); }
+        return data;
+    }
+
+    function fromMetadata(m) {
+        var data = emptyData();
+        if (!m) return data;
+        fields.forEach(function(f) {
+            if (f.multi) { data[f.name] = arr(m[f.name]); data[f.name + '_key'] = arr(m[f.name + '_key']); }
+            else { data[f.name] = m[f.name] || ''; data[f.name + '_key'] = m[f.name + '_key'] || ''; }
+        });
+        if (dateField) { data[dateField.name + '_iso'] = m[dateField.name + '_iso'] || ''; data[dateField.name] = m[dateField.name] || ''; }
+        return data;
+    }
+
+    function mergeData(sectionData, metaData) {
+        var d = emptyData();
+        Object.keys(d).forEach(function(k) {
+            if (Array.isArray(sectionData[k])) d[k] = sectionData[k].length ? sectionData[k].slice() : (metaData[k] ? arr(metaData[k]) : []);
+            else d[k] = sectionData[k] || metaData[k] || '';
+        });
+        return d;
+    }
+
+    function fetchJSON(url, opts) {
+        opts = opts || {};
+        opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+        if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+        return fetch(url, opts).then(function(r) {
+            if (!r.ok) return r.json().catch(function() { return {}; }).then(function(e) { throw new Error((e && e.detail) || ('HTTP ' + r.status)); });
+            return r.json();
+        });
+    }
+
+    // ---- tag options (all fields via /api/v1/tags?parent_path=) ----
+    // slug = tag path 最后一段（data-tag-key 约定），对任何 project 通用
+    function loadTagOptions(catPath) {
+        return fetchJSON(API + '/tags?parent_path=' + encodeURIComponent(catPath)).then(function(list) {
+            return (list || []).map(function(t) {
+                var slug = (t.path || '').split('/').filter(Boolean).pop() || t.id || '';
+                return { text: t.title_en || slug, value: slug };
+            });
+        });
+    }
+
+    function fillSelect(sel, opts, selectedValues, isMulti) {
+        sel.innerHTML = '';
+        if (!isMulti) {
+            var none = document.createElement('option');
+            none.value = ''; none.textContent = '(none)';
+            sel.appendChild(none);
+        }
+        opts.forEach(function(o) {
+            var opt = document.createElement('option');
+            opt.value = o.value; opt.textContent = o.text;
+            if (selectedValues.indexOf(o.value) >= 0) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    var pageData = null;
+    var data = emptyData();
+
+    // ---- update content section (config-driven) ----
+    function updateSectionInContent(html, d) {
+        var isFullDoc = /<html[\s>]/i.test(html);
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var section = doc.querySelector(cfg.sectionSelector);
+        if (!section) return { html: html, updated: false };
+        // p-label fields (e.g. report type)
+        fields.forEach(function(f) {
+            if (f.render !== 'p-label') return;
+            var p = section.querySelector('.' + (f.labelClass || ''));
+            if (!p) return;
+            if (d[f.name + '_key']) p.setAttribute(f.keyAttr || 'data-key', d[f.name + '_key']);
+            if (d[f.name]) p.textContent = d[f.name] + ' ';
+        });
+        // date field → <time>
+        if (dateField) {
+            var time = section.querySelector('time');
+            if (time) {
+                if (d[dateField.name + '_iso']) time.setAttribute('datetime', d[dateField.name + '_iso']);
+                if (d[dateField.name]) time.textContent = ' ' + d[dateField.name] + ' ';
+            }
+        }
+        // dl fields (dt/dd + data-tag-key)
+        var dlFields = fields.filter(function(f) { return f.render !== 'p-label'; });
+        if (dlFields.length) {
+            var dts = section.querySelectorAll('dt');
+            dlFields.forEach(function(f) {
+                var dt = null;
+                for (var i = 0; i < dts.length; i++) {
+                    if (dts[i]._oagMatched) continue;
+                    if ((dts[i].textContent || '').trim().toLowerCase().indexOf(f.dtMatch || f.name) >= 0) { dt = dts[i]; break; }
+                }
+                if (dt) dt._oagMatched = true;
+                var values = f.multi ? (d[f.name] || []) : (d[f.name] ? [d[f.name]] : []);
+                var keys = f.multi ? (d[f.name + '_key'] || []) : (d[f.name + '_key'] ? [d[f.name + '_key']] : []);
+                var created = false;
+                if (dt) {
+                    var node = dt.nextElementSibling;
+                    while (node && node.tagName === 'DD') { var next = node.nextElementSibling; node.parentNode.removeChild(node); node = next; }
+                } else {
+                    var dl = section.querySelector('dl') || section;
+                    dt = doc.createElement('dt'); dt.textContent = f.title; dl.appendChild(dt); created = true;
+                }
+                values.forEach(function(item, idx) {
+                    var dd = doc.createElement('dd');
+                    dd.className = 'mb-2'; dd.textContent = item;
+                    if (keys && keys[idx]) dd.setAttribute('data-tag-key', keys[idx]);
+                    if (created) dt.parentNode.appendChild(dd);
+                    else dt.parentNode.insertBefore(dd, dt.nextSibling);
+                });
+            });
+        }
+        var out = isFullDoc ? '<!DOCTYPE html>\n' + doc.documentElement.outerHTML : doc.body.innerHTML;
+        return { html: out, updated: true };
+    }
+
+    // ---- load ----
+    fetchJSON(API + '/pages/by-path?path=' + encodeURIComponent(pagePath)).then(function(page) {
+        pageData = page;
+        document.getElementById('page-path').textContent = pagePath + ' (' + (page.title || '') + ')';
+        var sectionData = parseSectionFromHtml(page.content || '');
+        var metaData = fromMetadata(page.metadata || {});
+        data = mergeData(sectionData, metaData);
+        var loads = [];
+        fields.forEach(function(f) { loads.push(loadTagOptions(f.cat)); });
+        return Promise.all(loads);
+    }).then(function(results) {
+        fields.forEach(function(f, i) {
+            var opts = results[i] || [];
+            var sel = document.getElementById('f-' + f.name);
+            var selVals = f.multi ? data[f.name + '_key'].filter(Boolean) : (data[f.name + '_key'] ? [data[f.name + '_key']] : []);
+            selVals.forEach(function(k) {
+                if (!opts.some(function(o) { return o.value === k; })) opts.push({ text: k, value: k });
+            });
+            fillSelect(sel, opts, selVals, f.multi);
+        });
+        if (dateField) {
+            var td = document.getElementById('f-' + dateField.name);
+            td.value = data[dateField.name + '_iso'] || parseDateText(data[dateField.name] || '') || '';
+        }
+        setStatus('Loaded ✓');
+    }).catch(function(e) {
+        setStatus('Load failed: ' + e.message, 'err');
+    });
+
+    // ---- save ----
+    document.getElementById('save-btn').addEventListener('click', function() {
+        var btn = this;
+        btn.disabled = true;
+        setStatus('Saving…');
+        var d = emptyData();
+        function selText(id) { var s = document.getElementById(id); return s.selectedOptions.length ? s.selectedOptions[0].textContent.trim() : ''; }
+        fields.forEach(function(f) {
+            var sel = document.getElementById('f-' + f.name);
+            if (f.multi) {
+                d[f.name + '_key'] = [].slice.call(sel.selectedOptions).map(function(o) { return o.value; });
+                d[f.name] = [].slice.call(sel.selectedOptions).map(function(o) { return o.textContent.trim(); });
+            } else {
+                d[f.name + '_key'] = sel.value.trim();
+                d[f.name] = selText('f-' + f.name);
+            }
+        });
+        if (dateField) {
+            var td = document.getElementById('f-' + dateField.name);
+            var iso = td.value;
+            if (iso) {
+                d[dateField.name + '_iso'] = iso;
+                d[dateField.name] = formatDateText(iso);
+            } else {
+                // 空值保护：没填就不动（保留原值），避免误清空旧数据
+                d[dateField.name + '_iso'] = data[dateField.name + '_iso'] || '';
+                d[dateField.name] = data[dateField.name] || '';
+            }
+        }
+        var updated = updateSectionInContent(pageData.content || '', d);
+        var metadata = Object.assign({}, pageData.metadata || {});
+        fields.forEach(function(f) {
+            metadata[f.name] = d[f.name];
+            metadata[f.name + '_key'] = d[f.name + '_key'];
+        });
+        if (dateField) {
+            metadata[dateField.name] = d[dateField.name];
+            metadata[dateField.name + '_iso'] = d[dateField.name + '_iso'];
+        }
+        var payload = {
+            title: pageData.title,
+            content: updated.html,
+            description: pageData.description || '',
+            keywords: pageData.keywords || '',
+            other_language_path: pageData.other_language_path || null,
+            language: pageData.language || 'en',
+            status: pageData.status || 'draft',
+            hide_in_navigation: pageData.hide_in_navigation ?? false,
+            navigation_title: pageData.navigation_title || null,
+            metadata: metadata
+        };
+        fetchJSON(API + pagePath, { method: 'PUT', body: JSON.stringify(payload) }).then(function() {
+            setStatus('Saved ✓ ' + new Date().toLocaleTimeString(), 'ok');
+            btn.disabled = false;
+        }).catch(function(e) {
+            setStatus('Save failed: ' + e.message, 'err');
+            btn.disabled = false;
+        });
+    });
+
+    function formatDateText(iso) {
+        var p = iso.split('-');
+        if (p.length !== 3) return iso;
+        var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        var m = parseInt(p[1], 10) - 1;
+        return months[m] + ' ' + pad2(parseInt(p[2], 10)) + ', ' + p[0];
+    }
+
+    // 从常见日期文本解析出 YYYY-MM-DD（旧数据只有文本、无 iso 时预填用）
+    function pad2(n) { n = parseInt(n, 10); return (n < 10 ? '0' : '') + n; }
+    function parseDateText(text) {
+        if (!text) return '';
+        var months = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+            january: 1, february: 2, march: 3, april: 4, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+        var m = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+        if (m) return m[1] + '-' + pad2(m[2]) + '-' + pad2(m[3]);
+        m = text.match(/([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(\d{4})/);
+        if (m && months[m[1].toLowerCase()]) return m[3] + '-' + pad2(months[m[1].toLowerCase()]) + '-' + pad2(m[2]);
+        m = text.match(/(\d{1,2})\s+([A-Za-z]+)[,]?\s+(\d{4})/);
+        if (m && months[m[2].toLowerCase()]) return m[3] + '-' + pad2(months[m[2].toLowerCase()]) + '-' + pad2(m[1]);
+        return '';
+    }
+})();
+</script>
+</body>
+</html>

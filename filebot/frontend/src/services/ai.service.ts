@@ -13,6 +13,7 @@ export interface WebsiteCrawlRequest {
   include_images?: boolean;
   follow_external_links?: boolean;
   respect_robots_txt?: boolean;
+  skip_if_exists?: boolean;
 }
 
 // Website crawling response interface
@@ -151,6 +152,14 @@ const aiService = {
   },
 
   // ===== Sitemap 导入 =====
+
+  /**
+   * Cancel a crawl task
+   */
+  async cancelCrawlTask(taskId: string): Promise<any> {
+    const response = await api.post(`/ai/cancel-task/${taskId}`);
+    return response.data;
+  },
 
   /**
    * Import from sitemap.xml

@@ -165,6 +165,8 @@
                 savePageTopBtn.addEventListener('click', savePage);
             }
             publishPageBtn.addEventListener('click', publishPage);
+            const republishBtn = document.getElementById('republish-btn');
+            if (republishBtn) republishBtn.addEventListener('click', publishPage);
             cancelEditBtn.addEventListener('click', cancelEdit);
             // File manager buttons removed per user request - event listeners removed
 
@@ -624,7 +626,9 @@
                          'bullist numlist outdent indent | link image media table | ' +
                          'blockquote pagebreak | charmap preview searchreplace visualblocks | ' +
                          'code fullscreen help | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertFeatures insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | insertByPath | deleteComponent | aiAssistant | ',
-                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px } .mceNonEditable { background:#f3f3f3 !important; outline:1px dashed #bbb !important; cursor:not-allowed; }',
+                // (noneditable plugin removed: not shipped in the official TinyMCE 6.8.2 package,
+                //  404 warning only; locked-region behavior is handled by SetContent + contenteditable=false)
                 // Load Canada.ca CSS for editor content (makes editing look like preview)
                 content_css: [
                     '/etc/designs/canada/wet-boew/css/theme.min.css'
@@ -632,7 +636,11 @@
                 // Allow all HTML elements for Canada.ca pages
                 extended_valid_elements: '*[*]',
                 // Disable cleanup of HTML
-                cleanup: false,
+                                protected: [
+                    /\{\{\{[\s\S]*?\}\}\}/g,   // {{{...}}} triple mustache (raw)
+                    /\{\{[\s\S]*?\}\}/g        // {{...}} mustache tags
+                ],
+cleanup: false,
                 valid_elements: '*[*]',
                 // Allow full HTML
                 allow_html_in_named_anchor: true,
@@ -755,6 +763,60 @@
                 setup: function(editor) {
                     tinyMceEditor = editor;
                     window.tinyMceEditor = editor;  // Make available globally for component-params.js
+
+                    // Partial WYSIWYG: every getContent() (save/publish/preview/sync) restores
+                    // {{>name?params}} from .wb-partial containers → DB always stores template syntax
+                    var _origGetContent = editor.getContent.bind(editor);
+                    editor.getContent = function() {
+                        return restorePartialsInHtml(_origGetContent.apply(editor, arguments));
+                    };
+
+                    // Protect locked regions (e.g. last modified date) from editing —
+                    // re-applied on every setContent via the SetContent event
+                    editor.on('SetContent', function() {
+                        try {
+                            editor.dom.select('gcds-date-modified, [property="dateModified"], .date-modified, dl#wb-dtmd, #wb-dtmd, #wb-date-modified, .wf-noneditable, section.oag-brdr, .wb-metadata-editor, [data-metadata-editor]').forEach(function(el) {
+                                el.setAttribute('contenteditable', 'false');
+                                el.classList.add('mceNonEditable');
+                            });
+                        } catch (e) {
+                            console.warn('protect locked regions failed (non-fatal):', e);
+                        }
+                    });
+
+                    // Click on locked region → open metadata editor popup
+                    // Priority: generic [data-metadata-field] span > [data-metadata-editor] section
+                    // Convention: any section with class .wb-metadata-editor (or legacy section.oag-brdr)
+                    // is locked and click-opens the editor named by data-metadata-editor (default 'oag').
+                    // Partial containers: only {{>name?params&edit=1}} expand to editable containers
+                    // (data-editable="1"); plain {{>name?params}} are read-only (render-only, no popup).
+                    editor.on('click', function(e) {
+                        // Partial container (rendered {{>name?params}}) → open OAG custom tags
+                        // (Custom metadata properties: 7 categories under /canadasite/tags/custom/oag-bvg)
+                        var anyPartial = editor.dom.getParent(e.target, '.wb-partial[data-partial]');
+                        if (anyPartial) {
+                            if (anyPartial.getAttribute('data-editable') !== '1') {
+                                return; // 只读 partial：纯替代不编辑，不弹窗
+                            }
+                            e.preventDefault();
+                            var oagSec = editor.dom.getParent(anyPartial, 'section.oag-brdr, .wb-metadata-editor, [data-metadata-editor="oag"]');
+                            openOagMetadataEditor(editor, oagSec);
+                            return;
+                        }
+                        var fieldEl = editor.dom.getParent(e.target, '[data-metadata-field]');
+                        if (fieldEl) {
+                            e.preventDefault();
+                            openMetadataFieldEditor(editor, fieldEl);
+                            return;
+                        }
+                        var section = editor.dom.getParent(e.target, 'section.oag-brdr, .wb-metadata-editor, [data-metadata-editor]');
+                        if (section) {
+                            e.preventDefault();
+                            var kind = section.getAttribute('data-metadata-editor') || 'oag';
+                            var opener = METADATA_EDITORS[kind] || openOagMetadataEditor;
+                            opener(editor, section);
+                        }
+                    });
 
                     // Add component insertion buttons
                     editor.ui.registry.addButton('insertButton', {
@@ -1091,7 +1153,7 @@
         }
 
         // Switch between WYSIWYG and HTML source modes
-        function switchEditorMode(mode) {
+        async function switchEditorMode(mode) {
             console.log(`Switching to ${mode} mode`);
 
             // Update active button state
@@ -1111,7 +1173,7 @@
                 // Sync content from textarea to TinyMCE
                 const htmlContent = editorContentEl.value;
                 if (tinyMceEditor) {
-                    tinyMceEditor.setContent(htmlContent);
+                    tinyMceEditor.setContent(await expandPartialsInContent(htmlContent, (currentPageData && currentPageData.path) || ''));
                     // Focus the editor
                     setTimeout(() => {
                         tinyMceEditor.focus();
@@ -1897,7 +1959,7 @@
 
                     editorContent.value = result.translated_content;
                     try {
-                        if (tinyMceEditor) tinyMceEditor.setContent(result.translated_content);
+                        if (tinyMceEditor) tinyMceEditor.setContent(await expandPartialsInContent(result.translated_content, (currentPageData && currentPageData.path) || ''));
                     } catch(e) {}
                     editorContent.dispatchEvent(new Event('input'));
                     alert('Translation complete!');
@@ -2003,6 +2065,7 @@
                 pageStatusDisplayEl.textContent = ` | Status: ${page.status || 'draft'}`;
                 lastModifiedDisplayEl.textContent = formatLastModified(page.last_modified);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(page.last_published);
+                updateRepublishBanner(page);
 
                 // Update approval and lock display
                 updateApprovalLockDisplay(page);
@@ -2020,6 +2083,7 @@
                 // Extract language links and metadata from page content head section
                 if (page.content && typeof page.content === 'string') {
                     metadataManager.extractAndStore(page.content);
+                    syncOagMetadataFromContent(page.content);
                 }
 
                 // Get file_path from URL parameter
@@ -2121,7 +2185,9 @@
                 // Also populate TinyMCE editor if initialized
                 if (tinyMceEditor) {
                     try {
-                        tinyMceEditor.setContent(cleanedContent);
+                        // Partial WYSIWYG: expand {{>name?params}} → rendered containers (editor shows real values)
+                        var expandedContent = await expandPartialsInContent(cleanedContent, page.path || pageId);
+                        tinyMceEditor.setContent(expandedContent);
                     } catch (e) {
                         console.warn('TinyMCE setContent failed (non-fatal):', e);
                     }
@@ -3013,12 +3079,12 @@
             validate: function(metadata) {
                 const errors = [];
 
-                if (metadata.description && metadata.description.length > 160) {
-                    errors.push('Description should be 160 characters or less for SEO');
+                if (metadata.description && metadata.description.length > 500) {
+                    errors.push('Description should be 500 characters or less for SEO');
                 }
 
-                if (metadata.keywords && metadata.keywords.split(',').length > 10) {
-                    errors.push('Too many keywords (max 10 recommended)');
+                if (metadata.keywords && metadata.keywords.split(',').length > 100) {
+                    errors.push('Too many keywords (max 100 recommended)');
                 }
 
                 if (metadata.alternateLanguages) {
@@ -3394,7 +3460,7 @@
         }
 
         // Synchronize content between TinyMCE editor and textarea based on active mode
-        function syncEditorContent() {
+        async function syncEditorContent() {
             if (!tinyMceEditor) {
                 console.log('syncEditorContent: TinyMCE editor not available');
                 return;
@@ -3409,7 +3475,9 @@
             } else {
                 // HTML source mode is active: sync textarea → TinyMCE
                 const textareaContent = editorContentEl.value;
-                tinyMceEditor.setContent(textareaContent);
+                // Partial WYSIWYG: re-expand {{>...}} when switching back to WYSIWYG
+                const expandedContent = await expandPartialsInContent(textareaContent, (currentPageData && currentPageData.path) || '');
+                tinyMceEditor.setContent(expandedContent);
                 console.log('syncEditorContent: HTML mode, textarea → TinyMCE, length:', textareaContent.length);
             }
         }
@@ -3473,7 +3541,7 @@
             }
 
             // Sync editor content to textarea (keeps editor state consistent)
-            syncEditorContent();
+            await syncEditorContent();
 
             // Same backend preview URL as navigation.html — identical rendering, and a
             // real URL popup is far less likely to be blocked than a blank window.
@@ -3742,6 +3810,7 @@
                     }
                     lastModifiedDisplayEl.textContent = formatLastModified(pageToDisplay.last_modified);
                     pagePublishedDisplayEl.textContent = formatPublishedAt(pageToDisplay.last_published);
+                    updateRepublishBanner(pageToDisplay);
 
                     // Update approval and lock display
                     updateApprovalLockDisplay(pageToDisplay);
@@ -3990,6 +4059,8 @@
                 
                 lastModifiedDisplayEl.textContent = formatLastModified(currentPageData.last_modified);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(currentPageData.last_published);
+                // After a save, the page is modified but not republished → show banner
+                updateRepublishBanner(currentPageData);
 
 
                 console.log('Page saved successfully');
@@ -4064,6 +4135,24 @@
             }
         }
 
+        // Show/hide the republish banner based on whether the page was edited after its last publish
+        function updateRepublishBanner(page) {
+            const banner = document.getElementById('republish-banner');
+            if (!banner) return;
+            let needsRepublish = false;
+            if (page) {
+                if (typeof page.is_republish === 'boolean') {
+                    needsRepublish = page.is_republish;
+                } else {
+                    // Fallback: compare timestamps client-side
+                    const lm = page.last_modified ? new Date(page.last_modified).getTime() : 0;
+                    const lp = page.last_published ? new Date(page.last_published).getTime() : 0;
+                    needsRepublish = lm > lp;
+                }
+            }
+            banner.style.display = needsRepublish ? 'flex' : 'none';
+        }
+
         async function publishPage() {
             if (!currentPageId || !currentPageData) {
                 showError('No page selected to publish.');
@@ -4090,11 +4179,18 @@
             const originalText = publishPageBtn.textContent;
             publishPageBtn.disabled = true;
             publishPageBtn.innerHTML = '<span class="glyphicon glyphicon-refresh spinning" aria-hidden="true"></span> Publishing...';
+            const republishBtn = document.getElementById('republish-btn');
+            if (republishBtn) { republishBtn.disabled = true; republishBtn.textContent = 'Publishing...'; }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
 
             try {
                 const response = await fetch('/api/v1/pages/publish?path=' + encodeURIComponent(path), {
-                    method: 'POST'
+                    method: 'POST',
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
@@ -4111,31 +4207,37 @@
                 pageStatusDisplayEl.textContent = ' | Status: published';
                 lastModifiedDisplayEl.textContent = formatLastModified(result.last_modified || result.published_at);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(result.published_at);
+                // Published → no longer needs republish, hide banner
+                updateRepublishBanner(null);
 
                 // Update approval and lock display
                 updateApprovalLockDisplay(currentPageData);
 
-                showSuccess('Page published successfully!');
                 console.log('Published page:', result);
 
-                // Open the published page in a new tab
-                // Page is saved to FileBot publish directory, served at /publish/
-                // Strip site prefix (canadasite/site/www) since FileBot strips it during publish
+                // Open the published static page directly on the public site (no alert)
+                // Strip site prefix (canadasite/site/www) since publish output is /en/xxx.html
                 const publishPath = path.replace(/^\/(canadasite|site|www)\/?/, '/');
-                const pageUrl = '/publish/' + publishPath.replace(/^\//, '') + '.html';
+                const pageUrl = 'https://canadasite.webfilebot.com' + publishPath.replace(/^\//, '/') + '.html';
                 window.open(pageUrl, '_blank');
 
             } catch (error) {
-                showError('Publish failed: ' + error.message);
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    showError('Publish timed out after 60s. The page may still be publishing — check the live site or try again.');
+                } else {
+                    showError('Publish failed: ' + error.message);
+                }
                 console.error('Publish error:', error);
             } finally {
                 publishPageBtn.disabled = false;
                 publishPageBtn.innerHTML = originalText;
+                if (republishBtn) { republishBtn.disabled = false; republishBtn.textContent = 'Republish'; }
             }
         }
 
         // Cancel editing
-        function cancelEdit() {
+        async function cancelEdit() {
             if (currentPageData) {
                 // Reset form to original values
                 // editorTitleEl.value = currentPageData.title || ''; // Title field removed from UI
@@ -4145,7 +4247,7 @@
 
                 // Also reset TinyMCE editor if initialized
                 if (tinyMceEditor) {
-                    tinyMceEditor.setContent(currentPageData.content || '');
+                    tinyMceEditor.setContent(await expandPartialsInContent(currentPageData.content || '', (currentPageData && currentPageData.path) || ''));
                 }
 
                 successMessageEl.style.display = 'none';
@@ -4177,6 +4279,7 @@
             pagePublishedDisplayEl.textContent = '';
             pageApprovalDisplayEl.textContent = '';
             pageLockDisplayEl.textContent = '';
+            updateRepublishBanner(null);
 
             // Clear URL parameter
             const url = new URL(window.location);
@@ -6955,7 +7058,7 @@
         }
 
         // Append component to end of page content
-        function appendComponent(componentType) {
+        async function appendComponent(componentType) {
             if (!tinyMceEditor) {
                 console.error('TinyMCE editor not initialized');
                 return false;
@@ -6977,8 +7080,8 @@
             // Append component HTML to the end
             const newContent = currentContent + '\n' + componentHtml;
 
-            // Set new content
-            tinyMceEditor.setContent(newContent);
+            // Set new content (re-expand {{>...}} so WYSIWYG stays rendered)
+            tinyMceEditor.setContent(await expandPartialsInContent(newContent, (currentPageData && currentPageData.path) || ''));
 
             // Scroll to the end to show the appended component
             const editorBody = tinyMceEditor.getBody();
@@ -7623,24 +7726,26 @@
 
                             if (appendType === 'empty') {
                                 // Append empty paragraph
-                                const appended = appendComponent('');
-                                if (appended) {
-                                    appendMessage = `✅ Successfully appended empty paragraph to end of page content.`;
-                                } else {
-                                    appendMessage = `❌ Failed to append empty paragraph. Make sure the editor is initialized.`;
-                                }
+                                appendComponent('').then(function(appended) {
+                                    if (appended) {
+                                        appendMessage = `✅ Successfully appended empty paragraph to end of page content.`;
+                                    } else {
+                                        appendMessage = `❌ Failed to append empty paragraph. Make sure the editor is initialized.`;
+                                    }
+                                    addAIMessage(appendMessage, 'system');
+                                });
                             } else {
                                 // Append specific component
                                 actualComponentType = appendType;
-                                const appended = appendComponent(actualComponentType);
-                                if (appended) {
-                                    appendMessage = `✅ Successfully appended ${actualComponentType} component to end of page content.`;
-                                } else {
-                                    appendMessage = `❌ Failed to append ${actualComponentType} component. Make sure the editor is initialized.`;
-                                }
+                                appendComponent(actualComponentType).then(function(appended) {
+                                    if (appended) {
+                                        appendMessage = `✅ Successfully appended ${actualComponentType} component to end of page content.`;
+                                    } else {
+                                        appendMessage = `❌ Failed to append ${actualComponentType} component. Make sure the editor is initialized.`;
+                                    }
+                                    addAIMessage(appendMessage, 'system');
+                                });
                             }
-
-                            addAIMessage(appendMessage, 'system');
                         } else if (componentType === 'footer-API') {
                             // Async footer insertion
                             insertFooterComponent().then(() => {
@@ -9836,6 +9941,16 @@
         });
 
         // Initialize metadata modal functionality
+        function updateThumbnailPreview() {
+            const input = document.getElementById('metadata-thumbnail');
+            const wrap = document.getElementById('thumbnail-preview-wrap');
+            const img = document.getElementById('thumbnail-preview');
+            if (!input || !wrap || !img) return;
+            const val = (input.value || '').trim();
+            if (!val) { img.removeAttribute('src'); return; }
+            img.src = val;
+        }
+
         function initializeMetadataModal() {
             console.log('initializeMetadataModal called');
 
@@ -9875,6 +9990,28 @@
                 }
             });
 
+            // Thumbnail preview toggle
+            const thumbnailToggle = document.getElementById('thumbnail-preview-toggle');
+            const thumbnailWrap = document.getElementById('thumbnail-preview-wrap');
+            if (thumbnailToggle && thumbnailWrap) {
+                thumbnailToggle.addEventListener('click', function() {
+                    if (thumbnailWrap.style.display === 'none') {
+                        updateThumbnailPreview();
+                        thumbnailWrap.style.display = 'block';
+                    } else {
+                        thumbnailWrap.style.display = 'none';
+                    }
+                });
+            }
+            const thumbnailInputEl = document.getElementById('metadata-thumbnail');
+            if (thumbnailInputEl && thumbnailWrap) {
+                thumbnailInputEl.addEventListener('input', function() {
+                    if (thumbnailWrap.style.display !== 'none') {
+                        updateThumbnailPreview();
+                    }
+                });
+            }
+
             // Tab switching
             metadataTabs.forEach(tab => {
                 tab.addEventListener('click', function() {
@@ -9906,9 +10043,9 @@
             if (descTextarea && charCount) {
                 descTextarea.addEventListener('input', function() {
                     charCount.textContent = this.value.length;
-                    if (this.value.length > 160) {
+                    if (this.value.length > 500) {
                         charCount.style.color = '#dc3545'; // Red
-                    } else if (this.value.length > 140) {
+                    } else if (this.value.length > 450) {
                         charCount.style.color = '#ffc107'; // Yellow
                     } else {
                         charCount.style.color = '#28a745'; // Green
@@ -10018,6 +10155,8 @@
                 descInput.dispatchEvent(event);
             }
             if (keywordsInput) keywordsInput.value = metadata.keywords || '';
+            const typeInput = document.getElementById('metadata-type');
+            if (typeInput) typeInput.value = metadata.type || '';
             if (authorInput) authorInput.value = metadata.author || 'Government of Canada';
 
             // Subjects and Audience - auto-populate from sidebar child page titles if field is empty
@@ -10039,6 +10178,19 @@
                 if (subjectsInput) subjectsInput.value = metadata.subjects || '';
                 if (audienceInput) audienceInput.value = metadata.audience || '';
             }
+
+            // Topics / Department / Ministers / Location (custom metadata)
+            const topicsInput = document.getElementById('metadata-topics');
+            if (topicsInput) topicsInput.value = metadata.topics || '';
+            const departmentInput = document.getElementById('metadata-department');
+            if (departmentInput) departmentInput.value = metadata.department || '';
+            const ministersInput = document.getElementById('metadata-ministers');
+            if (ministersInput) ministersInput.value = metadata.ministers || '';
+            const locationInput = document.getElementById('metadata-location');
+            if (locationInput) locationInput.value = metadata.location || '';
+            const thumbnailInput = document.getElementById('metadata-thumbnail');
+            if (thumbnailInput) thumbnailInput.value = metadata.thumbnail || '';
+            updateThumbnailPreview();
 
             // SEO metadata
             const canonicalInput = document.getElementById('metadata-canonical');
@@ -10198,6 +10350,10 @@
             if (keywordsInput) {
                 metadataManager.updateField('keywords', keywordsInput.value.trim());
             }
+            const typeInput = document.getElementById('metadata-type');
+            if (typeInput) {
+                metadataManager.updateField('type', typeInput.value.trim());
+            }
             if (authorInput) {
                 metadataManager.updateField('author', authorInput.value.trim());
             }
@@ -10277,6 +10433,28 @@
             const audienceInput = document.getElementById('metadata-audience');
             if (audienceInput && audienceInput.value.trim()) {
                 metadataManager.updateField('audience', audienceInput.value.trim());
+            }
+
+            // Topics / Department / Ministers / Location (custom metadata)
+            const topicsInput = document.getElementById('metadata-topics');
+            if (topicsInput && topicsInput.value.trim()) {
+                metadataManager.updateField('topics', topicsInput.value.trim());
+            }
+            const departmentInput = document.getElementById('metadata-department');
+            if (departmentInput && departmentInput.value.trim()) {
+                metadataManager.updateField('department', departmentInput.value.trim());
+            }
+            const ministersInput = document.getElementById('metadata-ministers');
+            if (ministersInput && ministersInput.value.trim()) {
+                metadataManager.updateField('ministers', ministersInput.value.trim());
+            }
+            const locationInput = document.getElementById('metadata-location');
+            if (locationInput && locationInput.value.trim()) {
+                metadataManager.updateField('location', locationInput.value.trim());
+            }
+            const thumbnailInput = document.getElementById('metadata-thumbnail');
+            if (thumbnailInput && thumbnailInput.value.trim()) {
+                metadataManager.updateField('thumbnail', thumbnailInput.value.trim());
             }
 
             // Update social metadata
@@ -12659,7 +12837,11 @@
                         '* { box-sizing: border-box; }',
                     content_css: [],
                     extended_valid_elements: '*[*]',
-                    cleanup: false,
+                                    protected: [
+                    /\{\{\{[\s\S]*?\}\}\}/g,   // {{{...}}} triple mustache (raw)
+                    /\{\{[\s\S]*?\}\}/g        // {{...}} mustache tags
+                ],
+cleanup: false,
                     valid_elements: '*[*]',
                     allow_html_in_named_anchor: true,
                     image_advtab: true,
@@ -13006,9 +13188,9 @@
                 if (categoryRow) {
                     categoryRow.style.display = (resourceTypeSelect && resourceTypeSelect.value === 'images') ? '' : 'none';
                 }
-                // Folder row: shown in images mode, editable (defaults to file_path)
+                // Folder row: shown in images + documents mode, editable (defaults to file_path)
                 if (folderRow) {
-                    folderRow.style.display = (resourceTypeSelect && resourceTypeSelect.value === 'images') ? '' : 'none';
+                    folderRow.style.display = (resourceTypeSelect && (resourceTypeSelect.value === 'images' || resourceTypeSelect.value === 'documents')) ? '' : 'none';
                 }
                 try {
                     // Images: use editable Folder value; others: Path input
@@ -13135,8 +13317,8 @@
             // Trigger search
             function doSearch() {
                 var type = resourceTypeSelect.value;
-                // Images: use editable Folder value as the search path (defaults to file_path)
-                var pathVal = (type === 'images' && folderInput && folderInput.value.trim()) ? folderInput.value.trim() : pathInput.value.trim();
+                // Images/Documents: use editable Folder value as the search path (defaults to file_path)
+                var pathVal = ((type === 'images' || type === 'documents') && folderInput && folderInput.value.trim()) ? folderInput.value.trim() : pathInput.value.trim();
                 var titleVal = searchInput.value.trim();
                 var categoryVal = categorySelect ? categorySelect.value : '';
                 // If input matches an AI category label, use it as category filter
@@ -13259,6 +13441,12 @@
                 }
 
                 // Helper: convert storage_path to DAM proxy URL
+                // Strip https://www.canada.ca prefix so images are inserted as relative paths
+                function stripCanadaCaPrefix(url) {
+                    if (!url) return url;
+                    return url.replace(/^https?:\/\/www\.canada\.ca/i, '');
+                }
+
                 function pathToDamUrl(storagePath) {
                     // Handles multiple path formats:
                     //   '/content/dam/canada/doc.png' (DAM proxy path)
@@ -13298,6 +13486,7 @@
                     // 优先使用上传/发布后的正确公共路径（document_metadata.url），
                     // 未发布文档回退到 storage_path 推导的 DAM 路径
                     var damUrl = getPublicUrlFromDocument(doc) || pathToDamUrl(storagePath);
+                    damUrl = stripCanadaCaPrefix(damUrl);
                     var filename = doc.title || doc.original_filename || 'image';
                     var fileSize = doc.file_size;
                     var hasThumb = doc.thumbnail_status === 'GENERATED';
@@ -13363,7 +13552,7 @@
                             // Override drag data with original file URL (not thumbnail src)
                             e.dataTransfer.setData('text/uri-list', originalUrl);
                             e.dataTransfer.setData('text/plain', originalUrl);
-                            e.dataTransfer.setData('text/html', '<img src="' + originalUrl + '" />');
+                            e.dataTransfer.setData('text/html', '<img src="' + originalUrl + '" alt="" class="img-responsive" />');
                             e.dataTransfer.effectAllowed = 'copy';
                         }
                     });
@@ -13373,7 +13562,7 @@
             function insertImageToEditor(url, filename) {
                 var editor = window.tinyMceEditor;
                 if (editor) {
-                    editor.insertContent('<img src="' + url + '" alt="' + filename + '">');
+                    editor.insertContent('<img src="' + url + '" alt="" class="img-responsive">');
                     // Show brief flash feedback
                     var btn = resultsEl.querySelector('.image-card[data-url="' + url + '"] .image-insert-btn');
                     if (btn) {
@@ -13394,8 +13583,8 @@
             // -------- Documents (PDF, Word, Excel, etc.) --------
             async function searchDocuments(pathVal, titleVal, categoryVal) {
                 try {
-                    // Filter common document types: PDF, Word, Excel, PowerPoint, text
-                    var mimeFilter = 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain';
+                    // Filter common document types + audio/video: PDF, Word, Excel, PowerPoint, text, audio, video
+                    var mimeFilter = 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/x-wav,video/mp4,video/webm,video/quicktime,video/x-msvideo';
                     var url = '/api/v1/search/documents?limit=200&mime_type=' + encodeURIComponent(mimeFilter);
                     if (pathVal) {
                         var cleanPath = pathVal;
@@ -13414,8 +13603,8 @@
                     if (titleVal) {
                         url += '&title=' + encodeURIComponent(titleVal);
                     }
-                    if (aiTagVal) {
-                        url += '&ai_tag=' + encodeURIComponent(aiTagVal);
+                    if (categoryVal) {
+                        url += '&ai_tag=' + encodeURIComponent(categoryVal);
                     }
 
                     var resp = await fetch(url);
@@ -13433,8 +13622,8 @@
                     return;
                 }
 
-                // Filter to only document-like mime types
-                var docMimes = ['pdf','msword','openxmlformats','ms-excel','ms-powerpoint','spreadsheetml','presentationml','text/plain','application/octet-stream'];
+                // Filter to document-like + audio/video mime types (exclude plain images)
+                var docMimes = ['pdf','msword','openxmlformats','ms-excel','ms-powerpoint','spreadsheetml','presentationml','text/plain','application/octet-stream','audio','video','mpeg','mp4','ogg','wav','quicktime','x-msvideo'];
                 docs = docs.filter(function(d) {
                     var mt = (d.mime_type || '').toLowerCase();
                     return docMimes.some(function(m) { return mt.indexOf(m) >= 0; });
@@ -13465,6 +13654,8 @@
 
                 function getFileIcon(mimeType) {
                     var mt = (mimeType || '').toLowerCase();
+                    if (mt.indexOf('audio') >= 0) return '🎵';
+                    if (mt.indexOf('video') >= 0) return '🎬';
                     if (mt.indexOf('pdf') >= 0) return '📕';
                     if (mt.indexOf('word') >= 0 || mt.indexOf('document') >= 0) return '📘';
                     if (mt.indexOf('excel') >= 0 || mt.indexOf('spreadsheet') >= 0) return '📗';
@@ -13481,14 +13672,17 @@
                     var filename = doc.original_filename || doc.title || 'document';
                     var fileSize = doc.file_size;
                     var icon = getFileIcon(doc.mime_type);
+                    var mt = (doc.mime_type || '').toLowerCase();
+                    var insertIcon = (mt.indexOf('audio') >= 0) ? '🎵' : ((mt.indexOf('video') >= 0) ? '🎬' : '🔗');
+                    var insertTitle = (mt.indexOf('audio') >= 0) ? 'Insert audio player' : ((mt.indexOf('video') >= 0) ? 'Insert video player' : 'Insert document link');
 
-                    html += '<div class="doc-card" data-url="' + damUrl + '" data-filename="' + filename + '">';
+                    html += '<div class="doc-card" data-url="' + damUrl + '" data-filename="' + filename + '" data-mime="' + (doc.mime_type || '') + '">';
                     html += '<div class="doc-card-icon">' + icon + '</div>';
                     html += '<div class="doc-card-info">';
                     html += '<span class="doc-card-name" title="' + filename + '">' + filename + '</span>';
                     html += '<span class="doc-card-size">' + formatFileSize(fileSize) + '</span>';
                     html += '</div>';
-                    html += '<button class="doc-insert-btn" title="Insert document link into editor">🔗</button>';
+                    html += '<button class="doc-insert-btn" title="' + insertTitle + '">' + insertIcon + '</button>';
                     html += '</div>';
                 });
                 html += '</div>';
@@ -13502,7 +13696,8 @@
                         var card = btn.closest('.doc-card');
                         var url = card.dataset.url;
                         var filename = card.dataset.filename;
-                        insertDocumentLink(url, filename);
+                        var mime = card.dataset.mime || '';
+                        insertDocumentLink(url, filename, mime);
                     });
                 });
 
@@ -13511,15 +13706,27 @@
                     card.addEventListener('click', function() {
                         var url = card.dataset.url;
                         var filename = card.dataset.filename;
-                        insertDocumentLink(url, filename);
+                        var mime = card.dataset.mime || '';
+                        insertDocumentLink(url, filename, mime);
                     });
                 });
             }
 
-            function insertDocumentLink(url, filename) {
+            function insertDocumentLink(url, filename, mimeType) {
                 var editor = window.tinyMceEditor;
                 if (editor) {
-                    editor.insertContent('<a href="' + url + '" target="_blank">' + filename + '</a>');
+                    var mt = (mimeType || '').toLowerCase();
+                    var content;
+                    if (mt.indexOf('audio') >= 0) {
+                        // Audio → inline player, not a link
+                        content = '<audio controls preload="none" src="' + url + '"></audio>';
+                    } else if (mt.indexOf('video') >= 0) {
+                        // Video → inline player, not a link
+                        content = '<video controls preload="none" src="' + url + '" style="max-width:100%;height:auto;"></video>';
+                    } else {
+                        content = '<a href="' + url + '" target="_blank">' + filename + '</a>';
+                    }
+                    editor.insertContent(content);
                     // Flash feedback
                     var btn = resultsEl.querySelector('.doc-card[data-url="' + url + '"] .doc-insert-btn');
                     if (btn) {
@@ -14039,7 +14246,7 @@
                     categoryRow.style.display = (type === 'images') ? '' : 'none';
                 }
                 if (folderRow) {
-                    folderRow.style.display = (type === 'images') ? '' : 'none';
+                    folderRow.style.display = (type === 'images' || type === 'documents') ? '' : 'none';
                 }
                 if (docAiTagRow) {
                     if (type === 'documents') {
@@ -14606,4 +14813,668 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
+
+// ===== Partial WYSIWYG: {{>name?params}} ⇄ rendered container =====
+// Editor shows rendered values (load-time expand); getContent() restores the
+// {{>...}} syntax so the DB always stores template references (publish unaffected).
+// Only parameterized partials are expanded (layout partials stay as-is).
+var WB_PARTIAL_RE = /\{\{\s*(?:&gt;|>)\s*([^}]+?)\s*\}\}/g;
+
+function wbPartialContainer(ref, html, editable) {
+    return '<div class="wb-partial" data-partial="' + ref.replace(/"/g, '&quot;') + '"' + (editable ? ' data-editable="1"' : '') + ' contenteditable="false">' + (html || '') + '</div>';
+}
+
+// ===== Custom Properties Editor (partial reference name/params key-value editor) =====
+function parsePartialRef(ref) {
+    ref = (ref || '').trim();
+    var qIdx = ref.indexOf('?');
+    var name = qIdx >= 0 ? ref.slice(0, qIdx).trim() : ref;
+    var params = {};
+    if (qIdx >= 0 && qIdx < ref.length - 1) {
+        ref.slice(qIdx + 1).split('&').forEach(function(pair) {
+            if (!pair) return;
+            var eq = pair.indexOf('=');
+            if (eq > 0) params[pair.slice(0, eq)] = pair.slice(eq + 1);
+            else params[pair] = '';
+        });
+    }
+    return { name: name, params: params };
+}
+
+function buildPartialRef(name, params) {
+    var qs = [];
+    Object.keys(params).forEach(function(k) {
+        if (String(k).trim() !== '') qs.push(String(k).trim() + '=' + params[k]);
+    });
+    return qs.length ? name.trim() + '?' + qs.join('&') : name.trim();
+}
+
+function cpropsAddRow(container, key, val) {
+    var row = document.createElement('div');
+    row.className = 'cprops-row';
+    row.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
+    row.innerHTML =
+        '<input type="text" class="form-control cprops-key" placeholder="Property name" style="flex:1; min-width:0;">' +
+        '<input type="text" class="form-control cprops-val" placeholder="Value" style="flex:1.5; min-width:0;">' +
+        '<button type="button" class="btn btn-danger cprops-del" title="Remove" style="flex:0 0 auto;">×</button>';
+    row.querySelector('.cprops-key').value = key || '';
+    row.querySelector('.cprops-val').value = val || '';
+    row.querySelector('.cprops-del').addEventListener('click', function() { row.remove(); });
+    container.appendChild(row);
+}
+
+function openCustomPropertiesEditor(editor, wbEl) {
+    var curRef = wbEl.getAttribute('data-partial') || '';
+    var parsed = parsePartialRef(curRef);
+    var modal = document.getElementById('custom-props-modal');
+    if (!modal) {
+        var html =
+            '<div id="custom-props-modal" class="metadata-modal" style="display:none;">' +
+            '  <div class="metadata-modal-content" style="width:720px; max-width:95vw;">' +
+            '    <div class="metadata-modal-header">' +
+            '      <h3>📄 Custom metadata properties</h3>' +
+            '      <button class="metadata-modal-close" id="cprops-close">×</button>' +
+            '    </div>' +
+            '    <form id="cprops-form" style="display:flex; flex-direction:column; min-height:0; flex:1;">' +
+            '      <div class="metadata-modal-body" style="padding:20px; overflow-y:auto;">' +
+            '        <div style="margin-bottom:14px;">' +
+            '          <label style="display:block; margin-bottom:4px; font-weight:bold;">Partial name</label>' +
+            '          <input type="text" id="cprops-name" class="form-control" style="width:100%; box-sizing:border-box;">' +
+            '        </div>' +
+            '        <div style="margin-bottom:8px; font-weight:bold;">Metadata properties</div>' +
+            '        <div id="cprops-params"></div>' +
+            '        <button type="button" id="cprops-add" class="btn btn-default" style="margin-top:4px;">+ Add property</button>' +
+            '      </div>' +
+            '      <div class="metadata-modal-footer">' +
+            '        <button type="button" id="cprops-cancel" class="btn btn-default">Cancel</button>' +
+            '        <button type="submit" id="cprops-save" class="btn btn-primary">Save</button>' +
+            '      </div>' +
+            '    </form>' +
+            '  </div>' +
+            '</div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+        modal = document.getElementById('custom-props-modal');
+        function hideModal() {
+            modal.style.display = 'none';
+        }
+        document.getElementById('cprops-close').addEventListener('click', hideModal);
+        document.getElementById('cprops-cancel').addEventListener('click', hideModal);
+        document.getElementById('cprops-add').addEventListener('click', function() {
+            cpropsAddRow(document.getElementById('cprops-params'), '', '');
+        });
+        modal.addEventListener('click', function(e) { if (e.target === modal) hideModal(); });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.style.display !== 'none') hideModal();
+        });
+        document.getElementById('cprops-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var target = modal._wbEl;
+            var prevRef = modal.dataset.curRef || '';
+            if (!target) { hideModal(); return; }
+            var name = document.getElementById('cprops-name').value.trim();
+            if (!name) { alert('Partial name is required'); return; }
+            var params = {};
+            modal.querySelectorAll('.cprops-row').forEach(function(row) {
+                var k = row.querySelector('.cprops-key').value.trim();
+                var v = row.querySelector('.cprops-val').value;
+                if (k) params[k] = v;
+            });
+            var newRef = buildPartialRef(name, params);
+            if (newRef === prevRef) { hideModal(); return; }
+            var saveBtn = document.getElementById('cprops-save');
+            saveBtn.disabled = true;
+            var pagePath = (window.currentPageData && window.currentPageData.path) || '';
+            fetchPartialRender(newRef, pagePath).then(function(html) {
+                try {
+                    target.setAttribute('data-partial', newRef);
+                    target.setAttribute('contenteditable', 'false');
+                    target.innerHTML = html || '';
+                    target.classList.add('mceNonEditable');
+                } catch (err) {
+                    console.warn('partial re-render failed:', err);
+                }
+                saveBtn.disabled = false;
+                hideModal();
+            });
+        });
+    }
+    function hideModal() {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+    }
+    modal._wbEl = wbEl;
+    modal.dataset.curRef = curRef;
+    document.getElementById('cprops-name').value = parsed.name;
+    var container = document.getElementById('cprops-params');
+    container.innerHTML = '';
+    var keys = Object.keys(parsed.params);
+    if (keys.length === 0) {
+        cpropsAddRow(container, '', '');
+    } else {
+        keys.forEach(function(k) { cpropsAddRow(container, k, parsed.params[k]); });
+    }
+    modal.style.display = 'flex';
+}
+
+async function fetchPartialRender(ref, pagePath) {
+    var qIdx = ref.indexOf('?');
+    var name = qIdx === -1 ? ref : ref.slice(0, qIdx);
+    var refQuery = qIdx === -1 ? '' : ref.slice(qIdx + 1);
+    // path=. / ./ / self → 当前页路径；其余透传
+    refQuery = refQuery.replace(/(^|&)path=(\.|\.\/|self)(&|$)/g, '$1path=' + encodeURIComponent(pagePath || '') + '$3');
+    var url = '/api/v1/render-partial?name=' + encodeURIComponent(name) + '&path=' + encodeURIComponent(pagePath || '');
+    if (refQuery) url += '&' + refQuery;
+    try {
+        var r = await fetch(url);
+        if (!r.ok) return '';
+        return await r.text();
+    } catch (e) {
+        console.warn('render-partial failed:', name, e);
+        return '';
+    }
+}
+
+// {{>name?params&edit=1}} → 可点击弹 Custom properties 窗口；否则只读（纯替代）
+function isEditableRef(ref) {
+    return parsePartialRef(ref).params.edit === '1';
+}
+
+async function expandPartialsInContent(content, pagePath) {
+    if (!content || (content.indexOf('{{>') === -1 && content.indexOf('{{&gt;') === -1)) return content;
+    var refs = [];
+    var m;
+    WB_PARTIAL_RE.lastIndex = 0;
+    while ((m = WB_PARTIAL_RE.exec(content)) !== null) {
+        var ref = m[1].trim();
+        if (ref.indexOf('?') === -1) continue; // 无参 partial 留给发布渲染（布局类）
+        refs.push({ start: m.index, end: m.index + m[0].length, ref: ref });
+    }
+    if (!refs.length) return content;
+    var out = content;
+    for (var i = refs.length - 1; i >= 0; i--) {
+        var r = refs[i];
+        var html = await fetchPartialRender(r.ref, pagePath);
+        var container = wbPartialContainer(r.ref, html, isEditableRef(r.ref));
+        // 若 {{>ref}} 独占一个 <p>（p 内只有 ref + 空白），用 div 替换整个 p：
+        // 避免 <p><div class="wb-partial">…</div></p> 被 TinyMCE 解析时拆 p，
+        // 产生空 <p></p> 垃圾（每次 WYSIWYG↔source 切换都会累积，最终变成
+        // <p><a href="…"> </a></p> 残留污染保存内容）。p 内有其他文本时不受影响。
+        var replaceStart = r.start, replaceEnd = r.end;
+        var pOpen = out.slice(0, r.start).match(/<p[^>]*>\s*$/);
+        var pClose = out.slice(r.end).match(/^\s*<\/p>/);
+        if (pOpen && pClose) {
+            replaceStart = r.start - pOpen[0].length;
+            replaceEnd = r.end + pClose[0].length;
+        }
+        out = out.slice(0, replaceStart) + container + out.slice(replaceEnd);
+    }
+    return out;
+}
+
+function restorePartialsInHtml(html) {
+    if (!html || html.indexOf('wb-partial') === -1) return html;
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var nodes = doc.querySelectorAll('.wb-partial[data-partial]');
+    for (var i = nodes.length - 1; i >= 0; i--) {
+        var el = nodes[i];
+        var t = doc.createTextNode('{{>' + el.getAttribute('data-partial') + '}}');
+        el.parentNode.replaceChild(t, el);
+    }
+    return doc.body ? doc.body.innerHTML : html;
+}
+
+// ===== OAG Report Metadata editor (non-editable section + click-to-edit popup) =====
+function splitLines(text) {
+    return String(text || '').split('\n').map(function(x) { return x.trim(); }).filter(Boolean);
+}
+
+function formatDateText(iso) {
+    var d = new Date(String(iso || '').trim() + 'T00:00:00');
+    if (isNaN(d.getTime())) return String(iso || '').trim();
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function parseOagSection(section) {
+    var data = {
+        tabling_date_iso: '', tabling_date: '',
+        audited_entities: [], audited_entities_key: [],
+        topics: [], topics_key: [],
+        report_type_key: '', report_type: '',
+        issue_year: '', issue_year_key: '',
+        issues: [], issues_key: [],
+        location: '', location_key: '',
+        media_type: '', media_type_key: '',
+        status: '', status_key: ''
+    };
+    if (!section) return data;
+    var time = section.querySelector('time');
+    if (time) {
+        data.tabling_date_iso = time.getAttribute('datetime') || '';
+        data.tabling_date = (time.textContent || '').trim();
+    }
+    var rtLabel = section.querySelector('.report-type-label');
+    if (rtLabel) {
+        data.report_type_key = rtLabel.getAttribute('data-report-type-key') || '';
+        data.report_type = (rtLabel.textContent || '').trim();
+    }
+    var dts = section.querySelectorAll('dt');
+    for (var i = 0; i < dts.length; i++) {
+        var label = (dts[i].textContent || '').trim().toLowerCase();
+        var dds = [], ddKeys = [];
+        var node = dts[i].nextElementSibling;
+        while (node && node.tagName === 'DD') {
+            dds.push((node.textContent || '').trim());
+            ddKeys.push(node.getAttribute('data-tag-key') || '');
+            node = node.nextElementSibling;
+        }
+        if (label.indexOf('audited') >= 0) { data.audited_entities = dds; data.audited_entities_key = ddKeys; }
+        else if (label.indexOf('year') >= 0) { data.issue_year = dds[0] || ''; data.issue_year_key = ddKeys[0] || ''; }
+        else if (label.indexOf('topic') >= 0) { data.topics = dds; data.topics_key = ddKeys; }
+        else if (label.indexOf('issue') >= 0) { data.issues = dds; data.issues_key = ddKeys; }
+        else if (label.indexOf('location') >= 0) { data.location = dds[0] || ''; data.location_key = ddKeys[0] || ''; }
+        else if (label.indexOf('media') >= 0) { data.media_type = dds[0] || ''; data.media_type_key = ddKeys[0] || ''; }
+        else if (label.indexOf('status') >= 0) { data.status = dds[0] || ''; data.status_key = ddKeys[0] || ''; }
+    }
+    return data;
+}
+
+function parseOagSectionFromMetadata() {
+    var m = (window.currentPageData && window.currentPageData.metadata) || {};
+    function arr(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
+    return {
+        tabling_date_iso: m.tabling_date_iso || '',
+        tabling_date: m.tabling_date || '',
+        audited_entities: arr(m.audited_entities),
+        audited_entities_key: arr(m.audited_entities_key),
+        topics: arr(m.topics),
+        topics_key: arr(m.topics_key),
+        report_type_key: m.report_type_key || '',
+        report_type: m.report_type || '',
+        issue_year: m.issue_year || '',
+        issue_year_key: m.issue_year_key || '',
+        issues: arr(m.issues),
+        issues_key: arr(m.issues_key),
+        location: m.location || '',
+        location_key: m.location_key || '',
+        media_type: m.media_type || '',
+        media_type_key: m.media_type_key || '',
+        status: m.status || '',
+        status_key: m.status_key || ''
+    };
+}
+
+function applyOagSection(section, data) {
+    if (!section) return;
+    var doc = section.ownerDocument;
+    var rtLabel = section.querySelector('.report-type-label');
+    if (rtLabel) {
+        if (data.report_type_key) rtLabel.setAttribute('data-report-type-key', data.report_type_key);
+        if (data.report_type) rtLabel.textContent = data.report_type + ' ';
+    }
+    var time = section.querySelector('time');
+    if (time) {
+        if (data.tabling_date_iso) time.setAttribute('datetime', data.tabling_date_iso);
+        if (data.tabling_date) time.textContent = ' ' + data.tabling_date + ' ';
+    }
+    // generic dt/dd fields: label keyword -> display title, values, tag keys
+    var fields = [
+        { match: 'audited', title: 'Audited entities', values: data.audited_entities, keys: data.audited_entities_key },
+        { match: 'topic', title: 'Topics', values: data.topics, keys: data.topics_key },
+        { match: 'year', title: 'Issue year', values: data.issue_year ? [data.issue_year] : [], keys: data.issue_year_key ? [data.issue_year_key] : [] },
+        { match: 'issue', title: 'Issues', values: data.issues, keys: data.issues_key },
+        { match: 'location', title: 'Location', values: data.location ? [data.location] : [], keys: data.location_key ? [data.location_key] : [] },
+        { match: 'media', title: 'Media type', values: data.media_type ? [data.media_type] : [], keys: data.media_type_key ? [data.media_type_key] : [] },
+        { match: 'status', title: 'Status', values: data.status ? [data.status] : [], keys: data.status_key ? [data.status_key] : [] }
+    ];
+    var dts = section.querySelectorAll('dt');
+    fields.forEach(function(f) {
+        var dt = null;
+        for (var i = 0; i < dts.length; i++) {
+            if (dts[i]._oagMatched) continue;
+            if ((dts[i].textContent || '').trim().toLowerCase().indexOf(f.match) >= 0) { dt = dts[i]; break; }
+        }
+        if (dt) dt._oagMatched = true;
+        var created = false;
+        if (dt) {
+            var node = dt.nextElementSibling;
+            while (node && node.tagName === 'DD') {
+                var next = node.nextElementSibling;
+                node.parentNode.removeChild(node);
+                node = next;
+            }
+        } else {
+            var dl = rtLabel ? rtLabel.parentNode : (section.querySelector('dl') || section);
+            dt = doc.createElement('dt');
+            dt.textContent = f.title;
+            dl.appendChild(dt);
+            created = true;
+        }
+        f.values.forEach(function(item, idx) {
+            var dd = doc.createElement('dd');
+            dd.className = 'mb-2';
+            dd.textContent = item;
+            if (f.keys && f.keys[idx]) dd.setAttribute('data-tag-key', f.keys[idx]);
+            if (created) dt.parentNode.appendChild(dd);
+            else dt.parentNode.insertBefore(dd, dt.nextSibling);
+        });
+    });
+}
+
+function getMetadataFieldValue(el) {
+    // Extract the current display value from a locked metadata element.
+    // text/date: text content; list: one item per child (li/dd) or line.
+    var type = el.getAttribute('data-metadata-type') || 'text';
+    var items = el.querySelectorAll('li, dd');
+    if (type === 'list' && items.length) {
+        return Array.prototype.map.call(items, function(x) { return (x.textContent || '').trim(); }).filter(Boolean);
+    }
+    return (el.textContent || '').trim();
+}
+
+function applyMetadataFieldValue(el, value) {
+    // Write the value back into the locked element's DOM.
+    var type = el.getAttribute('data-metadata-type') || 'text';
+    if (type === 'list') {
+        var items = el.querySelectorAll('li, dd');
+        for (var i = 0; i < items.length; i++) items[i].parentNode.removeChild(items[i]);
+        var list = Array.isArray(value) ? value : String(value || '').split('\n');
+        list.forEach(function(item) {
+            var tag = (el.tagName === 'UL' || el.tagName === 'OL') ? 'li' : 'span';
+            var node = el.ownerDocument.createElement(tag);
+            if (el.tagName !== 'UL' && el.tagName !== 'OL') { node.className = 'metadata-item'; node.style.display = 'block'; }
+            node.textContent = item;
+            el.appendChild(node);
+        });
+    } else {
+        el.textContent = String(value || '');
+    }
+}
+
+function openMetadataFieldEditor(editor, el) {
+    var field = el.getAttribute('data-metadata-field');
+    var type = el.getAttribute('data-metadata-type') || 'text';
+    var label = el.getAttribute('data-metadata-label') || field || 'Metadata field';
+    var current = getMetadataFieldValue(el);
+
+    var items = [];
+    var initial = {};
+    if (type === 'date') {
+        items.push({ type: 'input', name: 'value', label: label + ' (YYYY-MM-DD)', placeholder: 'e.g. 2026-05-04' });
+        var dtEl = el.tagName === 'TIME' ? el : (el.querySelector ? el.querySelector('time') : null);
+        var dt = dtEl ? (dtEl.getAttribute('datetime') || '') : '';
+        initial.value = dt || (typeof current === 'string' ? current : '');
+    } else if (type === 'list') {
+        items.push({ type: 'textarea', name: 'value', label: label + ' (one per line)' });
+        initial.value = (Array.isArray(current) ? current : [current]).join('\n');
+    } else {
+        items.push({ type: 'input', name: 'value', label: label });
+        initial.value = typeof current === 'string' ? current : '';
+    }
+
+    editor.windowManager.open({
+        title: '✏️ ' + label,
+        body: { type: 'panel', items: items },
+        initialData: initial,
+        buttons: [
+            { type: 'cancel', name: 'close', text: 'Cancel' },
+            { type: 'submit', name: 'save', text: 'Save', primary: true }
+        ],
+        onSubmit: function(api) {
+            var v = api.getData();
+            var raw = v.value || '';
+            var value;
+            if (type === 'list') {
+                value = String(raw).split('\n').map(function(x) { return x.trim(); }).filter(Boolean);
+            } else if (type === 'date') {
+                var iso = String(raw).trim();
+                value = iso ? formatDateText(iso) : '';
+                var dtEl = el.tagName === 'TIME' ? el : (el.querySelector ? el.querySelector('time') : null);
+                if (dtEl) dtEl.setAttribute('datetime', iso);
+            } else {
+                value = String(raw).trim();
+            }
+            applyMetadataFieldValue(el, value);
+            if (currentPageData) {
+                if (!currentPageData.metadata) currentPageData.metadata = {};
+                currentPageData.metadata[field] = value;
+                if (type === 'date') currentPageData.metadata[field + '_iso'] = String(raw).trim();
+            }
+            api.close();
+            editor.fire('change');
+        }
+    });
+}
+
+function syncOagMetadataFromContent(content) {
+    // Mirror OAG Report Metadata values from content into currentPageData.metadata
+    // so metadata stays the authoritative copy (saved together with the page).
+    try {
+        if (!content || typeof content !== 'string' || !currentPageData) return;
+        var doc = new DOMParser().parseFromString(content, 'text/html');
+        var section = doc.querySelector('section.oag-brdr, .wb-metadata-editor, [data-metadata-editor="oag"]');
+        if (!section) return;
+        var data = parseOagSection(section);
+        if (!currentPageData.metadata) currentPageData.metadata = {};
+        if (data.tabling_date_iso) currentPageData.metadata.tabling_date_iso = data.tabling_date_iso;
+        if (data.tabling_date) currentPageData.metadata.tabling_date = data.tabling_date;
+        if (data.audited_entities.length) currentPageData.metadata.audited_entities = data.audited_entities;
+        if (data.audited_entities_key.length) currentPageData.metadata.audited_entities_key = data.audited_entities_key;
+        if (data.topics.length) currentPageData.metadata.topics = data.topics;
+        if (data.topics_key.length) currentPageData.metadata.topics_key = data.topics_key;
+        if (data.report_type_key) currentPageData.metadata.report_type_key = data.report_type_key;
+        if (data.report_type) currentPageData.metadata.report_type = data.report_type;
+        if (data.issue_year) currentPageData.metadata.issue_year = data.issue_year;
+        if (data.issue_year_key) currentPageData.metadata.issue_year_key = data.issue_year_key;
+        if (data.issues.length) currentPageData.metadata.issues = data.issues;
+        if (data.issues_key.length) currentPageData.metadata.issues_key = data.issues_key;
+        if (data.location) currentPageData.metadata.location = data.location;
+        if (data.location_key) currentPageData.metadata.location_key = data.location_key;
+        if (data.media_type) currentPageData.metadata.media_type = data.media_type;
+        if (data.media_type_key) currentPageData.metadata.media_type_key = data.media_type_key;
+        if (data.status) currentPageData.metadata.status = data.status;
+        if (data.status_key) currentPageData.metadata.status_key = data.status_key;
+        console.log('syncOagMetadataFromContent: mirrored Report Metadata into page metadata');
+    } catch (e) {
+        console.warn('syncOagMetadataFromContent failed (non-fatal):', e);
+    }
+}
+
+function fetchReportTypeOptions() {
+    // Load Report type options from the OAG/BVG tag directory (data source).
+    return fetch('/api/v1/pages/by-path?path=' + encodeURIComponent('/canadasite/tags/custom/oag-bvg/report-type'))
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(d) {
+            var doc = new DOMParser().parseFromString(d.content || '', 'text/html');
+            var opts = [];
+            doc.querySelectorAll('a[href*="/report-type/"]').forEach(function(a) {
+                var href = a.getAttribute('href') || '';
+                var key = href.split('/').pop();
+                var label = (a.textContent || '').trim();
+                if (key) opts.push({ text: label, value: key });
+            });
+            return opts;
+        });
+}
+
+function fetchTagOptions(parentPath) {
+    // Load tag options from the tag tree via the tags API (GET /api/v1/tags?parent_path=...).
+    return fetch('/api/v1/tags?parent_path=' + encodeURIComponent(parentPath))
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(list) {
+            var cat = parentPath.split('/').pop();
+            var prefixes = ['custom-oag-bvg-' + cat + '-', cat + '-'];
+            return (list || []).map(function(t) {
+                var id = t.id || '';
+                var slug = id;
+                for (var i = 0; i < prefixes.length; i++) {
+                    if (id.indexOf(prefixes[i]) === 0) { slug = id.slice(prefixes[i].length); break; }
+                }
+                return { text: t.title_en || slug, value: slug };
+            });
+        });
+}
+
+function openOagMetadataEditor(editor, section) {
+    var data = section ? parseOagSection(section) : parseOagSectionFromMetadata();
+    // The 4 remaining OAG/BVG tag categories (single-select dropdowns, options from tags API)
+    var CATS = [
+        { name: 'issue_year', label: 'Issue year', path: '/canadasite/tags/custom/oag-bvg/issue-year', multi: false },
+        { name: 'issues', label: 'Issues', path: '/canadasite/tags/custom/oag-bvg/issues', multi: true },
+        { name: 'location', label: 'Location', path: '/canadasite/tags/custom/oag-bvg/location', multi: false },
+        { name: 'media_type', label: 'Media type', path: '/canadasite/tags/custom/oag-bvg/media-type', multi: false },
+        { name: 'status', label: 'Status', path: '/canadasite/tags/custom/oag-bvg/status', multi: false },
+        { name: 'audited_entities', label: 'Audited entities', path: '/canadasite/tags/institutions', multi: true },
+        { name: 'topics', label: 'Topics', path: '/canadasite/tags/custom/oag-bvg/topics', multi: true }
+    ];
+    var items = [
+        { type: 'selectbox', name: 'report_type', label: 'Report type', items: [{ text: '(loading…)', value: '' }] }
+    ];
+    var initialData = { report_type: data.report_type_key };
+    function addFromSelect(api, c) {
+        var d = api.getData();
+        var val = String(d[c.name + '_sel'] || '').trim();
+        if (!val) return;
+        var label = '';
+        var box = itemByName(c.name + '_sel');
+        (box.items || []).forEach(function(o) { if (o.value === val) label = o.text; });
+        if (!label) label = val;
+        var cur = splitLines(d[c.name]);
+        if (cur.indexOf(label) < 0) cur.push(label);
+        var nd = {}; nd[c.name] = cur.join('\n'); nd[c.name + '_sel'] = '';
+        api.setData(nd);
+    }
+    CATS.forEach(function(c) {
+        if (c.multi) {
+            items.push(
+                { type: 'selectbox', name: c.name + '_sel', label: c.label + ' — select', items: [{ text: '(loading…)', value: '' }] },
+                { type: 'button', name: c.name + '_add', text: '+ Add' },
+                { type: 'textarea', name: c.name, label: c.label + ' (selected — one per line, edit freely)' }
+            );
+            initialData[c.name] = (data[c.name] || []).join('\n');
+            initialData[c.name + '_sel'] = '';
+        } else {
+            items.push({ type: 'selectbox', name: c.name, label: c.label, items: [{ text: '(loading…)', value: '' }] });
+            initialData[c.name] = data[c.name + '_key'] || '';
+        }
+    });
+    items.push({ type: 'input', name: 'tabling_date', label: 'Tabling date (YYYY-MM-DD)', placeholder: 'e.g. 2026-05-04' });
+    initialData.tabling_date = data.tabling_date_iso;
+    // Issue year defaults to the tabling date year when not explicitly tagged
+    if (!initialData.issue_year && data.tabling_date_iso) initialData.issue_year = data.tabling_date_iso.slice(0, 4);
+
+    function fallbackOpts(name, key) {
+        var label = data[name];
+        if (Array.isArray(label)) label = label[0] || '';
+        return [{ text: label || '(none)', value: key || '' }];
+    }
+    function resolveLabel(opts, key) {
+        var label = '';
+        (opts || []).forEach(function(o) { if (o.value === key) label = o.text; });
+        return label;
+    }
+    function resolveKey(opts, text) {
+        var key = '';
+        (opts || []).forEach(function(o) { if (o.text === text) key = o.value; });
+        return key;
+    }
+    function itemByName(n) {
+        for (var i = 0; i < items.length; i++) if (items[i].name === n) return items[i];
+        return null;
+    }
+    function openDialog() {
+        editor.windowManager.open({
+            title: '📄 Custom metadata properties',
+            body: { type: 'panel', items: items },
+            initialData: initialData,
+            buttons: [
+                { type: 'cancel', name: 'close', text: 'Cancel' },
+                { type: 'submit', name: 'save', text: 'Save', primary: true }
+            ],
+            onAction: function(api, details) {
+                var n = details && details.name;
+                if (!n) return;
+                CATS.forEach(function(c) {
+                    if (c.multi && n === c.name + '_add') addFromSelect(api, c);
+                });
+            },
+            onChange: function(api, details) {
+                var n = details && details.name;
+                if (!n) return;
+                CATS.forEach(function(c) {
+                    if (c.multi && n === c.name + '_sel') addFromSelect(api, c);
+                });
+            },
+            onSubmit: function(api) {
+                var v = api.getData();
+                var iso = String(v.tabling_date || '').trim();
+                var newData = {
+                    report_type_key: String(v.report_type || '').trim(),
+                    report_type: '',
+                    tabling_date_iso: iso,
+                    tabling_date: iso ? formatDateText(iso) : '',
+                    audited_entities: [], audited_entities_key: [],
+                    topics: [], topics_key: [],
+                    issue_year: '', issue_year_key: '',
+                    issues: [], issues_key: [],
+                    location: '', location_key: '',
+                    media_type: '', media_type_key: '',
+                    status: '', status_key: ''
+                };
+                newData.report_type = resolveLabel(items[0].items, newData.report_type_key);
+                if (!newData.report_type && newData.report_type_key === data.report_type_key) newData.report_type = data.report_type;
+                CATS.forEach(function(c) {
+                    if (c.multi) {
+                        var texts = splitLines(v[c.name]);
+                        newData[c.name] = texts;
+                        newData[c.name + '_key'] = texts.map(function(t) { return resolveKey(itemByName(c.name + '_sel').items, t); });
+                    } else {
+                        var key = String(v[c.name] || '').trim();
+                        newData[c.name + '_key'] = key;
+                        newData[c.name] = resolveLabel(itemByName(c.name).items, key);
+                    }
+                });
+                if (section) applyOagSection(section, newData);
+                // Mirror into page metadata (submitted together with page Save)
+                if (currentPageData) {
+                    if (!currentPageData.metadata) currentPageData.metadata = {};
+                    currentPageData.metadata.report_type_key = newData.report_type_key;
+                    currentPageData.metadata.report_type = newData.report_type;
+                    currentPageData.metadata.tabling_date = newData.tabling_date;
+                    currentPageData.metadata.tabling_date_iso = newData.tabling_date_iso;
+                    currentPageData.metadata.audited_entities = newData.audited_entities;
+                    currentPageData.metadata.topics = newData.topics;
+                    CATS.forEach(function(c) {
+                        currentPageData.metadata[c.name + '_key'] = newData[c.name + '_key'];
+                        currentPageData.metadata[c.name] = newData[c.name];
+                    });
+                }
+                api.close();
+                editor.fire('change');
+            }
+        });
+    }
+    // Load options: report-type from its directory page; the 4 categories from the tags API
+    var loads = [fetchReportTypeOptions().then(function(opts) {
+        items[0].items = (opts && opts.length) ? opts : fallbackOpts('report_type', data.report_type_key);
+    }).catch(function() {
+        items[0].items = fallbackOpts('report_type', data.report_type_key);
+    })];
+    CATS.forEach(function(c) {
+        var selName = c.multi ? c.name + '_sel' : c.name;
+        loads.push(fetchTagOptions(c.path).then(function(opts) {
+            var box = itemByName(selName);
+            if (box) box.items = (opts && opts.length) ? opts : fallbackOpts(c.name, initialData[selName]);
+        }).catch(function() {
+            var box = itemByName(selName);
+            if (box) box.items = fallbackOpts(c.name, initialData[selName]);
+        }));
+    });
+    Promise.all(loads).then(openDialog);
+}
+
+// Metadata editor registry — generic click-to-edit for [data-metadata-editor] sections.
+// New template/component types register their own opener here (e.g. { petition: openPetitionEditor }).
+var METADATA_EDITORS = {
+    oag: openOagMetadataEditor
+};
 

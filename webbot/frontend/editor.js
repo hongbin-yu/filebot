@@ -9981,6 +9981,10 @@
             const otherLangInput = document.getElementById('other-language-path');
             if (otherLangInput) otherLangInput.value = currentPageData?.other_language_path || '';
 
+            // Redirect to
+            const redirectInput = document.getElementById('redirect-to');
+            if (redirectInput) redirectInput.value = metadata.redirect_to || '';
+
             // Approval Status and Lock Status
             const approvalSelect = document.getElementById('metadata-approval-status');
             if (approvalSelect) approvalSelect.value = metadata.approval_status || '';
@@ -10057,6 +10061,17 @@
             const otherLangInput = document.getElementById('other-language-path');
             if (otherLangInput) {
                 currentPageData.other_language_path = otherLangInput.value.trim() || null;
+            }
+
+            // Redirect to
+            const redirectInput = document.getElementById('redirect-to');
+            if (redirectInput) {
+                const val = redirectInput.value.trim();
+                if (val) {
+                    metadataManager.updateField('redirect_to', val);
+                } else {
+                    metadataManager.updateField('redirect_to', '');
+                }
             }
 
             // Hide in navigation

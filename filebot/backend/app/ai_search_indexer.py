@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import sqlite3
+import fnmatch
 import html as html_mod
 from datetime import datetime
 
@@ -62,7 +63,110 @@ DEFAULT_SCOPES = [
             "/canadasite/en/auditor-general/ai-search",
         ],
     },
+    {
+        "label": "news",  # news pages (added for incremental plan — boss: "many news pages unindexed, can't test")
+        "like": [
+            "/canadasite/en/news/%",
+            "/canadasite/fr/nouvelles/%",
+            "/canadasite/%/%/news%",  # per-institution news (e.g. army/news-publications)
+            "/canadasite/%/%/nouvelles%",  # per-institution news FR (e.g. agence-revenu/nouvelles)
+        ],
+        "exact": [
+            "/canadasite/en/news",
+            "/canadasite/fr/nouvelles",
+        ],
+        "exclude": [],
+    },
 ]
+
+
+def _like_match(path: str, pattern: str) -> bool:
+    """SQL LIKE '%' semantics (only % wildcards used in scopes) via fnmatch."""
+    return fnmatch.fnmatchcase(path, pattern.replace("%", "*"))
+
+
+# --- Incremental index helpers (P2 of the incremental-index plan) ---
+def is_in_scope(path: str, scopes=None) -> bool:
+    """True if path matches any scope's like/exact patterns and is not excluded.
+
+    Mirrors the SQL WHERE built by fetch_webbot_pages (LIKE '%' = wildcard).
+    """
+    if scopes is None:
+        scopes = DEFAULT_SCOPES
+
+    included = False
+    for scope in scopes:
+        if path in scope.get("exact", []):
+            included = True
+        for pattern in scope.get("like", []):
+            if _like_match(path, pattern):
+                included = True
+    if not included:
+        return False
+
+    for scope in scopes:
+        if path in scope.get("exclude", []):
+            return False
+    return True
+
+
+def delete_page_chunks(conn, page_path: str) -> int:
+    """Remove all existing chunks for one page (idempotent re-index)."""
+    cur = conn.cursor()
+    cur.execute("DELETE FROM search_chunks WHERE page_path = %s", (page_path,))
+    conn.commit()
+    print(f"   🗑️  Deleted {cur.rowcount} existing chunk(s) for {page_path}")
+    return cur.rowcount
+
+
+def reindex_page(page: dict, conn, model=None, batch_size: int = 32):
+    """Incrementally re-index a single page: chunk → embed → delete old → insert new.
+
+    Args:
+        page: dict with path/title/content/language (as returned by fetch_webbot_pages)
+        conn: psycopg2 connection to the pgvector DB (search_chunks)
+        model: loaded SentenceTransformer. If None (P2 phase — no torch needed),
+               only chunking is performed and (chunks, None) is returned so the
+               caller can inspect/verify without embedding.
+
+    Returns:
+        (chunk_count, error_message_or_None)
+    """
+    try:
+        chunks = extract_h2_chunks(page)
+        if not chunks:
+            return 0, None
+        if model is not None:
+            chunks = embed_chunks(model, chunks, batch_size=batch_size)
+            delete_page_chunks(conn, page["path"])
+            store_chunks(conn, chunks, clear_first=False)
+        return len(chunks), None
+    except Exception as exc:  # noqa: BLE001 - worker reports per-page errors
+        try:
+            conn.rollback()  # don't poison the shared connection for the rest of the batch
+        except Exception:
+            pass
+        return 0, f"{type(exc).__name__}: {exc}"
+
+
+def set_page_ai_index_status(db_path: str, path: str, status: str, indexed_at=None) -> None:
+    """Update ai_index_status (and optionally ai_indexed_at) on webbot_page."""
+    conn = sqlite3.connect(db_path)
+    try:
+        if indexed_at is not None:
+            conn.execute(
+                "UPDATE webbot_page SET ai_index_status = ?, ai_indexed_at = ? WHERE path = ?",
+                (status, indexed_at, path),
+            )
+        else:
+            conn.execute(
+                "UPDATE webbot_page SET ai_index_status = ? WHERE path = ?",
+                (status, path),
+            )
+        conn.commit()
+        print(f"   🏷️  {path}: ai_index_status -> {status}")
+    finally:
+        conn.close()
 
 
 # --- Step 1: Fetch pages from WebBot ---
@@ -136,11 +240,19 @@ def strip_html_tags(text):
 
 
 def extract_h2_chunks(page):
-    """Split HTML content by <h2> tags. Returns list of chunks with metadata."""
+    """Split HTML content by <h2> tags. Returns list of chunks with metadata.
+
+    Also emits a synthetic "Summary" chunk from the page's description + keywords
+    metadata (boss: "description/keywords 很重要") so thin/link-list pages are
+    searchable via their metadata. Every chunk carries the page description so the
+    search API can return it.
+    """
     content = page["content"]
     path = page["path"]
     lang = page["language"]
     title = page["title"]
+    desc = (page.get("description") or "").strip()
+    kw = (page.get("keywords") or "").strip()
 
     # Split by <h2> tags (handle various formats: <h2>, <h2 class="...">, </h2>)
     # Pattern: match everything up to and including an opening <h2...> tag
@@ -185,6 +297,26 @@ def extract_h2_chunks(page):
             "text": body_text,
             "source_url": service_path,
             "char_count": len(body_text),
+            "description": desc,
+        })
+
+    # Synthetic summary chunk from metadata (description + keywords)
+    summary_text = desc
+    if kw:
+        summary_text = f"{summary_text}\nKeywords: {kw}".strip() if summary_text else f"Keywords: {kw}"
+    if len(summary_text) >= 20:
+        service_path = path.replace("/canadasite", "https://www.canada.ca")
+        chunks.append({
+            "page_path": path,
+            "page_title": title,
+            "language": lang,
+            "heading": "Summary",
+            "heading_level": 0,
+            "section_index": len(chunks),
+            "text": summary_text,
+            "source_url": service_path,
+            "char_count": len(summary_text),
+            "description": desc,
         })
 
     return chunks
@@ -232,6 +364,7 @@ def ensure_table(conn):
             text TEXT NOT NULL,
             source_url TEXT,
             char_count INTEGER,
+            description TEXT,
             embedding vector(%d),
             created_at TIMESTAMP DEFAULT NOW()
         )
@@ -242,6 +375,8 @@ def ensure_table(conn):
     cur.execute("""
         CREATE INDEX IF NOT EXISTS idx_search_chunks_page ON search_chunks(page_path);
     """)
+    # Self-heal for pre-existing tables (incremental deploy)
+    cur.execute("ALTER TABLE search_chunks ADD COLUMN IF NOT EXISTS description TEXT")
     conn.commit()
     print(f"   ✅ Table search_chunks ready (dim={EMBEDDING_DIM})")
 
@@ -273,6 +408,7 @@ def store_chunks(conn, chunks, clear_first=True):
                 c["text"],
                 c["source_url"],
                 c["char_count"],
+                c.get("description") or None,
                 c["embedding"],
             ))
 
@@ -282,11 +418,11 @@ def store_chunks(conn, chunks, clear_first=True):
             """
             INSERT INTO search_chunks
                 (page_path, page_title, language, heading, heading_level,
-                 section_index, text, source_url, char_count, embedding)
+                 section_index, text, source_url, char_count, description, embedding)
             VALUES %s
             """,
             values,
-            template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)",
+            template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)",
         )
         inserted += len(batch)
         print(f"   📦 Inserted {inserted}/{len(chunks)} chunks")

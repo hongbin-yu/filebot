@@ -177,9 +177,7 @@ async def rollback_page(
 
     # 3. 加载系统模板片段（当前版本的 head/header/footer）
     head_html = await _load_template("/canadasite/mustache-templates/gethead", path)
-    header_en_html = await _load_template("/canadasite/mustache-templates/getheader_en", path)
-    header_fr_html = await _load_template("/canadasite/mustache-templates/getheader_fr", path)
-    header_html = header_en_html if page_language == "en" else header_fr_html
+    header_html = await _load_template("/canadasite/mustache-templates/getheader", path)
 
     # Footer: 从现有页面内容中提取，或加载模板
     footer_html = _extract_footer(page.get("content", ""))

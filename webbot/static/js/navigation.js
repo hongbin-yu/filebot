@@ -381,7 +381,29 @@ async function performDelete(pagePath, pageTitle) {
         if (!resp.ok) {
             var errData = null;
             try { errData = await resp.json(); } catch(e) {}
-            throw new Error(errData && errData.detail ? errData.detail : 'HTTP ' + resp.status);
+            // 409 = page is referenced (delete protection). Show a friendly dialog
+            // with the list of referencing pages so the author knows WHY delete failed.
+            if (resp.status === 409 && errData && errData.detail && typeof errData.detail === 'object') {
+                var d = errData.detail;
+                var refs = d.referenced_by || [];
+                var refList = refs.length
+                    ? refs.map(function (p) {
+                        var label = typeof p === 'string' ? p : (p.path || p.title || JSON.stringify(p));
+                        return '<div style="padding:2px 0;font-family:monospace;font-size:12px;word-break:break-all">• ' + esc(label) + '</div>';
+                      }).join('')
+                    : '<div style="color:#888">(no details)</div>';
+                var infoHtml = '<div style="font-weight:600;margin-bottom:6px">⚠️ This page is referenced — delete blocked</div>' +
+                    '<div style="margin-bottom:4px">' + esc(d.message || 'This page is referenced by other page(s)') + ':</div>' +
+                    refList +
+                    '<div style="margin-top:10px;color:#666;font-size:12px">Remove the link(s) from those page(s) first, then delete again.<br>' +
+                    'To force delete anyway, use the API with <code>?force=true</code>.</div>';
+                await showConfirmDialog(infoHtml, 'OK', 'Close', true);
+                return;
+            }
+            var detail = errData && errData.detail
+                ? (typeof errData.detail === 'object' ? JSON.stringify(errData.detail) : errData.detail)
+                : 'HTTP ' + resp.status;
+            throw new Error(detail);
         }
 
         var result = await resp.json();
@@ -1705,7 +1727,6 @@ function setupButtons() {
         try {
             // Helper function: create a page, or skip if already exists
             async function createOrSkip(lang, bodyData) {
-                bodyData.skip_if_exists = true;
                 var resp = await fetch('/api/v1/pages/', {
                     method: 'POST',
                     headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -2686,6 +2707,7 @@ function lockPage() {
         .then(function(data) {
             if (data.success) {
                 loadLockStatus(path);
+                refreshTree();  // tree icon must match new lock status
                 showWetAlert('Page locked successfully. Editing and publishing are now blocked.');
             }
         })
@@ -2710,6 +2732,7 @@ function unlockPage() {
         .then(function(data) {
             if (data.success) {
                 loadLockStatus(path);
+                refreshTree();  // tree icon must match new lock status
                 showWetAlert('Page unlocked. Editing and publishing are now allowed.');
             }
         })

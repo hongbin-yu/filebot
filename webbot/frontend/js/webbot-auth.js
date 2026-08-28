@@ -21,7 +21,19 @@
     // ── Helpers ──────────────────────────────────────────────────────
 
     function getToken() {
-        try { return localStorage.getItem(STORAGE_KEY); } catch(e) { return null; }
+        try {
+            var token = localStorage.getItem(STORAGE_KEY);
+            if (token) return token;
+            // Fallback: read filebot_token cookie (set by FileBot login, Domain=.webfilebot.com)
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var c = cookies[i].trim();
+                if (c.indexOf('filebot_token=') === 0) {
+                    return c.substring('filebot_token='.length);
+                }
+            }
+            return null;
+        } catch(e) { return null; }
     }
 
     function getUser() {
@@ -227,4 +239,38 @@
 
     // Legacy global functions
     window.logout = window.WebbotAuth.logout;
+
+    // ── Auto-inject auth token into all same-origin API fetch calls ──
+    (function() {
+        var _originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+            options = options || {};
+            var urlStr = (typeof url === 'string') ? url : (url.url || '');
+            // Only inject for same-origin API calls
+            if (urlStr.indexOf('/api/') === 0 || urlStr.indexOf(window.location.origin + '/api/') === 0) {
+                var token = getToken();
+                if (token) {
+                    var headers = options.headers || {};
+                    // Don't override existing Authorization
+                    var hasAuth = false;
+                    if (headers instanceof Headers) {
+                        hasAuth = headers.has('Authorization');
+                    } else if (typeof headers === 'object') {
+                        hasAuth = 'Authorization' in headers || 'authorization' in headers;
+                    }
+                    if (!hasAuth) {
+                        // Clone to avoid mutating original
+                        if (headers instanceof Headers) {
+                            headers = new Headers(headers);
+                            headers.set('Authorization', 'Bearer ' + token);
+                        } else {
+                            headers = Object.assign({}, headers, { 'Authorization': 'Bearer ' + token });
+                        }
+                        options = Object.assign({}, options, { headers: headers });
+                    }
+                }
+            }
+            return _originalFetch(url, options);
+        };
+    })();
 })();

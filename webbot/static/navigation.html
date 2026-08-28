@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/etc/designs/canada/wet-boew/css/theme.min.css">
 
     <!-- AEM Style Navigation CSS -->
-    <link rel="stylesheet" href="css/navigation.css?v=5">
+    <link rel="stylesheet" href="css/navigation.css?v=6">
 <script src="/static/js/webbot-auth.js"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="home page-type-nav">
@@ -273,6 +273,11 @@
                         <input type="text" id="prop-path" class="form-control" readonly size="100">
                     </div>
                     <div class="form-group">
+                        <label for="prop-other-lang">Other Language Path:</label>
+                        <input type="text" id="prop-other-lang" class="form-control" placeholder="/canadasite/fr/page-name" size="100" required>
+                        <small class="form-text text-muted">Link to the translated version of this page.</small>
+                    </div>
+                    <div class="form-group">
                         <label for="prop-parent">Parent Path:</label>
                         <input type="text" id="prop-parent" class="form-control" readonly size="100">
                     </div>
@@ -316,11 +321,6 @@
                                 <input type="text" id="prop-published-at" class="form-control" readonly>
                             </div>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="prop-other-lang">Other Language Path:</label>
-                        <input type="text" id="prop-other-lang" class="form-control" placeholder="/canadasite/fr/page-name" required>
-                        <small class="form-text text-muted">Link to the translated version of this page.</small>
                     </div>
                     <div class="checkbox">
                         <label>
@@ -561,7 +561,7 @@
 
     <!-- Navigation JavaScript -->
     <script src="js/wet-alert.js?v=0260616-1321"></script>
-    <script src="js/navigation.js?v=20260812-fb1"></script>
+    <script src="js/navigation.js?v=20260816-otherlang"></script>
     <script>
         // Hide WET-BOEW/GCWeb dynamically-injected header/footer
         (function() {

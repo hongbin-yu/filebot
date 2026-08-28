@@ -157,38 +157,68 @@ def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
 
 # ── FastAPI dependency injection ───────────────────────────────────────────
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+
+
+async def _extract_token(request: Request) -> Optional[str]:
+    """Extract JWT token from Authorization header or filebot_token cookie."""
+    # 1. Try Authorization: Bearer header
+    authorization = request.headers.get("Authorization")
+    if authorization:
+        scheme, param = get_authorization_scheme_param(authorization)
+        if scheme.lower() == "bearer":
+            return param
+    # 2. Fall back to filebot_token cookie (HttpOnly, set by FileBot login)
+    cookie_token = request.cookies.get("filebot_token")
+    if cookie_token:
+        return cookie_token
+    return None
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme)
+    request: Request
 ) -> Dict[str, Any]:
-    """FastAPI dependency: extract current user from JWT Bearer token."""
-    payload = decode_access_token(token)
-    if not payload:
+    """FastAPI dependency: extract current user from JWT Bearer token or filebot_token cookie.
+    Tries both token sources — if the Authorization header has an expired token,
+    falls back to the HttpOnly cookie set by FileBot login."""
+    # Build candidate token list: Authorization header first, then cookie
+    candidates = []
+    authorization = request.headers.get("Authorization")
+    if authorization:
+        scheme, param = get_authorization_scheme_param(authorization)
+        if scheme.lower() == "bearer" and param:
+            candidates.append(param)
+    cookie_token = request.cookies.get("filebot_token")
+    if cookie_token:
+        candidates.append(cookie_token)
+
+    # Try each candidate until one validates
+    for token in candidates:
+        payload = decode_access_token(token)
+        if not payload:
+            continue
+        user_id = payload.get("sub")
+        if not user_id:
+            continue
+        # sub may be a UUID (WebBot token) or a username (FileBot token)
+        user = get_user_by_id(user_id)
+        if not user:
+            user = get_user_by_username(user_id)
+        if user:
+            return user
+
+    # No valid token found
+    if not candidates:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的认证凭据",
+            detail="未提供认证凭据",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的认证凭据",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户不存在",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return user
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无效的认证凭据",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_active_user(
@@ -209,14 +239,9 @@ async def get_current_user_optional(
     """Optional auth — extract user if token is present, otherwise return None.
     
     Useful for endpoints that work both with and without authentication.
+    Checks Authorization header, query param, and filebot_token cookie.
     """
-    authorization = request.headers.get("Authorization")
-    token = None
-    if authorization:
-        scheme, param = get_authorization_scheme_param(authorization)
-        if scheme.lower() == "bearer":
-            token = param
-
+    token = await _extract_token(request)
     if not token:
         token = request.query_params.get("token")
 
@@ -231,4 +256,7 @@ async def get_current_user_optional(
     if not user_id:
         return None
 
-    return get_user_by_id(user_id)
+    user = get_user_by_id(user_id)
+    if not user:
+        user = get_user_by_username(user_id)
+    return user

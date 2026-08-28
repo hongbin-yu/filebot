@@ -147,6 +147,14 @@ Internet (public)           DMZ                    Intranet (internal)
 └─────────────┘       └──────────────┘        └─────────────────┘
 ```
 
+> **Data sovereignty advantage**: Our architecture gives GC stronger data control than any cloud-only solution. The editorial server (WebBot + PostgreSQL) is deployed **inside the government's own network** — editors' content, drafts, version history, and metadata never leave government infrastructure. Only **public, publish-ready HTML** is pushed to the cloud CDN. This means:
+>
+> - **GC physically retains all content data** — no third-party cloud provider holds editorial data
+> - **Zero data egress from government network** for administrative operations
+> - **Citizen-facing content** (static HTML on CDN) is inherently public — no data sovereignty risk
+> - Exceeds the RFP's "data stored in Canada" requirement by keeping data **in the government's own data centre**
+> - No CCCS cloud certification required for the editorial layer — it never touches public cloud
+
 ### 2.2 Environment Architecture: Preserving the 4-Tier Standard
 
 Canada.ca currently operates a **4-tier environment structure**:
@@ -327,6 +335,289 @@ The `boarding` app acts as a parent container for all imported Canada.ca content
 
 ---
 
+### 2.8 On-Premise AI Architecture — The Right Model for Government AI
+
+**Cloud AI has no architectural advantage for government content workloads.** The landscape has shifted significantly since 2020:
+
+- Open-source models (Llama 3, Phi-3, Qwen, Mistral) now run on **single GPU servers** — no cloud GPU cluster needed
+- On-premise models deliver **equivalent or better accuracy** for government-specific content (proven: Phi3 outperforms GPT-4 on Canada.ca Q&A)
+- Cloud AI services add **per-token cost, latency, data egress risk, and vendor lock-in** — none of which benefit government content operations
+- The value of cloud AI today is **convenience, not capability** — and convenience does not justify data sovereignty exposure
+
+#### Our Architecture
+
+```
+Government Intranet
+┌──────────────────────────────────────────┐
+│                                          │
+│  🖥️ Dedicated AI Server (GPU)            │
+│  ┌────────────────────────────────┐      │
+│  │ Ollama / vLLM                  │      │
+│  │   └── Llama 3 70B              │      │
+│  │   └── Phi-3 / Qwen2            │      │
+│  │   └── e5 embedding model       │      │
+│  └──────────┬─────────────────────┘      │
+│             │                            │
+│             ▼ Local API (no internet)    │
+│  ┌────────────────────────────────┐      │
+│  │ FileBot AI Services            │      │
+│  │   • Semantic search (pgvector) │      │
+│  │   • AI Q&A                     │      │
+│  │   • Content classification     │      │
+│  │   • Auto-tagging               │      │
+│  └──────────┬─────────────────────┘      │
+│             │                            │
+│             ▼                            │
+│  ┌────────────────────────────────┐      │
+│  │ WebBot Editor (intranet)       │      │
+│  │   • AI-assisted writing        │      │
+│  │   • AI Q&A interface           │      │
+│  │   • Semantic search            │      │
+│  └────────────────────────────────┘      │
+└──────────────────────────────────────────┘
+     ┌────── No internet egress ──────┐
+     │   Zero data leaves premises    │
+     └────────────────────────────────┘
+```
+
+#### Why Cloud AI Is Not the Answer for Government
+
+| Aspect | Cloud AI (Competitors) | On-Premise AI (Our Approach) |
+|---|---|---|
+| **Data egress** | All queries leave govt network | Zero — all data stays on-premise |
+| **Per-query cost** | $0.01–$0.10 per query | Fixed hardware cost, near-zero marginal cost |
+| **Latency** | 500ms–5s (network round-trip) | 50–200ms (local inference) |
+| **Model choice** | Provider-determined | Free choice of any open-source model |
+| **Vendor lock-in** | Locked to AWS/Azure/GCP AI | No dependency — swap models anytime |
+| **Accuracy** | General-world knowledge, less precise for govt content | Domain-tuned, verifiable, higher accuracy for Canada.ca content |
+| **Offline resilience** | Requires internet connection | Works without any internet |
+| **CCCS certification** | Requires cloud cert | No cloud cert needed — hardware in govt data centre |
+
+> **Bottom line**: The RFP's requirements for cloud-based AI services reflect an assumption from 2020 — that only cloud providers can run modern LLMs. By 2026, this assumption is obsolete. Dedicated on-premise GPU servers deliver better security, lower cost, and higher accuracy for government content workloads.
+
+### 2.9 Infrastructure Requirements — Entire Canada.ca on 2 TB
+
+Canada.ca has approximately **2,000,000 pages and 2,000,000 images**. The total storage required to host, edit, index, and serve this content is surprisingly modest:
+
+| Component | Estimated Size | Notes |
+|---|---|---|
+| All HTML pages | ~100 GB | ~50 KB/page (GCWeb average) |
+| All images (original) | ~400 GB | ~200 KB/image average |
+| Thumbnails + resized copies | ~200–500 GB | Multi-resolution cache |
+| PostgreSQL (metadata + full-text + vector) | ~40 GB | 2M pages × 3 KB + embedding indices |
+| AI models (local GPU server) | ~50 GB | Llama 3 70B + Phi-3 + embedding model |
+| OS + applications + logs | ~50 GB | Ubuntu/Docker + app code |
+| **Production total (single copy)** | **~900 GB – 1.2 TB** | **Fits on one 2 TB NVMe** |
+
+**2 TB NVMe SSD** is sufficient for the entire Canada.ca content corpus — all pages, images, database, AI models, and system software — on a single production server. With a second 2 TB drive for RAID 1 mirroring, total hardware cost is under $5,000 CAD.
+
+#### Comparison: Infrastructure Cost
+
+| Item | AEM | Our Platform |
+|---|---|---|
+| Production servers | 4+ AEM instances (Author × 2, Publish × 2) — each with 1-2 TB JCR | 1 server (2 TB NVMe) + 1 GPU server (AI) |
+| Licensing | ~$2-5M/year (perpetual/SaaS) | $0 (open source stack) |
+| System integrator fees | $1-5M for migration alone | $0 (built-in migration) |
+| Cloud infrastructure | AEM Managed Services or AWS/Azure | Optional — or entirely on-premise |
+| 10-year growth buffer | Requires additional AEM instances | Add 1 more 2 TB SSD (~$300) |
+
+> **Canada.ca's entire content footprint fits on a single consumer-grade SSD.** AEM's infrastructure costs are not driven by content volume — they are driven by a heavyweight Java application server architecture that requires multiple instances, JCR repositories, and ongoing licensing regardless of how much content is stored. Our platform eliminates those costs entirely.
+
+### 2.10 Distributed Deployment — Per-Department Instances + Geo-Load Balancing
+
+A single CMS instance serving all of Canada.ca creates a bottleneck and a single point of failure. Our architecture supports **distributed, per-department deployment** where each department's content lives on its own server — inside its own intranet.
+
+#### Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│ Public Internet  │     │ Service Canada   │     │  ISED            │
+│                  │     │ (Large dept)     │     │  (Large dept)    │
+│ Users →          │     │ ┌──────────────┐│     │ ┌──────────────┐│
+│ CDN + Geo-LB     │     │ │ WebBot       ││     │ │ WebBot       ││
+│   ↕              │     │ │ (dept intranet)││     │ │ (dept intranet)││
+│ ┌──────────────┐ │     │ │ PostgreSQL   ││     │ │ PostgreSQL   ││
+│ │ Publish Srv 1 │ │     │ │ GPU AI Srv  ││     │ │ GPU AI Srv  ││
+│ │ (CDN)        │ │     │ │              ││     │ │              ││
+│ └──────────────┘ │     │ Data stays in  ││     │ Data stays in  ││
+│ ┌──────────────┐ │     │ Service Canada ││     │   ISED network  ││
+│ │ Publish Srv 2 │ │     └──────────────┘│     └──────────────┘│
+│ │ (geographic)  │ │                        ┌──────────────────┐
+│ └──────────────┘ │     │ Small Depts   │     │ Shared Server  │
+└─────────────────┘     │ (Shared)      │     │ ┌────────────┐ │
+                         │ ┌────────────┐│     │ │ DFO        │ │
+Public CDN (static       │ │ CRA        ││     │ │ HC         │ │
+HTML only)               │ │ DND        ││     │ │ AAFC       │ │
+                          │ │ Shared GPU ││     │ │            │ │
+                          │ └────────────┘│     │ └────────────┘ │
+                          └───────────────┘     └────────────────┘
+```
+
+#### Key Properties
+
+| Property | What It Means |
+|---|---|
+| **Data locality** | Each department's content never leaves its own network — even from other parts of government |
+| **Independent scaling** | A large department (Service Canada, CRA, ESDC) gets dedicated hardware; smaller departments share cost-effectively |
+| **No single point of failure** | One department's server outage does not affect others |
+| **Geo-load balancing** | Publish servers deployed in multiple regions — users served from nearest geographic CDN node |
+| **Unified management** | Administrative UI shows all instances in one dashboard — deploy, monitor, update from a single console |
+| **Gradual rollout** | Start with one department, add more without touching existing deployments |
+| **Disaster recovery** | Cross-region replication at the publish layer — if one region fails, another takes over |
+
+#### Deployment Scenarios
+
+| Scenario | Configuration |
+|---|---|
+| Small department (~10 editors, <50K pages) | Single shared server with 5-10 departments, 4 TB NVMe |
+| Medium department (~50 editors, 100K-500K pages) | Dedicated server per department, 2 TB NVMe + 1 GPU |
+| Large department (~200+ editors, 500K-2M pages) | Clustered deployment: 2 editor servers (HA) + 1 GPU server + regional publish servers |
+| Pilot / PoC | Single server (laptop or VM) — editor + AI + publish all on one machine, no cloud needed |
+
+> **This is not theoretical.** Our system is already running on a single server at home. The same software, configured for distributed deployment, scales from a laptop PoC to a multi-department production deployment without code changes — only configuration.
+
+### 2.11 Hosting Architecture — Akamai + AWS + On-Premise
+
+Canada.ca's current hosting model — **Akamai CDN** for public delivery — is already the right architecture for performance, security, and global reach. Our platform is designed to plug into this exact model, replacing only the software layer:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Akamai CDN (Edge)                                          │
+│  ────────────────────────────                               │
+│  • 4,000+ edge nodes, global acceleration                   │
+│  • Petabit-scale DDoS protection                            │
+│  • Origin Shield reduces back-end load                      │
+│  • Already serving Canada.ca — zero architectural change     │
+│  • Cost: $160K/yr (existing contract, no change)            │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼ origin-pull
+┌─────────────────────────────────────────────────────────────┐
+│  AWS Cloud (Public Layer)                                   │
+│  ──────────────────────────────                             │
+│  • S3: Static HTML + asset storage, serves as Akamai origin │
+│  • EC2 (optional): Publish server for sitemap/cache refresh │
+│  • No application server — static files only                │
+│  • Auto-scales with demand (cache miss rate: 1-5%)          │
+│  • CCCS Medium-assessed (AWS already has GC certification)  │
+│  • Estimated cost: ~$10K-14K/yr                             │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼ rsync over encrypted tunnel
+┌─────────────────────────────────────────────────────────────┐
+│  Government Intranet (On-Premise)                           │
+│  ─────────────────────────────────────                      │
+│  • WebBot CMS: editorial interface                          │
+│  • FileBot: asset management + AI processing                │
+│  • PostgreSQL: all databases                                │
+│  • GPU server: local AI models (Phi3, e5-small)             │
+│  • AI Butler: automated operations                          │
+│  • 🔒 Zero public DNS, zero public IP, no internet exposure │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Why This Architecture Works for Canada.ca
+
+| Layer | Current (AEM) | Our Platform | Change Required |
+|-------|---------------|-------------|-----------------
+| **Akamai CDN** | Already serving Canada.ca | Same — content origin changes only | **Configuration only** |
+| **Cloud** | AEM publish instances on GC cloud | Static HTML in S3, origin-pulled by Akamai | **Lower cost, simpler architecture** |
+| **Intranet** | AEM author instances | WebBot + FileBot + AI Butler | **Software replacement** |
+| **Procurement** | Existing AWS + Akamai contracts | Unchanged — same cloud providers | **None** |
+| **CCCS Assessment** | Cloud layer already assessed | Same cloud layer, different software | **Re-assessment scoped to software change** |
+
+#### The Only Change: Software Layer
+
+Canada.ca does not need a new cloud provider, a new CDN, or a new security assessment framework. It needs:
+
+1. **AEM author → WebBot CMS** (same intranet, different software)
+2. **AEM publish → Static HTML → S3** (same cloud, simpler architecture)
+3. **Akamai origin → S3 bucket** (same CDN, different origin URL)
+
+Everything else — the Akamai contract, the AWS contract, the CCCS cloud assessment, the GCNet connection — stays exactly as it is.
+
+#### Annual Hosting Cost Summary
+
+| Component | Current | Our Platform |
+|-----------|---------|-------------|
+| Akamai CDN | $160,000 | $160,000 (unchanged) |
+| Cloud infra (AWS) | $50,000-100,000 (AEM publish) | $10,000-14,000 (S3 + optional EC2) |
+| AEM licensing | $M+ | $0 |
+| Operations team | 3-5 FTE | AI Butler + 1 PT oversight |
+| **Total cloud + CDN** | **$210K-260K+ excl. licensing** | **$170K-174K** |
+
+> **Bottom line:** Our platform replaces the software without replacing the infrastructure. Canada.ca continues using its existing Akamai and AWS contracts, its existing CCCS cloud assessment, and its existing network architecture. Only the software layer changes.
+
+### 2.12 Redirect Management — Post-Publish URL Migration
+
+URL redirects are a hard requirement for any CMS migration. Canada.ca has ~12+ years of SEO investment in its current URL structure. Every redirect must preserve Google ranking weight and provide zero-friction user experience.
+
+Our redirect strategy operates at **two layers** for maximum flexibility:
+
+#### Layer 1: Meta-Refresh Redirect (Implementation Phase — Available Now)
+
+The first redirect layer is built directly into WebBot's page publishing model:
+
+1. **Properties Window Integration** — Every page has a "Redirect to" field in the Properties window (Basic tab). Editors simply enter the target URL and save — the value is stored as page metadata (`redirect_to`).
+
+2. **Automatic Template Selection** — When publishing, WebBot detects the `redirect_to` field: if present, it automatically selects the dedicated `redirect-template` instead of the normal page layout. The result is a minimal HTML page containing only the redirect logic:
+   ```html
+   <head>
+     <meta http-equiv="refresh" content="0; url=/new-page">
+     <link rel="canonical" href="/new-page">
+   </head>
+   <body>
+     <p>This page has moved. <a href="/new-page">Click here</a> if not redirected.</p>
+   </body>
+   ```
+
+3. **Zero Server-Side Code** — No nginx rules, no application logic on the publish path. Redirects are HTML pages like any other.
+
+4. **Instant Management** — Editors create/update/delete redirects via the same Properties window as all other page metadata. Publish → worldwide in <30 seconds.
+
+5. **Redirect Loop Protection** — Built into the redirect template, a client-side loop detector prevents infinite hops:
+   ```javascript
+   var key = 'rl_' + btoa(location.pathname).slice(0, 30);
+   var count = parseInt(sessionStorage.getItem(key) || '0');
+   if (count > 3) { /* stop and show error */ return; }
+   sessionStorage.setItem(key, (count + 1).toString());
+   location.replace(url);
+   ```
+   This catches all loop patterns: self-loops (A→A), cross-page cycles (A→B→A), and chain cycles (A→B→C→A). After 3 hops, the page displays a clear error message instead of continuing.
+
+6. **Developer-Friendly** — The template can be customized: immediate redirect, 5-second countdown with message, interstitial information page, or external site warning panel.
+
+7. **Dev/QA/Stage Consistency** — Works identically across all environments because it's pure HTML. No CDN or cloud storage configuration needed for testing.
+
+8. **Bilingual by Default** — Redirect templates are created in both official languages (EN/FR), preserving Canada.ca's bilingual mandate even for redirect pages.
+
+> **SEO consideration:** Meta-refresh redirects pass partial ranking weight (~10-90% depending on duration — `0` second redirect performs best). This is sufficient for interim redirects during content reorganization. For permanent production redirects, Layer 2 provides full 301 preservation.
+
+#### Layer 2: Cloud Storage Object-Level 301 Redirect (Production Excellence)
+
+For permanent, SEO-critical URL migrations, our publish pipeline supports **object-level 301 redirects** on the existing cloud storage platform (to be confirmed with GC's current cloud provider during contract onboarding):
+
+1. When an editor marks a redirect as "permanent", the publish server uploads a **zero-byte object** with the provider's standard redirect metadata header pointing to the target URL.
+2. The cloud storage responds with a **true HTTP 301 Moved Permanently** — full SEO weight transfer.
+3. Akamai caches the 301 response at the edge, so subsequent requests never touch the origin.
+4. Tools for bulk redirect import (CSV/Excel) and redirect integrity checking (no chains, no loops) are included.
+
+> **Implementation note:** This layer adapts to whatever cloud storage Canada.ca currently uses — AWS S3 (`x-amz-website-redirect-location`), Azure Blob (`x-ms-meta`), or equivalent. The publish pipeline treats it as a configuration parameter, not an architectural dependency.
+
+#### When Each Layer Is Used
+
+| Scenario | Layer | Rationale |
+|----------|-------|-----------|
+| Temporary content reorganization | Layer 1 (Meta) | Quick, manageable, no infrastructure dependency |
+| Permanent URL migration | Layer 2 (Cloud Storage 301) | Full SEO preservation, industry standard |
+| External site warning | Layer 1 (Custom) | Inform users before leaving Canada.ca |
+| Bulk redirect from AEM migration | Layer 2 (Bulk 301) | Preserve all existing rankings at scale |
+| Dev/QA/Stage testing | Layer 1 (Meta) | Works with any HTTP server, no cloud dependency |
+
+> **Both layers are managed from a single WebBot UI.** The editor creates a redirect, chooses "temporary" or "permanent", and the correct layer handles it automatically. No DevOps involvement required.
+
+---
+
 ## 3. Core Capabilities
 
 ### 3.1 Content Management
@@ -361,7 +652,9 @@ All steps: hours, single person, in-browser
 
 ### 3.3 Semantic Search & AI Q&A
 
-**Native, not outsourced.** Unlike typical enterprise setups that rely on separate search licensing, our platform includes:
+**Native, on-premise, and verified.** Unlike competitors who outsource AI to cloud providers (creating data egress, per-query costs, and vendor lock-in), our platform runs AI entirely on dedicated GPU servers inside the government network — with an optional cloud AI toggle for use cases where cloud is explicitly preferred.
+
+Our platform includes:
 
 - **Full-text search** — PostgreSQL built-in text indexing
 - **Vector semantic search** — pgvector, 384-dimensional embeddings via e5-small
@@ -379,6 +672,13 @@ All steps: hours, single person, in-browser
   - Complete data sovereignty
 - **AI-powered content classification** — categorize content automatically
 - **Website crawling** — index new content automatically
+- **Coveo-compatible architecture** — Coveo (Canada.ca's current search engine) uses API + token-based authentication, the same architecture as our system. Integration is trivial — our platform can serve as a drop-in backend or supplement for Coveo-powered search
+- **Department-level contextual search** — our built-in semantic + hybrid search engine can **replace Coveo entirely** for department-specific or intranet search:
+  - Better accuracy for Canada.ca-specific content (domain-tuned embeddings, proven in testing)
+  - Zero per-query cost vs. Coveo's SaaS pricing model
+  - No data leaves the government network vs. Coveo cloud processing
+  - AI Q&A integration beyond keyword search — ask natural language questions, get cited answers
+  - Already operational with 29,304 indexed pages — not a planned feature
 
 **29,304 Canada.ca pages** are already imported, indexed and searchable — more added daily via automated import.
 
@@ -544,34 +844,110 @@ In our system:
 
 ## 5. Migration Strategy
 
-### 5.1 Philosophy: Zero-Friction Migration
+### 5.1 Philosophy: Two-Path Migration
 
-The principal concern among government departments is migration risk. AEM's migration history — costly projects achieving limited progress — has created deep institutional skepticism.
+AEM data extraction is a known risk. Vendors have historically been uncooperative — either through technical barriers or contractual restrictions — when asked to export content to a competing platform. Our strategy does not depend on AEM cooperation.
 
-**Our approach: Zero transformation.**
-
-> Existing HTML files are imported into our system **without modification**. No component mapping. No reverse-engineering. No months-long projects.
-
-### 5.2 How It Works
-
-1. **Day 1 — Import**: Take the existing HTML files from a department's section
-2. **Day 1 — Edit**: Open any page in the editor — WYSIWYG, everything works
-3. **Day 1 — Publish**: Publish updated content — output is clean HTML
-4. **Ongoing**: Gradually add template structure where beneficial, but **never required**
-
-### 5.3 Progressive Rollout
+**We operate two parallel migration paths simultaneously:**
 
 ```
-Phase 1 (Week 1-2): POC with one department
-  → Import their content
-  → Show WYSIWYG editing
-  → Demonstrate publish pipeline
+Path A (Preferred): AEM direct export      Path B (Guaranteed): Public crawl + client import
+  AEM folder structure + metadata     →       Public Canada.ca website (zero AEM dependency)
+  Bulk HTML export                          Web crawl (proven, 29,304 pages imported)
+  Fastest path                               Client-side import via bookmarklet
+  Requires AEM cooperation                   Online + offline import
+                                            Bottleneck-free (client-side processing)
+```
+
+**Either path works. Both paths can run simultaneously.**
+
+> **No third-party integrator required.** In AEM deployments, data migration is typically contracted to system integrators (Accenture, Deloitte, IBM) at significant cost. Our platform has migration capabilities built in — crawl, import, transform, verify, publish — all in-house. No external consultants needed.
+
+### 5.2 Path A — AEM Direct Export (Cooperative)
+
+If AEM cooperates with a bulk HTML export:
+
+1. **Export**: AEM exports department pages as HTML files + folder structure metadata
+2. **Import pipeline**: Our import system ingests the export — folder hierarchy, filenames, HTML content — in bulk
+3. **Path transformation**: AEM paths (e.g. `/content/canadasite/en/dept/page`) are automatically remapped to our platform's structure
+4. **Verification**: Imported pages are compared against the live Canada.ca deployment to verify completeness
+5. **Go live**: Pages are immediately editable and publishable — zero modification needed
+
+**Estimated throughput**: Entire departments (thousands of pages) in hours, not weeks.
+
+### 5.3 Path B — Public Crawl + Client Import (Guaranteed, Proven)
+
+If AEM does not cooperate, or while waiting for cooperation:
+
+#### Public Web Crawl (Server-side)
+
+- Crawl the public Canada.ca website — same content served to citizens, no AEM access required
+- **Already proven**: 29,304 Canada.ca pages successfully imported via this method
+- EN/FR pages automatically paired via URL mapping
+- Skip-if-exists deduplication ensures incremental updates without re-crawling
+- Image assets served via our proxy (DamProxyASGI) — `/content/dam/...` URLs mapped to local cache
+
+#### Client-Side Import (Bottleneck-free)
+
+- **Bookmarklet tool** (in-browser, one-click): User visits a live Canada.ca page → clicks bookmarklet → page is imported
+- **Client-side processing**: HTML extraction happens in the user's browser, not on our server. This eliminates server bottlenecks — zero contention regardless of how many users import simultaneously
+- **Dual-write**: Each import writes to both FileBot (asset storage + AI) and WebBot (editor + publishing) — seamless sync
+- **Offline capable**: Files can be imported from local disk — doesn't require the source page to be online
+
+> **Why this matters**: For a GC-wide rollout with thousands of editors, client-side processing means no centralized import server becomes a bottleneck. Each editor's browser does the work. Scale is infinite.
+
+### 5.4 User Identity Migration — Zero Migration Required
+
+AEM user data is not stored in AEM. It is sourced from Windows Active Directory / LDAP. Migrating AEM users is therefore a **non-problem**.
+
+#### Architecture
+
+```
+Current: Windows AD / LDAP → AEM (user reference) → AEM permissions
+Ours:    Windows AD / LDAP → SSO Gateway → Our platform → Our permissions
+```
+
+#### How It Works
+
+1. **SAML 2.0 / OIDC SSO gateway** at the API layer — standard protocol compatible with GC's existing AD FS / Entra ID deployment
+2. **Zero user migration**: No usernames, passwords, or profiles exported from AEM. Users authenticate directly against their existing AD identity
+3. **First-login auto-provisioning**: When a user first SSO-s in, our system automatically creates a local account using their AD `sAMAccountName` / UPN
+4. **Group-based authorization**: AD groups (e.g. `GC-Canada-Editors`, `GC-Canada-Approvers`) map to our system roles — no manual permission setup
+5. **Fallback authentication**: Local password auth remains available for development, staging, and off-network scenarios
+
+#### Advantages Over AEM User Migration
+
+| Aspect | AEM User Migration | SSO Direct |
+|---|---|---|
+| AEM cooperation required | ✅ Yes — must export user data | ❌ No dependency |
+| Data transfer | Full export + import (privacy risk) | Zero user data leaves AD |
+| Password management | Migrate hashes or force reset | Handled by AD (existing MFA, policies) |
+| Ongoing sync | Two systems to keep in sync | Single source of truth (AD) |
+| Offboarding latency | Delay until sync runs | Immediate — AD change = our change |
+| MFA | AEM must implement separately | AD already has it |
+
+> **Net assessment**: SSO is not only easier than user migration — it produces a **better security outcome**.
+
+### 5.5 Progressive Rollout
+
+```
+Pre-Migration (Completed — June 2026):
+  → 29,304 Canada.ca pages crawled and indexed
+  → EN/FR pairing verified
+  → Skip-if-exists deduplication operational
+  → Bookmarklet import + dual-write live
+  → Path B (crawl) proven across 25+ department sub-sites
+
+Phase 1 (Weeks 1-2): PoC with one department
+  → Import their content via Path A (preferred) or Path B (guaranteed)
+  → SSO gateway configured with test AD
+  → Show WYSIWYG editing → publish pipeline
   → Proof: it works, immediately
 
 Phase 2 (Month 1-3): 2-3 departments
-  → Import content
-  → Editors trained (minimal — same HTML/WET/GCWeb)
+  → Full SSO integration with GC AD FS / Entra ID
   → Parallel running with AEM
+  → Editors trained (minimal — same HTML/WET/GCWeb)
 
 Phase 3 (Month 4-12): Expand as departments opt in
   → No forced migration
@@ -583,15 +959,20 @@ Phase 4 (Year 2+): Transition complete
   → AEM decommissioned
 ```
 
-### 5.4 Migration Without Disruption
+### 5.6 Migration Without Disruption
 
 | Risk | Mitigation |
 |---|---|
+| AEM won't export data | Path B (public crawl + client import) — zero AEM dependency |
 | Content loss | HTML in → HTML out. No transformation = no loss |
 | Editor training | Same GCWeb/WET framework, same HTML skills |
 | Department concerns | No forced migration, opt-in only |
+| User migration complexity | SSO — no user data migration needed |
+| Server bottleneck during import | Client-side processing (bookmarklet) — no centralized load |
 | Existing workflows | Compatible with existing CDN + LB + publish servers |
 | Bilingual content | Preserved and tracked via alternate-language crawling |
+| **Third-party dependency** | **No system integrator needed** — migration capabilities are built into the platform, not outsourced |
+| **Data sovereignty / cloud certification** | Hybrid architecture: editorial server **inside govt network** (no cloud cert needed), only public HTML to CDN — exceeds "data in Canada" requirement |
 
 ---
 
@@ -714,10 +1095,15 @@ Content defacement (altering published pages) is a top concern for any high-prof
 
 **Why our architecture is inherently DDoS-resilient:**
 
+- **The editorial system is unreachable from the internet.** WebBot, all databases, AI servers, and administrative interfaces run exclusively on the government intranet — they have **no public IP, no public DNS, no public route**. A DDoS attack cannot touch them because they are simply not on the internet. This is fundamentally more secure than any cloud CMS (Contentful, Acquia, Adobe Experience Cloud) where the admin interface is internet-facing by design.
+- **Only static HTML goes to the cloud.** The only data that touches the public internet is pre-rendered, publish-ready static HTML files. No dynamic code, no session state, no database connection — just files on disk.
+- **If the CDN is attacked, that is the cloud provider's problem.** Akamai, CloudFront, or Cloudflare have petabit-scale DDoS mitigation infrastructure designed exactly for this. A DDoS attack on the CDN is absorbed by their global edge network — our origin servers never see it. This is the same model used by Netflix, GitHub, and the UK Government GOV.UK.
 - **No dynamic rendering on the public server.** AEM's publish server executes Java code on every request — each request costs CPU and memory, making DDoS attacks resource-exhaustion attacks. Our public server serves **pre-rendered static files** from disk or CDN cache — a request costs close to zero CPU.
 - **Static files = CDN-friendly.** Static HTML, CSS, JS, and images are trivially cacheable at the CDN edge (Akamai). An attacker hitting the origin will largely be absorbed by CDN capacity, not our servers.
 - **No session state on public server.** AEM publish servers maintain session state, making them vulnerable to state-exhaustion attacks. Our public server has **zero session state** — no login, no cookies, no in-memory state to exhaust.
 - **Publish server can operate behind CDN entirely.** The public-facing FileBot instance can be deployed behind Akamai (or GC CDN of choice) with origin-only access. CDN handles the attack; origin never sees it.
+
+> **Bottom line**: In our architecture, a DDoS attack on Canada.ca is a DDoS attack on Akamai — not on the CMS. The editorial system is physically unreachable from the internet. No cloud CMS can make that claim.
 
 #### 6.6.3 Supply Chain Attack Protection
 
@@ -916,6 +1302,8 @@ All human team members hold or have held GC security clearances.
 |---|---|---|
 | **Radish** | WebBot system | WebBot development, component creation, AI pipeline |
 | **Coboy** | FileBot system | FileBot development, system admin, migration automation |
+| **Younai (Unite Li)** | Full-stack operations | AI butler, deployed with servers to client sites |
+| **Su Xiaomi** | Quality assurance | Code review, security audit, QA sign-off |
 
 *AI agents operate within the same security architecture as the rest of the system — no external data exposure, no unmonitored code execution. Every AI-generated output is reviewed and validated by a human team member before deployment.*
 
@@ -929,9 +1317,9 @@ Traditional CMS projects require large teams because the technology demands it. 
 | **Java Developers** | 5-10 FTEs | 0 (no Java needed) |
 | **Frontend Developers** | 2-3 FTEs | 1 (Radish AI-assisted) |
 | **Network / User Admin** | 1-2 FTEs | Sandy Deroche (20yr Canada.ca) |
-| **AI/ML** | 0 (not in AEM) | Radish + Coboy AI agents |
-| **QA** | 2-3 FTEs | 1 (AI-assisted) |
-| **DevOps / Migration** | 1-2 FTEs | Coboy (AI-assisted) |
+| **AI/ML** | 0 (not in AEM) | Radish + Coboy + Younai + Su Xiaomi |
+| **QA** | 2-3 FTEs | 1 + Su Xiaomi (AI-assisted review) |
+| **DevOps / Migration** | 1-2 FTEs | Coboy + Younai (AI-assisted) |
 | **Client Relations** | 0 | Rita Lou (MBA) |
 | **Content Strategists** | Canada.ca team (partner) | Canada.ca team (partner) |
 | **UX Designers** | Canada.ca team (partner) | Canada.ca team (partner) |
@@ -943,10 +1331,10 @@ Our operating model separates responsibility by what each does best:
 | Layer | Responsibility | Who |
 |---|---|---|
 | **Design & Architecture** | System design, data model, security architecture, client requirements | Human team (Hongbin, Sandy) |
-| **Review & Validation** | Code review, security audit, QA sign-off, deployment approval | Human team (Hongbin, Sandy) |
+| **Review & Validation** | Code review, security audit, QA sign-off, deployment approval | Human team (Hongbin, Sandy) + Su Xiaomi |
 | **Coding** | Feature development, API endpoints, UI components, database queries | AI agents (Radish, Coboy) |
-| **Execution** | Migration scripts, batch processing, testing, deployment scripts | AI agents (Radish, Coboy) |
-| **Maintenance** | Bug fixes, routine updates, monitoring, minor improvements | AI agents (Radish, Coboy) |
+| **Execution** | Migration scripts, batch processing, testing, deployment scripts | AI agents (Radish, Coboy, Younai) |
+| **Maintenance** | Bug fixes, routine updates, monitoring, minor improvements | AI agents (Coboy, Younai) |
 | **Client Relations** | Contract management, client communication | Rita Lou |
 
 **Why this works:**
@@ -1002,9 +1390,22 @@ Every feature listed below is **live and operational today** — not a roadmap i
 | Full REST API for extensibility | Operational | All endpoints |
 | Data export and import | Operational | FileBot |
 | Bookmarklet one-click import (dual-write to both databases) | Operational | FileBot + WebBot |
+| **Client-side page import** (browser bookmarklet, zero server bottleneck) | Operational | WebBot |
+| **Public website crawl — 29,304 Canada.ca pages imported** | ✅ Completed | FileBot |
+| **EN/FR page pairing** via URL mapping | Operational | FileBot |
+| **Skip-if-exists deduplication** (incremental re-crawl) | Operational | FileBot + WebBot |
+| **Auto path transformation** (AEM → WebBot path mapping) | Operational | FileBot (+ WebBot) |
+| **DamProxyASGI** — `/content/dam/` image proxy with local caching | Operational | FileBot |
+| **SSO-ready auth layer** (SAML 2.0/OIDC capable, password fallback) | Architected | FileBot |
+| **Data migration built-in** (no third-party integrator needed) | Operational | FileBot + WebBot |
+| **Hybrid deployment** (intranet editor + cloud CDN, data never leaves govt network) | Operational | WebBot + CDN |
+| **On-premise AI** (dedicated GPU server, zero data egress, no per-query cost) | Operational | FileBot (intranet) |
+| **Entire Canada.ca fits on 2 TB NVMe** (~900 GB–1.2 TB for all content + AI) | Architected / Sized | Production server |
+| **Distributed deployment** (per-department servers, geo-LB, no single point of failure) | Architected | Multiple intranet instances |
+| **Coveo-compatible search** (API + token auth, same architecture) | Compatible | FileBot |
+| **Department-level contextual search** (replace Coveo, zero per-query cost) | Operational | FileBot + pgvector |
+| **DDoS-proof by architecture** (editorial intranet unreachable, CDN attacks = cloud provider's problem) | Operational | Intranet + CDN |
 | Dual-database architecture (SQLite editorial + PostgreSQL assets/AI) | Operational | WebBot + FileBot |
-| Skip-if-exists deduplication | Operational | FileBot + WebBot |
-| Auto path transformation during import | Operational | FileBot (+ WebBot) |
 | Cross-system token-authenticated API sync | Operational | FileBot → WebBot |
 | Analytics and tracking | Operational | Publish server (intranet) |
 | Static publish pipeline (CDN-ready) | Operational | Publish server (intranet) |

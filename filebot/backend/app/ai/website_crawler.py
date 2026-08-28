@@ -1368,8 +1368,10 @@ def crawl_website_task(
     logger.info(f"开始后台爬取任务 {task_id}: {url}")
     
     try:
-        # 使用Scrapling爬虫（针对Canada.ca等JavaScript网站启用动态渲染）
-        crawler = ScraplingCrawler(db, task_id=task_id, use_stealth=False, use_dynamic=True)
+        # 使用Scrapling爬虫
+        # Canada.ca 需动态渲染(WET框架JS), 其他简单站点用标准Fetcher
+        is_canada = url.startswith('https://www.canada.ca') or url.startswith('http://www.canada.ca')
+        crawler = ScraplingCrawler(db, task_id=task_id, use_stealth=False, use_dynamic=is_canada)
         stats = crawler.crawl(
             url=url,
             depth=depth,

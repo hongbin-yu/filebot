@@ -138,6 +138,7 @@
         }
     </style>
 <script src="/static/js/webbot-auth.js"></script>
+<script src="/static/js/wet-alert.js"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="">
     <div class="template-editor-container">
@@ -287,7 +288,7 @@
         const previewRawBtn = document.getElementById('preview-raw');
         
         // API base URL
-        const API_BASE = '/api/v1/pages';
+        const API_BASE = '/api/v1/pages/';
         
         // Get base path from URL parameter, default to /en/mustache-templates
         function getQueryParam(name) {
@@ -295,7 +296,12 @@
             return params.get(name);
         }
         
-        const basePath = (getQueryParam('path') || '/en/mustache-templates').replace(/\/$/, '');
+        let basePath = (getQueryParam('path') || '/en/mustache-templates').replace(/\/$/, '');
+        // Publish strips the /canadasite prefix, so template paths must include it.
+        // If the provided path doesn't start with /canadasite, add it automatically.
+        if (basePath !== '/' && !basePath.startsWith('/canadasite')) {
+            basePath = '/canadasite' + basePath;
+        }
         // Extract path info for API calls
         const pathParts = basePath.replace(/^\//, '').split('/');
         const templateLanguage = pathParts[0] || 'en';
@@ -317,7 +323,7 @@
             try {
                 // Fetch pages under the configured path
                 const listPath = basePath.replace(/^\//, '');
-                const response = await fetch(`${API_BASE}/by-path/${listPath}/children`);
+                const response = await fetch(`${API_BASE}by-path/${listPath}/children`);
                 if (!response.ok) {
                     throw new Error(`Failed to load templates: ${response.status}`);
                 }
@@ -383,7 +389,7 @@
             
             try {
                 // Fetch full template data
-                const response = await fetch(`${API_BASE}/${templateId}`);
+                const response = await fetch(`${API_BASE}${templateId}`);
                 if (!response.ok) {
                     throw new Error(`Failed to load template: ${response.status}`);
                 }
@@ -456,8 +462,11 @@
                 }
                 
                 // Also try to fetch real data from datasource
-                const datasourceUrl = dataSourceEl.value.trim();
+                let datasourceUrl = dataSourceEl.value.trim();
                 if (datasourceUrl) {
+                    // Replace {path} placeholder with the current page path (like server-side render)
+                    const pagePath = new URLSearchParams(window.location.search).get('path') || '';
+                    datasourceUrl = datasourceUrl.replace(/\{path\}/g, pagePath);
                     try {
                         const resp = await fetch(datasourceUrl);
                         if (resp.ok) {
@@ -535,6 +544,12 @@
                 return;
             }
             
+            // Lock check: prevent saving when page is locked
+            if (currentTemplate.metadata?.lock_status === 'locked') {
+                showWetAlert('🔒 The template is locked to view only.');
+                return;
+            }
+            
             showStatus('Saving template...', 'info');
             
             try {
@@ -558,7 +573,7 @@
                     content: JSON.stringify(config, null, 2)
                 };
                 
-                const response = await fetch(`${API_BASE}/${currentTemplate.id}`, {
+                const response = await fetch(`${API_BASE}${currentTemplate.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -606,7 +621,7 @@
                     parent_path: basePath.replace(/^\//, ''),
                     language: templateLanguage,
                     content: JSON.stringify({
-                        dataresource: `/api/v1/pages/by-path/${templateLanguage}/children/properties`,
+                        dataresource: `/api/v1/pages/by-path/${templateLanguage}/children`,
                         template: '<h1>{{title}}</h1>\n<p>Edit this template...</p>',
                         data: {}
                     }, null, 2),
@@ -622,7 +637,8 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`Creation failed: ${response.status}`);
+                    const errBody = await response.json().catch(() => ({}));
+                    throw new Error(errBody.detail || `Creation failed: ${response.status}`);
                 }
                 
                 const createdTemplate = await response.json();
@@ -646,6 +662,12 @@
                 return;
             }
             
+            // Lock check: prevent deleting when page is locked
+            if (currentTemplate.metadata?.lock_status === 'locked') {
+                showWetAlert('🔒 The template is locked to view only.');
+                return;
+            }
+            
             if (!confirm(`Are you sure you want to delete template "${currentTemplate.id}"? This cannot be undone.`)) {
                 return;
             }
@@ -653,7 +675,7 @@
             showStatus(`Deleting template "${currentTemplate.id}"...`, 'info');
             
             try {
-                const response = await fetch(`${API_BASE}/${currentTemplate.id}`, {
+                const response = await fetch(`${API_BASE}${currentTemplate.id}`, {
                     method: 'DELETE'
                 });
                 

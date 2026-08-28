@@ -22,6 +22,8 @@ from ..ai.website_crawler import crawl_website_task
 from ..ai.scrapling_crawler import parse_sitemap_urls
 from ..routers.auth import get_current_active_user
 
+from ..routers.import_page import IMPORT_PAGE_VERSION
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -205,18 +207,15 @@ async def crawl_website(
     
     logger.info(f"Created crawl task: {task_id}, URL: {request.url}, folder: {folder.name}")
     
-    # Start background crawl task
-    background_tasks.add_task(
-        crawl_website_background,
-        task_id=task_id,
-        url=request.url,
-        depth=request.depth,
-        folder_path=folder.path,
-        include_images=request.include_images,
-        follow_external_links=request.follow_external_links,
-        respect_robots_txt=request.respect_robots_txt,
-        db=db
+    # Start background crawl task using threading (BackgroundTasks unreliable with sync functions)
+    import threading
+    t = threading.Thread(
+        target=crawl_website_background,
+        args=(task_id, request.url, request.depth, folder.path, request.include_images,
+              request.follow_external_links, request.respect_robots_txt),
+        daemon=True
     )
+    t.start()
     
     return WebsiteCrawlResponse(
         task_id=task_id,
@@ -394,23 +393,29 @@ def crawl_website_background(
     include_images: bool,
     follow_external_links: bool,
     respect_robots_txt: bool,
-    db: Session
+    db: Session = None
 ):
     """
     Background crawl task function
+    注意:不依赖请求级 session,自行创建独立 session
     """
     from datetime import datetime
+    from ..db.database import SessionLocal
+    
+    # 创建独立 session(请求级 session 在此函数运行时已关闭)
+    own_db = SessionLocal()
+    active_db = db or own_db
     
     logger.info(f"Starting website crawl: {url}, depth: {depth}, task ID: {task_id}")
     
     try:
         # Update task status to crawling
-        crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
+        crawl_task = active_db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
         if crawl_task:
             crawl_task.status = CrawlTaskStatus.CRAWLING
             crawl_task.current_status = "Starting website crawl..."
             crawl_task.started_at = datetime.now()
-            db.commit()
+            active_db.commit()
         
         # Execute crawl task
         result = crawl_website_task(
@@ -421,7 +426,7 @@ def crawl_website_background(
             include_images=include_images,
             follow_external_links=follow_external_links,
             respect_robots_txt=respect_robots_txt,
-            db=db
+            db=active_db
         )
         
         # Update task status
@@ -442,20 +447,26 @@ def crawl_website_background(
                 crawl_task.error_message = result.get('error', 'Unknown error')
                 logger.error(f"Website crawl failed: {url}, task ID: {task_id}, error: {result.get('error')}")
             
-            db.commit()
+            active_db.commit()
             
     except Exception as e:
         logger.error(f"Crawl task execution exception: {task_id}, error: {str(e)}")
         try:
-            crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
+            crawl_task = active_db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
             if crawl_task:
                 crawl_task.status = CrawlTaskStatus.FAILED
                 crawl_task.current_status = f"Task execution error: {str(e)[:200]}"
                 crawl_task.error_message = str(e)
                 crawl_task.error_traceback = str(e)
-                db.commit()
+                active_db.commit()
         except:
             pass
+    finally:
+        if db is None and own_db:
+            try:
+                own_db.close()
+            except:
+                pass
 
 
 # ===== Sitemap Import =====
@@ -470,20 +481,25 @@ def sitemap_import_background(
 ):
     """
     Background sitemap import task
+    注意:不依赖请求级 session,自行创建独立 session
     """
     from datetime import datetime
     from ..ai.scrapling_crawler import ScraplingCrawler
+    from ..db.database import SessionLocal
     
-    logger.info(f"Starting Sitemap import: {sitemap_url}, folder path: {folder_path}")
+    own_db = SessionLocal()
+    active_db = db or own_db
+    
+    logger.info(f"[v{IMPORT_PAGE_VERSION}] Starting Sitemap import: {sitemap_url}, folder path: {folder_path}")
     
     try:
         # Update task status
-        crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
+        crawl_task = active_db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
         if crawl_task:
             crawl_task.status = CrawlTaskStatus.CRAWLING
-            crawl_task.current_status = f"Parsing sitemap: {sitemap_url}..."
+            crawl_task.current_status = f"[v{IMPORT_PAGE_VERSION}] Parsing sitemap: {sitemap_url}..."
             crawl_task.started_at = datetime.now()
-            db.commit()
+            active_db.commit()
         
         # Read crawl depth
         depth = max_depth
@@ -491,7 +507,7 @@ def sitemap_import_background(
             depth = crawl_task.depth if crawl_task.depth is not None else max_depth
         
         # Create crawler and execute sitemap import
-        crawler = ScraplingCrawler(db, task_id=task_id, use_stealth=False, use_dynamic=False)
+        crawler = ScraplingCrawler(active_db, task_id=task_id, use_stealth=False, use_dynamic=False)
         stats = crawler.crawl_from_sitemap(
             sitemap_url=sitemap_url,
             folder_path=folder_path,
@@ -511,20 +527,26 @@ def sitemap_import_background(
             crawl_task.progress = 100
             crawl_task.completed_at = datetime.now()
             logger.info(f"Sitemap import completed: {sitemap_url}, stats: {stats}")
-            db.commit()
+            active_db.commit()
             
     except Exception as e:
         logger.error(f"Sitemap import failed: {task_id}, error: {str(e)}")
         try:
-            crawl_task = db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
+            crawl_task = active_db.query(CrawlTask).filter(CrawlTask.task_id == task_id).first()
             if crawl_task:
                 crawl_task.status = CrawlTaskStatus.FAILED
                 crawl_task.current_status = f"Sitemap import failed: {str(e)[:200]}"
                 crawl_task.error_message = str(e)
                 crawl_task.error_traceback = str(e)
-                db.commit()
+                active_db.commit()
         except:
             pass
+    finally:
+        if db is None and own_db:
+            try:
+                own_db.close()
+            except:
+                pass
 
 
 @router.post("/crawl-from-sitemap", response_model=SitemapImportResponse)
@@ -586,15 +608,13 @@ async def crawl_from_sitemap(
     logger.info(f"Created Sitemap import task: {task_id}, URL: {request.sitemap_url}")
     
     # Start background task
-    background_tasks.add_task(
-        sitemap_import_background,
-        task_id=task_id,
-        sitemap_url=request.sitemap_url,
-        folder_path=folder.path,
-        include_images=request.include_images,
-        max_depth=request.depth,
-        db=db
+    import threading
+    t = threading.Thread(
+        target=sitemap_import_background,
+        args=(task_id, request.sitemap_url, folder.path, request.include_images, request.depth),
+        daemon=True
     )
+    t.start()
     
     return SitemapImportResponse(
         task_id=task_id,

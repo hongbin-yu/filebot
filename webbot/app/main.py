@@ -18,17 +18,18 @@ from datetime import datetime
 
 # 导入认证模块（用于中间件保护）
 try:
-    from .routes.auth_security import decode_access_token, get_user_by_id
+    from .routes.auth_security import decode_access_token, get_user_by_id, get_user_by_username
 except ImportError:
     def decode_access_token(token): return None
     def get_user_by_id(uid): return None
+    def get_user_by_username(uid): return None
 
 # 导入路由
 try:
-    from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, references_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, REFERENCES_ENABLED, TRANSLATE_ENABLED
+    from .routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, references_router, translate_router, experiments_router, io_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, REFERENCES_ENABLED, TRANSLATE_ENABLED, IO_ENABLED
 except ImportError:
     # 备用导入方式
-    from routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, references_router, translate_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, REFERENCES_ENABLED, TRANSLATE_ENABLED
+    from routes import pages_router, pages_v1_router, ai_router, files_router, components_router, mustache_router, auth_router, search_router, tags_router, analytics_router, versions_router, schedule_router, mail_router, feedback_router, track_router, references_router, translate_router, experiments_router, io_router, COMPONENTS_ENABLED, FILES_ENABLED, MUSTACHE_ENABLED, AUTH_ENABLED, SEARCH_ENABLED, TAGS_ENABLED, ANALYTICS_ENABLED, VERSIONS_ENABLED, SCHEDULE_ENABLED, MAIL_ENABLED, FEEDBACK_ENABLED, TRACK_ENABLED, REFERENCES_ENABLED, TRANSLATE_ENABLED, IO_ENABLED
 
 # 数据库路径
 WEBBOT_DB_PATH = os.environ.get(
@@ -121,6 +122,36 @@ app = FastAPI(
     }
 )
 
+# 自定义 OpenAPI 模式，添加 bearerAuth security scheme（用于 Swagger UI Authorize 按钮）
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema.setdefault("components", {})
+    openapi_schema["components"]["securitySchemes"] = {
+        "OAuth2PasswordBearer": {
+            "type": "oauth2",
+            "flows": {
+                "password": {
+                    "tokenUrl": "/api/v1/auth/login",
+                    "scopes": {}
+                }
+            }
+        }
+    }
+    # 让 Swagger UI 在所有端点上显示 Authorize 按钮
+    openapi_schema["security"] = [{"OAuth2PasswordBearer": []}]
+    app.openapi_schema = openapi_schema
+    return openapi_schema
+
+app.openapi = custom_openapi
+
 # 添加CORS中间件
 app.add_middleware(
     CORSMiddleware,
@@ -150,33 +181,41 @@ EXEMPT_WRITE_PATHS = frozenset([
     "/api/v1/pages/unapprove",
 ])
 
+# 前缀豁免：整棵子树放行（demo 数据定位，同 track/feedback 公开写接口）。
+# 生产环境如需保护，移除该前缀并给前端接入 token。
+EXEMPT_WRITE_PREFIXES = frozenset([
+    "/api/v1/experiments",
+    "/api/v1/track",
+])
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     import json as _json
     from starlette.responses import JSONResponse as _JSONResponse
     from fastapi.responses import Response as _Response
 
-    # 只保护写操作（POST/PUT/DELETE/PATCH）
-    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+    # 保护写操作 + IO converter 写方法（GET 只读且已有限流/大小上限/SSRF 防护，豁免以便浏览器直测与 mustache datasource 集成）
+    if request.method in ("POST", "PUT", "DELETE", "PATCH") or (request.url.path.startswith("/api/v1/io/") and request.method != "GET"):
         path = request.url.path
         # 如果是静态文件请求，放行
         if path.startswith("/static/") or path.startswith("/mustache/") or path.startswith("/gcweb-assets/"):
             pass
         # 检查是否在白名单中
-        elif path not in EXEMPT_WRITE_PATHS and path.startswith("/api/v1/"):
+        elif path not in EXEMPT_WRITE_PATHS and not any(path.startswith(p) for p in EXEMPT_WRITE_PREFIXES) and path.startswith("/api/v1/"):
             auth_header = request.headers.get("Authorization", "")
             token = None
             if auth_header.startswith("Bearer "):
                 token = auth_header[7:]
+            # Fall back to filebot_token cookie (HttpOnly, set by FileBot login)
+            cookie_token = request.cookies.get("filebot_token")
 
-            if not token:
-                return _JSONResponse(
-                    status_code=401,
-                    content={"detail": "需要登录认证"},
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+            # Try Authorization header first, then cookie
+            payload = None
+            if token:
+                payload = decode_access_token(token)
+            if not payload and cookie_token:
+                payload = decode_access_token(cookie_token)
 
-            payload = decode_access_token(token)
             if not payload:
                 return _JSONResponse(
                     status_code=401,
@@ -193,6 +232,8 @@ async def auth_middleware(request: Request, call_next):
                 )
 
             user = get_user_by_id(user_id)
+            if not user:
+                user = get_user_by_username(user_id)
             if not user:
                 return _JSONResponse(
                     status_code=401,
@@ -488,6 +529,51 @@ if REFERENCES_ENABLED and references_router:
 if TRANSLATE_ENABLED and translate_router:
     app.include_router(translate_router)
     print("✅ Translate路由已加载 (/api/v1/translate)")
+
+app.include_router(experiments_router)
+print("✅ Experiments路由已加载 (/api/v1/experiments)")
+
+if IO_ENABLED and io_router:
+    app.include_router(io_router)
+    print("✅ IO路由已加载 (/api/v1/io/convert — URL→JSON)")
+
+# ==================== CanadaSite 公开页面（/en /fr 动态渲染输出） ====================
+# prod.webfilebot.com/en/... → 从数据库(webbot_page)实时渲染，改完立即生效，无需发布
+# 渲染复用 _render_preview（与 preview/publish 同一套逻辑）
+from .routes.pages import _render_preview  # noqa: E402
+
+
+def _norm_public_page_path(lang: str, path: str) -> str:
+    """/en/xxx.html → /canadasite/en/xxx；/en → /canadasite/en"""
+    p = path.strip("/")
+    if p.endswith(".html"):
+        p = p[:-5]
+    return f"/canadasite/{lang}/{p}" if p else f"/canadasite/{lang}"
+
+
+@app.get("/en", response_model=None)
+async def public_page_en_root(request: Request):
+    """CanadaSite EN 首页（DB 动态渲染）"""
+    return await _render_preview(request, "/canadasite/en", None)
+
+
+@app.get("/en/{path:path}", response_model=None)
+async def public_page_en(request: Request, path: str):
+    """CanadaSite EN 子页（DB 动态渲染）"""
+    return await _render_preview(request, _norm_public_page_path("en", path), None)
+
+
+@app.get("/fr", response_model=None)
+async def public_page_fr_root(request: Request):
+    """CanadaSite FR 首页（DB 动态渲染）"""
+    return await _render_preview(request, "/canadasite/fr", None)
+
+
+@app.get("/fr/{path:path}", response_model=None)
+async def public_page_fr(request: Request, path: str):
+    """CanadaSite FR 子页（DB 动态渲染）"""
+    return await _render_preview(request, _norm_public_page_path("fr", path), None)
+
 
 # 页面路由（必须最后注册，避免 catch-all 拦截其他路由）
 app.include_router(pages_router)
@@ -1445,6 +1531,40 @@ if os.path.exists(frontend_dir):
         else:
             from fastapi.responses import JSONResponse
             return JSONResponse({"error": "Editor file not found"}, status_code=404)
+
+    @app.get("/static/analybot.html")
+    async def serve_analybot_live(
+        experiment_id: str = "exp-testpage",
+        title: str = "AnalyBot - Live A/B Experiment Dashboard",
+        subtitle: str = "Live A/B Testing &amp; Analytics · real beacon data",
+        api_base: str = "/api/v1/experiments",
+        stats_base: str = "/api/v1/track/ab/stats",
+        poll_interval: int = 10000,
+        show_mock: str = "true",
+    ):
+        """
+        Real-data AnalyBot dashboard rendered from a Mustache template.
+        All parameters overridable via query string, e.g.
+        /static/analybot.html?experiment_id=exp-passport-cta&poll_interval=5000&show_mock=false
+        """
+        import pystache
+        from fastapi.responses import HTMLResponse
+        tpl_path = os.path.join(frontend_dir, "analybot-live.mustache")
+        if not os.path.exists(tpl_path):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"error": "AnalyBot template not found"}, status_code=404)
+        with open(tpl_path, "r", encoding="utf-8") as f:
+            tpl = f.read()
+        html = pystache.render(tpl, {
+            "experiment_id": experiment_id,
+            "title": title,
+            "subtitle": subtitle,
+            "api_base": api_base,
+            "stats_base": stats_base,
+            "poll_interval": poll_interval,
+            "show_mock": "true" if str(show_mock).lower() in ("1", "true", "yes") else "false",
+        })
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     
     app.mount("/static", StaticFiles(directory=frontend_dir, html=True), name="static")
     print(f"📁 静态文件目录: {frontend_dir}")

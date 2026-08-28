@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>Page References - Site-wide Link Overview - Canada.ca CMS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', 'Noto Sans', Arial, sans-serif;
+            background: #f2f2f2;
+            color: #333;
+            font-size: 14px;
+        }
+        .topbar {
+            background: #26374a;
+            color: #fff;
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .topbar h1 { font-size: 19px; font-weight: 600; }
+        .topbar .sub { font-size: 12px; color: #b8c6d4; margin-top: 2px; }
+        .topbar .links a { color: #fff; font-size: 13px; text-decoration: none; margin-left: 16px; }
+        .topbar .links a:hover { text-decoration: underline; }
+        .wrap { max-width: 1280px; margin: 22px auto; padding: 0 20px; }
+        .card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #26374a; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .stat { background: #f7f9fb; border: 1px solid #e3e8ee; border-radius: 6px; padding: 12px 14px; }
+        .stat .v { font-size: 24px; font-weight: 700; color: #26374a; }
+        .stat .l { font-size: 12px; color: #666; margin-top: 2px; }
+        .stat.bad .v { color: #b10e1e; }
+        .stat.warn .v { color: #d98324; }
+        .stat.good .v { color: #1e6f3e; }
+        .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+        .filters label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; }
+        .filters input, .filters select {
+            padding: 7px 10px; border: 1px solid #c8c8c8; border-radius: 4px;
+            font-size: 13px; min-width: 200px; background: #fff;
+        }
+        .filters input:focus, .filters select:focus { outline: none; border-color: #26374a; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .chip {
+            padding: 4px 10px; border-radius: 12px; font-size: 12px; cursor: pointer;
+            border: 1px solid #c8c8c8; background: #fff; color: #333;
+        }
+        .chip.active { background: #26374a; color: #fff; border-color: #26374a; }
+        .btn {
+            padding: 7px 16px; border: none; border-radius: 4px; font-size: 13px;
+            cursor: pointer; background: #26374a; color: #fff;
+        }
+        .btn:hover { background: #1d2c3d; }
+        .btn.ghost { background: #fff; border: 1px solid #c8c8c8; color: #333; }
+        .btn.ghost:hover { background: #f0f0f0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th {
+            text-align: left; padding: 8px 10px; background: #eef1f5;
+            border-bottom: 2px solid #d5dbe3; color: #444; font-weight: 600;
+            white-space: nowrap; position: sticky; top: 0;
+        }
+        td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; word-break: break-all; }
+        tr:hover td { background: #f7f9fb; }
+        tr.broken-row td { background: #fdf3f3; }
+        tr.broken-row:hover td { background: #fbeaea; }
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 600; white-space: nowrap;
+        }
+        .badge-published { background: #e3f2e8; color: #1e6f3e; }
+        .badge-draft { background: #fdf3e0; color: #8a5a00; }
+        .badge-file { background: #e8f0fb; color: #2456a6; }
+        .badge-broken { background: #fbe0e0; color: #b10e1e; }
+        .badge-out { background: #eef1f5; color: #26374a; }
+        .badge-in { background: #eef1f5; color: #555; }
+        .path-link { color: #2456a6; text-decoration: none; }
+        .path-link:hover { text-decoration: underline; }
+        .anchor { color: #777; font-size: 12px; font-style: italic; }
+        .meta-line { font-size: 12px; color: #777; margin-bottom: 10px; }
+        .empty { padding: 24px; text-align: center; color: #999; font-size: 13px; }
+        .error-box { background: #fbe0e0; color: #b10e1e; padding: 10px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; }
+        .loading { padding: 24px; text-align: center; color: #666; font-size: 13px; }
+        .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid #c8c8c8; border-top-color: #26374a; border-radius: 50%; animation: rot .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+        @keyframes rot { to { transform: rotate(360deg); } }
+        .toggle-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; }
+        .toggle-row input { width: auto; }
+        .pager { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+        .pager .page-info { font-size: 12px; color: #666; }
+        .pager .btn:disabled { opacity: .45; cursor: default; }
+        .pager .page-size { padding: 5px 8px; border: 1px solid #c8c8c8; border-radius: 4px; font-size: 12px; background: #fff; }
+        .count-badge { background: #26374a; color: #fff; border-radius: 10px; padding: 1px 9px; font-size: 12px; margin-left: 8px; }
+        footer { text-align: center; color: #999; font-size: 12px; padding: 18px 0 30px; }
+        @media (max-width: 768px) {
+            .topbar { padding: 12px 16px; }
+            .filters input, .filters select { min-width: 100%; }
+            .wrap { padding: 0 12px; }
+            table { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <script src="/static/js/webbot-auth.js"></script>
+
+    <div class="topbar">
+        <div>
+            <h1>🔗 Page References — Site-wide Overview</h1>
+            <div class="sub">Canada.ca CMS · full reference graph: outgoing links, incoming links, broken targets</div>
+        </div>
+        <div class="links">
+            <a href="/static/navigation.html">← Back to Content Manager</a>
+        </div>
+    </div>
+
+    <div class="wrap">
+        <!-- Summary cards -->
+        <div class="card">
+            <h2>Site-wide reference health <span id="scopeLabel" class="count-badge">scope: /</span></h2>
+            <div class="stats-grid">
+                <div class="stat"><div class="v" id="statTotal">—</div><div class="l">Total references</div></div>
+                <div class="stat"><div class="v" id="statOut">—</div><div class="l">Outgoing links</div></div>
+                <div class="stat"><div class="v" id="statIn">—</div><div class="l">Incoming links</div></div>
+                <div class="stat"><div class="v" id="statTargets">—</div><div class="l">Unique targets</div></div>
+                <div class="stat good"><div class="v" id="statPub">—</div><div class="l">Published targets</div></div>
+                <div class="stat"><div class="v" id="statDraft">—</div><div class="l">Draft targets</div></div>
+                <div class="stat"><div class="v" id="statFile">—</div><div class="l">File / DAM targets</div></div>
+                <div class="stat bad"><div class="v" id="statBroken">—</div><div class="l">⚠ Broken targets</div></div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card">
+            <h2>Filters</h2>
+            <div class="filters">
+                <div>
+                    <label>Path prefix (source or target)</label>
+                    <input type="text" id="prefixInput" value="/" placeholder="/en/services">
+                </div>
+                <div>
+                    <label>Target status</label>
+                    <select id="statusSelect">
+                        <option value="">All statuses</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                        <option value="file">File / DAM</option>
+                        <option value="broken">⚠ Broken only</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Target prefix (optional)</label>
+                    <input type="text" id="targetPrefixInput" placeholder="/content/dam">
+                </div>
+                <div>
+                    <button class="btn" id="applyBtn">Apply</button>
+                    <button class="btn ghost" id="resetBtn">Reset</button>
+                </div>
+            </div>
+            <div class="chips" id="chipRow"></div>
+            <div class="toggle-row">
+                <input type="checkbox" id="hideBrokenChk" checked>
+                <label for="hideBrokenChk" style="margin:0;">Hide broken rows from the table (they are always counted above)</label>
+            </div>
+        </div>
+
+        <!-- Broken references -->
+        <div class="card" id="brokenCard" style="display:none;">
+            <h2>🚨 Broken references <span class="count-badge" id="brokenCount">0</span></h2>
+            <div class="meta-line">Targets that do not exist in the CMS or are not recognized files — clicking a broken target shows the source page that links to it.</div>
+            <div id="brokenList"></div>
+            <div id="brokenPagerHost"></div>
+        </div>
+
+        <!-- Full table -->
+        <div class="card">
+            <h2>Reference detail <span class="count-badge" id="rowCount">0 rows</span></h2>
+            <div class="meta-line">Click any source or target path to open it in the page editor.</div>
+            <div id="tableArea"></div>
+            <div id="tablePagerHost"></div>
+        </div>
+    </div>
+
+    <footer>WebBot Content Management Platform · Page Reference Intelligence</footer>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var prefixInput = document.getElementById('prefixInput');
+            var statusSelect = document.getElementById('statusSelect');
+            var targetPrefixInput = document.getElementById('targetPrefixInput');
+            var applyBtn = document.getElementById('applyBtn');
+            var resetBtn = document.getElementById('resetBtn');
+            var hideBrokenChk = document.getElementById('hideBrokenChk');
+            var chipRow = document.getElementById('chipRow');
+            var scopeLabel = document.getElementById('scopeLabel');
+            var brokenCard = document.getElementById('brokenCard');
+            var brokenList = document.getElementById('brokenList');
+            var tableArea = document.getElementById('tableArea');
+
+            var CHIPS = ['/', '/en', '/fr', '/canadasite', '/en/services', '/content/dam'];
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            function editorUrl(path) {
+                return '/static/editor.html?path=' + encodeURIComponent(path);
+            }
+
+            function pathLink(p) {
+                return '<a class="path-link" href="' + editorUrl(p) + '" title="Open in editor">' + esc(p) + '</a>';
+            }
+
+            function statusBadge(st) {
+                if (st === 'published') return '<span class="badge badge-published">published</span>';
+                if (st === 'draft') return '<span class="badge badge-draft">draft</span>';
+                if (st === 'file') return '<span class="badge badge-file">📄 file</span>';
+                return '<span class="badge badge-broken">⚠ broken</span>';
+            }
+
+            function buildChips() {
+                chipRow.innerHTML = '';
+                CHIPS.forEach(function (c) {
+                    var b = document.createElement('span');
+                    b.className = 'chip' + (c === (prefixInput.value || '/') ? ' active' : '');
+                    b.textContent = c;
+                    b.onclick = function () {
+                        prefixInput.value = c;
+                        CHIPS.forEach(function (x) { chipRow.children[CHIPS.indexOf(x)].classList.toggle('active', x === c); });
+                        load();
+                    };
+                    chipRow.appendChild(b);
+                });
+            }
+
+            var PAGE_SIZES = [50, 100, 200, 500];
+            var pageSize = 100;
+            var brokenPage = 0, tablePage = 0;
+            var brokenRowsCache = [], tableRowsCache = [];
+
+            function paginate(arr, page, size) {
+                var pages = Math.max(1, Math.ceil(arr.length / size));
+                if (page >= pages) page = pages - 1;
+                if (page < 0) page = 0;
+                var start = page * size;
+                return {
+                    rows: arr.slice(start, start + size),
+                    pages: pages,
+                    page: page,
+                    start: start + 1,
+                    end: Math.min(arr.length, start + size)
+                };
+            }
+
+            function pagerHTML(prefix, total, p) {
+                var sizeOpts = PAGE_SIZES.map(function (s) {
+                    return '<option value="' + s + '"' + (s === pageSize ? ' selected' : '') + '>' + s + ' / page</option>';
+                }).join('');
+                return '<div class="pager">' +
+                    '<button class="btn ghost" id="' + prefix + 'Prev"' + (p.page <= 0 ? ' disabled' : '') + '>‹ Prev</button>' +
+                    '<span class="page-info">' + (total ? (p.start.toLocaleString() + '–' + p.end.toLocaleString() + ' of ' + total.toLocaleString()) : '0') +
+                    ' · page ' + (p.page + 1) + ' / ' + p.pages + '</span>' +
+                    '<button class="btn ghost" id="' + prefix + 'Next"' + (p.page >= p.pages - 1 ? ' disabled' : '') + '>Next ›</button>' +
+                    '<select class="page-size" id="' + prefix + 'PageSize">' + sizeOpts + '</select>' +
+                    '</div>';
+            }
+
+            function bindPager(prefix, rerender) {
+                var prev = document.getElementById(prefix + 'Prev');
+                var next = document.getElementById(prefix + 'Next');
+                var sizeSel = document.getElementById(prefix + 'PageSize');
+                if (prev) prev.onclick = function () { if (prefix === 'broken') brokenPage--; else tablePage--; rerender(); };
+                if (next) next.onclick = function () { if (prefix === 'broken') brokenPage++; else tablePage++; rerender(); };
+                if (sizeSel) sizeSel.onchange = function () {
+                    pageSize = parseInt(sizeSel.value, 10) || 100;
+                    brokenPage = 0; tablePage = 0;
+                    renderBroken(); renderTable();
+                };
+            }
+
+            function renderBroken() {
+                if (!brokenRowsCache.length) {
+                    brokenCard.style.display = 'none';
+                    brokenList.innerHTML = '';
+                    document.getElementById('brokenPagerHost').innerHTML = '';
+                    return;
+                }
+                brokenCard.style.display = '';
+                document.getElementById('brokenCount').textContent = brokenRowsCache.length;
+                var p = paginate(brokenRowsCache, brokenPage, pageSize);
+                brokenPage = p.page;
+                var html = '<table><thead><tr><th>Source page</th><th>Broken target</th><th>Anchor text</th></tr></thead><tbody>';
+                p.rows.forEach(function (r) {
+                    html += '<tr class="broken-row">' +
+                        '<td>' + pathLink(r.source_path) + '</td>' +
+                        '<td><span style="color:#b10e1e;font-weight:600;">' + esc(r.target_path) + '</span></td>' +
+                        '<td class="anchor">' + esc(r.anchor_text || '(no text)') + '</td></tr>';
+                });
+                html += '</tbody></table>';
+                brokenList.innerHTML = html;
+                document.getElementById('brokenPagerHost').innerHTML = pagerHTML('broken', brokenRowsCache.length, p);
+                bindPager('broken', renderBroken);
+            }
+
+            function renderTable() {
+                document.getElementById('rowCount').textContent = tableRowsCache.length + ' rows';
+                if (!tableRowsCache.length) {
+                    tableArea.innerHTML = '<div class="empty">No references match the current filters.</div>';
+                    document.getElementById('tablePagerHost').innerHTML = '';
+                    return;
+                }
+                var p = paginate(tableRowsCache, tablePage, pageSize);
+                tablePage = p.page;
+                var t = '<table><thead><tr>' +
+                    '<th>Dir</th><th>Source page</th><th>Anchor</th><th>Target</th><th>Status</th>' +
+                    '</tr></thead><tbody>';
+                p.rows.forEach(function (r) {
+                    var broken = r.target_status === 'broken';
+                    t += '<tr' + (broken ? ' class="broken-row"' : '') + '>' +
+                        '<td><span class="badge badge-out">' + (r.direction === 'outgoing' ? '→ out' : '← in') + '</span></td>' +
+                        '<td>' + pathLink(r.source_path) + '</td>' +
+                        '<td class="anchor">' + esc((r.anchor_text || '').slice(0, 60)) + '</td>' +
+                        '<td>' + (broken ? '<span style="color:#b10e1e;font-weight:600;">' + esc(r.target_path) + '</span>' : pathLink(r.target_path)) + '</td>' +
+                        '<td>' + statusBadge(r.target_status) + '</td></tr>';
+                });
+                t += '</tbody></table>';
+                tableArea.innerHTML = t;
+                document.getElementById('tablePagerHost').innerHTML = pagerHTML('table', tableRowsCache.length, p);
+                bindPager('table', renderTable);
+            }
+
+            function computeCaches(results) {
+                var seenB = {};
+                brokenRowsCache = results.filter(function (r) {
+                    return r.target_status === 'broken' || (!r.exists && r.direction === 'outgoing');
+                }).filter(function (r) {
+                    var key = r.source_path + '|' + r.target_path;
+                    if (seenB[key]) return false;
+                    seenB[key] = 1;
+                    return true;
+                });
+                tableRowsCache = results.slice().sort(function (a, b) {
+                    if (a.source_path === b.source_path) return a.target_path.localeCompare(b.target_path);
+                    return a.source_path.localeCompare(b.source_path);
+                });
+                if (hideBrokenChk.checked && statusSelect.value !== 'broken') {
+                    tableRowsCache = tableRowsCache.filter(function (r) { return r.target_status !== 'broken'; });
+                }
+                brokenPage = 0;
+                tablePage = 0;
+            }
+
+            function render(data) {
+                window.__lastData = data;
+                var results = data.results || [];
+                var targets = data.targets || [];
+
+                // ---- stats ----
+                var outN = 0, inN = 0, pubN = 0, draftN = 0, fileN = 0, brokenN = 0;
+                var targetSet = {};
+                results.forEach(function (r) {
+                    if (r.direction === 'outgoing') outN++; else inN++;
+                    var st = r.target_status;
+                    if (st === 'published') pubN++;
+                    else if (st === 'draft') draftN++;
+                    else if (st === 'file') fileN++;
+                    else brokenN++;
+                });
+                targets.forEach(function (t) { targetSet[t.path] = t.status; });
+
+                document.getElementById('statTotal').textContent = results.length.toLocaleString();
+                document.getElementById('statOut').textContent = outN.toLocaleString();
+                document.getElementById('statIn').textContent = inN.toLocaleString();
+                document.getElementById('statTargets').textContent = targets.length.toLocaleString();
+                document.getElementById('statPub').textContent = pubN.toLocaleString();
+                document.getElementById('statDraft').textContent = draftN.toLocaleString();
+                document.getElementById('statFile').textContent = fileN.toLocaleString();
+                document.getElementById('statBroken').textContent = brokenN.toLocaleString();
+                scopeLabel.textContent = 'scope: ' + (data.query.path_prefix || '/');
+
+                computeCaches(results);
+                renderBroken();
+                renderTable();
+            }
+
+            function showError(msg) {
+                tableArea.innerHTML = '<div class="error-box">❌ ' + esc(msg) + '</div>';
+            }
+
+            async function load() {
+                var prefix = (prefixInput.value || '').trim() || '/';
+                var status = statusSelect.value;
+                var tPrefix = (targetPrefixInput.value || '').trim();
+
+                tableArea.innerHTML = '<div class="loading"><span class="spin"></span>Scanning reference graph…</div>';
+                brokenCard.style.display = 'none';
+
+                var params = new URLSearchParams();
+                params.set('q', prefix);
+                if (status) params.set('status', status);
+                if (tPrefix) params.set('target_prefix', tPrefix);
+
+                try {
+                    var resp = await fetch('/api/v1/pages/_search-references?' + params.toString());
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var data = await resp.json();
+                    render(data);
+                } catch (e) {
+                    showError('Failed to load references: ' + e.message);
+                }
+            }
+
+            applyBtn.onclick = load;
+            resetBtn.onclick = function () {
+                prefixInput.value = '/';
+                statusSelect.value = '';
+                targetPrefixInput.value = '';
+                hideBrokenChk.checked = true;
+                buildChips();
+                load();
+            };
+            hideBrokenChk.onchange = function () {
+                // Re-render from last data
+                if (window.__lastData) render(window.__lastData);
+            };
+
+            // Keep last data for checkbox re-render
+            var _origRender = render;
+            render = function (data) { window.__lastData = data; _origRender(data); };
+
+            buildChips();
+            load();
+        })();
+    </script>
+</body>
+</html>

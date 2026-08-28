@@ -215,10 +215,17 @@
                                 <span class="glyphicon glyphicon-console" aria-hidden="true"></span>
                                 HTML Source
                             </button>
-                            <button type="button" id="save-page-top" class="btn btn-success" style="margin-left: auto;">
-                                <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
-                                Save Page
-                            </button>
+                            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; margin-left:auto;">
+                                <!-- Republish warning (right above Save Page button) -->
+                                <div id="republish-banner" style="display:none; background:#fff3cd; border:1px solid #f0ad4e; border-radius:4px; padding:8px 12px; font-size:13px; color:#8a6d3b; align-items:center; gap:10px;">
+                                    <span>⚠️ This page was modified but not republished yet.</span>
+                                    <button id="republish-btn" class="btn btn-warning btn-xs" style="padding:4px 12px;">Republish</button>
+                                </div>
+                                <button type="button" id="save-page-top" class="btn btn-success">
+                                    <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
+                                    Save Page
+                                </button>
+                            </div>
                         </div>
 
                         <!-- WYSIWYG Editor Container -->
@@ -312,7 +319,7 @@
     <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
 
     <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
-    <script src="/static/js/editor.js?v=20260812-fb1"></script>
+    <script src="/static/js/editor.js?v=20260827-protected"></script>
 
     <!-- Initialize after all scripts are loaded -->
     <!-- Simple Metadata Editor (Backend Use Only) -->
@@ -332,15 +339,103 @@
                     <div id="metadata-tab-basic" class="metadata-tab-panel active">
                         <div class="form-group">
                             <label for="metadata-description">Description:</label>
-                            <input type="text" id="metadata-description" class="form-control"
+                            <input type="text" id="metadata-description" class="form-control" maxlength="500"
                                       placeholder="Page description for search engines">
-                            <small class="char-count">Characters: <span id="desc-char-count">0</span>/160</small>
+                            <small class="char-count">Characters: <span id="desc-char-count">0</span>/500</small>
                         </div>
 
                         <div class="form-group">
                             <label for="metadata-keywords">Keywords:</label>
-                            <input type="text" id="metadata-keywords" class="form-control"
+                            <input type="text" id="metadata-keywords" class="form-control" maxlength="500"
                                    placeholder="Comma-separated keywords">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-type">Type:</label>
+                            <input type="text" id="metadata-type" class="form-control"
+                                   list="metadata-type-options"
+                                   placeholder="Page content type (e.g. news releases, navigation page)">
+                            <datalist id="metadata-type-options">
+                                <option value="Content Types">
+                                <option value="contact us">
+                                <option value="contact us - find a representative">
+                                <option value="contact us - find an office">
+                                <option value="contact us - postal code lookup">
+                                <option value="contact us - region">
+                                <option value="frequently asked questions">
+                                <option value="emergency contact">
+                                <option value="job description">
+                                <option value="organizational descriptions">
+                                <option value="program descriptions">
+                                <option value="program results">
+                                <option value="ministerial and senior official profiles">
+                                <option value="audit">
+                                <option value="financial material">
+                                <option value="infosource">
+                                <option value="administrative burden baseline">
+                                <option value="departmental actions">
+                                <option value="forward regulatory plan">
+                                <option value="interpretation policy">
+                                <option value="list of regulations">
+                                <option value="report on plans and priorities">
+                                <option value="departmental performance report">
+                                <option value="quarterly financial report">
+                                <option value="ATI annual report">
+                                <option value="ATI summary">
+                                <option value="disclosure of contracts">
+                                <option value="disclosure of wrongdoings">
+                                <option value="grants and contribution awards">
+                                <option value="position reclassifications">
+                                <option value="travel and hospitality expenses">
+                                <option value="transparency - other">
+                                <option value="navigation page">
+                                <option value="navigation page - topic page">
+                                <option value="navigation page - theme landing page">
+                                <option value="navigation page - institutional profile">
+                                <option value="navigation page - organizational profile">
+                                <option value="navigation page - audience page">
+                                <option value="navigation page - partnering and collaborative arrangement profile">
+                                <option value="website terms and conditions">
+                                <option value="backgrounders">
+                                <option value="media advisories">
+                                <option value="news releases">
+                                <option value="speeches">
+                                <option value="statements">
+                                <option value="notices">
+                                <option value="alerts">
+                                <option value="recalls">
+                                <option value="maps">
+                                <option value="education and awareness">
+                                <option value="promotional material">
+                                <option value="campaigns">
+                                <option value="events">
+                                <option value="featured articles">
+                                <option value="policies">
+                                <option value="guidance">
+                                <option value="guidance - legislative">
+                                <option value="assessments">
+                                <option value="datasets">
+                                <option value="research">
+                                <option value="statistics">
+                                <option value="surveys">
+                                <option value="acts">
+                                <option value="regulations">
+                                <option value="documents incorporated by reference">
+                                <option value="aboriginal treaties">
+                                <option value="international treaties">
+                                <option value="decisions">
+                                <option value="recommendations">
+                                <option value="forms">
+                                <option value="service initiation">
+                                <option value="service description">
+                                <option value="grants and funding opportunities">
+                                <option value="licenses, permits and identification">
+                                <option value="not available">
+                                <option value="navigation page - search page">
+                                <option value="readouts">
+                                <option value="Consultations">
+                            </datalist>
+                            <small>Page content type (dcterms.type). Choose from the Canada.ca content types.</small>
                         </div>
 
                         <div class="form-group">
@@ -383,6 +478,43 @@
                             <label for="metadata-audience">Audience:</label>
                             <input type="text" id="metadata-audience" class="form-control"
                                    placeholder="e.g. citizens, businesses, government">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-topics">Topics:</label>
+                            <input type="text" id="metadata-topics" class="form-control"
+                                   placeholder="e.g. water, climate change">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-department">Department:</label>
+                            <input type="text" id="metadata-department" class="form-control"
+                                   placeholder="e.g. Environment and Climate Change Canada">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-ministers">Ministers:</label>
+                            <input type="text" id="metadata-ministers" class="form-control"
+                                   placeholder="e.g. minister names">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-location">Location:</label>
+                            <input type="text" id="metadata-location" class="form-control"
+                                   placeholder="e.g. Ottawa, Ontario">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="metadata-thumbnail">Thumbnail:</label>
+                            <div class="thumbnail-input-row">
+                                <input type="text" id="metadata-thumbnail" class="form-control"
+                                       placeholder="/canadasite/content/dam/.../image.jpg or https://...">
+                                <button type="button" id="thumbnail-preview-toggle" class="btn btn-default" title="Preview image">👁</button>
+                            </div>
+                            <small class="form-text text-muted">Image URL/path used as the page thumbnail (e.g. Open Graph / card preview)</small>
+                            <div id="thumbnail-preview-wrap" style="display:none; margin-top:6px;">
+                                <img id="thumbnail-preview" alt="Thumbnail preview" style="max-width:240px; max-height:160px; border:1px solid #ddd; border-radius:4px;">
+                            </div>
                         </div>
 
                         <div class="form-group">
