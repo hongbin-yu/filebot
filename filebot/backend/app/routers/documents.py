@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, 
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import func, or_, cast, String
+from sqlalchemy import func, or_, cast, String, text
 from typing import List, Optional, Dict, Any
 import uuid
 import os
@@ -3065,6 +3065,32 @@ def _delete_document_files(document):
                 logging.info(f"Deleted file: {fp}")
         except Exception as e:
             logging.warning(f"Failed to delete file {fp}: {e}")
+
+
+@router.delete("/by-source-url/{source_url:path}")
+def delete_documents_by_source_url(
+    source_url: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Delete all documents whose document_metadata.source_url matches.
+
+    Used by webbot delete-sync: when a page is deleted in the webbot editor,
+    the corresponding FileBot documents (identified by their source URL) are
+    removed here, including physical files and related rows.
+    Registered BEFORE the catch-all /{document_identifier:path} route.
+    """
+    docs = (
+        db.query(Document)
+        .filter(text("document_metadata->>'source_url' = :url"))
+        .params(url=source_url)
+        .all()
+    )
+    for doc in docs:
+        _delete_document_files(doc)
+        db.delete(doc)
+    db.commit()
+    return {"message": f"{len(docs)} document(s) deleted", "deleted": len(docs)}
 
 
 @router.delete("/{document_identifier:path}")
