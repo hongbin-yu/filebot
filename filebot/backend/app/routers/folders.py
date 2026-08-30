@@ -200,9 +200,10 @@ def _ensure_folder_chain(db: Session, app, folder_path: str, current_user: User)
     if existing:
         return existing
     if '/' not in path[1:]:
-        # 应用根目录（如 /78431）：挂在全局根 /publish 下（若存在），否则 parent=NULL
-        publish = db.query(Folder).filter(Folder.path == '/publish').first()
-        parent = publish if publish else None
+        # 应用根目录（如 /78431）：挂在全局根 / 下（若存在），否则 parent=NULL
+        # 规则：parent_folder_path = path 去掉最后一个 /segment（2026-08-30 统一）
+        root = db.query(Folder).filter(Folder.path == '/').first()
+        parent = root if root else None
     else:
         parent = _ensure_folder_chain(db, app, path.rsplit('/', 1)[0], current_user)
     folder = Folder(

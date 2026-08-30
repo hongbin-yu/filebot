@@ -598,6 +598,41 @@ def _get_webbot_token() -> str:
         return token
 
 
+def _ensure_webbot_folder_chain(cursor, webbot_path: str):
+    """
+    Ensure all parent folder nodes exist in webbot_page for the given path.
+
+    WebBot's tree is a flat webbot_page table where folders are just rows
+    (metadata.is_folder=true, no content). Deleted folders are NOT recreated
+    by the leaf upsert alone — re-imports after folder deletion would leave
+    the page with a dangling parent_path. Walk the path and insert missing
+    ancestors first (2026-08-30 fix).
+    """
+    from app.routers.import_to_webbot import ensure_page_exists
+
+    parts = [p for p in webbot_path.rstrip('/').split('/') if p]
+    cum = ''
+    parent = None
+    for seg in parts[:-1]:  # leaf page itself is handled by the caller
+        cum = cum + '/' + seg
+        if cursor.execute('SELECT id FROM webbot_page WHERE path = ?', (cum,)).fetchone():
+            parent = cum
+            continue
+        is_lang = seg in ('en', 'fr', 'zh', 'cn')
+        ensure_page_exists(
+            cursor, cum, parent, seg, '',
+            seg if is_lang else 'dir',
+            status="draft",
+            metadata={
+                "is_folder": True,
+                "is_language_root": is_lang,
+                "source": "filebot_import",
+            },
+            hide_in_nav=True,
+        )
+        parent = cum
+
+
 def _push_to_webbot_with_token(req: ImportPageRequest, title: str,
                                 target_folder_path: str, stored_filename: str,
                                 absolute_path: Path):
@@ -738,6 +773,8 @@ def _push_to_webbot_with_token(req: ImportPageRequest, title: str,
         conn = get_webbot_conn()
         try:
             cursor = conn.cursor()
+            # Recreate missing parent folder nodes (deleted folder + re-import case)
+            _ensure_webbot_folder_chain(cursor, webbot_path)
             existing = cursor.execute(
                 "SELECT hide_in_navigation, metadata FROM webbot_page WHERE path = ?",
                 (webbot_path,),
@@ -1022,30 +1059,49 @@ class CheckUrlsResponse(BaseModel):
 def check_urls(
     req: CheckUrlsRequest,
     current_user: User = Depends(get_current_active_user_allow_query),
-    db: Session = Depends(get_db),
 ):
     """
-    Check which URLs already exist in FileBot.
-    Used by the bookmarklet to skip already-imported pages.
-    """
-    from sqlalchemy import or_
+    Check which URLs already exist in WebBot (webbot_page tree).
 
+    Used by the bookmarklet to skip already-imported pages. Checks the
+    webbot tree — NOT FileBot documents. A page deleted from the webbot
+    tree counts as not-imported and will be re-imported (2026-08-30 fix:
+    user deleted page+folder, but reimport was wrongly "skipped" because
+    the FileBot document row had survived the webbot-side delete).
+    """
     if not req.urls:
-        return CheckUrlsResponse(existing_urls=[], checked=0)
+        return CheckUrlsResponse(existing={}, checked=0)
 
     try:
-        conditions = [
-            Document.document_metadata['source_url'].as_string() == url
-            for url in req.urls
-        ]
-        existing_docs = db.query(Document).filter(or_(*conditions)).all()
+        from app.routers.import_to_webbot import get_webbot_conn
 
-        existing = {}
-        for doc in existing_docs:
-            meta = doc.document_metadata or {}
-            src = meta.get('source_url', '')
-            if src and src not in existing:
-                existing[src] = meta.get('imported_at')
+        conn = get_webbot_conn()
+        try:
+            cursor = conn.cursor()
+            placeholders = ','.join('?' * len(req.urls))
+            # Match source_url (bookmarklet), plus url/original_url (crawler flow)
+            rows = cursor.execute(
+                f"SELECT metadata, last_modified FROM webbot_page "
+                f"WHERE json_extract(metadata, '$.source_url') IN ({placeholders}) "
+                f"OR json_extract(metadata, '$.url') IN ({placeholders}) "
+                f"OR json_extract(metadata, '$.original_url') IN ({placeholders})",
+                req.urls + req.urls + req.urls,
+            ).fetchall()
+
+            existing = {}
+            for row in rows:
+                try:
+                    meta = json.loads(row["metadata"]) if row["metadata"] else {}
+                except Exception:
+                    meta = {}
+                src = (meta.get("source_url")
+                       or meta.get("url")
+                       or meta.get("original_url")
+                       or "")
+                if src and src not in existing:
+                    existing[src] = meta.get("imported_at") or row["last_modified"]
+        finally:
+            conn.close()
 
         return CheckUrlsResponse(
             existing=existing,
