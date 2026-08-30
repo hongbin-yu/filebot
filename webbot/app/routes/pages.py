@@ -3133,60 +3133,6 @@ async def update_page(page_id: str, page_update: PageUpdate,
     finally:
         conn.close()
 
-def _sync_filebot_delete(page_path: str, metadata_json) -> list:
-    """Best-effort sync: delete matching FileBot rows via the FileBot API.
-
-    Called AFTER the webbot row is already deleted (webbot is the source of
-    truth for the editor tree). Failures never block the webbot delete — they
-    are collected and returned as warning strings.
-
-    - Folder node (metadata.is_folder)  -> DELETE /folders/{path}?recursive=true
-      (FileBot folder path = "/boarding" + webbot path)
-    - Page node -> DELETE /documents/by-source-url/{source_url}
-      (FileBot docs are matched by document_metadata.source_url)
-    """
-    warnings = []
-    try:
-        meta = {}
-        if metadata_json:
-            try:
-                meta = json.loads(metadata_json) if isinstance(metadata_json, str) else dict(metadata_json or {})
-            except Exception:
-                meta = {}
-
-        api_base = os.getenv("FILEBOT_API_BASE", "http://127.0.0.1:8001/api/v1").rstrip("/")
-        token = os.getenv("FILEBOT_JWT_TOKEN", "")
-        headers = {"Authorization": f"Bearer {token}"} if token else {}
-        timeout = 30
-
-        if meta.get("is_folder") is True:
-            fb_folder = "/boarding" + page_path
-            resp = requests.delete(
-                f"{api_base}/folders/{urllib.parse.quote(fb_folder.lstrip('/'), safe='/')}",
-                params={"recursive": "true"},
-                headers=headers,
-                timeout=timeout,
-            )
-            if resp.status_code == 404:
-                warnings.append(f"FileBot folder not found: {fb_folder}")
-            elif resp.status_code >= 400:
-                warnings.append(f"FileBot folder delete failed ({resp.status_code}): {resp.text[:200]}")
-        else:
-            source_url = meta.get("source_url") or meta.get("url") or meta.get("original_url")
-            if not source_url:
-                warnings.append(f"No source_url in metadata for {page_path}; skipped FileBot doc sync")
-            else:
-                resp = requests.delete(
-                    f"{api_base}/documents/by-source-url/{urllib.parse.quote(source_url, safe='')}",
-                    headers=headers,
-                    timeout=timeout,
-                )
-                if resp.status_code >= 400:
-                    warnings.append(f"FileBot doc delete failed ({resp.status_code}): {resp.text[:200]}")
-    except Exception as e:
-        warnings.append(f"FileBot sync error for {page_path}: {e}")
-    return warnings
-
 
 @router.delete("/{page_id:path}")
 async def delete_page(
@@ -3211,11 +3157,10 @@ async def delete_page(
         normalized_path = normalized_path.rstrip('/')
 
         # Look up page directly by path
-        cursor.execute("SELECT id, other_language_path, path, metadata FROM webbot_page WHERE path = ?", (normalized_path,))
+        cursor.execute("SELECT id, other_language_path, path FROM webbot_page WHERE path = ?", (normalized_path,))
         page_row = cursor.fetchone()
         if not page_row:
             raise HTTPException(status_code=404, detail="Page not found")
-        page_metadata = page_row["metadata"]
 
         # Permission check: verify user has write access
         if not user_can_write_page(current_user["id"], page_row["path"]):
@@ -3259,12 +3204,9 @@ async def delete_page(
 
         # Delete other language page if requested
         deleted_other = None
-        other_metadata = None
         if delete_other_language and target_other_path:
-            cursor.execute("SELECT id, metadata FROM webbot_page WHERE path = ?", (target_other_path,))
-            other_row = cursor.fetchone()
-            if other_row:
-                other_metadata = other_row["metadata"]
+            cursor.execute("SELECT id FROM webbot_page WHERE path = ?", (target_other_path,))
+            if cursor.fetchone():
                 cursor.execute("DELETE FROM webbot_page WHERE path = ?", (target_other_path,))
                 deleted_other = target_other_path
 
@@ -3273,13 +3215,6 @@ async def delete_page(
         result = {"message": "Page deleted successfully", "page_id": page_id}
         if deleted_other:
             result["other_deleted"] = deleted_other
-
-        # Best-effort sync to FileBot (never blocks/rolls back the webbot delete)
-        sync_warnings = _sync_filebot_delete(normalized_path, page_metadata)
-        if deleted_other:
-            sync_warnings += _sync_filebot_delete(target_other_path, other_metadata)
-        if sync_warnings:
-            result["filebot_sync_warnings"] = sync_warnings
         return result
 
     except sqlite3.Error as e:
