@@ -30,7 +30,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-IMPORT_PAGE_VERSION = "2026-08-17-v1"  # restored: referenced by ai.py sitemap import logs
+IMPORT_PAGE_VERSION = "2026-09-04-v1"  # dcterms metadata: subjects/audience/type on bookmarklet import
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -698,9 +698,6 @@ def _push_to_webbot_with_token(req: ImportPageRequest, title: str,
         html_content = absolute_path.read_text(encoding="utf-8") if absolute_path.exists() else req.html
 
         # ---- Extract Canada.ca metadata from HTML ----
-        def _extract_meta_content(pattern: str) -> str:
-            m = re.search(pattern, html_content, re.I | re.S)
-            return m.group(1).strip() if m else ""
 
         # other_language_path: <link rel="alternate" hreflang="{other}" ...> of the OTHER language
         #   → webbot path: prepend /canadasite
@@ -735,15 +732,16 @@ def _push_to_webbot_with_token(req: ImportPageRequest, title: str,
                 if other_language_path == webbot_path:
                     other_language_path = ""
 
-        # subjects from <meta name="dcterms.subject" content="...">
-        subjects = _extract_meta_content(
-            r'<meta[^>]*name=[\"\']dcterms\.subject[\"\'][^>]*content=[\"\']([^\"\']+)[\"\']'
-        )
-
-        # audience from <meta name="dcterms.audience" content="...">
-        audience = _extract_meta_content(
-            r'<meta[^>]*name=[\"\']dcterms\.audience[\"\'][^>]*content=[\"\']([^\"\']+)[\"\']'
-        )
+        # Canada.ca dcterms metadata → webbot metadata keys:
+        #   dcterms.subject  → metadata["subjects"]
+        #   dcterms.audience → metadata["audience"]
+        #   dcterms.type     → metadata["type"]
+        # (shared helper: collects ALL matching meta tags, not just the first)
+        from app.routers.import_to_webbot import extract_dcterms_meta
+        dcterms_meta = extract_dcterms_meta(html_content)
+        subjects = dcterms_meta.get('subjects', '')
+        audience = dcterms_meta.get('audience', '')
+        page_type = dcterms_meta.get('type', '')
 
         # 3. Upsert page in WebBot — direct DB write, same as import-to-webbot.
         #    Existing pages get UPDATED (content/title/metadata/last_modified),
@@ -769,6 +767,8 @@ def _push_to_webbot_with_token(req: ImportPageRequest, title: str,
             metadata["subjects"] = subjects
         if audience:
             metadata["audience"] = audience
+        if page_type:
+            metadata["type"] = page_type
 
         conn = get_webbot_conn()
         try:
