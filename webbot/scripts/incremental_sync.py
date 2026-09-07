@@ -672,7 +672,7 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
                      other_language_path: str | None = None,
                      html_content: str | None = None,
                      sitemap_lastmod: str = '',
-                     touch_last_modified: bool = False) -> str:
+                     touch_last_modified: bool = True) -> str:
     """导入/更新到 WebBot。返回 'created' | 'updated'"""
     wb_path = doc_path_to_wb_path(doc_path)
 
@@ -702,10 +702,10 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
     meta['last_synced'] = now
 
     if existing:
-        # last_modified 只由用户 save/import 控制（它作为 date modified 显示在页面上）。
-        # daily_sync 是自动任务，无论内容是否变化都不得 touch last_modified，
+        # last_modified 作为 date modified 显示在页面上。
+        # 老板要求（2026-09-07）：import 一页时 last_modified 总是更新 → 默认 touch_last_modified=True。
+        # 唯一例外：incremental_sync 是自动 sync（非 import），main() 显式传 touch_last_modified=False，
         # 否则会把 lm 推到 last_published 之后导致 is_republish 全站误报。
-        # 手动单页导入（touch_last_modified=True）视为用户 import，更新 last_modified。
         if touch_last_modified:
             cur.execute("""
                 UPDATE webbot_page 
@@ -757,8 +757,6 @@ def main():
                         help='跳过前 N 个变化页面（用于断点续跑）')
     parser.add_argument('--delay', type=float, default=0.3,
                         help='请求间隔秒数')
-    parser.add_argument('--touch-last-modified', action='store_true',
-                        help='手动导入：更新页面 last_modified（daily cron 不传此标志）')
     args = parser.parse_args()
 
     # ── 加载环境配置 ──
@@ -946,7 +944,7 @@ def main():
             other_language_path=other_lang_path,
             html_content=html,
             sitemap_lastmod=lastmod,
-            touch_last_modified=args.touch_last_modified
+            touch_last_modified=False
         )
         if result == 'created':
             stats['wb_created'] += 1
