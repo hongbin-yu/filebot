@@ -678,9 +678,11 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
     cur.execute('SELECT id, metadata FROM webbot_page WHERE path = ?', (wb_path,))
     existing = cur.fetchone()
     now = datetime_now()
-    # 老板要求（2026-09-07）：last_modified 从页面 metadata 的 dcterms.modified 获取
-    # （真实修改日期），找不到时回退到 now。
-    page_modified = extract_dcterms_modified(html_content) or now
+    # 老板要求（2026-09-07）：last_modified 优先级：
+    #   1. sitemap lastmod（sitemap import 时，带时区精确时间，无时区偏移）
+    #   2. dcterms.modified（bookmarklet/单页 import，纯日期）
+    #   3. now（回退）
+    page_modified = sitemap_lastmod or extract_dcterms_modified(html_content) or now
 
     title = os.path.splitext(stored_filename)[0].replace('-', ' ').title()
     parent = os.path.dirname(wb_path.rstrip('/'))
