@@ -671,7 +671,8 @@ def ensure_webbot_parent(cur, parent_path: str, language: str,
 def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
                      other_language_path: str | None = None,
                      html_content: str | None = None,
-                     sitemap_lastmod: str = '') -> str:
+                     sitemap_lastmod: str = '',
+                     touch_last_modified: bool = False) -> str:
     """导入/更新到 WebBot。返回 'created' | 'updated'"""
     wb_path = doc_path_to_wb_path(doc_path)
 
@@ -704,13 +705,24 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
         # last_modified 只由用户 save/import 控制（它作为 date modified 显示在页面上）。
         # daily_sync 是自动任务，无论内容是否变化都不得 touch last_modified，
         # 否则会把 lm 推到 last_published 之后导致 is_republish 全站误报。
-        cur.execute("""
-            UPDATE webbot_page 
-            SET title = ?, content = ?, metadata = ?,
-                other_language_path = COALESCE(?, other_language_path)
-            WHERE path = ?
-        """, (title, html_content or '', json.dumps(meta, ensure_ascii=False),
-              other_language_path, wb_path))
+        # 手动单页导入（touch_last_modified=True）视为用户 import，更新 last_modified。
+        if touch_last_modified:
+            cur.execute("""
+                UPDATE webbot_page 
+                SET title = ?, content = ?, metadata = ?,
+                    other_language_path = COALESCE(?, other_language_path),
+                    last_modified = ?
+                WHERE path = ?
+            """, (title, html_content or '', json.dumps(meta, ensure_ascii=False),
+                  other_language_path, now, wb_path))
+        else:
+            cur.execute("""
+                UPDATE webbot_page 
+                SET title = ?, content = ?, metadata = ?,
+                    other_language_path = COALESCE(?, other_language_path)
+                WHERE path = ?
+            """, (title, html_content or '', json.dumps(meta, ensure_ascii=False),
+                  other_language_path, wb_path))
         return 'updated'
     else:
         cur.execute("""
@@ -745,6 +757,8 @@ def main():
                         help='跳过前 N 个变化页面（用于断点续跑）')
     parser.add_argument('--delay', type=float, default=0.3,
                         help='请求间隔秒数')
+    parser.add_argument('--touch-last-modified', action='store_true',
+                        help='手动导入：更新页面 last_modified（daily cron 不传此标志）')
     args = parser.parse_args()
 
     # ── 加载环境配置 ──
@@ -931,7 +945,8 @@ def main():
             wb_cur, doc_path, filename, lang,
             other_language_path=other_lang_path,
             html_content=html,
-            sitemap_lastmod=lastmod
+            sitemap_lastmod=lastmod,
+            touch_last_modified=args.touch_last_modified
         )
         if result == 'created':
             stats['wb_created'] += 1
