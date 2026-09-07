@@ -671,8 +671,7 @@ def ensure_webbot_parent(cur, parent_path: str, language: str,
 def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
                      other_language_path: str | None = None,
                      html_content: str | None = None,
-                     sitemap_lastmod: str = '',
-                     touch_last_modified: bool = True) -> str:
+                     sitemap_lastmod: str = '') -> str:
     """导入/更新到 WebBot。返回 'created' | 'updated'"""
     wb_path = doc_path_to_wb_path(doc_path)
 
@@ -703,26 +702,16 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
 
     if existing:
         # last_modified 作为 date modified 显示在页面上。
-        # 老板要求（2026-09-07）：import 一页时 last_modified 总是更新 → 默认 touch_last_modified=True。
-        # 唯一例外：incremental_sync 是自动 sync（非 import），main() 显式传 touch_last_modified=False，
-        # 否则会把 lm 推到 last_published 之后导致 is_republish 全站误报。
-        if touch_last_modified:
-            cur.execute("""
-                UPDATE webbot_page 
-                SET title = ?, content = ?, metadata = ?,
-                    other_language_path = COALESCE(?, other_language_path),
-                    last_modified = ?
-                WHERE path = ?
-            """, (title, html_content or '', json.dumps(meta, ensure_ascii=False),
-                  other_language_path, now, wb_path))
-        else:
-            cur.execute("""
-                UPDATE webbot_page 
-                SET title = ?, content = ?, metadata = ?,
-                    other_language_path = COALESCE(?, other_language_path)
-                WHERE path = ?
-            """, (title, html_content or '', json.dumps(meta, ensure_ascii=False),
-                  other_language_path, wb_path))
+        # 老板要求（2026-09-07）：不管来源（手动 import / daily sync / bookmarklet），
+        # import 一页时 last_modified 总是更新。
+        cur.execute("""
+            UPDATE webbot_page 
+            SET title = ?, content = ?, metadata = ?,
+                other_language_path = COALESCE(?, other_language_path),
+                last_modified = ?
+            WHERE path = ?
+        """, (title, html_content or '', json.dumps(meta, ensure_ascii=False),
+              other_language_path, now, wb_path))
         return 'updated'
     else:
         cur.execute("""
@@ -943,8 +932,7 @@ def main():
             wb_cur, doc_path, filename, lang,
             other_language_path=other_lang_path,
             html_content=html,
-            sitemap_lastmod=lastmod,
-            touch_last_modified=False
+            sitemap_lastmod=lastmod
         )
         if result == 'created':
             stats['wb_created'] += 1
