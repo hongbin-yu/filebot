@@ -405,6 +405,242 @@ def filebot_update(cur, doc_path: str, stored_filename: str,
             (meta, stored_filename, doc_path))
 
 
+def download_and_rewrite_images(html: str, page_url: str, fb_cur, fb_conn) -> str:
+    """下载页面所有 canada.ca 图片到本地 FileBot 存储，并把 HTML 里的 <img src>
+    重写为本地 /content/dam/... 路径。
+
+    与 bookmarklet 导入路径
+    (filebot/backend/app/routers/import_page.py:download_and_store_dam_images)
+    保持一致：
+    - /content/dam/... 图片 → 存到原路径（已有代理直接服务）
+    - 非 DAM 图片 (/en/.../_jcr_content/... 等) → 存到
+      /content/dam/{path_before_jcr_content}/{filename}
+
+    返回重写后的 HTML。
+    """
+    import uuid
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    mode = _config['filebot_mode']
+    filebot_data = _config['filebot_data']
+    admin_id = _config.get('admin_user_id', 'system')
+
+    # ── Step 1: 提取所有 <img src> ──
+    image_urls = {}  # rel_path → {src, remote_url, doc_path, needs_rewrite}
+    for m in re.finditer(r'''<img[^>]+src=(["'])([^"']+)\1''', html, re.IGNORECASE):
+        src = m.group(2).strip()
+        if not src:
+            continue
+        # 跳过 data URI 和系统 /etc/designs 资源
+        if src.startswith('data:') or '/etc/designs/' in src:
+            continue
+
+        # 解析为绝对 URL
+        if src.startswith('http'):
+            parsed = urllib.parse.urlparse(src)
+            if 'canada.ca' not in parsed.netloc:
+                continue
+            rel_path = parsed.path
+            remote_url = src
+        else:
+            rel_path = src
+            remote_url = f"https://www.canada.ca{src}" if src.startswith('/') else None
+            if not remote_url:
+                continue
+
+        # 规范化：确保以 / 开头
+        if not rel_path.startswith('/'):
+            rel_path = '/' + rel_path
+
+        if '/etc/designs/' in rel_path:
+            continue
+
+        if rel_path in image_urls:
+            continue
+
+        # 计算 doc_path 及是否需要重写
+        clean_path = rel_path
+        if '/content/dam/' in rel_path:
+            needs_rewrite = False
+        else:
+            needs_rewrite = True
+
+        if clean_path.startswith('/content/canadasite'):
+            clean_path = clean_path[len('/content/canadasite'):]
+
+        jcr_idx = clean_path.find('/_jcr_content')
+        if jcr_idx != -1:
+            filename_part = clean_path[jcr_idx:]
+            orig_fn = os.path.basename(filename_part.rstrip('/'))
+            clean_path = clean_path[:jcr_idx]
+            if orig_fn not in ('', '/'):
+                clean_path = clean_path.rstrip('/') + '/' + orig_fn
+
+        if '/content/dam/' in rel_path:
+            doc_path = clean_path
+            if rel_path != clean_path:
+                needs_rewrite = True
+        else:
+            doc_path = f"/content/dam{clean_path}"
+
+        image_urls[rel_path] = {
+            'src': src,
+            'remote_url': remote_url,
+            'doc_path': doc_path,
+            'needs_rewrite': needs_rewrite,
+        }
+
+    if not image_urls:
+        return html
+
+    # ── Step 2: 跳过已存在的图片 ──
+    rewrite_map = {}  # src → doc_path（仅需重写的）
+    download_results = {}  # doc_path → {rel_path, src, remote_url, doc_path, needs_rewrite}
+    for rel_path, info in sorted(image_urls.items()):
+        if filebot_doc_exists(fb_cur, info['doc_path']):
+            if info['needs_rewrite']:
+                rewrite_map[info['src']] = info['doc_path']
+        else:
+            download_results[info['doc_path']] = {
+                'rel_path': rel_path,
+                'src': info['src'],
+                'doc_path': info['doc_path'],
+                'remote_url': info['remote_url'],
+                'needs_rewrite': info['needs_rewrite'],
+            }
+
+    # ── Step 3: 并发下载 ──
+    def _download_one(doc_path: str, remote_url: str) -> dict:
+        try:
+            req = urllib.request.Request(
+                remote_url,
+                headers={'User-Agent': 'FileBot-Import/1.0'},
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return {
+                    'doc_path': doc_path,
+                    'content': resp.read(),
+                    'content_type': resp.headers.get('Content-Type', 'application/octet-stream'),
+                    'url_ext': os.path.splitext(urllib.parse.urlparse(remote_url).path)[1].lower(),
+                }
+        except Exception as e:
+            return {'doc_path': doc_path, 'error': str(e)}
+
+    to_download = [(d['doc_path'], d['remote_url']) for d in download_results.values()]
+    if to_download:
+        max_workers = min(len(to_download), 10)
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(_download_one, dp, url): dp for dp, url in to_download}
+            for future in as_completed(futures):
+                result = future.result()
+                dp = result['doc_path']
+                if 'error' in result:
+                    download_results[dp]['error'] = True
+                else:
+                    download_results[dp]['content'] = result['content']
+                    download_results[dp]['content_type'] = result['content_type']
+                    download_results[dp]['url_ext'] = result['url_ext']
+
+    # ── Step 4: 顺序写盘 + 写 DB + 记录重写映射 ──
+    valid_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.tif', '.ico'}
+    ft_map = {
+        '.png': 'PNG', '.jpg': 'JPEG', '.jpeg': 'JPEG',
+        '.gif': 'GIF', '.webp': 'WEBP', '.bmp': 'BMP',
+        '.svg': 'SVG', '.tiff': 'TIFF', '.tif': 'TIFF',
+        '.ico': 'OTHER',
+    }
+    ext_map = {
+        'image/png': '.png', 'image/jpeg': '.jpg', 'image/jpg': '.jpg',
+        'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.bmp',
+        'image/svg+xml': '.svg', 'image/tiff': '.tiff', 'image/x-icon': '.ico',
+    }
+
+    downloaded = 0
+    errors = 0
+    for d in download_results.values():
+        if d.get('error'):
+            errors += 1
+            continue
+        content = d.get('content')
+        if content is None:
+            errors += 1
+            continue
+
+        file_size = len(content)
+        content_type = d.get('content_type', 'application/octet-stream')
+        doc_path = d['doc_path']
+
+        url_ext = d.get('url_ext', '')
+        ext = url_ext if url_ext in valid_exts else ext_map.get(content_type, '.png')
+        file_type = ft_map.get(ext, 'PNG')
+
+        # 物理文件: {filebot_data}/files/boarding/canadasite/{doc_path.lstrip('/')}
+        storage_rel = 'files/boarding/canadasite/' + doc_path.lstrip('/')
+        abs_path = os.path.join(filebot_data, *storage_rel.split('/'))
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        try:
+            with open(abs_path, 'wb') as f:
+                f.write(content)
+        except Exception as e:
+            print(f'    ⚠️  图片写盘失败 {doc_path}: {e}')
+            errors += 1
+            continue
+
+        folder_path = os.path.dirname(doc_path)
+        title = os.path.splitext(os.path.basename(doc_path))[0] or 'Imported Image'
+        doc_num = str(uuid.uuid4())
+        meta = json.dumps({
+            'source_url': d['remote_url'],
+            'imported_at': datetime_now(),
+            'import_method': 'incremental_sync_image_download',
+            'url': doc_path,
+        })
+
+        if mode == 'postgres':
+            pg_ensure_folder(fb_cur, folder_path, fb_conn)
+            fb_cur.execute("""
+                INSERT INTO documents
+                    (path, folder_path, document_number, title, status, type,
+                     publish_status, original_filename, stored_filename,
+                     file_size, file_type, mime_type, storage_path, document_metadata,
+                     uploaded_by)
+                VALUES (%s, %s, %s, %s, 'ACTIVE', 'GENERAL',
+                        'PUBLISHED', %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (path) DO NOTHING
+            """, (doc_path, folder_path, doc_num, title,
+                  os.path.basename(doc_path), os.path.basename(doc_path),
+                  file_size, file_type, content_type, storage_rel, meta, admin_id))
+        else:
+            fb_cur.execute("""
+                INSERT OR IGNORE INTO documents
+                    (path, folder_path, document_number, title, status, type,
+                     publish_status, original_filename, stored_filename,
+                     file_size, file_type, mime_type, storage_path, document_metadata)
+                VALUES (?, ?, ?, ?, 'ACTIVE', 'GENERAL',
+                        'PUBLISHED', ?, ?, ?, ?, ?, ?, ?)
+            """, (doc_path, folder_path, doc_num, title,
+                  os.path.basename(doc_path), os.path.basename(doc_path),
+                  file_size, file_type, content_type, storage_rel, meta))
+
+        downloaded += 1
+        if d.get('needs_rewrite'):
+            rewrite_map[d['src']] = doc_path
+
+    if fb_conn:
+        fb_conn.commit()
+
+    if downloaded or errors:
+        print(f'    🖼️  图片: 下载 {downloaded} 张, 失败 {errors} 张')
+
+    # ── Step 5: 重写 HTML ──
+    if rewrite_map:
+        rewritten_html = html
+        for old_src, new_path in sorted(rewrite_map.items(), key=lambda x: -len(x[0])):
+            rewritten_html = rewritten_html.replace(old_src, new_path)
+        return rewritten_html
+    return html
+
+
 # ── WebBot 写入 ────────────────────────────────────────────────────────
 
 def ensure_webbot_parent(cur, parent_path: str, language: str,
@@ -674,6 +910,9 @@ def main():
             continue
 
         stats['crawled'] += 1
+
+        # 下载页面图片并重写 <img src> 为本地 /content/dam/... 路径
+        html = download_and_rewrite_images(html, target_url, fb_cur, fb_conn)
 
         other_lang_path = extract_other_lang_path_from_html(html)
 
