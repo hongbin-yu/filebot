@@ -118,6 +118,15 @@ def extract_dcterms_meta(html: str) -> dict:
         val = m.group(1).strip()
         if val:
             result['type'] = val
+    # dcterms.modified — single value (W3CDTF date, e.g. 2026-08-10)
+    m = re.search(
+        r'<meta\s+name=["\']dcterms\.modified["\'][^>]*?\s+content=["\']([^"\']+)["\']',
+        html, re.I
+    )
+    if m:
+        val = m.group(1).strip()
+        if val:
+            result['modified'] = val
     return result
 
 
@@ -126,6 +135,10 @@ def ensure_page_exists(cursor, path, parent_path, title, content, language,
                        metadata=None, hide_in_nav=False, other_language_path=None):
     """Upsert a page into webbot_page. Returns 'inserted', 'updated', or 'failed'."""
     now = datetime.now().isoformat()
+    # 老板要求（2026-09-07）：last_modified 从页面 dcterms.modified 获取（真实修改日期），
+    # 找不到时回退到 now。
+    page_modified = extract_dcterms_meta(content).get('modified') if content else None
+    last_modified = page_modified or now
     meta = json.dumps(metadata or {})
 
     cursor.execute('SELECT id FROM webbot_page WHERE path = ?', (path,))
@@ -143,7 +156,7 @@ def ensure_page_exists(cursor, path, parent_path, title, content, language,
                     WHERE path = ?
                 """, (title, description, keywords, content, language, parent_path,
                       other_language_path, status, meta, 1 if hide_in_nav else 0,
-                      now, path))
+                      last_modified, path))
             else:
                 # Don't overwrite other_language_path
                 cursor.execute("""
@@ -155,7 +168,7 @@ def ensure_page_exists(cursor, path, parent_path, title, content, language,
                     WHERE path = ?
                 """, (title, description, keywords, content, language, parent_path,
                       status, meta, 1 if hide_in_nav else 0,
-                      now, path))
+                      last_modified, path))
             return 'updated'
         except Exception as e:
             logger.error(f"UPDATE failed for path={path}: {e}")
@@ -172,7 +185,7 @@ def ensure_page_exists(cursor, path, parent_path, title, content, language,
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (page_id, title, description, keywords, content, language, parent_path,
               other_language_path, status, meta, 1 if hide_in_nav else 0,
-              "system", now, now, path))
+              "system", now, last_modified, path))
         return 'inserted'
     except sqlite3.IntegrityError as e:
         logger.warning(f"INSERT integrity error for path={path}: {e}")

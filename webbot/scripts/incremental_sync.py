@@ -678,6 +678,9 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
     cur.execute('SELECT id, metadata FROM webbot_page WHERE path = ?', (wb_path,))
     existing = cur.fetchone()
     now = datetime_now()
+    # 老板要求（2026-09-07）：last_modified 从页面 metadata 的 dcterms.modified 获取
+    # （真实修改日期），找不到时回退到 now。
+    page_modified = extract_dcterms_modified(html_content) or now
 
     title = os.path.splitext(stored_filename)[0].replace('-', ' ').title()
     parent = os.path.dirname(wb_path.rstrip('/'))
@@ -702,8 +705,7 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
 
     if existing:
         # last_modified 作为 date modified 显示在页面上。
-        # 老板要求（2026-09-07）：不管来源（手动 import / daily sync / bookmarklet），
-        # import 一页时 last_modified 总是更新。
+        # 老板要求（2026-09-07）：last_modified 从页面 dcterms.modified 获取。
         cur.execute("""
             UPDATE webbot_page 
             SET title = ?, content = ?, metadata = ?,
@@ -711,7 +713,7 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
                 last_modified = ?
             WHERE path = ?
         """, (title, html_content or '', json.dumps(meta, ensure_ascii=False),
-              other_language_path, now, wb_path))
+              other_language_path, page_modified, wb_path))
         return 'updated'
     else:
         cur.execute("""
@@ -719,13 +721,36 @@ def import_to_webbot(cur, doc_path: str, stored_filename: str, language: str,
                                      other_language_path, metadata, created_at, last_modified)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (wb_path, wb_path, title, html_content or '', language, parent,
-              other_language_path, json.dumps(meta, ensure_ascii=False), now, now))
+              other_language_path, json.dumps(meta, ensure_ascii=False), now, page_modified))
         return 'created'
 
 
 def datetime_now() -> str:
     from datetime import datetime
     return datetime.now().isoformat()
+
+
+def extract_dcterms_modified(html: str | None) -> str | None:
+    """从页面 HTML 提取 <meta name="dcterms.modified" content="..."> 的值（W3CDTF）。
+
+    老板要求（2026-09-07）：last_modified 从页面 metadata 的 dcterms.modified 获取，
+    而不是 import 时间。找不到时返回 None（调用方回退到 now）。
+    """
+    if not html:
+        return None
+    # 常见顺序：name 在前，content 在后
+    m = re.search(
+        r'<meta\s+name=["\']dcterms\.modified["\'][^>]*?\s+content=["\']([^"\']+)["\']',
+        html, re.I
+    )
+    if m:
+        return m.group(1).strip()
+    # 变体：content 在前，name 在后
+    m = re.search(
+        r'<meta\s+content=["\']([^"\']+)["\'][^>]*?\s+name=["\']dcterms\.modified["\']',
+        html, re.I
+    )
+    return m.group(1).strip() if m else None
 
 
 # ── 主流程 ──────────────────────────────────────────────────────────────
