@@ -1587,6 +1587,91 @@ def import_page(
             redirect_to=req.redirect_to or "",
     )
 
+class ImportUrlRequest(BaseModel):
+    url: str = Field(..., description="Full URL of the page to import (fetched server-side).")
+    title: str = Field("", description="Optional page title override (auto-extracted if empty).")
+    folder_path: str = Field("", description="Optional target folder path in FileBot (auto-detected from URL if empty).")
+    redirect_to: Optional[str] = Field(None, description="If set, records a redirect instead of importing content.")
+
+
+class ImportUrlResponse(BaseModel):
+    success: bool
+    path: str
+    folder_path: str
+    title: str
+    stored_filename: str
+    file_size: int
+    url: str
+    redirect_to: str = ""
+    fetched_from: Optional[str] = Field(None, description="Final URL after following redirects.")
+
+
+@router.post("/import-url", response_model=ImportUrlResponse)
+def import_url(
+    req: ImportUrlRequest,
+    current_user: User = Depends(get_current_active_user_allow_query),
+):
+    """Import a page by URL in one shot (server-side fetch + import).
+
+    Equivalent of the bookmarklet's "import single url" flow, but done entirely
+    server-side in a single call: fetch the page (via the same proxy logic as
+    /fetch-url, so it works even when the client browser cannot reach canada.ca
+    directly), then import into FileBot and push to WebBot.
+
+    Usage:
+      curl -X POST http://localhost:8001/api/v1/import-url \\
+        -H "Content-Type: application/json" \\
+        -H "Authorization: Bearer <token>" \\
+        -d '{"url": "https://www.canada.ca/en/services/benefits.html"}'
+    """
+    if not req.url:
+        raise HTTPException(status_code=400, detail="url is required")
+
+    # 1) Fetch server-side (reuse the existing fetch_url logic).
+    fetched = fetch_url(FetchUrlRequest(url=req.url), current_user)
+    if fetched.status == 0:
+        raise HTTPException(status_code=502, detail=f"Server-side fetch failed: {fetched.error or 'unknown error'}")
+    if fetched.status != 200:
+        raise HTTPException(status_code=502, detail=f"Upstream returned HTTP {fetched.status}")
+
+    final_url = fetched.final_url or req.url
+
+    # 2) Build the import-page request and run the same import pipeline.
+    if fetched.image_data:
+        # Binary content (e.g. an image URL) — import as an image document.
+        import_req = ImportPageRequest(
+            url=final_url,
+            title=req.title or os.path.basename(urlparse(final_url).path.rstrip('/')) or "Imported Image",
+            folder_path=req.folder_path,
+            is_image=True,
+            image_data=fetched.image_data,
+        )
+    else:
+        if not fetched.html:
+            raise HTTPException(status_code=502, detail="Upstream returned empty HTML")
+        import_req = ImportPageRequest(
+            url=final_url,
+            html=fetched.html,
+            title=req.title,
+            folder_path=req.folder_path,
+            redirect_to=req.redirect_to,
+        )
+
+    result = import_page(import_req, current_user)
+
+    return ImportUrlResponse(
+        success=result.success,
+        path=result.path,
+        folder_path=result.folder_path,
+        title=result.title,
+        stored_filename=result.stored_filename,
+        file_size=result.file_size,
+        url=result.url,
+        redirect_to=result.redirect_to or "",
+        fetched_from=final_url,
+    )
+
+
 # ── Snapshot Import (for client-generated bookmarklet snapshots) ─────────
 SNAPSHOT_DIR = "/opt/webfilebot/sitemap_snapshots"
 
