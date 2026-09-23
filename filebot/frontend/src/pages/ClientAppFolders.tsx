@@ -95,6 +95,7 @@ const ClientAppFolders: React.FC = () => {
   }, [appSlug]);
 
   useEffect(() => {
+    setCurrentPage(1); // reset pagination when navigating to a different folder
     if (wildcardPath && wildcardPath.trim()) {
       setCurrentFolderPath('/' + wildcardPath.replace(/^\/+|\/+$/g, ''));
     } else { setCurrentFolderPath(null); setCurrentFolder(null); setSubfolders([]); setDocuments([]); }

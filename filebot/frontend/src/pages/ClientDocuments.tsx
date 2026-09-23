@@ -177,6 +177,11 @@ const ClientDocuments: React.FC = () => {
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
+  // Reset pagination to page 1 whenever the folder changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [folderId]);
+
   useEffect(() => {
     fetchData();
   }, [appSlug, folderId, currentPage, pageSize]);
