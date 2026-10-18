@@ -31,6 +31,7 @@ class AnalyticsResponse(BaseModel):
     language: dict
     status: dict
     translation_gaps: dict
+    redirects: dict
     templates: list
     tag_usage: dict
     recent_activity: dict
@@ -65,7 +66,7 @@ async def get_analytics():
     status_data = {r["status"]: r["cnt"] for r in c.fetchall()}
 
     # === Translation gaps ===
-    c.execute("SELECT COUNT(*) FROM webbot_page WHERE other_language_path IS NOT NULL AND other_language_path != ''")
+    c.execute("SELECT COUNT(*) FROM webbot_page WHERE other_language_path IS NOT NULL AND other_language_path != '' AND status = 'published'")
     paired = c.fetchone()[0]
 
     c.execute("SELECT COUNT(*) FROM webbot_page WHERE path LIKE '/canadasite/en/%' AND (other_language_path IS NULL OR other_language_path = '') AND status = 'published' AND (json_extract(metadata, '$.redirect_to') IS NULL OR json_extract(metadata, '$.redirect_to') = '')")
@@ -90,6 +91,22 @@ async def get_analytics():
         for r in c.fetchall()
     ]
 
+    # Top pages missing EN (for detail)
+    c.execute("""
+        SELECT id, title, path, last_modified
+        FROM webbot_page
+        WHERE path LIKE '/canadasite/fr/%'
+          AND (other_language_path IS NULL OR other_language_path = '')
+          AND status = 'published'
+          AND (json_extract(metadata, '$.redirect_to') IS NULL OR json_extract(metadata, '$.redirect_to') = '')
+        ORDER BY last_modified DESC
+        LIMIT 20
+    """)
+    missing_en_list = [
+        {"id": r["id"], "title": r["title"], "path": r["path"], "last_modified": r["last_modified"]}
+        for r in c.fetchall()
+    ]
+
     # === Broken alternate-language references (other_language_path points to a page that does not exist) ===
     c.execute("""
         SELECT COUNT(*)
@@ -97,6 +114,7 @@ async def get_analytics():
         LEFT JOIN webbot_page q ON q.path = p.other_language_path
         WHERE p.other_language_path IS NOT NULL AND p.other_language_path != ''
           AND q.id IS NULL
+          AND p.status = 'published'
     """)
     broken_reference_count = c.fetchone()[0]
 
@@ -106,11 +124,36 @@ async def get_analytics():
         LEFT JOIN webbot_page q ON q.path = p.other_language_path
         WHERE p.other_language_path IS NOT NULL AND p.other_language_path != ''
           AND q.id IS NULL
+          AND p.status = 'published'
         ORDER BY p.last_modified DESC
         LIMIT 20
     """)
     broken_references = [
-        {"path": r["path"], "title": r["title"], "other_language_path": r["other_language_path"], "last_modified": r["last_modified"]}
+        {"path": r["path"], "title": r["title"], "other_language_url": _strip_site_prefix(r["other_language_path"]), "last_modified": r["last_modified"]}
+        for r in c.fetchall()
+    ]
+
+    # === Redirect pages (metadata.redirect_to set) ===
+    c.execute("""
+        SELECT COUNT(*)
+        FROM webbot_page
+        WHERE json_extract(metadata, '$.redirect_to') IS NOT NULL
+          AND json_extract(metadata, '$.redirect_to') != ''
+    """)
+    redirect_count = c.fetchone()[0]
+
+    c.execute("""
+        SELECT id, title, path, last_modified,
+               json_extract(metadata, '$.redirect_to') AS redirect_to
+        FROM webbot_page
+        WHERE json_extract(metadata, '$.redirect_to') IS NOT NULL
+          AND json_extract(metadata, '$.redirect_to') != ''
+        ORDER BY last_modified DESC
+        LIMIT 20
+    """)
+    redirect_pages = [
+        {"id": r["id"], "title": r["title"], "path": r["path"],
+         "redirect_to": r["redirect_to"], "last_modified": r["last_modified"]}
         for r in c.fetchall()
     ]
 
@@ -191,8 +234,13 @@ async def get_analytics():
             "fr_missing_en": fr_missing_en,
             "fr_missing_en_percent": round(fr_missing_en / fr * 100, 1) if fr else 0,
             "recent_missing_fr": missing_fr_list,
+            "recent_missing_en": missing_en_list,
             "broken_reference_count": broken_reference_count,
             "broken_references": broken_references,
+        },
+        redirects={
+            "count": redirect_count,
+            "pages": redirect_pages,
         },
         templates=template_data,
         tag_usage={
@@ -209,3 +257,57 @@ async def get_analytics():
             "threshold_is": threshold,
         },
     )
+
+
+@router.get("/broken-links")
+async def get_broken_links(prefix: str = "", limit: int = 50, offset: int = 0):
+    """List pages whose other_language_path points to a page that does not exist in the DB.
+    Optional `prefix` filters by page path prefix (e.g. /canadasite/en/)."""
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+    conn = get_db()
+    c = conn.cursor()
+    # Escape LIKE wildcards so the prefix is matched literally
+    esc_prefix = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    like_pattern = esc_prefix + "%"
+
+    c.execute("""
+        SELECT COUNT(*)
+        FROM webbot_page p
+        LEFT JOIN webbot_page q ON q.path = p.other_language_path
+        WHERE p.other_language_path IS NOT NULL AND p.other_language_path != ''
+          AND q.id IS NULL
+          AND p.status = 'published'
+          AND p.path LIKE ? ESCAPE '\\'
+    """, (like_pattern,))
+    total = c.fetchone()[0]
+
+    c.execute("""
+        SELECT p.path, p.title, p.other_language_path, p.last_modified, p.status
+        FROM webbot_page p
+        LEFT JOIN webbot_page q ON q.path = p.other_language_path
+        WHERE p.other_language_path IS NOT NULL AND p.other_language_path != ''
+          AND q.id IS NULL
+          AND p.status = 'published'
+          AND p.path LIKE ? ESCAPE '\\'
+        ORDER BY p.path
+        LIMIT ? OFFSET ?
+    """, (like_pattern, limit, offset))
+    rows = [
+        {"path": r["path"], "title": r["title"], "other_language_url": _strip_site_prefix(r["other_language_path"]),
+         "last_modified": r["last_modified"], "status": r["status"]}
+        for r in c.fetchall()
+    ]
+    return {
+        "prefix": prefix,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "broken_links": rows,
+    }
+
+def _strip_site_prefix(path):
+    """Remove the /canadasite prefix from a path (e.g. /canadasite/en/x -> /en/x)."""
+    if path and path.startswith('/canadasite'):
+        return path[len('/canadasite'):]
+    return path

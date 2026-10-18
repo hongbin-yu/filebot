@@ -3,6 +3,24 @@
         const editorjsVersion = '20260522-1';
         // API configuration
         const API_BASE = '/api/v1/pages';
+        // Published-site domain — per-environment, loaded from template static data
+        // (getheader-preview data.domain). Falls back to prod canadasite domain.
+        let PUBLISHED_DOMAIN = 'https://canadasite.webfilebot.com';
+        async function loadPublishedDomain() {
+            try {
+                const resp = await fetch('/api/v1/pages/template-data?path=' + encodeURIComponent('/canadasite/mustache-templates/getheader-preview'));
+                if (!resp.ok) return;
+                const payload = await resp.json();
+                const cfg = (payload && payload.data) || {};
+                const domain = cfg.domain || (cfg.labels && cfg.labels.live_site) || null;
+                if (domain) {
+                    PUBLISHED_DOMAIN = String(domain).replace(/\/+$/, '');
+                    console.log('[Editor] PUBLISHED_DOMAIN =', PUBLISHED_DOMAIN);
+                }
+            } catch (e) {
+                console.warn('[Editor] failed to load published domain:', e);
+            }
+        }
         let currentPageId = null;
         let currentPageData = null;
         // Breadcrumb titles to skip (root-level home pages)
@@ -47,6 +65,8 @@
         // Display elements
         const pageTitleDisplayEl = document.querySelector('#page-title-display');
         const pageIdDisplayEl = document.querySelector('#page-id-display');
+        const importCanadaUrlBtn = document.getElementById('import-canada-url-btn');
+        let currentPagePathForImport = '';  // current page.path (e.g. /canadasite/en/xxx)
         const pageLanguageDisplayEl = document.querySelector('#page-language-display');
         const pageStatusDisplayEl = document.querySelector('#page-status-display');
         const pageApprovalDisplayEl = document.querySelector('#page-approval-display');
@@ -57,9 +77,110 @@
         const savePageTopBtn = document.getElementById('save-page-top');
         const breadcrumbEl = document.querySelector('#wb-bc .breadcrumb');
 
+        // ===== One-click import canada.ca page (GET proxy → FileBot import-url) =====
+        // Build canada.ca URL from page path: /canadasite/en/xxx → https://www.canada.ca/en/xxx.html
+        function buildCanadaCaUrl(path) {
+            if (!path) return '';
+            var p = String(path).replace(/^\/(canadasite|site|www)\/?/, '/');
+            p = p.replace(/\.html?$/i, '');
+            if (p && p.charAt(0) !== '/') p = '/' + p;
+            return 'https://www.canada.ca' + p + '.html';
+        }
+
+        // Show/hide the import button and remember the current page path.
+        function updateImportCanadaBtn(path) {
+            currentPagePathForImport = path || '';
+            if (!importCanadaUrlBtn) return;
+            if (currentPagePathForImport) {
+                importCanadaUrlBtn.style.display = 'inline-block';
+                importCanadaUrlBtn.title = 'Import ' + buildCanadaCaUrl(currentPagePathForImport);
+            } else {
+                importCanadaUrlBtn.style.display = 'none';
+            }
+        }
+
+        function confirmImport(targetUrl) {
+            return new Promise(function(resolve) {
+                if (typeof window.showWetConfirm === 'function') {
+                    window.showWetConfirm('Import from canada.ca?\n\n' + targetUrl, function(confirmed) {
+                        resolve(!!confirmed);
+                    });
+                } else {
+                    resolve(confirm('Import from canada.ca?\n\n' + targetUrl));
+                }
+            });
+        }
+
+        async function onImportCanadaUrlClick() {
+            if (!currentPagePathForImport) {
+                showError('No page path to import.');
+                return;
+            }
+            var targetUrl = buildCanadaCaUrl(currentPagePathForImport);
+            if (!targetUrl) {
+                showError('Could not build canada.ca URL from path.');
+                return;
+            }
+            if (!(await confirmImport(targetUrl))) return;
+
+            importCanadaUrlBtn.disabled = true;
+            importCanadaUrlBtn.textContent = '⏳ Importing…';
+            try {
+                var resp = await fetch('/api/v1/import-canada-url?url=' + encodeURIComponent(targetUrl));
+                var data = null;
+                try { data = await resp.json(); } catch (e) {}
+                if (!resp.ok) {
+                    var detail = (data && (data.detail || data.error)) || ('HTTP ' + resp.status);
+                    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+                }
+                var msg = (data && data.title) ? ('Imported: ' + data.title) : 'Imported successfully.';
+                if (data && data.path) msg += '\nPath: ' + data.path;
+                if (data && data.fetched_from && data.fetched_from !== targetUrl) msg += '\nResolved: ' + data.fetched_from;
+                showWetAlert(msg);
+            } catch (err) {
+                showError('Import failed: ' + err.message);
+            } finally {
+                importCanadaUrlBtn.disabled = false;
+                importCanadaUrlBtn.textContent = '📥 Import canada.ca';
+            }
+        }
+
+        if (importCanadaUrlBtn) {
+            importCanadaUrlBtn.addEventListener('click', onImportCanadaUrlClick);
+        }
+
+        // Build the published static URL for a page (mirrors publish flow URL construction)
+        function buildPublishedPageUrl(path) {
+            if (!path) return '';
+            var p = String(path).replace(/^\/(canadasite|site|www)\/?/, '/');
+            return PUBLISHED_DOMAIN + p.replace(/^\//, '/') + '.html';
+        }
+
+        // Set the page title in the info bar as a link to the published static page
+        function setPageTitleLink(page) {
+            var title = (page && (page.title || page.id)) || 'Untitled';
+            var url = buildPublishedPageUrl(page && (page.path || page.id));
+            pageTitleDisplayEl.innerHTML = '';
+            if (url) {
+                var a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.title = 'Open published page';
+                a.style.color = 'inherit';
+                a.style.textDecoration = 'none';
+                a.textContent = title;
+                pageTitleDisplayEl.appendChild(a);
+            } else {
+                pageTitleDisplayEl.textContent = title;
+            }
+        }
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('WebBot Editor initialized');
+            // Load per-environment published-site domain (title link + publish redirect)
+            loadPublishedDomain();
             // Setup translate button (register handlers, will hide by default)
             setupTranslateButton();
             // Initialize components sidebar on page load
@@ -621,11 +742,11 @@
                     'insertdatetime', 'media', 'table', 'help', 'wordcount',
                     'pagebreak'
                 ],
-                toolbar: 'accessibilityCheck | undo redo | styleselect | bold italic underline | ' +
+                toolbar: 'spellcheck | accessibilityCheck | undo redo | styleselect | bold italic underline | ' +
                          'alignleft aligncenter alignright alignjustify | ' +
                          'bullist numlist outdent indent | link image media table | ' +
                          'blockquote pagebreak | charmap preview searchreplace visualblocks | ' +
-                         'code fullscreen help | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertFeatures insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | insertByPath | deleteComponent | aiAssistant | ',
+                         'code fullscreen help | insertGcdsCard insertGcdsButton insertGcdsText | insertButton insertTable insertAlert insertBreadcrumb insertSidebar insertFooter insertSearch insertIntroduction insertIntroFullImage insertIntroHalfImage insertMostRequested insertFeatureLink insertGovernmentInitiatives insertFeatures insertServicesInfo3col insertServicesInfo2col insertServicesInfoList insertFeatureLinkDark insertFeatureLinkLight insertFeatureLinkGray | insertByPath | deleteComponent | aiAssistant | ',
                 content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px } .mceNonEditable { background:#f3f3f3 !important; outline:1px dashed #bbb !important; cursor:not-allowed; }',
                 // (noneditable plugin removed: not shipped in the official TinyMCE 6.8.2 package,
                 //  404 warning only; locked-region behavior is handled by SetContent + contenteditable=false)
@@ -832,9 +953,17 @@ cleanup: false,
                         text: '📄 Insert by Path',
                         tooltip: 'Fetch a page by path and insert its content at cursor',
                         onAction: function() {
-                            const path = prompt('Enter page path to insert\n(e.g. /en/contact or contact):');
-                            if (path && path.trim()) {
-                                insertPath(path.trim());
+                            if (typeof window.showWetPrompt === 'function') {
+                                window.showWetPrompt('Enter page path to insert\n(e.g. /en/contact or contact):', '', function(path) {
+                                    if (path && path.trim()) {
+                                        insertPath(path.trim());
+                                    }
+                                });
+                            } else {
+                                const path = prompt('Enter page path to insert\n(e.g. /en/contact or contact):');
+                                if (path && path.trim()) {
+                                    insertPath(path.trim());
+                                }
                             }
                         }
                     });
@@ -991,6 +1120,30 @@ cleanup: false,
                         }
                     });
 
+                    editor.ui.registry.addButton('insertGcdsCard', {
+                        text: '🃏',
+                        tooltip: 'Insert GCDS Card',
+                        onAction: function() {
+                            insertComponent('gcds-card');
+                        }
+                    });
+
+                    editor.ui.registry.addButton('insertGcdsButton', {
+                        text: '🔘',
+                        tooltip: 'Insert GCDS Button',
+                        onAction: function() {
+                            insertComponent('gcds-button');
+                        }
+                    });
+
+                    editor.ui.registry.addButton('insertGcdsText', {
+                        text: '📝',
+                        tooltip: 'Insert GCDS Text',
+                        onAction: function() {
+                            insertComponent('gcds-text');
+                        }
+                    });
+
                     editor.ui.registry.addButton('deleteComponent', {
                         icon: 'trash',
                         tooltip: 'Delete Component',
@@ -1018,6 +1171,19 @@ cleanup: false,
                         }
                     });
 
+                    // Spell Check button (offline Hunspell, en_CA/fr_CA)
+                    editor.ui.registry.addButton('spellcheck', {
+                        text: 'Spell',
+                        tooltip: 'Spell check (offline en_CA/fr_CA)',
+                        onAction: function() {
+                            if (window.runSpellCheck) {
+                                window.runSpellCheck(editor);
+                            } else {
+                                console.warn('[spellcheck] runSpellCheck not loaded');
+                            }
+                        }
+                    });
+
                     // Accessibility Check button using aXe-core
                     // Alternative: use toolbar button API instead (more explicit for TinyMCE 6)
                     // Register accessibility check button
@@ -1030,8 +1196,7 @@ cleanup: false,
                                 runAccessibilityCheck(editor);
                             }
                         });
-                        // Verify it was added
-                        console.log('[A11Y] Button registered. Available:', !!editor.ui.registry.get('accessibilityCheck'));
+                        console.log('[A11Y] Button registered.');
                     } catch(e) {
                         console.error('[A11Y] Button registration failed:', e.message);
                     }
@@ -1237,6 +1402,7 @@ cleanup: false,
             pageApprovalDisplayEl.textContent = '';
             pageLockDisplayEl.textContent = '';
             filePathDisplayEl.textContent = '';
+            updateImportCanadaBtn('');
             lastModifiedDisplayEl.textContent = '';
             pagePublishedDisplayEl.textContent = '';
 
@@ -2060,7 +2226,7 @@ cleanup: false,
                 loadPagesForSidebar(pagePath);
 
                 // Update display
-                pageTitleDisplayEl.textContent = page.title || 'Untitled';
+                setPageTitleLink(page);
                 pageLanguageDisplayEl.textContent = ` | Language: ${page.language ? page.language.toUpperCase() : 'EN'}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${page.status || 'draft'}`;
                 lastModifiedDisplayEl.textContent = formatLastModified(page.last_modified);
@@ -2098,6 +2264,8 @@ cleanup: false,
                 } else {
                     pageIdDisplayEl.textContent = ` | ID: ${page.id}`;
                 }
+                // Show/hide the canada.ca import button (always based on logical page.path)
+                updateImportCanadaBtn(page.path || '');
                 filePathDisplayEl.textContent = '';
                 filePathDisplayEl.style.color = '';
                 filePathDisplayEl.style.fontWeight = '';
@@ -2144,8 +2312,14 @@ cleanup: false,
                     var pageLocationDAM = effectiveFilePathInfo.file_path || (page.path ? page.path.replace('/canadasite/', '/canadasite/content/dam/') : '');
                     if (rpInput && pageLocationDAM) {
                         rpInput.value = pageLocationDAM;
-                        // Folder defaults to file_path but stays user-editable
-                        if (rfInput) rfInput.value = pageLocationDAM;
+                        // Folder is now a dropdown: load current folder + subfolders
+                        if (rfInput) {
+                            if (typeof window.loadResourceFolderDropdown === 'function') {
+                                window.loadResourceFolderDropdown(pageLocationDAM);
+                            } else {
+                                rfInput.value = pageLocationDAM;
+                            }
+                        }
                         // Trigger re-search if sidebar is open
                         var rs = document.getElementById('resource-sidebar');
                         if (rs && !rs.classList.contains('hidden')) {
@@ -2234,6 +2408,11 @@ cleanup: false,
                 console.error('Error stack:', error.stack);
                 console.error('Error occurred in loadPage with pageId:', pageId);
                 showError(`Failed to load page: ${error.message}`);
+                // Page not found (e.g. missing other-language page): still show the
+                // one-click import button so the user can pull the page from canada.ca.
+                if (pageId && pageId.includes('/')) {
+                    updateImportCanadaBtn(pageId);
+                }
             }
         }
 
@@ -2255,6 +2434,37 @@ cleanup: false,
                 if (!iframe) return;
                 const doc = iframe.contentDocument || iframe.contentWindow.document;
                 if (!doc) return;
+
+                // 拦截 GCDS 卡（<gcds-card href>）在编辑器内的点击跳转：
+                // 改为选中该组件，防止 iframe 被导航到目标网页导致页面无法编辑。
+                // capture 阶段 + composedPath，在 gcds-card 内部 link/JS 跳转前阻断。
+                if (!doc.__gcdsCardInterceptInstalled) {
+                    doc.__gcdsCardInterceptInstalled = true;
+                    var GCDS_EDITABLE = { 'gcds-card': 1, 'gcds-button': 1, 'gcds-link': 1, 'gcds-text': 1 };
+                    doc.addEventListener('click', function(e) {
+                        var path = (e.composedPath && e.composedPath()) || [];
+                        var el = null;
+                        for (var i = path.length - 1; i >= 0; i--) {
+                            var node = path[i];
+                            if (node && node.nodeType === 1) {
+                                var tag = String(node.tagName).toLowerCase();
+                                if (GCDS_EDITABLE[tag]) {
+                                    el = node;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!el) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        try {
+                            tinyMceEditor.selection.select(el);
+                            tinyMceEditor.nodeChanged();
+                        } catch (err) {}
+                        // 打开 GCDS 组件可视化属性编辑面板
+                        openGcdsElementEditor(tinyMceEditor, el);
+                    }, true);
+                }
 
                 // Remove previously injected template CSS (marked with data-template-css)
                 const oldLinks = doc.querySelectorAll('link[data-template-css]');
@@ -3797,7 +4007,7 @@ cleanup: false,
                     window.currentPageData = pageToDisplay;
 
                     // Update display
-                    pageTitleDisplayEl.textContent = pageToDisplay.title || title;
+                    setPageTitleLink(pageToDisplay);
                     pageIdDisplayEl.textContent = ' | Path: ' + (pageToDisplay.metadata?.file_path || pageToDisplay.id || '');
                     pageLanguageDisplayEl.textContent = ' | Language: ' + (pageToDisplay.language || language).toUpperCase();
                     pageStatusDisplayEl.textContent = ' | Status: ' + (pageToDisplay.status || 'draft');
@@ -4040,7 +4250,7 @@ cleanup: false,
                 errorAreaEl.style.display = 'none';
 
                 // Update display
-                pageTitleDisplayEl.textContent = updatedData.title;
+                setPageTitleLink(currentPageData);
                 pageLanguageDisplayEl.textContent = ` | Language: ${updatedData.language.toUpperCase()}`;
                 pageStatusDisplayEl.textContent = ` | Status: ${updatedData.status}`;
                 lastModifiedDisplayEl.textContent = formatLastModified(updatedData.last_modified);
@@ -4172,9 +4382,6 @@ cleanup: false,
                 return;
             }
 
-            // Save before publishing
-            await savePage();
-
             const path = currentPageData.path || currentPageId;
             const originalText = publishPageBtn.textContent;
             publishPageBtn.disabled = true;
@@ -4199,13 +4406,13 @@ cleanup: false,
 
                 const result = await response.json();
 
-                // Update local page data with publish status
+                // Update local page data with publish status.
+                // Publish must NOT touch last_modified (it stays at content edit time).
                 currentPageData.status = 'published';
                 currentPageData.last_published = result.published_at;
-                currentPageData.last_modified = result.published_at;
                 // Refresh display
                 pageStatusDisplayEl.textContent = ' | Status: published';
-                lastModifiedDisplayEl.textContent = formatLastModified(result.last_modified || result.published_at);
+                lastModifiedDisplayEl.textContent = formatLastModified(currentPageData.last_modified);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(result.published_at);
                 // Published → no longer needs republish, hide banner
                 updateRepublishBanner(null);
@@ -4218,7 +4425,7 @@ cleanup: false,
                 // Open the published static page directly on the public site (no alert)
                 // Strip site prefix (canadasite/site/www) since publish output is /en/xxx.html
                 const publishPath = path.replace(/^\/(canadasite|site|www)\/?/, '/');
-                const pageUrl = 'https://canadasite.webfilebot.com' + publishPath.replace(/^\//, '/') + '.html';
+                const pageUrl = PUBLISHED_DOMAIN + publishPath.replace(/^\//, '/') + '.html';
                 window.open(pageUrl, '_blank');
 
             } catch (error) {
@@ -6262,6 +6469,15 @@ cleanup: false,
             }
 
             switch(parsedType) {
+                case 'gcds-card':
+                    componentHtml = '<gcds-card card-title="Card title" href="#"><gcds-text>Card description text.</gcds-text></gcds-card>';
+                    break;
+                case 'gcds-button':
+                    componentHtml = '<gcds-button button-role="primary" href="#">Button label</gcds-button>';
+                    break;
+                case 'gcds-text':
+                    componentHtml = '<gcds-text text-role="primary">Text content</gcds-text>';
+                    break;
                 case 'button':
                     componentHtml = makeButtonHtml(parsedColor || 'primary');
                     break;
@@ -6853,6 +7069,11 @@ cleanup: false,
             let normalizedPath = path.trim();
             if (!normalizedPath.startsWith('/')) {
                 normalizedPath = '/' + normalizedPath;
+            }
+            // DB stores full paths with a leading /canadasite segment; if the
+            // user omitted it, prepend it so the lookup matches.
+            if (normalizedPath !== '/canadasite' && !normalizedPath.startsWith('/canadasite/')) {
+                normalizedPath = '/canadasite' + normalizedPath;
             }
 
             console.log('insertPath called with path:', normalizedPath);
@@ -8279,7 +8500,7 @@ cleanup: false,
         console.log('[URL Config] 配置已加载');
 
 
-        const FILEBOT_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZGFkNmZhMS1kNTIxLTQxN2YtODg3Ny1lZmU5NWZjZjFmMDQiLCJleHAiOjIwOTc1MDM2NzJ9.VV_L_o6J1Z1GSkVU8X-A2i09iXZ5GCWNFBRjcgytP-c';
+        const FILEBOT_JWT_TOKEN = (function(){ try { return localStorage.getItem('access_token') || ''; } catch(e){ return ''; } })();
 
         // Convert FileBot document to file manager format
         function convertDocumentToFile(doc) {
@@ -13307,12 +13528,56 @@ cleanup: false,
                 var path = getCurrentPathPrefix();
                 if (path) {
                     pathInput.value = path;
-                    // Folder defaults to file_path but stays user-editable
-                    if (folderInput) folderInput.value = path;
+                    // Folder is now a dropdown: load current folder + its subfolders
+                    loadFolderDropdown(path);
                     loadAICategories();
                     loadDocAITags();
                 }
             }
+
+            // Load folder dropdown options: current folder + its subfolders (+ parent for going up)
+            async function loadFolderDropdown(path) {
+                if (!folderInput || folderInput.tagName !== 'SELECT') return;
+                var p = path || folderInput.value || '';
+                try {
+                    var params = new URLSearchParams();
+                    if (p) params.append('path', p);
+                    var resp = await fetch('/content/folders/?' + params.toString(), { credentials: 'same-origin' });
+                    if (!resp.ok) return;
+                    var data = await resp.json();
+                    var current = data.current || p || '/';
+                    var parent = data.parent;
+                    var subs = data.subfolders || [];
+
+                    folderInput.innerHTML = '';
+
+                    // Option 1: go up to parent (if any)
+                    if (parent !== null && parent !== undefined && parent !== '') {
+                        var upOpt = document.createElement('option');
+                        upOpt.value = parent;
+                        upOpt.textContent = '⬆️ ' + parent;
+                        folderInput.appendChild(upOpt);
+                    }
+
+                    // Option 2: current folder (selected, shows this folder's images)
+                    var curOpt = document.createElement('option');
+                    curOpt.value = current;
+                    curOpt.textContent = '📂 ' + current;
+                    curOpt.selected = true;
+                    folderInput.appendChild(curOpt);
+
+                    // Options 3..: subfolders (drill down)
+                    subs.forEach(function(sub) {
+                        var opt = document.createElement('option');
+                        opt.value = sub;
+                        opt.textContent = '   📁 ' + sub.substring(sub.lastIndexOf('/') + 1);
+                        folderInput.appendChild(opt);
+                    });
+                } catch (err) {
+                    console.warn('Failed to load folder dropdown:', err);
+                }
+            }
+            window.loadResourceFolderDropdown = loadFolderDropdown;
 
             // Trigger search
             function doSearch() {
@@ -14041,6 +14306,11 @@ cleanup: false,
             }
 
             // -------- Pages (department-level) --------
+            // Browse state: stack of paths. Bottom = department level, top = current level.
+            // Only one level is shown at a time (no tree view): Title click drills down,
+            // "< parent" link pops back up.
+            var pagesBrowseStack = [];
+
             async function searchPages(pathVal, titleVal) {
                 try {
                     // Extract department-level path (3rd level)
@@ -14050,19 +14320,35 @@ cleanup: false,
                         resultsEl.innerHTML = '<div class="resource-empty">Select a page first to see department pages.</div>';
                         return;
                     }
-
-                    var url = '/api/v1/pages/by-path/' + encodeURIComponent(deptPath) + '/children';
-                    if (titleVal) {
-                        url += '?title=' + encodeURIComponent(titleVal);
-                    }
-
-                    var resp = await fetch(url);
-                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                    var data = await resp.json();
-                    renderPageResults(data, deptPath);
+                    pagesBrowseStack = [deptPath];
+                    await loadPagesLevel(deptPath, titleVal);
                 } catch (e) {
                     resultsEl.innerHTML = '<div class="resource-error">❌ Error: ' + e.message + '</div>';
                 }
+            }
+
+            async function loadPagesLevel(browsePath, titleVal) {
+                var url = '/api/v1/pages/by-path/' + encodeURIComponent(browsePath) + '/children';
+                if (titleVal) {
+                    url += '?title=' + encodeURIComponent(titleVal);
+                }
+                var resp = await fetch(url);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var data = await resp.json();
+                var parentPath = pagesBrowseStack.length > 1 ? pagesBrowseStack[pagesBrowseStack.length - 2] : '';
+                renderPageResults(data, browsePath, parentPath);
+            }
+
+            async function browseToChildren(pagePath) {
+                if (!pagePath) return;
+                pagesBrowseStack.push(pagePath);
+                await loadPagesLevel(pagePath, '');
+            }
+
+            async function browseToParent() {
+                if (pagesBrowseStack.length <= 1) return;
+                pagesBrowseStack.pop();
+                await loadPagesLevel(pagesBrowseStack[pagesBrowseStack.length - 1], '');
             }
 
             function getDepartmentLevelPath(fullPath) {
@@ -14074,26 +14360,35 @@ cleanup: false,
                 return '/' + parts.slice(0, 3).join('/');
             }
 
-            function renderPageResults(data, deptPath) {
-                if (!data || data.length === 0) {
-                    resultsEl.innerHTML = '<div class="resource-empty">📑 No pages found under ' + deptPath + '</div>';
-                    return;
-                }
-
+            function renderPageResults(data, browsePath, parentPath) {
                 function addHtmlExt(p) { return p ? p + '.html' : p; }
                 // Strip .html extension for navigation
                 function stripHtmlExt(p) { return p ? p.replace(/\.html$/, '') : p; }
 
-                var html = '<div class="resource-info">📁 ' + deptPath + '</div>';
+                var html = '<div class="resource-info">';
+                if (parentPath) {
+                    html += '<a href="#" class="page-parent-link" title="Back to ' + parentPath + '">⬅ parent</a> ';
+                }
+                html += '📁 ' + browsePath + '</div>';
+
+                if (!data || data.length === 0) {
+                    html += '<div class="resource-empty">📑 No pages found under ' + browsePath + '</div>';
+                    resultsEl.innerHTML = html;
+                    bindParentLink();
+                    return;
+                }
+
                 html += '<div class="page-list">';
                 data.forEach(function(page) {
                     var title = page.title || page.name || '(untitled)';
                     var pagePath = page.path || '';
                     var pagePathHtml = addHtmlExt(pagePath);
-                    html += '<div class="page-card" data-path="' + pagePathHtml + '">';
+                    var hasChildren = page.has_children === true;
+                    var titleClass = hasChildren ? 'page-card-title page-card-title-link' : 'page-card-title';
+                    html += '<div class="page-card" data-path="' + pagePathHtml + '" data-rawpath="' + pagePath + '">';
                     html += '<div class="page-card-icon" title="Edit page">📄</div>';
                     html += '<div class="page-card-info">';
-                    html += '<div class="page-card-title" title="' + title + '">' + title + '</div>';
+                    html += '<div class="' + titleClass + '" title="' + (hasChildren ? (title + ' — click to open children') : title) + '">' + title + '</div>';
                     html += '<div class="page-card-path">' + pagePathHtml + '</div>';
                     html += '</div>';
                     html += '<button class="page-insert-btn" title="Insert page link into editor">🔗</button>';
@@ -14102,6 +14397,7 @@ cleanup: false,
                 html += '</div>';
 
                 resultsEl.innerHTML = html;
+                bindParentLink();
 
                 // Bind edit icon (📄) — click to navigate/edit the page
                 resultsEl.querySelectorAll('.page-card-icon').forEach(function(icon) {
@@ -14115,6 +14411,16 @@ cleanup: false,
                     });
                 });
 
+                // Bind title click — drill into the page's direct children
+                resultsEl.querySelectorAll('.page-card-title-link').forEach(function(titleEl) {
+                    titleEl.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var card = titleEl.closest('.page-card');
+                        var rawPath = card.dataset.rawpath;
+                        browseToChildren(rawPath);
+                    });
+                });
+
                 // Bind insert buttons (🔗) — insert link into editor
                 resultsEl.querySelectorAll('.page-insert-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
@@ -14125,6 +14431,16 @@ cleanup: false,
                         insertPageLink(path, title);
                     });
                 });
+            }
+
+            function bindParentLink() {
+                var parentLink = resultsEl.querySelector('.page-parent-link');
+                if (parentLink) {
+                    parentLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        browseToParent();
+                    });
+                }
             }
 
             function insertPageLink(path, title) {
@@ -14263,6 +14579,17 @@ cleanup: false,
             });
 
             searchBtn.addEventListener('click', doSearch);
+
+            // Folder dropdown navigation: select a folder -> load its subfolders + show its images
+            if (folderInput && folderInput.tagName === 'SELECT') {
+                folderInput.addEventListener('change', function() {
+                    var v = folderInput.value;
+                    if (!v) return;
+                    loadFolderDropdown(v);
+                    doSearch();
+                });
+            }
+
             searchInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') doSearch();
             });
@@ -14290,7 +14617,7 @@ cleanup: false,
             var _aiSources = [];
 
             function searchAIQA() {
-                var defaultProvider = 'openai';  // default to OpenAI (faster)
+                var defaultProvider = 'ollama';  // local Ollama (data stays on-prem)
                 // Show question input UI instead of normal search
                 // Check if page has description
                 var hasDescription = currentPageData && currentPageData.description && currentPageData.description.trim();
@@ -14309,8 +14636,7 @@ cleanup: false,
                     '  <textarea id="ai-question-input" class="form-control" rows="4" placeholder="e.g. How to apply for EI in Canada?" style="resize:vertical;width:100%;box-sizing:border-box;">' + escapeHtml(_aiQuestion) + '</textarea>' +
                     '  <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
                     '    <div class="btn-group btn-group-sm" role="group" style="display:inline-flex;">' +
-                    '      <button id="ai-provider-ollama-btn" class="btn btn-sm ai-provider-btn" data-provider="ollama" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:3px 0 0 3px;">🦙 Ollama</button>' +
-                    '      <button id="ai-provider-openai-btn" class="btn btn-sm ai-provider-btn" data-provider="openai" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:0 3px 3px 0;margin-left:-1px;">🤖 OpenAI</button>' +
+                    '      <button id="ai-provider-ollama-btn" class="btn btn-sm ai-provider-btn" data-provider="ollama" style="padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:3px;">🦙 Ollama</button>' +
                     '    </div>' +
                     '    <button id="ai-ask-btn" class="btn btn-primary btn-sm">🤖 Ask AI</button>' +
                     '    <button id="ai-insert-btn" class="btn btn-success btn-sm" style="display:' + (_aiAnswer ? 'inline-block' : 'none') + '">📥 Insert into Editor</button>' +
@@ -14447,10 +14773,10 @@ cleanup: false,
                 }, 1000);
 
                 // Determine provider from active toggle button
-                var _activeProvider = 'openai';
+                var _activeProvider = 'ollama';
                 var activeBtn = document.querySelector('.ai-provider-btn[style*="background: rgb(39, 128, 227)"]');
                 if (activeBtn) {
-                    _activeProvider = activeBtn.getAttribute('data-provider') || 'openai';
+                    _activeProvider = activeBtn.getAttribute('data-provider') || 'ollama';
                 }
 
                 try {
@@ -15188,6 +15514,397 @@ function applyMetadataFieldValue(el, value) {
     } else {
         el.textContent = String(value || '');
     }
+}
+
+function openGcdsCardEditor(editor, card) {
+    // 可视化编辑 GCDS 卡（<gcds-card>）的属性面板
+    if (!card) return;
+    var get = function(attr) { return card.getAttribute(attr) || ''; };
+    var descSlot = card.querySelector('gcds-text');
+
+    var items = [
+        { type: 'input', name: 'cardTitle', label: 'Card title' },
+        { type: 'input', name: 'href', label: 'Link (href)' },
+        { type: 'textarea', name: 'description', label: 'Description' },
+        { type: 'input', name: 'badge', label: 'Badge text' },
+        { type: 'input', name: 'imgSrc', label: 'Image URL (img-src)' },
+        { type: 'input', name: 'imgAlt', label: 'Image alt (img-alt)' },
+        {
+            type: 'selectbox', name: 'target', label: 'Open link in',
+            items: [
+                { text: 'Same tab (default)', value: '' },
+                { text: 'New tab', value: '_blank' },
+                { text: 'Same tab', value: '_self' }
+            ]
+        },
+        {
+            type: 'selectbox', name: 'cardTitleTag', label: 'Title heading level',
+            items: [
+                { text: 'Default', value: '' },
+                { text: 'h2', value: 'h2' },
+                { text: 'h3', value: 'h3' },
+                { text: 'h4', value: 'h4' }
+            ]
+        }
+    ];
+
+    var initialData = {
+        cardTitle: get('card-title'),
+        href: get('href'),
+        description: descSlot ? (descSlot.textContent || '') : get('description'),
+        badge: get('badge'),
+        imgSrc: get('img-src'),
+        imgAlt: get('img-alt'),
+        target: get('target'),
+        cardTitleTag: get('card-title-tag')
+    };
+
+    editor.windowManager.open({
+        title: '🃏 GCDS Card',
+        body: { type: 'panel', items: items },
+        initialData: initialData,
+        buttons: [
+            { type: 'custom', name: 'duplicate', text: 'Duplicate', icon: 'copy', align: 'start' },
+            { type: 'custom', name: 'delete', text: 'Delete', icon: 'trash', align: 'start' },
+            { type: 'cancel', name: 'close', text: 'Cancel' },
+            { type: 'submit', name: 'save', text: 'Save', primary: true }
+        ],
+        onAction: function(api, details) {
+            if (details && details.name === 'duplicate') {
+                api.close();
+                duplicateGcdsElement(editor, card);
+            } else if (details && details.name === 'delete') {
+                api.close();
+                deleteGcdsElement(editor, card);
+            }
+        },
+        onSubmit: function(api) {
+            var data = api.getData();
+            var mapping = {
+                cardTitle: 'card-title',
+                href: 'href',
+                badge: 'badge',
+                imgSrc: 'img-src',
+                imgAlt: 'img-alt',
+                target: 'target',
+                cardTitleTag: 'card-title-tag'
+            };
+            Object.keys(mapping).forEach(function(key) {
+                var val = String(data[key] == null ? '' : data[key]).trim();
+                if (val) {
+                    card.setAttribute(mapping[key], val);
+                } else {
+                    card.removeAttribute(mapping[key]);
+                }
+            });
+            // Description 优先写 <gcds-text> slot 内容；无 slot 时回退 description 属性
+            var descVal = String(data.description == null ? '' : data.description).trim();
+            if (descSlot) {
+                descSlot.textContent = descVal;
+            } else if (descVal) {
+                card.setAttribute('description', descVal);
+            } else {
+                card.removeAttribute('description');
+            }
+            api.close();
+            editor.fire('change');
+        }
+    });
+}
+
+function deleteGcdsElement(editor, el) {
+    // 删除选中的 GCDS 组件
+    if (!el || !el.parentNode) return;
+    editor.dom.remove(el);
+    editor.undoManager.add();
+    editor.nodeChanged();
+    editor.fire('change');
+}
+
+function duplicateGcdsElement(editor, el) {
+    // 复制选中的 GCDS 组件（插入到原组件之后）
+    if (!el || !el.parentNode) return;
+    var clone = el.cloneNode(true);
+    editor.dom.insertAfter(clone, el);
+    editor.undoManager.add();
+    editor.nodeChanged();
+    editor.fire('change');
+}
+
+function openGcdsElementEditor(editor, el) {
+    // 按 GCDS 组件类型分派到对应属性面板
+    if (!el) return;
+    var tag = String(el.tagName).toLowerCase();
+    if (tag === 'gcds-card') {
+        openGcdsCardEditor(editor, el);
+    } else if (tag === 'gcds-button') {
+        openGcdsButtonEditor(editor, el);
+    } else if (tag === 'gcds-text') {
+        openGcdsTextEditor(editor, el);
+    } else if (tag === 'gcds-link') {
+        openGcdsLinkEditor(editor, el);
+    }
+}
+
+function openGcdsButtonEditor(editor, btn) {
+    // 可视化编辑 GCDS 按钮（<gcds-button>）：文字是 slot 内容，其余为 attribute
+    if (!btn) return;
+    var get = function(attr) { return btn.getAttribute(attr) || ''; };
+
+    var items = [
+        { type: 'input', name: 'label', label: 'Button label' },
+        {
+            type: 'selectbox', name: 'buttonRole', label: 'Button role',
+            items: [
+                { text: 'Primary (default)', value: '' },
+                { text: 'Secondary', value: 'secondary' },
+                { text: 'Danger', value: 'danger' },
+                { text: 'Destructive', value: 'destructive' },
+                { text: 'Skip link', value: 'skip' },
+                { text: 'Link style', value: 'link' }
+            ]
+        },
+        { type: 'input', name: 'href', label: 'Link (href)' },
+        {
+            type: 'selectbox', name: 'target', label: 'Open link in',
+            items: [
+                { text: 'Same tab (default)', value: '' },
+                { text: 'New tab', value: '_blank' },
+                { text: 'Same tab', value: '_self' }
+            ]
+        },
+        {
+            type: 'selectbox', name: 'size', label: 'Size',
+            items: [
+                { text: 'Regular (default)', value: '' },
+                { text: 'Small', value: 'small' }
+            ]
+        },
+        {
+            type: 'selectbox', name: 'type', label: 'Button type',
+            items: [
+                { text: 'Default', value: '' },
+                { text: 'button', value: 'button' },
+                { text: 'submit', value: 'submit' },
+                { text: 'reset', value: 'reset' }
+            ]
+        }
+    ];
+
+    var initialData = {
+        label: btn.textContent || '',
+        buttonRole: get('button-role'),
+        href: get('href'),
+        target: get('target'),
+        size: get('size'),
+        type: get('type')
+    };
+
+    editor.windowManager.open({
+        title: '🔘 GCDS Button',
+        body: { type: 'panel', items: items },
+        initialData: initialData,
+        buttons: [
+            { type: 'custom', name: 'duplicate', text: 'Duplicate', icon: 'copy', align: 'start' },
+            { type: 'custom', name: 'delete', text: 'Delete', icon: 'trash', align: 'start' },
+            { type: 'cancel', name: 'close', text: 'Cancel' },
+            { type: 'submit', name: 'save', text: 'Save', primary: true }
+        ],
+        onAction: function(api, details) {
+            if (details && details.name === 'duplicate') {
+                api.close();
+                duplicateGcdsElement(editor, btn);
+            } else if (details && details.name === 'delete') {
+                api.close();
+                deleteGcdsElement(editor, btn);
+            }
+        },
+        onSubmit: function(api) {
+            var data = api.getData();
+            btn.textContent = String(data.label == null ? '' : data.label);
+            var mapping = {
+                buttonRole: 'button-role',
+                href: 'href',
+                target: 'target',
+                size: 'size',
+                type: 'type'
+            };
+            Object.keys(mapping).forEach(function(key) {
+                var val = String(data[key] == null ? '' : data[key]).trim();
+                if (val) {
+                    btn.setAttribute(mapping[key], val);
+                } else {
+                    btn.removeAttribute(mapping[key]);
+                }
+            });
+            api.close();
+            editor.fire('change');
+        }
+    });
+}
+
+function openGcdsTextEditor(editor, txt) {
+    // 可视化编辑 GCDS 文本（<gcds-text>）：文字是 slot 内容，其余为 attribute
+    if (!txt) return;
+    var get = function(attr) { return txt.getAttribute(attr) || ''; };
+
+    var items = [
+        { type: 'textarea', name: 'content', label: 'Text content' },
+        {
+            type: 'selectbox', name: 'textRole', label: 'Text role',
+            items: [
+                { text: 'Primary (default)', value: '' },
+                { text: 'Secondary', value: 'secondary' },
+                { text: 'Light', value: 'light' },
+                { text: 'Danger', value: 'danger' },
+                { text: 'Text primary', value: 'text-primary' },
+                { text: 'Text secondary', value: 'text-secondary' },
+                { text: 'Text light', value: 'text-light' },
+                { text: 'Text danger', value: 'text-danger' }
+            ]
+        },
+        {
+            type: 'selectbox', name: 'display', label: 'Display',
+            items: [
+                { text: 'Default', value: '' },
+                { text: 'Block', value: 'block' },
+                { text: 'Inline', value: 'inline' },
+                { text: 'Inline block', value: 'inline-block' },
+                { text: 'Flex', value: 'flex' }
+            ]
+        },
+        {
+            type: 'selectbox', name: 'size', label: 'Size',
+            items: [
+                { text: 'Regular (default)', value: '' },
+                { text: 'Small', value: 'small' },
+                { text: 'Large', value: 'large' }
+            ]
+        }
+    ];
+
+    var initialData = {
+        content: txt.textContent || '',
+        textRole: get('text-role'),
+        display: get('display'),
+        size: get('size')
+    };
+
+    editor.windowManager.open({
+        title: '📝 GCDS Text',
+        body: { type: 'panel', items: items },
+        initialData: initialData,
+        buttons: [
+            { type: 'custom', name: 'duplicate', text: 'Duplicate', icon: 'copy', align: 'start' },
+            { type: 'custom', name: 'delete', text: 'Delete', icon: 'trash', align: 'start' },
+            { type: 'cancel', name: 'close', text: 'Cancel' },
+            { type: 'submit', name: 'save', text: 'Save', primary: true }
+        ],
+        onAction: function(api, details) {
+            if (details && details.name === 'duplicate') {
+                api.close();
+                duplicateGcdsElement(editor, txt);
+            } else if (details && details.name === 'delete') {
+                api.close();
+                deleteGcdsElement(editor, txt);
+            }
+        },
+        onSubmit: function(api) {
+            var data = api.getData();
+            txt.textContent = String(data.content == null ? '' : data.content);
+            var mapping = {
+                textRole: 'text-role',
+                display: 'display',
+                size: 'size'
+            };
+            Object.keys(mapping).forEach(function(key) {
+                var val = String(data[key] == null ? '' : data[key]).trim();
+                if (val) {
+                    txt.setAttribute(mapping[key], val);
+                } else {
+                    txt.removeAttribute(mapping[key]);
+                }
+            });
+            api.close();
+            editor.fire('change');
+        }
+    });
+}
+
+function openGcdsLinkEditor(editor, link) {
+    // 可视化编辑 GCDS 链接（<gcds-link>）：文字是 slot 内容，其余为 attribute
+    if (!link) return;
+    var get = function(attr) { return link.getAttribute(attr) || ''; };
+
+    var items = [
+        { type: 'input', name: 'label', label: 'Link label' },
+        { type: 'input', name: 'href', label: 'Link (href)' },
+        {
+            type: 'selectbox', name: 'target', label: 'Open link in',
+            items: [
+                { text: 'Same tab (default)', value: '' },
+                { text: 'New tab', value: '_blank' },
+                { text: 'Same tab', value: '_self' }
+            ]
+        },
+        {
+            type: 'selectbox', name: 'linkRole', label: 'Link role',
+            items: [
+                { text: 'Default', value: '' },
+                { text: 'Primary', value: 'primary' },
+                { text: 'Secondary', value: 'secondary' },
+                { text: 'Light', value: 'light' },
+                { text: 'Danger', value: 'danger' }
+            ]
+        }
+    ];
+
+    var initialData = {
+        label: link.textContent || '',
+        href: get('href'),
+        target: get('target'),
+        linkRole: get('link-role')
+    };
+
+    editor.windowManager.open({
+        title: '🔗 GCDS Link',
+        body: { type: 'panel', items: items },
+        initialData: initialData,
+        buttons: [
+            { type: 'custom', name: 'duplicate', text: 'Duplicate', icon: 'copy', align: 'start' },
+            { type: 'custom', name: 'delete', text: 'Delete', icon: 'trash', align: 'start' },
+            { type: 'cancel', name: 'close', text: 'Cancel' },
+            { type: 'submit', name: 'save', text: 'Save', primary: true }
+        ],
+        onAction: function(api, details) {
+            if (details && details.name === 'duplicate') {
+                api.close();
+                duplicateGcdsElement(editor, link);
+            } else if (details && details.name === 'delete') {
+                api.close();
+                deleteGcdsElement(editor, link);
+            }
+        },
+        onSubmit: function(api) {
+            var data = api.getData();
+            link.textContent = String(data.label == null ? '' : data.label);
+            var mapping = {
+                href: 'href',
+                target: 'target',
+                linkRole: 'link-role'
+            };
+            Object.keys(mapping).forEach(function(key) {
+                var val = String(data[key] == null ? '' : data[key]).trim();
+                if (val) {
+                    link.setAttribute(mapping[key], val);
+                } else {
+                    link.removeAttribute(mapping[key]);
+                }
+            });
+            api.close();
+            editor.fire('change');
+        }
+    });
 }
 
 function openMetadataFieldEditor(editor, el) {

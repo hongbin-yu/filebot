@@ -1,0 +1,441 @@
+"""
+WebBot Pageview Tracking — 轻量自建访问统计
+零外部依赖，无 Cookie，符合隐私合规
+"""
+
+from fastapi import APIRouter, Request, Response
+from pydantic import BaseModel
+from typing import Optional
+import sqlite3
+import hashlib
+from datetime import datetime, timedelta
+import json
+import urllib.request
+import urllib.error
+import time
+
+router = APIRouter(prefix="/api/v1/track", tags=["tracking"])
+
+import os
+
+DB_PATH = os.environ.get(
+    "WEBBOT_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
+)
+
+
+# ── IP Geo-location Cache (in-memory + sqlite fallback) ──
+_GEO_CACHE = {}  # ip_str -> {country, region, ts}
+_GEO_CACHE_MAX_AGE = 86400  # 24h
+_GEO_CACHE_HITS = 0
+_GEO_CACHE_MISS = 0
+
+_GEO_CACHE_DB = "app/geo_cache.db"
+
+
+def _ensure_geo_cache_table():
+    conn = sqlite3.connect(_GEO_CACHE_DB)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS geo_cache (
+            ip TEXT PRIMARY KEY,
+            country TEXT DEFAULT '',
+            region TEXT DEFAULT '',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def _geo_lookup(ip: str) -> dict:
+    """Resolve IP → {country, region}. In-memory + sqlite cache only (no external API — data stays on-prem)."""
+    global _GEO_CACHE_HITS, _GEO_CACHE_MISS
+
+    # 1. In-memory cache
+    cached = _GEO_CACHE.get(ip)
+    if cached and (time.time() - cached["ts"]) < _GEO_CACHE_MAX_AGE:
+        _GEO_CACHE_HITS += 1
+        return cached
+
+    # 2. SQLite cache
+    _ensure_geo_cache_table()
+    conn = sqlite3.connect(_GEO_CACHE_DB)
+    row = conn.execute("SELECT country, region FROM geo_cache WHERE ip = ?", (ip,)).fetchone()
+    conn.close()
+    if row:
+        result = {"country": row[0] or "", "region": row[1] or "", "ts": time.time()}
+        _GEO_CACHE[ip] = result
+        _GEO_CACHE_HITS += 1
+        return result
+
+    # 3. No external geo lookup — data must not leave the intranet (ip-api.com removed)
+    _GEO_CACHE_MISS += 1
+    result = {"country": "", "region": "", "ts": time.time()}
+
+    # Cache in both memory and sqlite
+    _GEO_CACHE[ip] = result
+    try:
+        conn = sqlite3.connect(_GEO_CACHE_DB)
+        conn.execute(
+            "REPLACE INTO geo_cache (ip, country, region, updated_at) VALUES (?, ?, ?, datetime('now'))",
+            (ip, result["country"], result["region"])
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    return result
+
+TRACKING_SCRIPT = """(function(){
+  try {
+    var d={path:location.pathname,host:location.hostname,lang:(document.documentElement.lang||''),ref:(document.referrer||''),sw:screen.width,sh:screen.height};
+    navigator.sendBeacon('/api/v1/track',JSON.stringify(d));
+  }catch(e){}
+})();"""
+
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _ensure_table():
+    """Create pageview_log table if not exists."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS pageview_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT NOT NULL,
+            host TEXT DEFAULT '',
+            ip_hash TEXT DEFAULT '',
+            user_agent TEXT DEFAULT '',
+            referrer TEXT DEFAULT '',
+            language TEXT DEFAULT '',
+            screen_width INTEGER DEFAULT 0,
+            screen_height INTEGER DEFAULT 0,
+            country TEXT DEFAULT '',
+            region TEXT DEFAULT '',
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    # Add columns if table already exists (migration)
+    for col in ["country", "region"]:
+        try:
+            conn.execute(f"ALTER TABLE pageview_log ADD COLUMN {col} TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass  # column already exists
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_pageview_path ON pageview_log(path)
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_pageview_ts ON pageview_log(timestamp)
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_pageview_date ON pageview_log(date(timestamp))
+    """)
+    conn.commit()
+    conn.close()
+
+
+# ---- Pageview data model for POST ----
+
+class PageviewData(BaseModel):
+    path: str
+    host: Optional[str] = ""
+    lang: Optional[str] = ""
+    ref: Optional[str] = ""
+    sw: Optional[int] = 0
+    sh: Optional[int] = 0
+
+
+# ---- Endpoints ----
+
+@router.get("/track.js")
+async def get_tracking_script():
+    """Return the tracking JavaScript for injection."""
+    return Response(
+        content=TRACKING_SCRIPT,
+        media_type="application/javascript",
+        headers={"Cache-Control": "public, max-age=86400"}
+    )
+
+
+@router.post("")
+async def track_pageview(request: Request):
+    """Receive and log a pageview event from the tracking script.
+    
+    Note: navigator.sendBeacon() sends Content-Type: text/plain,
+    so we parse the JSON body manually instead of using Pydantic auto-validation.
+    """
+    _ensure_table()
+
+    # Parse body (sendBeacon sends text/plain, not application/json)
+    try:
+        body = await request.json()
+    except Exception:
+        try:
+            raw = await request.body()
+            body = json.loads(raw.decode())
+        except Exception:
+            return Response(content='{"ok":false,"error":"invalid json"}', status_code=400, media_type="application/json")
+
+    path = body.get("path", "")
+    host = body.get("host", "")
+    lang = body.get("lang", "")
+    ref = body.get("ref", "")
+    sw = body.get("sw", 0)
+    sh = body.get("sh", 0)
+
+    # Hash IP for privacy (no raw IP stored)
+    ip_raw = request.client.host if request.client and request.client.host else "unknown"
+    ip_hash = hashlib.sha256(ip_raw.encode()).hexdigest()[:16]
+
+    # Geo lookup (IP never stored, only location)
+    geo = _geo_lookup(ip_raw)
+    country = geo.get("country", "")
+    region = geo.get("region", "")
+
+    user_agent = request.headers.get("user-agent", "")
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO pageview_log (path, host, ip_hash, user_agent, referrer, language, screen_width, screen_height, country, region)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        path,
+        host,
+        ip_hash,
+        user_agent,
+        ref,
+        lang,
+        sw,
+        sh,
+        country,
+        region,
+    ))
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "path": path}
+
+
+@router.get("/daily")
+async def get_daily_stats(days: int = 30):
+    """Get daily pageview counts for the last N days."""
+    _ensure_table()
+    conn = get_db()
+    c = conn.cursor()
+
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    c.execute("""
+        SELECT date(timestamp) as day, COUNT(*) as views
+        FROM pageview_log
+        WHERE timestamp >= ?
+        GROUP BY day
+        ORDER BY day ASC
+    """, (cutoff,))
+    daily = [{"date": r["day"], "views": r["views"]} for r in c.fetchall()]
+
+    # Total
+    c.execute("SELECT COUNT(*) FROM pageview_log WHERE timestamp >= ?", (cutoff,))
+    total = c.fetchone()[0]
+
+    conn.close()
+    return {"period_days": days, "total": total, "daily": daily}
+
+
+@router.get("/top-pages")
+async def get_top_pages(days: int = 30, limit: int = 20):
+    """Get most visited pages for the last N days."""
+    _ensure_table()
+    conn = get_db()
+    c = conn.cursor()
+
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    c.execute("""
+        SELECT path, COUNT(*) as views, COUNT(DISTINCT ip_hash) as unique_visitors
+        FROM pageview_log
+        WHERE timestamp >= ?
+        GROUP BY path
+        ORDER BY views DESC
+        LIMIT ?
+    """, (cutoff, limit))
+    pages = [{"path": r["path"], "views": r["views"], "unique_visitors": r["unique_visitors"]} for r in c.fetchall()]
+
+    conn.close()
+    return {"days": days, "pages": pages}
+
+
+@router.get("/geo")
+async def get_geo_stats(days: int = 30):
+    """Geographic breakdown: by country and by region (province/state)."""
+    _ensure_table()
+    conn = get_db()
+    c = conn.cursor()
+
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+    # By country
+    c.execute("""
+        SELECT COALESCE(NULLIF(country, ''), 'Unknown') as loc, COUNT(*) as views
+        FROM pageview_log
+        WHERE timestamp >= ?
+        GROUP BY loc
+        ORDER BY views DESC
+    """, (cutoff,))
+    by_country = [{"location": r[0], "views": r[1]} for r in c.fetchall()]
+
+    # By region (province/state) within known countries
+    c.execute("""
+        SELECT COALESCE(NULLIF(country, ''), 'Unknown') as country,
+               COALESCE(NULLIF(region, ''), 'Unknown') as region,
+               COUNT(*) as views
+        FROM pageview_log
+        WHERE timestamp >= ?
+        GROUP BY country, region
+        ORDER BY views DESC
+    """, (cutoff,))
+    by_region = [{"country": r[0], "region": r[1], "views": r[2]} for r in c.fetchall()]
+
+    conn.close()
+    return {
+        "period_days": days,
+        "by_country": by_country,
+        "by_region": by_region,
+        "cache_hits": _GEO_CACHE_HITS,
+        "cache_misses": _GEO_CACHE_MISS,
+    }
+
+
+@router.get("/summary")
+async def get_tracking_summary():
+    """Quick summary of tracking data."""
+    _ensure_table()
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute("SELECT COUNT(*) FROM pageview_log")
+    total = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(DISTINCT path) FROM pageview_log")
+    unique_paths = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(DISTINCT ip_hash) FROM pageview_log")
+    unique_visitors = c.fetchone()[0]
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    c.execute("SELECT COUNT(*) FROM pageview_log WHERE date(timestamp) = ?", (today,))
+    today_views = c.fetchone()[0]
+
+    c.execute("SELECT MIN(date(timestamp)) FROM pageview_log")
+    first_record = c.fetchone()[0]
+
+    conn.close()
+    return {
+        "total_pageviews": total,
+        "unique_paths": unique_paths,
+        "approximate_unique_visitors": unique_visitors,
+        "today_views": today_views,
+        "first_record_date": first_record,
+    }
+
+
+# ═══════════════ A/B test event tracking ═══════════════
+# 实验分流后由页面埋点脚本上报（pageview / 自定义事件如 CTA Click）
+
+def _ensure_ab_table():
+    """Create ab_event_log table if not exists."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS ab_event_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            experiment_id TEXT NOT NULL,
+            variant TEXT DEFAULT '',
+            event_name TEXT DEFAULT 'pageview',
+            path TEXT DEFAULT '',
+            ip_hash TEXT DEFAULT '',
+            user_agent TEXT DEFAULT '',
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_ab_exp ON ab_event_log(experiment_id, event_name)")
+    conn.commit()
+    conn.close()
+
+
+@router.post("/ab")
+async def track_ab_event(request: Request):
+    """Receive A/B experiment event (pageview / CTA Click) from the tracking snippet.
+
+    sendBeacon sends Content-Type: text/plain, so parse JSON manually like track_pageview.
+    """
+    _ensure_ab_table()
+    try:
+        body = await request.json()
+    except Exception:
+        try:
+            raw = await request.body()
+            body = json.loads(raw.decode())
+        except Exception:
+            return Response(content='{"ok":false,"error":"invalid json"}', status_code=400, media_type="application/json")
+
+    experiment_id = body.get("experiment_id", "")
+    variant = body.get("variant", "")
+    event_name = body.get("event_name", "pageview")
+    path = body.get("path", "")
+    if not experiment_id:
+        return Response(content='{"ok":false,"error":"experiment_id required"}', status_code=400, media_type="application/json")
+
+    ip_raw = request.client.host if request.client and request.client.host else "unknown"
+    ip_hash = hashlib.sha256(ip_raw.encode()).hexdigest()[:16]
+    user_agent = request.headers.get("user-agent", "")
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO ab_event_log (experiment_id, variant, event_name, path, ip_hash, user_agent)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (experiment_id, variant, event_name, path, ip_hash, user_agent))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "experiment_id": experiment_id, "variant": variant, "event_name": event_name}
+
+
+@router.get("/ab/stats/{experiment_id}")
+async def ab_stats(experiment_id: str, days: int = 30):
+    """Aggregate A/B experiment events by variant."""
+    _ensure_ab_table()
+    conn = get_db()
+    c = conn.cursor()
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+    rows = c.execute("""
+        SELECT variant, event_name, COUNT(*) as cnt, COUNT(DISTINCT ip_hash) as uniq
+        FROM ab_event_log
+        WHERE experiment_id = ? AND timestamp >= ?
+        GROUP BY variant, event_name
+    """, (experiment_id, cutoff)).fetchall()
+
+    variants = {}
+    for r in rows:
+        v = r["variant"] or "?"
+        variants.setdefault(v, {"visitors": 0, "conversions": 0, "unique_visitors": 0})
+        if r["event_name"] == "pageview":
+            variants[v]["visitors"] = r["cnt"]
+            variants[v]["unique_visitors"] = r["uniq"]
+        else:
+            variants[v]["conversions"] = r["cnt"]
+    for v in variants:
+        vis = variants[v]["visitors"]
+        conv = variants[v]["conversions"]
+        variants[v]["conversion_rate"] = round(conv / vis * 100, 2) if vis else 0.0
+
+    c.execute("SELECT COUNT(*) FROM ab_event_log WHERE experiment_id = ? AND timestamp >= ?", (experiment_id, cutoff))
+    total = c.fetchone()[0]
+    conn.close()
+    return {"experiment_id": experiment_id, "days": days, "total_events": total, "variants": variants}

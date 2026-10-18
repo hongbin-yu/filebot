@@ -193,14 +193,15 @@
         3,
         4,
         5,
-        6
+        6,
+        7
       ],
-      "latest": 6,
+      "latest": 7,
       "latest_meta": {
-        "version": 6,
-        "created_at": "2026-08-18T17:56:33.803802Z",
+        "version": 7,
+        "created_at": "2026-10-01T23:58:13.581007Z",
         "author": "system",
-        "content_size": 14384
+        "content_size": 0
       }
     },
     "canadasite__en__services__benefits": {
@@ -426,12 +427,13 @@
       "page_path": "/canadasite/fr",
       "versions": [
         1,
-        2
+        2,
+        3
       ],
-      "latest": 2,
+      "latest": 3,
       "latest_meta": {
-        "version": 2,
-        "created_at": "2026-08-06T15:07:36.484448Z",
+        "version": 3,
+        "created_at": "2026-10-01T23:58:21.575319Z",
         "author": "system",
         "content_size": 16399
       }
@@ -1378,5 +1380,5 @@
       }
     }
   },
-  "updated_at": "2026-08-20T12:54:13.024668Z"
+  "updated_at": "2026-10-01T23:58:21.575319Z"
 }

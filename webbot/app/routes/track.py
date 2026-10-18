@@ -48,7 +48,7 @@ def _ensure_geo_cache_table():
 
 
 def _geo_lookup(ip: str) -> dict:
-    """Resolve IP → {country, region}. Uses in-memory cache, then sqlite, then ip-api.com."""
+    """Resolve IP → {country, region}. In-memory + sqlite cache only (no external API — data stays on-prem)."""
     global _GEO_CACHE_HITS, _GEO_CACHE_MISS
 
     # 1. In-memory cache
@@ -68,19 +68,9 @@ def _geo_lookup(ip: str) -> dict:
         _GEO_CACHE_HITS += 1
         return result
 
-    # 3. External API call (ip-api.com, free, no key needed, 45 req/min)
+    # 3. No external geo lookup — data must not leave the intranet (ip-api.com removed)
     _GEO_CACHE_MISS += 1
     result = {"country": "", "region": "", "ts": time.time()}
-    try:
-        url = f"http://ip-api.com/json/{ip}?fields=country,regionName,status"
-        req = urllib.request.Request(url, headers={"User-Agent": "WebBot/1.0"})
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            data = json.loads(resp.read().decode())
-            if data.get("status") == "success":
-                result["country"] = data.get("country", "")
-                result["region"] = data.get("regionName", "")
-    except Exception:
-        pass  # silently fall back to empty location
 
     # Cache in both memory and sqlite
     _GEO_CACHE[ip] = result

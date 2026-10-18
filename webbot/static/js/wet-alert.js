@@ -73,6 +73,7 @@
         var msgEl = getMsgEl('wet-alert-message');
         if (modal && msgEl) {
             msgEl.textContent = message;
+            msgEl.style.whiteSpace = 'pre-line';
             // Remove any existing close buttons
             var existing = modal.querySelector('.wet-alert-close-btn');
             if (existing) existing.remove();
@@ -98,6 +99,7 @@
         var msgEl = getMsgEl('wet-confirm-message');
         if (modal && msgEl) {
             msgEl.textContent = message;
+            msgEl.style.whiteSpace = 'pre-line';
             // Remove existing buttons
             modal.querySelectorAll('.wet-confirm-btn').forEach(function(b) { b.remove(); });
             var footer = modal.querySelector('.modal-footer');
@@ -127,5 +129,52 @@
             // Fallback
             callback && callback(confirm(message));
         }
+    };
+
+    /* WET-style prompt: modal with a single text input.
+       Returns the input value via callback, or null on cancel. */
+    window.showWetPrompt = function(message, defaultText, callback) {
+        var modal = document.createElement('section');
+        modal.id = 'wet-prompt-modal-' + Date.now();
+        modal.className = 'modal-dialog modal-content overlay-def';
+        modal.setAttribute('role', 'dialog');
+        modal.innerHTML =
+            '<div class="modal-header"><h2 class="modal-title">Input</h2></div>' +
+            '<div class="modal-body">' +
+            '  <p class="wet-prompt-message"></p>' +
+            '  <input type="text" class="form-control wet-prompt-input" style="width:100%;box-sizing:border-box;" />' +
+            '</div>' +
+            '<div class="modal-footer"></div>';
+        document.body.appendChild(modal);
+
+        var msgP = modal.querySelector('.wet-prompt-message');
+        msgP.textContent = message || '';
+        msgP.style.whiteSpace = 'pre-line';
+        var inputEl = modal.querySelector('.wet-prompt-input');
+        if (defaultText != null) inputEl.value = defaultText;
+
+        var footer = modal.querySelector('.modal-footer');
+        var cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-default';
+        cancelBtn.textContent = 'Cancel';
+        var okBtn = document.createElement('button');
+        okBtn.className = 'btn btn-primary';
+        okBtn.textContent = 'OK';
+        footer.appendChild(cancelBtn);
+        footer.appendChild(okBtn);
+
+        function close(value) {
+            hideWetModal(modal);
+            if (modal.parentNode) modal.parentNode.removeChild(modal);
+            if (callback) callback(value);
+        }
+        okBtn.addEventListener('click', function() { close(inputEl.value); });
+        cancelBtn.addEventListener('click', function() { close(null); });
+        inputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); close(inputEl.value); }
+        });
+
+        showWetModal(modal);
+        setTimeout(function() { inputEl.focus(); }, 50);
     };
 })();

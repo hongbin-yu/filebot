@@ -773,6 +773,14 @@ async def search_pages_by_tags(
     """
     conn = get_db()
     try:
+        # 修复:发布页面时 /canadasite 前缀会从内容里移除,传入的 path 可能缺前缀;
+        # 若 path 非 /canadasite 开头则补回,保证能匹配数据库完整路径
+        normalized_path = None
+        if path:
+            normalized_path = path if path.startswith("/") else "/" + path
+            if not normalized_path.startswith("/canadasite"):
+                normalized_path = "/canadasite" + normalized_path
+
         # Collect all tag names
         tag_names = []
         if subjects:
@@ -822,8 +830,7 @@ async def search_pages_by_tags(
             page_params = matched_tag_ids
 
         # Wrap with page details + path filter
-        if path:
-            path_prefix = path if path.startswith("/") else "/" + path
+        if normalized_path:
             count_sql = f"""
                 SELECT COUNT(*) as total FROM webbot_page wp
                 WHERE wp.id IN ({page_sql})
@@ -839,8 +846,8 @@ async def search_pages_by_tags(
                 ORDER BY wp.last_published DESC
                 LIMIT ? OFFSET ?
             """
-            count_params = page_params + [f"{path_prefix}%"]
-            data_params = page_params + [f"{path_prefix}%", limit, skip]
+            count_params = page_params + [f"{normalized_path}%"]
+            data_params = page_params + [f"{normalized_path}%", limit, skip]
         else:
             count_sql = f"""
                 SELECT COUNT(*) as total FROM webbot_page wp
@@ -864,8 +871,10 @@ async def search_pages_by_tags(
         # Attach tags to each page
         pages = []
         _dept_cache = {}
-        for pr in page_rows:
+        total_pages = len(page_rows)
+        for idx, pr in enumerate(page_rows):
             p = dict(pr)
+            p["last"] = idx == total_pages - 1
             tag_rows = conn.execute("""
                 SELECT t.title_en, t.title_fr, t.type, t.path
                 FROM webbot_tag t
@@ -873,15 +882,18 @@ async def search_pages_by_tags(
                 WHERE pt.page_id = ?
                 ORDER BY t.type, t.title_en
             """, (p["id"],)).fetchall()
-            def _title_dict(t):
+            def _title_dict(t, is_last):
                 d = {"en": t["title_en"]}
                 if t["title_fr"]:
                     d["fr"] = t["title_fr"]
-                return {"title": d}
+                return {"title": d, "last": is_last}
 
-            p["subjects"] = [_title_dict(t) for t in tag_rows if t["type"] == "subject"]
-            p["audiences"] = [_title_dict(t) for t in tag_rows if t["type"] == "audience"]
-            p["types"] = [_title_dict(t) for t in tag_rows if t["type"] == "type"]
+            _subs = [t for t in tag_rows if t["type"] == "subject"]
+            _auds = [t for t in tag_rows if t["type"] == "audience"]
+            _typs = [t for t in tag_rows if t["type"] == "type"]
+            p["subjects"] = [_title_dict(t, i == len(_subs) - 1) for i, t in enumerate(_subs)]
+            p["audiences"] = [_title_dict(t, i == len(_auds) - 1) for i, t in enumerate(_auds)]
+            p["types"] = [_title_dict(t, i == len(_typs) - 1) for i, t in enumerate(_typs)]
             # department 级（语言下一级）页面信息：path + department/ministers/location 原文
             _parts = [pp for pp in p["path"].split("/") if pp]
             if len(_parts) >= 3:
@@ -913,7 +925,7 @@ async def search_pages_by_tags(
             "pages": pages,
             "matched_tags": matched_tag_names,
             "not_found": not_found,
-            "properties": fetch_page_tag_properties(conn, path) if path else None
+            "properties": fetch_page_tag_properties(conn, normalized_path) if normalized_path else None
         }
 
     except HTTPException:

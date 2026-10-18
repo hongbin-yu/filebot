@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>WebBot Page Editor - Simple</title>
+    <title>WebBot Editor</title>
     <link rel="shortcut icon" href="/static/icons/filebot_favicon.png" type="image/png">
     <link rel="icon" href="/static/icons/filebot_favicon.png" sizes="32x32">
 
@@ -17,10 +17,10 @@
     <!-- TinyMCE WYSIWYG Editor (local installation) -->
 	<script src="/etc/designs/canada/gcweb/external/tinymce/tinymce/js/tinymce/tinymce.min.js"></script>
     <!-- Simple custom styles for editor -->
-    <link rel="stylesheet" href="css/editor.css?v=20260704">
+    <link rel="stylesheet" href="css/editor.css?v=20260910-pagesbrowse">
 <script src="/static/js/axe.min.js"></script>
 <script src="/static/js/webbot-auth.js"></script>
-<script src="/static/js/wet-alert.js?v=0260605"></script>
+<script src="/static/js/wet-alert.js?v=20261002b"></script>
 </head>
 <body vocab="http://schema.org/" typeof="WebPage" class="">
     <div class="editor-container">
@@ -98,7 +98,7 @@
                 <div class="resource-search-row" id="resource-folder-row" style="display:none;">
                     <div class="resource-path-field">
                         <span class="resource-path-label">📂 Folder</span>
-                        <input type="text" id="resource-folder-input" class="form-control" placeholder="Folder path (default = file_path, editable)" title="Search folder; defaults to page file_path, editable">
+                        <select id="resource-folder-input" class="form-control" title="Select folder; defaults to page file_path"></select>
                     </div>
                 </div>
                 <div class="resource-search-row" id="resource-doc-aitag-row" style="display:none;">
@@ -148,7 +148,7 @@
                         <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
                     </button>
                     <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
-                    WebBot Page Editor
+                    WebBot Editor
                 </h2>
                 <div class="header-actions">
                     <!-- Login / User Info -->
@@ -166,6 +166,7 @@
                 <div class="page-info">
                     <span id="page-title-display">No page selected</span>
                     <span id="page-id-display"></span>
+                    <button id="import-canada-url-btn" class="filebot-toggle-btn" title="Import this page from canada.ca (https://www.canada.ca{path}.html)" style="display:none; margin-left:6px; padding:2px 8px; font-size:12px; vertical-align:middle;">📥 Import canada.ca</button>
                     <span id="page-language-display"></span>
                     <span id="page-status-display"></span>
                     <span id="page-approval-display"></span>
@@ -319,7 +320,11 @@
     <!-- Canada.ca WET-BOEW JavaScript (moved to footer per user request) -->
 
     <!-- WebBot Editor Modular JavaScript (added filebot-upload for Browse Files + Upload) -->
-    <script src="/static/js/editor.js?v=20260827-protected"></script>
+    <script src="/static/js/editor.js?v=20261016b"></script>
+
+    <!-- 拼写检查（离线 Hunspell 词典，独立叠加层） -->
+    <script src="/static/js/typo.js"></script>
+    <script src="/static/js/spellcheck.js?v=3"></script>
 
     <!-- Initialize after all scripts are loaded -->
     <!-- Simple Metadata Editor (Backend Use Only) -->
@@ -467,9 +472,9 @@
                         <div class="form-group">
                             <label for="metadata-page-template">Page Template:</label>
                             <select id="metadata-page-template" class="form-control">
-                                <option value="">(Default page template)</option>
+                                <option value="">Inherit</option>
                             </select>
-                            <small>Mustache template used when publishing this page. Leave as default to use the global template.</small>
+                            <small>Mustache template used when publishing this page. Inherit = use the parent page's template (falls back to global default if none set).</small>
                         </div>
                     </div>
 
@@ -678,8 +683,6 @@
             <p id="wet-confirm-message"></p>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="wet-confirm-yes">Yes</button>
-            <button type="button" class="btn btn-default" id="wet-confirm-no">No</button>
         </div>
     </section>
 

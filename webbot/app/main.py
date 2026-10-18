@@ -358,20 +358,36 @@ def init_database():
             print("📦 Creating webbot_page table...")
             cursor.execute("""
                 CREATE TABLE webbot_page (
-                    id TEXT PRIMARY KEY,
+                    id TEXT NOT NULL,
                     title TEXT NOT NULL,
                     content TEXT,
                     language TEXT DEFAULT 'en',
                     parent_path TEXT,
-                    other_language_path TEXT,
                     status TEXT DEFAULT 'draft',
                     created_by TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_published TIMESTAMP,
-                    metadata TEXT
+                    metadata TEXT,
+                    description TEXT,
+                    hide_in_navigation BOOLEAN DEFAULT 0,
+                    keywords TEXT DEFAULT '',
+                    path TEXT NOT NULL,
+                    other_language_path TEXT,
+                    publish_template TEXT DEFAULT NULL,
+                    navigation_title TEXT DEFAULT NULL,
+                    current_version INTEGER DEFAULT 0,
+                    scheduled_publish TEXT DEFAULT NULL,
+                    approved INTEGER DEFAULT 0,
+                    approved_at TIMESTAMP DEFAULT NULL,
+                    approved_by TEXT DEFAULT NULL,
+                    ai_index_status TEXT DEFAULT NULL,
+                    ai_indexed_at TIMESTAMP,
+                    PRIMARY KEY (id, parent_path),
+                    UNIQUE(path)
                 )
             """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_path ON webbot_page(path)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_parent ON webbot_page(parent_path)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_language ON webbot_page(language)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_status ON webbot_page(status)")
@@ -407,11 +423,23 @@ def init_database():
             cursor.execute("""
                 CREATE TABLE webbot_tag (
                     id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL UNIQUE,
-                    slug TEXT NOT NULL UNIQUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    name TEXT,
+                    slug TEXT,
+                    label_fr TEXT NOT NULL DEFAULT '',
+                    type TEXT NOT NULL DEFAULT 'subject',
+                    parent_id TEXT,
+                    description TEXT DEFAULT '',
+                    description_fr TEXT DEFAULT '',
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    title_en TEXT,
+                    title_fr TEXT,
+                    path TEXT,
+                    parent_path TEXT,
+                    FOREIGN KEY (parent_id) REFERENCES webbot_tag(id)
                 )
             """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_tag_path ON webbot_tag(path)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_tag_type ON webbot_tag(type)")
             print("✅ webbot_tag table created")
         
         # webbot_page_tag table (many-to-many)
@@ -428,6 +456,21 @@ def init_database():
                 )
             """)
             print("✅ webbot_page_tag table created")
+        
+        # webbot_page_tags table (新版 many-to-many, 含 created_at)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='webbot_page_tags'")
+        if not cursor.fetchone():
+            print("🔗 Creating webbot_page_tags table...")
+            cursor.execute("""
+                CREATE TABLE webbot_page_tags (
+                    page_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    PRIMARY KEY (page_id, tag_id)
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_webbot_page_tags_tag ON webbot_page_tags(tag_id)")
+            print("✅ webbot_page_tags table created")
         
         # webbot_uploaded_files table (disk-based file upload tracking)
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='webbot_uploaded_files'")
@@ -537,6 +580,15 @@ if IO_ENABLED and io_router:
     app.include_router(io_router)
     print("✅ IO路由已加载 (/api/v1/io/convert — URL→JSON)")
 
+# import-url 代理路由（WebBot GET → FileBot POST /api/v1/import-url）
+# 路径用 /import-canada-url 避开 nginx 把 /api/v1/import-url 直连 FileBot(8001) 的规则
+try:
+    from .routes.import_proxy import router as import_proxy_router  # noqa: E402
+    app.include_router(import_proxy_router)
+    print("✅ import-url代理路由已加载 (/api/v1/import-canada-url)")
+except Exception as e:
+    print(f"⚠️  import-url代理路由加载失败: {e}")
+
 # ==================== CanadaSite 公开页面（/en /fr 动态渲染输出） ====================
 # prod.webfilebot.com/en/... → 从数据库(webbot_page)实时渲染，改完立即生效，无需发布
 # 渲染复用 _render_preview（与 preview/publish 同一套逻辑）
@@ -594,7 +646,10 @@ from fastapi import HTTPException
 # FileBot PostgreSQL 连接（同机直连，不经过 HTTP）
 FILEBOT_PG_URL = os.environ.get(
     "FILEBOT_PG_URL",
-    "postgresql://filebot:filebot@localhost:5432/filebot"
+    os.environ.get(
+        "FILEBOT_DATABASE_URL",
+        "postgresql://filebot:filebot@localhost:5432/filebot"
+    )
 )
 
 def _pg_conn():
@@ -623,16 +678,19 @@ async def proxy_filebot_document(path: str, thumbnail: bool = False):
         path = '/' + path
 
     bypass_headers = {"X-WebBot-Access": "true"}
-    short_timeout = 2
+    short_timeout = 6
 
     # === 优先尝试直接文件系统读取（同机，毫秒级） ===
     # FileBot 数据目录结构：{FILEBOT_DATA}/files/boarding/canadasite/content/dam{path}
-    _fb_data = Path("/home/hongb/.openclaw/workspace/filebot/backend/data")
+    _fb_data = Path(os.environ.get("FILEBOT_DATA_DIR", "/opt/webfilebot/data"))
+    _fb_data_files = _fb_data / "files"
     _fs_candidates = [
-        _fb_data / "files" / "boarding" / "canadasite" / "content" / "dam" / path.lstrip("/"),
-        _fb_data / "files" / "boarding" / "canada-site" / "content" / "dam" / path.lstrip("/"),
-        _fb_data / "files" / path.lstrip("/"),
+        _fb_data_files / "boarding" / "canadasite" / "content" / "dam" / path.lstrip("/"),
+        _fb_data_files / "boarding" / "canada-site" / "content" / "dam" / path.lstrip("/"),
+        _fb_data_files / path.lstrip("/"),
         _fb_data / path.lstrip("/"),
+        # 历史遗留的双 files/ 异常布局（files/files/boarding/canadasite/content/dam...）
+        _fb_data_files / "files" / "boarding" / "canadasite" / "content" / "dam" / path.lstrip("/"),
     ]
     for _fs_path in _fs_candidates:
         if _fs_path.is_file():
@@ -661,14 +719,19 @@ async def proxy_filebot_document(path: str, thumbnail: bool = False):
         _cur.close()
         _conn.close()
         if _row and _row[0]:
-            # storage_path 可能是相对路径（files/boarding/...）或绝对路径
+            # storage_path 可能是相对路径（files/boarding/... 或 boarding/...）或绝对路径
             _sp = _row[0]
+            _fb_root = Path(os.environ.get("FILEBOT_DATA_DIR", "/opt/webfilebot/data"))
             if _sp.startswith("/"):
                 _db_path = Path(_sp)
-            else:
-                # 相对路径：相对于 FILEBOT_DATA_ROOT
-                _fb_root = Path("/home/hongb/.openclaw/workspace/filebot/backend/data")
+            elif _sp.startswith("files/"):
                 _db_path = _fb_root / _sp
+            else:
+                # 相对路径无 files/ 前缀：尝试 files/、files/files/、根目录三种
+                _cand1 = _fb_root / "files" / _sp
+                _cand2 = _fb_root / _sp
+                _cand3 = _fb_root / "files" / "files" / _sp
+                _db_path = _cand1 if _cand1.is_file() else (_cand2 if _cand2.is_file() else _cand3)
             if _db_path.is_file():
                 _mime, _ = mimetypes.guess_type(str(_db_path))
                 return FileResponse(
@@ -681,22 +744,18 @@ async def proxy_filebot_document(path: str, thumbnail: bool = False):
 
     # === URL 并发尝试 ===
     if thumbnail:
-        # 缩略图：优先 FileBot thumbnail API（6ms 命中）
+        # 缩略图：优先 FileBot thumbnail API（正确完整路径格式放最前）
         urls_to_try = [
-            f"http://localhost:8001/api/v1/documents/content/dam{path}/thumbnail",
-            f"http://localhost:8001/api/v1/documents/by-path/content/dam{path}/thumbnail",
-            f"http://localhost:8001/api/v1/documents/boarding/canadasite{path}/thumbnail",
             f"http://localhost:8001/api/v1/documents/boarding/canadasite/content/dam{path}/thumbnail",
-            f"http://localhost:8001/content/dam{path}",
+            f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite/content/dam{path}/thumbnail",
+            f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite/content/dam{path}",
             f"https://www.canada.ca/content/dam{path}",
         ]
     else:
-        # 全图：优先 FileBot 文档API（by-path 可匹配 content/dam 路径）
+        # 全图：优先 FileBot 文档API（by-path 可匹配完整路径）
         urls_to_try = [
-            f"http://localhost:8001/api/v1/documents/by-path/content/dam{path}",
-            f"http://localhost:8001/content/dam{path}",
-            f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite{path}",
             f"http://localhost:8001/api/v1/documents/by-path/boarding/canadasite/content/dam{path}",
+            f"http://localhost:8001/api/v1/documents/by-path/content/dam{path}",
             f"https://www.canada.ca/content/dam{path}",
         ]
 
@@ -714,41 +773,58 @@ async def proxy_filebot_document(path: str, thumbnail: bool = False):
                 return None
         return await asyncio.to_thread(_fetch)
 
-    # 并发发起所有请求，最早成功者获胜
+    # 并发发起所有请求，等全部完成后再选第一个成功者
+    # （ALL_COMPLETED 避免“404 快速返回抢先 cancel 慢的 200 缩略图请求”）
     tasks = {asyncio.create_task(_try_url(u)): u for u in unique_urls}
-    done, pending = await asyncio.wait(
+    done, _pending = await asyncio.wait(
         tasks.keys(),
         timeout=short_timeout + 0.5,  # 总超时2.5秒
-        return_when=asyncio.FIRST_COMPLETED
+        return_when=asyncio.ALL_COMPLETED
     )
-
-    # 取消所有未完成的请求
-    for p in pending:
-        p.cancel()
 
     # 找第一个成功的响应
     response = None
     for t in done:
-        resp = t.result()
+        try:
+            resp = t.result()
+        except Exception:
+            resp = None
         if resp is not None:
             response = resp
             break
-    # 取消剩余已完成的（非成功）任务
-    for t in done:
-        result = t.result()
-        if result is not None and result is not response:
-            pass  # ignore non-200 responses
 
     if response is None:
-        # 所有方式都失败 → 返回透明占位GIF
+        if thumbnail:
+            # 缩略图全失败 → 不再返回 1×1 透明占位图（会缓存成假图，难回退），
+            # 改回退到原图像/原文件；连原图也拿不到则返回 404 让前端显示破图/alt。
+            return await proxy_filebot_document(path, thumbnail=False)
+        # 非缩略图：原有兜底（透明占位 GIF）保持不变
         return Response(
             content=PLACEHOLDER_GIF,
             media_type="image/gif",
-            status_code=200  # 返回200让浏览器不报错
+            status_code=200,  # 返回200让浏览器不报错
+            headers={"Cache-Control": "no-store, no-cache, max-age=0"}
         )
 
     content_type = response.headers.get("Content-Type", "application/octet-stream")
     content_data = response.content
+
+    # === 本地缓存：把从公网拉到的原图写回本地磁盘，下次文件系统直读命中（毫秒级） ===
+    # 仅缓存原图（非缩略图）且内容有效（排除 1x1 占位/极小图）
+    if not thumbnail and content_data and len(content_data) > 200:
+        _cache_path = _fb_data_files / "boarding" / "canadasite" / "content" / "dam" / path.lstrip("/")
+        try:
+            _cache_path.parent.mkdir(parents=True, exist_ok=True)
+            _tmp = _cache_path.with_name(_cache_path.name + ".tmp")
+            _tmp.write_bytes(content_data)
+            _tmp.replace(_cache_path)
+        except Exception as e:
+            print(f"[proxy_filebot_document] cache write failed for {path}: {e}")
+
+    # 缩略图退化检测：若返回的是 1×1（透明占位 GIF 或 ≤~200 字节的极小图），回退到原图像
+    if thumbnail and content_type.startswith("image/"):
+        if content_data == PLACEHOLDER_GIF or len(content_data) < 200:
+            return await proxy_filebot_document(path, thumbnail=False)
 
     # 缩略图缩放
     if thumbnail and content_type and content_type.startswith("image/"):
@@ -906,6 +982,23 @@ def _normalize_upload_path(folder_path: str) -> str:
     # 去掉末尾斜杠
     p = p.rstrip("/")
     return p
+
+
+def _folder_db_prefixes(frontend_path: str) -> list:
+    """前端 folder 路径 → DB 查询前缀列表（兼容新旧两种存储格式）。
+
+    旧格式：/boarding + 前端路径（如 /boarding/canadasite/content/dam/...）
+    新格式：前端路径去掉 /canadasite（如 /content/dam/...）——油奈 2026-09-20 重新导入的数据格式
+    """
+    norm = _normalize_upload_path(frontend_path or "")
+    prefixes = []
+    if norm:
+        prefixes.append("/boarding" + norm)
+        if norm.startswith("/canadasite/"):
+            prefixes.append(norm[len("/canadasite"):])
+    else:
+        prefixes.append("/boarding")
+    return prefixes
 
 
 def _save_file_to_disk(temp_path: str, filename: str, folder_path: str) -> str:
@@ -1219,21 +1312,15 @@ async def list_documents(
         params = []
         
         if folder_path:
-            fp = _normalize_upload_path(folder_path)
-            if fp.startswith("/"):
-                fp = "/boarding" + fp
-            else:
-                fp = "/boarding/" + fp
-            where_clauses.append("folder_path = %s")
-            params.append(fp)
+            prefixes = _folder_db_prefixes(folder_path)
+            ors = " OR ".join(["folder_path = %s"] * len(prefixes))
+            where_clauses.append("(" + ors + ")")
+            params.extend(prefixes)
         if folder_path__like:
-            fp = _normalize_upload_path(folder_path__like)
-            if fp.startswith("/"):
-                fp = "/boarding" + fp
-            else:
-                fp = "/boarding/" + fp
-            where_clauses.append("folder_path LIKE %s")
-            params.append(fp)
+            prefixes = _folder_db_prefixes(folder_path__like)
+            ors = " OR ".join(["folder_path LIKE %s"] * len(prefixes))
+            where_clauses.append("(" + ors + ")")
+            params.extend(prefixes)
         if original_filename__like:
             where_clauses.append("original_filename ILIKE %s")
             params.append('%' + original_filename__like + '%')
@@ -1290,6 +1377,72 @@ async def list_documents(
     except Exception as e:
         print(f"⚠️  list_documents PG query failed: {e}")
         return {"documents": [], "total": 0, "limit": limit, "offset": offset, "error": str(e)}
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            pg.close()
+        except Exception:
+            pass
+
+
+@app.get("/content/folders/")
+async def list_folders(path: str = ""):
+    """列出某个 folder 的直接子文件夹（用于 Resources > Images 的 Folder dropdown 导航）
+
+    path 为前端格式（不含 /boarding 前缀），如 /canadasite/content/dam/canada 或空。
+    返回 { current, parent, subfolders }，subfolders 为前端格式的完整子文件夹路径列表。
+    """
+    pg = None
+    cur = None
+    try:
+        pg = _pg_conn()
+        cur = pg.cursor()
+
+        norm = (path or "").strip().strip("/")
+        prefixes = _folder_db_prefixes(path or "")
+
+        sub_front = set()
+        for db_prefix in prefixes:
+            like_pattern = db_prefix + "/%"
+            cur.execute(
+                "SELECT DISTINCT folder_path FROM documents WHERE folder_path LIKE %s",
+                (like_pattern,),
+            )
+            rows = cur.fetchall()
+            prefix_len = len(db_prefix)
+            for (fp,) in rows:
+                rest = (fp or "")[prefix_len:].strip("/")
+                if not rest:
+                    continue
+                seg = rest.split("/")[0]
+                if not seg:
+                    continue
+                sub_db = db_prefix + "/" + seg
+                # 转回前端格式：旧格式去掉 /boarding，新格式加回 /canadasite
+                if sub_db.startswith("/boarding/"):
+                    sub_front.add(sub_db[len("/boarding"):])
+                else:
+                    sub_front.add("/canadasite" + sub_db)
+
+        subfolders = sorted(sub_front)
+
+        parts = norm.split("/") if norm else []
+        if len(parts) > 1:
+            parent = "/" + "/".join(parts[:-1])
+        elif len(parts) == 1:
+            parent = "/"
+        else:
+            parent = None
+
+        current = ("/" + norm) if norm else "/"
+
+        return {"current": current, "parent": parent, "subfolders": subfolders}
+    except Exception as e:
+        print(f"⚠️  list_folders PG query failed: {e}")
+        return {"current": path or "/", "parent": None, "subfolders": [], "error": str(e)}
     finally:
         try:
             cur.close()

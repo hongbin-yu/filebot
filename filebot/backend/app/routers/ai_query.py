@@ -18,7 +18,7 @@ import psycopg2
 import psycopg2.extras
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
-from sentence_transformers import SentenceTransformer
+from app.ollama_embed import embed_one
 from app.routers.search import get_pg_conn
 
 logger = logging.getLogger(__name__)
@@ -30,24 +30,18 @@ PUBLISH_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__fil
 
 # --- Models ---
 
-# Lazy-loaded: load on first request
-_model: Optional[SentenceTransformer] = None
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "phi3:3.8b-mini-4k-instruct-q4_K_M"
+# Embedding runs against local Ollama (app.ollama_embed) — no HuggingFace download
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b")
 OLLAMA_OPTIONS = {
     "num_predict": 512,
     "temperature": 0.1,
     "num_ctx": 1024,
 }
 
-# Third-party LLM API config (from env vars)
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "ollama")  # ollama | deepseek | openai
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-chat"
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+# Third-party LLM API config (from env vars). Default is local Ollama (data stays on-prem).
+# LLM runs on local Ollama only — data never leaves the intranet.
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "ollama")  # only "ollama" is supported
 
 
 def _verify_auth(request: Request):
@@ -73,24 +67,13 @@ def _verify_auth(request: Request):
     return True
 
 
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
-
-
-def get_embedding_model():
-    global _model
-    if _model is None:
-        logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-    return _model
-
-
 class AIQueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     lang: str = Field(default="en")
     site: Optional[str] = Field(default=None, max_length=500)
     top_k: int = Field(default=5, ge=1, le=20)
     provider: str = Field(default="", max_length=20)
-    """LLM provider override: "" or "ollama" | "deepseek" | "openai". Empty = use LLM_PROVIDER env."""
+    """LLM provider override: "" or "ollama". Empty = use LLM_PROVIDER env."""
 
     @field_validator("lang")
     @classmethod
@@ -102,8 +85,8 @@ class AIQueryRequest(BaseModel):
     @field_validator("provider")
     @classmethod
     def validate_provider(cls, v):
-        if v and v not in ("ollama", "deepseek", "openai"):
-            raise ValueError("provider must be 'ollama', 'deepseek', or 'openai'")
+        if v and v not in ("ollama",):
+            raise ValueError("provider must be 'ollama'")
         return v
 
 
@@ -129,7 +112,7 @@ class AIQueryResponse(BaseModel):
 
 def build_prompt_messages(query: str, chunks: list[dict], lang: str) -> tuple[str, str]:
     """
-    Build system + user messages for LLM (works with Ollama, DeepSeek, OpenAI).
+    Build system + user messages for LLM (Ollama instruct-style).
     Returns (system, user) tuple.
     """
     chunks_str = "\n---\n".join(
@@ -153,12 +136,6 @@ def build_prompt_messages(query: str, chunks: list[dict], lang: str) -> tuple[st
         user = f"Canada.ca excerpts:\n{chunks_str}\n\nQuestion: {query}\n\nAnswer:"
 
     return system, user
-
-
-def embed_query(text: str, model: SentenceTransformer) -> list[float]:
-    """Compute embedding for cache lookup."""
-    emb = model.encode(text, normalize_embeddings=True)
-    return emb.tolist()
 
 
 def search_chunks(
@@ -262,14 +239,6 @@ def write_cache(conn, query_text: str, query_emb: list[float], answer: str, sour
 # --- LLM call ---
 
 
-def _chat_messages(system: str, user: str) -> list:
-    """Build chat message array for API-based providers."""
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ]
-
-
 def call_llm_ollama(prompt: str, timeout_sec: int = 120) -> str:
     """Call ollama to generate answer."""
     payload = {
@@ -291,71 +260,12 @@ def call_llm_ollama(prompt: str, timeout_sec: int = 120) -> str:
         raise HTTPException(503, f"LLM unavailable: {e}")
 
 
-def call_llm_deepseek(system: str, user: str, timeout_sec: int = 120) -> str:
-    """Call DeepSeek API chat completions."""
-    if not DEEPSEEK_API_KEY:
-        raise HTTPException(503, "DeepSeek API key not configured (set DEEPSEEK_API_KEY)")
-    payload = {
-        "model": DEEPSEEK_MODEL,
-        "messages": _chat_messages(system, user),
-        "temperature": 0.1,
-        "max_tokens": 1024,
-    }
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    try:
-        resp = httpx.post(DEEPSEEK_API_URL, json=payload, headers=headers, timeout=timeout_sec)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    except httpx.TimeoutException:
-        logger.warning("DeepSeek timeout after %ss", timeout_sec)
-        raise HTTPException(503, "LLM timeout - try again later")
-    except Exception as e:
-        logger.error("DeepSeek error: %s", e)
-        raise HTTPException(503, f"LLM unavailable: {e}")
-
-
-def call_llm_openai(system: str, user: str, timeout_sec: int = 120) -> str:
-    """Call OpenAI-compatible API chat completions."""
-    if not OPENAI_API_KEY:
-        raise HTTPException(503, "OpenAI API key not configured (set OPENAI_API_KEY)")
-    payload = {
-        "model": OPENAI_MODEL,
-        "messages": _chat_messages(system, user),
-        "temperature": 0.1,
-        "max_tokens": 1024,
-    }
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    try:
-        resp = httpx.post(OPENAI_API_URL, json=payload, headers=headers, timeout=timeout_sec)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    except httpx.TimeoutException:
-        logger.warning("OpenAI timeout after %ss", timeout_sec)
-        raise HTTPException(503, "LLM timeout - try again later")
-    except Exception as e:
-        logger.error("OpenAI error: %s", e)
-        raise HTTPException(503, f"LLM unavailable: {e}")
-
-
 def call_llm(system: str, user: str, provider: str = "", timeout_sec: int = 120) -> str:
-    """Route to the correct LLM provider based on request or env default."""
+    """Route to the LLM provider (local Ollama only)."""
     provider = provider or LLM_PROVIDER
-    if provider == "deepseek":
-        return call_llm_deepseek(system, user, timeout_sec)
-    elif provider == "openai":
-        return call_llm_openai(system, user, timeout_sec)
-    else:
-        # ollama: build instruct-style prompt from system+user
-        prompt = f"<|system|>\n{system}<|end|>\n<|user|>\n{user}<|end|>\n<|assistant|>\n"
-        return call_llm_ollama(prompt, timeout_sec)
+    # ollama: build instruct-style prompt from system+user
+    prompt = f"<|system|>\n{system}<|end|>\n<|user|>\n{user}<|end|>\n<|assistant|>\n"
+    return call_llm_ollama(prompt, timeout_sec)
 
 
 # --- Endpoint ---
@@ -598,14 +508,13 @@ async def ai_query(
 ):
     _verify_auth(request)
     t0 = time.time()
-    model = get_embedding_model()
 
     provider_key = req.provider or LLM_PROVIDER
     logger.info("AI QUERY DEBUG: q='%s' lang=%s site='%s' provider=%s top_k=%s",
                 req.query, req.lang, req.site, provider_key, req.top_k)
 
     # 1. Embed query
-    q_emb = embed_query(req.query, model)
+    q_emb = embed_one(req.query)
 
     # 2. Open psycopg2 connection
     conn = get_pg_conn()

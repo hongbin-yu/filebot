@@ -97,7 +97,7 @@
 <body>
 
 <div class="header">
-    <h1>📊 Data Analysis <small>Canada.ca CMS 数据总览</small></h1>
+    <h1>📊 Data Analysis <small>Canada.ca CMS Data Overview</small></h1>
     <a href="/static/navigation.html" class="back-link">← Back to Content Manager</a>
 </div>
 
@@ -167,7 +167,12 @@ function renderDashboard(d) {
             '</div>' : '') +
             (d.translation_gaps.recent_missing_fr.length ? '<h4 style="font-size:12px;margin:12px 0 6px;color:#666;">Recent EN pages missing FR:</h4><div class="missing-list">' +
                 d.translation_gaps.recent_missing_fr.map(function(p) {
-                    return '<div class="missing-item"><div class="mi-title">' + esc(p.title) + '</div><div class="mi-path">' + esc(p.path) + '</div></div>';
+                    return '<div class="missing-item"><div class="mi-title"><a href="/static/editor.html?pageId=' + encodeURIComponent(p.path) + '" target="_blank" rel="noopener">' + esc(p.title) + '</a></div><div class="mi-path">' + esc(p.path) + '</div></div>';
+                }).join('') +
+            '</div>' : '') +
+            ((d.translation_gaps.recent_missing_en || []).length ? '<h4 style="font-size:12px;margin:12px 0 6px;color:#666;">Recent FR pages missing EN:</h4><div class="missing-list">' +
+                d.translation_gaps.recent_missing_en.map(function(p) {
+                    return '<div class="missing-item"><div class="mi-title"><a href="/static/editor.html?pageId=' + encodeURIComponent(p.path) + '" target="_blank" rel="noopener">' + esc(p.title) + '</a></div><div class="mi-path">' + esc(p.path) + '</div></div>';
                 }).join('') +
             '</div>' : '') +
         '</div></div>' +
@@ -202,6 +207,16 @@ function renderDashboard(d) {
                       return '<tr><td>' + esc(t.template) + '</td><td>' + t.count + '</td></tr>';
                   }).join('') + '</table>'
                 : '<p class="empty">No template-based pages yet</p>') +
+        '</div></div>' +
+
+        // Redirect Pages
+        '<div class="panel"><div class="panel-header"><h3>🔀 Redirect Pages</h3></div><div class="panel-body">' +
+            '<div class="stat-row"><span class="s-label">Total redirects</span><span class="s-value"><span class="badge badge-orange">' + ((d.redirects && d.redirects.count) || 0) + '</span></span></div>' +
+            (((d.redirects && d.redirects.pages) || []).length ? '<h4 style="font-size:12px;margin:12px 0 6px;color:#666;">Recent redirect pages:</h4><div class="missing-list">' +
+                d.redirects.pages.map(function(p) {
+                    return '<div class="missing-item"><div class="mi-title"><a href="/static/editor.html?pageId=' + encodeURIComponent(p.path) + '" target="_blank" rel="noopener">' + esc(p.title || p.path) + '</a></div><div class="mi-path">' + esc(p.path) + ' → ' + esc(p.redirect_to) + '</div></div>';
+                }).join('') +
+            '</div>' : '') +
         '</div></div>' +
 
     '</div>';

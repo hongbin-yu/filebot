@@ -139,96 +139,30 @@ async def rollback_page(
     version: int = Query(..., description="Version to rollback to"),
 ):
     """
-    回滚到指定版本：取历史版本的 content（页面正文），
-    用当前系统模板重新渲染（header/footer 使用当前模板），
-    然后通过 FileBot API 重新发布。
+    回滚到指定版本：把历史版本的 content（页面正文）写回 webbot_page.content。
+    只回滚 content，不改 status（旧内容可能原本已 publish）。不自动 publish。
     """
-    # 1. 获取历史 content
+    # 1. 获取历史 content（页面正文）
     content = versioning.rollback_to_version(path, version)
     if content is None:
         raise HTTPException(status_code=404, detail=f"Version v{version} not found for {path}")
 
-    # 2. 加载当前页面数据
+    # 2. 确认页面存在，并读取当前 status（保持不变）
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM webbot_page WHERE path = ?", (path,))
+    cursor.execute("SELECT id, status FROM webbot_page WHERE path = ?", (path,))
     page = cursor.fetchone()
     if not page:
         conn.close()
         raise HTTPException(status_code=404, detail=f"Page not found: {path}")
-    page = dict(page)
-    conn.close()
+    current_status = page[1]
 
-    page_language = page.get("language", "en")
-    page_title = page.get("navigation_title") or page.get("title", "Untitled")
-
+    # 3. 只回滚 content，不改 status、不 publish
     now = datetime.utcnow()
-    date_modified_str = now.strftime("%Y-%m-%d")
-    date_modified_html = (
-        f'<div class="row">\n'
-        f'    <div class="col-md-12">\n'
-        f'        <dl id="wb-dtmd">\n'
-        f'            <dt>Date modified:</dt>\n'
-        f'            <dd><time property="dateModified">{date_modified_str}</time></dd>\n'
-        f'        </dl>\n'
-        f'    </div>\n'
-        f'</div>'
-    )
-
-    # 3. 加载系统模板片段（当前版本的 head/header/footer）
-    head_html = await _load_template("/canadasite/mustache-templates/gethead", path)
-    header_html = await _load_template("/canadasite/mustache-templates/getheader", path)
-
-    # Footer: 从现有页面内容中提取，或加载模板
-    footer_html = _extract_footer(page.get("content", ""))
-    if not footer_html:
-        footer_row = cursor.execute(
-            "SELECT content FROM webbot_page WHERE path = ?",
-            ("/canadasite/mustache-templates/getfooter",)
-        ).fetchone()
-        if footer_row:
-            try:
-                footer_config = json.loads(footer_row[0])
-                footer_content = footer_config.get("template", footer_row[0])
-            except json.JSONDecodeError:
-                footer_content = footer_row[0]
-            footer_html = footer_content
-
-    # 4. 组装完整 HTML
-    full_html = versioning.assemble_page_html(
-        content=content,
-        head=head_html,
-        header=header_html,
-        footer=footer_html,
-        date_modified=date_modified_str,
-        language=page_language,
-        title=page_title,
-        page_path=path,
-        header_en=header_en_html,
-        header_fr=header_fr_html,
-        date_modified_html=date_modified_html,
-    )
-
-    # 5. 通过 FileBot API 重新发布
-    filebot_publish_url = "http://localhost:8001/api/v1/pages/publish"
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            filebot_publish_url,
-            params={"path": path},
-            json={"html_content": full_html, "title": page_title},
-            headers={"X-WebBot-Access": "true"}
-        ) as fb_resp:
-            if fb_resp.status != 200:
-                fb_error = await fb_resp.text()
-                raise HTTPException(status_code=502, detail=f"Rollback publish failed: {fb_error}")
-            fb_result = await fb_resp.json()
-
-    # 6. 更新 DB 状态
-    conn = get_db()
     now_iso = now.isoformat()
     conn.execute(
-        "UPDATE webbot_page SET status = 'published', last_published = ? WHERE path = ?",
-        (now_iso, path)
+        "UPDATE webbot_page SET content = ?, last_modified = ? WHERE path = ?",
+        (content, now_iso, path)
     )
     conn.commit()
     conn.close()
@@ -237,7 +171,8 @@ async def rollback_page(
         "success": True,
         "path": path,
         "rolled_back_to": version,
-        "note": f"Rolled back to v{version}. Page content restored from historical version, rendered with current templates.",
+        "status": current_status,
+        "note": f"Rolled back to v{version}. Content restored; status unchanged ({current_status}).",
     }
 
 

@@ -4017,9 +4017,6 @@
                 return;
             }
 
-            // Save before publishing
-            await savePage();
-
             const path = currentPageData.path || currentPageId;
             const originalText = publishPageBtn.textContent;
             publishPageBtn.disabled = true;
@@ -4037,13 +4034,13 @@
 
                 const result = await response.json();
 
-                // Update local page data with publish status
+                // Update local page data with publish status.
+                // Publish must NOT touch last_modified (it stays at content edit time).
                 currentPageData.status = 'published';
                 currentPageData.last_published = result.published_at;
-                currentPageData.last_modified = result.published_at;
                 // Refresh display
                 pageStatusDisplayEl.textContent = ' | Status: published';
-                lastModifiedDisplayEl.textContent = formatLastModified(result.last_modified || result.published_at);
+                lastModifiedDisplayEl.textContent = formatLastModified(currentPageData.last_modified);
                 pagePublishedDisplayEl.textContent = formatPublishedAt(result.published_at);
 
                 // Update approval and lock display
@@ -8108,7 +8105,7 @@
         console.log('[URL Config] 配置已加载');
 
 
-        const FILEBOT_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZGFkNmZhMS1kNTIxLTQxN2YtODg3Ny1lZmU5NWZjZjFmMDQiLCJleHAiOjIwOTc1MDM2NzJ9.VV_L_o6J1Z1GSkVU8X-A2i09iXZ5GCWNFBRjcgytP-c';
+        const FILEBOT_JWT_TOKEN = (function(){ try { return localStorage.getItem('access_token') || ''; } catch(e){ return ''; } })();
 
         // Convert FileBot document to file manager format
         function convertDocumentToFile(doc) {

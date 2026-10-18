@@ -1226,7 +1226,7 @@ function setupButtons() {
                 sel.disabled = false;
                 // Clear and rebuild
                 sel.innerHTML = '';
-                sel.appendChild(new Option('(Default page template)', '', false, true));
+                sel.appendChild(new Option('Inherit', '', false, true));
                 // Add the base template itself
                 addTemplateItem(templateBase, 'page-template');
                 // Add children
@@ -1248,7 +1248,7 @@ function setupButtons() {
             .catch(function(err) {
                 sel.disabled = false;
                 sel.innerHTML = '';
-                sel.appendChild(new Option('(Default page template)', '', false, true));
+                sel.appendChild(new Option('Inherit', '', false, true));
                 console.warn('Failed to load template list:', err);
             });
     }

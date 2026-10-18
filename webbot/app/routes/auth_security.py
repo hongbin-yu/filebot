@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 _filebot_env = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "..", "..", "..",
-    "filebot", "backend", ".env"
+    "filebot-backend", ".env"
 )
 
-_shared_secret = os.environ.get("JWT_SECRET_KEY")
+_shared_secret = os.environ.get("SECRET_KEY") or os.environ.get("JWT_SECRET_KEY")
 _filebot_db_url = os.environ.get("FILEBOT_DATABASE_URL")
 
 if os.path.exists(_filebot_env):

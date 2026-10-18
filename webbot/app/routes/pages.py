@@ -38,6 +38,10 @@ WEBBOT_DB_PATH = os.environ.get(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
 )
 
+# A/B 测试模板：publish_template 指向此路径的页面走客户端 JS 分流，
+# 不走 redirect_to 的自动跳转（redirect_to 存的是 version B 的 URL）。
+AB_TEST_TEMPLATE_PATH = "/canadasite/mustache-templates/page-template/A-B-test-generic-template"
+
 def get_db_connection():
     """Get WebBot database connection"""
     try:
@@ -63,6 +67,36 @@ def _unescape_mustache_entities(content: str) -> str:
         return content
     return _MUSTACHE_ENTITY_RE.sub(
         lambda m: "{{" + _MUSTACHE_ENTITY_MAP[m.group(1)], content)
+
+
+def resolve_publish_template(cursor, path: str) -> Optional[str]:
+    """Resolve the effective publish_template for a page by walking up the path
+    hierarchy until a non-empty publish_template is found.
+
+    If the page itself has a publish_template set, return it. Otherwise walk up
+    parent paths (e.g. /canadasite/a/b/c -> /canadasite/a/b -> /canadasite/a ->
+    /canadasite) and return the first non-empty publish_template. Returns None if
+    no ancestor has a template set (caller falls back to the default template).
+    """
+    if not path:
+        return None
+    norm_path = path if path.startswith('/') else f'/{path}'
+    norm_path = norm_path.rstrip('/') or '/'
+    parts = [p for p in norm_path.split('/') if p]
+    for i in range(len(parts), 0, -1):
+        ancestor = '/' + '/'.join(parts[:i])
+        try:
+            cursor.execute(
+                "SELECT publish_template FROM webbot_page WHERE path = ?",
+                (ancestor,),
+            )
+            row = cursor.fetchone()
+        except Exception as e:
+            logger.warning(f"resolve_publish_template query failed for {ancestor}: {e}")
+            continue
+        if row and row["publish_template"]:
+            return row["publish_template"]
+    return None
 
 
 def generate_page_id(title: str) -> str:
@@ -1236,6 +1270,9 @@ async def get_page_by_path(path: str = Query(..., description="Full page path, e
         elif page_dict.get("metadata") is None:
             page_dict["metadata"] = {}
 
+        # Thumbnail property (editor metadata Advanced tab field)
+        page_dict["thumbnail"] = (page_dict.get("metadata") or {}).get("thumbnail")
+
         # Populate file_path from ancestor inheritance if not directly set
         if not page_dict.get('file_path'):
             inherited_fp = get_ancestor_file_path(normalized_path, conn)
@@ -1329,6 +1366,21 @@ async def get_page_children_by_path(
         children = cursor.fetchall()
         result = []
 
+        # 批量计算每个 child 是否有子页面（has_children），供前端 Pages 钻取浏览判断可点击
+        _children_paths = [dict(c).get("path") for c in children if dict(c).get("path")]
+        _has_children_map = {}
+        if _children_paths:
+            _ph = ",".join(["?"] * len(_children_paths))
+            _cc = conn.cursor()
+            try:
+                _cc.execute(
+                    "SELECT parent_path, COUNT(*) AS cnt FROM webbot_page WHERE parent_path IN (%s) GROUP BY parent_path" % _ph,
+                    _children_paths,
+                )
+                _has_children_map = {row["parent_path"]: (row["cnt"] > 0) for row in _cc.fetchall()}
+            finally:
+                _cc.close()
+
         for child in children:
             child_dict = dict(child)
             # 解析metadata field
@@ -1344,6 +1396,8 @@ async def get_page_children_by_path(
             child_dict["lock_status"] = meta.get("lock_status", "unlocked")
             # Extract redirectTo from metadata (for response field)
             child_dict["redirectTo"] = meta.get("redirect_to", None)
+            # has_children（供前端 Pages 钻取浏览判断）
+            child_dict["has_children"] = _has_children_map.get(child_dict.get("path"), False)
             # Out-of-sync detection (bilingual pairs)
             child_dict["out_of_sync"] = _compute_out_of_sync(
                 cursor, child_dict.get("other_language_path"), child_dict.get("last_modified"))
@@ -1466,6 +1520,9 @@ async def get_page_by_path_param(full_path: str, current_user: dict = Depends(ge
                 page_dict["metadata"] = {}
         elif page_dict.get("metadata") is None:
             page_dict["metadata"] = {}
+
+        # Thumbnail property (editor metadata Advanced tab field)
+        page_dict["thumbnail"] = (page_dict.get("metadata") or {}).get("thumbnail")
 
         # Populate file_path from ancestor inheritance if not directly set
         if not page_dict.get('file_path'):
@@ -2056,7 +2113,7 @@ async def _render_preview(
         page_content = content_override if content_override is not None else page.get("content", "")
         page_title = page.get("title", "Untitled")
         page_language = page.get("language", "en")
-        page_publish_template = page.get("publish_template", None)
+        page_publish_template = resolve_publish_template(cursor, path)
         page_last_modified = page.get("last_modified", now.isoformat())
         if page_last_modified:
             if isinstance(page_last_modified, str):
@@ -2225,10 +2282,12 @@ async def _render_preview(
             if footer_match:
                 footer_html = footer_match.group(0)
 
-        # Get contextual-footer — from /canadasite/{lang}/{institution}/contextual-footer
+        # Get contextual-footer — walk up path segments to find the nearest one.
+        # The institutional footer (contextual-footer) is not necessarily at the
+        # institution level; search from the full path upward until one is found.
         contextual_footer = ""
-        if len(path_parts) >= 3:
-            ctx_path = f"/canadasite/{page_language}/{path_parts[2]}/contextual-footer"
+        for i in range(len(path_parts), 1, -1):
+            ctx_path = f"/{'/'.join(path_parts[:i])}/contextual-footer"
             ctx_row = cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (ctx_path,)).fetchone()
             if ctx_row:
                 raw = ctx_row[0]
@@ -2237,6 +2296,8 @@ async def _render_preview(
                     contextual_footer = b_match.group(1).strip()
                 else:
                     contextual_footer = raw.strip()
+                if contextual_footer:
+                    break
 
         # 3. Clean content
         def extract_content(raw_content: str) -> str:
@@ -2527,7 +2588,7 @@ async def get_template_assets(path: str = Query(...)):
         if not page:
             return {"css_urls": [], "js_urls": [], "body_class": ""}
 
-        template_path = page["publish_template"] if page["publish_template"] else None
+        template_path = resolve_publish_template(cursor, norm_path)
 
         css_urls = []
         js_urls = []
@@ -2662,8 +2723,8 @@ async def publish_staged_page(
             raise HTTPException(status_code=403, detail=f"Page '{path}' is not approved yet.")
         now = datetime.now(timezone.utc).isoformat()
         cursor.execute(
-            "UPDATE webbot_page SET status = 'published', last_published = ?, last_modified = ? WHERE path = ?",
-            (now, now, path)
+            "UPDATE webbot_page SET status = 'published', last_published = ? WHERE path = ?",
+            (now, path)
         )
         # AI-search incremental index: page truly published → queue for indexing
         _mark_ai_index_pending(conn, path)
@@ -3821,12 +3882,12 @@ async def publish_page(
         page_content = page.get("content", "")
         page_title = page.get("navigation_title") or page.get("title", "Untitled")
         page_language = page.get("language", "en")
-        page_publish_template = page.get("publish_template", None)
-        # 2026-08-28: publish resets last_modified to publish time (user decision:
-        # re-publishing a bilingual pair keeps both pages' last_modified in sync
-        # on the new date). Rendering uses the new timestamp so the published
-        # HTML shows the fresh date modified.
-        page_last_modified = now.isoformat()
+        page_publish_template = resolve_publish_template(cursor, path)
+        # 2026-09-07 (reversal of 2026-08-28): publish must NOT reset last_modified.
+        # last_modified is the content edit time; publish only sets last_published
+        # (the publish date). The rendered "Date modified" uses the page's real
+        # last_modified so it stays distinct from the publish date.
+        page_last_modified = page.get("last_modified") or now.isoformat()
         # Load page metadata (includes properties entered via the editor form)
         raw_metadata = page.get("metadata", {})
         if isinstance(raw_metadata, str):
@@ -4002,10 +4063,12 @@ async def publish_page(
             if footer_match:
                 footer_html = footer_match.group(0)
 
-        # Get contextual-footer — from /canadasite/{lang}/{institution}/contextual-footer
+        # Get contextual-footer — walk up path segments to find the nearest one.
+        # The institutional footer (contextual-footer) is not necessarily at the
+        # institution level; search from the full path upward until one is found.
         contextual_footer = ""
-        if len(path_parts) >= 3:
-            ctx_path = f"/canadasite/{page_language}/{path_parts[2]}/contextual-footer"
+        for i in range(len(path_parts), 1, -1):
+            ctx_path = f"/{'/'.join(path_parts[:i])}/contextual-footer"
             ctx_row = cursor.execute("SELECT content FROM webbot_page WHERE path = ?", (ctx_path,)).fetchone()
             if ctx_row:
                 raw = ctx_row[0]
@@ -4014,6 +4077,8 @@ async def publish_page(
                     contextual_footer = b_match.group(1).strip()
                 else:
                     contextual_footer = raw.strip()
+                if contextual_footer:
+                    break
 
         # 6. Clean page content: extract meaningful body/main content from the raw content
 
@@ -4182,8 +4247,11 @@ async def publish_page(
             # (properties are already handled inside render_page_template_fb via page_metadata param)
             return html, ext
 
-        # 0) Redirect: if page has redirect_to set, use redirect template
-        if page_metadata.get("redirect_to"):
+        # 0) Redirect: if page has redirect_to set, use redirect template.
+        #    A/B test pages (publish_template = AB_TEST_TEMPLATE_PATH) are excluded:
+        #    they render the full A variant and let client-side JS split traffic,
+        #    using redirect_to as the variant-B URL.
+        if page_metadata.get("redirect_to") and page_publish_template != AB_TEST_TEMPLATE_PATH:
             full_html, publish_ext = await render_and_get_ext(
                 "/canadasite/mustache-templates/page-template/redirect-template", head_html, header_html, footer_html,
                 cleaned_content, date_modified_str, page_language, page_title, path,
@@ -4315,15 +4383,13 @@ async def publish_page(
         except Exception as ve:
             logger.error(f"Version snapshot failed (non-fatal): {ve}")
 
-        # 11. Update page status to "published". 2026-08-28: publish also resets
-        # last_modified to the publish timestamp (user decision) so that
-        # re-publishing a bilingual pair puts both pages on the same new date
-        # and the Out-of-Sync badge clears. The twin page keeps its own
-        # last_published untouched (it is updated when the twin is published).
+        # 11. Update page status to "published". 2026-09-07 (reversal of 2026-08-28):
+        # publish does NOT touch last_modified — it only sets status and last_published.
+        # last_modified keeps the content edit time, distinct from the publish date.
         publish_ts = datetime.now(timezone.utc).isoformat()
         cursor.execute(
-            "UPDATE webbot_page SET status = 'published', last_published = ?, last_modified = ? WHERE path = ?",
-            (publish_ts, now.isoformat(), path)
+            "UPDATE webbot_page SET status = 'published', last_published = ? WHERE path = ?",
+            (publish_ts, path)
         )
         # AI-search incremental index: page truly published → queue for indexing
         _mark_ai_index_pending(conn, path)

@@ -19,6 +19,13 @@ import fnmatch
 import html as html_mod
 from datetime import datetime
 
+from .ollama_embed import (
+    EMBEDDING_DIM,
+    EMBEDDING_MODEL,
+    OllamaEmbedder,
+    embed_one,
+)
+
 # --- Configuration ---
 WEBBOT_DB = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),  # app/
@@ -33,9 +40,7 @@ DB_NAME = os.environ.get("DB_NAME", "filebot")
 DB_USER = os.environ.get("DB_USER", "filebot")
 DB_PASS = os.environ.get("DB_PASS", "filebot")
 
-# Embedding config
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
-EMBEDDING_DIM = 384  # e5-small output dimension
+# Embedding config — local Ollama (nomic-embed-text), imported from ollama_embed.
 CHUNK_MIN_CHARS = 50
 CHUNK_OVERLAP_CHARS = 120  # slightly more overlap for bge-m3
 
@@ -323,14 +328,17 @@ def extract_h2_chunks(page):
 
 
 # --- Step 3: Embedding ---
-def get_embedding_model(model_name):
-    """Load sentence-transformers model."""
-    from sentence_transformers import SentenceTransformer
+_ollama_embedder = None
 
-    print(f"🔄 Loading embedding model: {model_name}...")
-    model = SentenceTransformer(model_name)
-    print(f"   ✅ Model loaded. Device: {model.device}, Dim: {model.get_sentence_embedding_dimension()}")
-    return model
+
+def get_embedding_model(model_name=None):
+    """Return the local Ollama embedder (drop-in for sentence-transformers)."""
+    global _ollama_embedder
+    if _ollama_embedder is None:
+        _ollama_embedder = OllamaEmbedder(model_name or EMBEDDING_MODEL)
+        print(f"🔄 Using local Ollama embedding model: {_ollama_embedder.model} "
+              f"(dim={EMBEDDING_DIM}, data stays on-prem)")
+    return _ollama_embedder
 
 
 def embed_chunks(model, chunks, batch_size=32):
@@ -434,12 +442,10 @@ def store_chunks(conn, chunks, clear_first=True):
 # --- Step 5: Search (for testing) ---
 def search_chunks(conn, query, lang="en", top_k=5):
     """Simple search to verify the pipeline works."""
-    from sentence_transformers import SentenceTransformer
     import psycopg2.extras
 
-    # Load model and embed query
-    model = SentenceTransformer(EMBEDDING_MODEL)
-    query_emb = model.encode(f"query: {query}", normalize_embeddings=True)
+    # Embed query via local Ollama
+    query_emb = embed_one(query)
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(
@@ -451,7 +457,7 @@ def search_chunks(conn, query, lang="en", top_k=5):
         ORDER BY embedding <=> %s::vector
         LIMIT %s
         """,
-        (query_emb.tolist(), lang, query_emb.tolist(), top_k)
+        (query_emb, lang, query_emb, top_k)
     )
     results = cur.fetchall()
     cur.close()

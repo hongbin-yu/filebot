@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv=0260616-1321"X-UA-Compatible" content="IE=edge">
-    <title>WebBot Page Navigation</title>
+    <title>WebBot Navigation</title>
     <link rel="shortcut icon" href="/static/icons/webbot_favicon.png" type="image/png">
     <link rel="icon" href="/static/icons/webbot_favicon.png" sizes="32x32">
 
@@ -34,8 +34,8 @@
                             <button id="filebot-toggle-btn" class="filebot-toggle-btn" title="Toggle FileBot panel">
                                 <img src="/static/icons/filebot_icon.png" alt="FileBot" style="width:24px;height:24px;">
                             </button>
-                            <img src="/static/icons/webbot_icon.png" alt="WebBot" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;">
-                            <span class="nav-title-text">WebBot Page Navigation</span>
+                            <a href="/apps">🏠</a>
+                            <span class="nav-title-text">WebBot Navigation</span>
                         </h1>
                         <div id="page-stats" class="text-muted nav-stats">
                             Loading pages...
@@ -154,9 +154,9 @@
                         <div class="form-group">
                             <label for="newPageTemplate">Page Template</label>
                             <select id="newPageTemplate" class="form-control">
-                                <option value="">(Default page template)</option>
+                                <option value="">Inherit</option>
                             </select>
-                            <small class="form-text text-muted">Select a template for this page. Default: /canadasite/mustache-templates/page-template</small>
+                            <small class="form-text text-muted">Inherit = use the parent page's template. Select a specific template to override.</small>
                         </div>
                         <hr>
                         <div class="row">
@@ -341,9 +341,9 @@
                     <div class="form-group">
                         <label for="prop-template">Page Template:</label>
                         <select id="prop-template" class="form-control">
-                            <option value="">(Default page template)</option>
+                            <option value="">Inherit</option>
                         </select>
-                        <small class="form-text text-muted">Select a different Mustache template for this page. Default: /canadasite/mustache-templates/page-template</small>
+                        <small class="form-text text-muted">Inherit = use the parent page's template. Select a specific template to override.</small>
                     </div>
 
                     <!-- Content Type -->

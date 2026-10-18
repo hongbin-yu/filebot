@@ -304,6 +304,34 @@
             .meta-grid { grid-template-columns: 1fr 1fr; }
             .compare-body { grid-template-columns: 1fr; }
         }
+
+        /* WET alert/confirm modal — explicit background (page has no Bootstrap) */
+        #wet-alert-modal, #wet-confirm-modal {
+            background: #fff;
+            color: #333;
+            border-radius: 8px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.4);
+            overflow: hidden;
+        }
+        #wet-alert-modal .modal-header, #wet-confirm-modal .modal-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        #wet-alert-modal .modal-body, #wet-confirm-modal .modal-body {
+            padding: 18px 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        #wet-alert-modal .modal-footer, #wet-confirm-modal .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #e5e5e5;
+            text-align: right;
+        }
+        #wet-alert-modal .modal-title, #wet-confirm-modal .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2572b4;
+        }
     </style>
 <script src="/static/js/webbot-auth.js"></script>
 <script src="/static/js/wet-alert.js?v=20260605"></script>
@@ -655,7 +683,7 @@
             }
             if (!version) return showWetAlert('Select a version to rollback to.');
 
-            if (!confirm('⏪ Rollback ' + currentPagePath + ' to v' + version + '?\n\nThis will:\n1. Restore historical content\n2. Re-render with current templates\n3. Re-publish via FileBot\n\nProceed?')) return;
+            if (!confirm('⏪ Rollback ' + currentPagePath + ' to v' + version + '?\n\nThis will:\n1. Restore historical content\n\nStatus is unchanged and the page is not re-published.\n\nProceed?')) return;
 
             fetch(API_BASE + '/api/v1/versions/page/rollback?path=' +
                 encodeURIComponent(currentPagePath) + '&version=' + version, { method: 'POST' })

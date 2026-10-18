@@ -15,6 +15,7 @@ IO_ALLOW_PRIVATE_URLS=1 to allow internal data sources.
 import csv
 import io
 import ipaddress
+import json
 import os
 import socket
 import urllib.parse
@@ -22,6 +23,8 @@ import urllib.parse
 import requests
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from .dict_fields import apply_dictionary_to_rows
 
 router = APIRouter(prefix="/api/v1/io", tags=["io"])
 
@@ -36,6 +39,8 @@ class ConvertRequest(BaseModel):
     sheet: str | None = None  # sheet name, or 1-based index as string like "2"
     header_row: int = Field(1, ge=1)  # 1-based row used as column headers
     max_rows: int = Field(DEFAULT_MAX_ROWS, ge=1, le=100000)
+    language: str = "en"  # 字典取值语言（en/fr）
+    dictionary: dict | None = None  # 可选双语字典 {字段名: {code: {en, fr}}}，传则注入 compute fields
 
     def resolved_url(self) -> str:
         return self.url or self.datasource or ""
@@ -211,7 +216,8 @@ def _sniff_format(data: bytes) -> str:
 
 # ---------------------------------------------------------------- endpoints
 
-def _convert(url: str, sheet: str | None, header_row: int, max_rows: int) -> dict:
+def _convert(url: str, sheet: str | None, header_row: int, max_rows: int,
+             language: str = "en", dictionary: dict | None = None) -> dict:
     url = _check_url(url)
     try:
         r = requests.head(url, timeout=10, allow_redirects=True)
@@ -234,7 +240,7 @@ def _convert(url: str, sheet: str | None, header_row: int, max_rows: int) -> dic
     else:
         raise HTTPException(422, "Unsupported format: expected .xlsx/.csv/.tsv URL")
 
-    return {
+    result = {
         "source": url,
         "format": fmt,
         "sheet": sheet_name,
@@ -244,13 +250,21 @@ def _convert(url: str, sheet: str | None, header_row: int, max_rows: int) -> dic
         "data": rows,
         "truncated": len(rows) >= max_rows,
     }
+    # 可选字典映射：注入 subject_list/status_label 等 compute fields（不传则纯转换，保持通用）
+    if dictionary:
+        applied = apply_dictionary_to_rows(rows, dictionary, language)
+        if applied:
+            result["language"] = language
+            result["dictionaries_applied"] = applied
+    return result
 
 
 @router.post("/convert")
 def convert(req: ConvertRequest) -> dict:
     if not req.resolved_url():
         raise HTTPException(422, "Missing 'url' (or 'datasource')")
-    return _convert(req.resolved_url(), req.sheet, req.header_row, req.max_rows)
+    return _convert(req.resolved_url(), req.sheet, req.header_row, req.max_rows,
+                    req.language, req.dictionary)
 
 
 @router.get("/convert")
@@ -260,8 +274,16 @@ def convert_get(
     sheet: str | None = Query(None, description="Sheet name or 1-based index"),
     header_row: int = Query(1, ge=1, description="1-based header row"),
     max_rows: int = Query(DEFAULT_MAX_ROWS, ge=1, le=100000),
+    language: str = Query("en", description="Dictionary label language (en/fr)"),
+    dictionary: str | None = Query(None, description="JSON dictionary {field: {code: {en, fr}}}"),
 ) -> dict:
     target = url or datasource
     if not target:
         raise HTTPException(422, "Missing 'url' (or 'datasource')")
-    return _convert(target, sheet, header_row, max_rows)
+    dict_obj = None
+    if dictionary:
+        try:
+            dict_obj = json.loads(dictionary)
+        except json.JSONDecodeError as e:
+            raise HTTPException(422, f"dictionary must be valid JSON: {e}")
+    return _convert(target, sheet, header_row, max_rows, language, dict_obj)

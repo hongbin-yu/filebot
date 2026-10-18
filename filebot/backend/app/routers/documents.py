@@ -17,8 +17,15 @@ import base64
 from datetime import datetime
 from pathlib import Path
 from io import BytesIO
+import io
 import PyPDF2
 from PIL import Image
+try:
+    import cairosvg
+    _CAIROSVG_AVAILABLE = True
+except Exception:
+    cairosvg = None
+    _CAIROSVG_AVAILABLE = False
 from urllib.parse import urlparse, unquote
 
 from app.db.database import get_db
@@ -645,8 +652,46 @@ def generate_thumbnail_for_image_document(
             logging.error(f"Document file not found: {document.path}")
             return False
         
-        # Open image file
-        with Image.open(file_path) as img:
+        # Open image file (with SVG fallback via cairosvg when the file is
+        # actually an SVG mislabeled as .png/.jpg, which PIL cannot decode)
+        raw_bytes = None
+        try:
+            with open(file_path, "rb") as _f:
+                raw_bytes = _f.read()
+        except Exception:
+            raw_bytes = None
+        is_svg = bool(
+            raw_bytes
+            and raw_bytes[:5] == b"<?xml"
+            and b"<svg" in raw_bytes.lower()
+        )
+        svg_image = None
+        if is_svg:
+            if not _CAIROSVG_AVAILABLE:
+                logging.error(f"SVG source but cairosvg unavailable: {document.path}")
+                raw_bytes = None
+            else:
+                try:
+                    png_bytes = cairosvg.svg2png(
+                        bytestring=raw_bytes,
+                        output_width=thumbnail_size,
+                        output_height=thumbnail_size,
+                    )
+                    svg_image = Image.open(io.BytesIO(png_bytes))
+                    svg_image.load()
+                except Exception as e:
+                    logging.error(f"cairosvg failed for {document.path}: {e}")
+                    svg_image = None
+        if svg_image is not None:
+            img = svg_image
+            img_ctx = None
+        elif raw_bytes is not None:
+            img_ctx = Image.open(io.BytesIO(raw_bytes))
+            img = img_ctx
+        else:
+            img_ctx = Image.open(file_path)
+            img = img_ctx
+        try:
             # Convert to RGB (if needed)
             if img.mode not in ["RGB", "RGBA", "L"]:
                 img = img.convert("RGB")
@@ -688,7 +733,12 @@ def generate_thumbnail_for_image_document(
             
             logging.info(f"Generated {thumbnail_size}x{thumbnail_size} thumbnail for {document.path} -> {thumb_rel_path}")
             return True
-            
+        finally:
+            if img_ctx is not None:
+                try:
+                    img_ctx.close()
+                except Exception:
+                    pass
     except Exception as e:
         logging.error(f"Failed to generate image thumbnail: {str(e)}", exc_info=True)
         document.thumbnail_status = ThumbnailStatus.FAILED
@@ -2899,8 +2949,8 @@ def get_document_thumbnail(
         document = get_document_by_identifier(document_identifier, current_user, db)
     
     # Image and video file types eligible for thumbnail generation
-    image_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF}
-    thumbnail_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF, FileType.VIDEO}
+    image_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF, FileType.SVG}
+    thumbnail_file_types = {FileType.JPEG, FileType.JPG, FileType.PNG, FileType.TIFF, FileType.SVG, FileType.VIDEO}
     
     if document.file_type not in thumbnail_file_types:
         raise HTTPException(status_code=404, detail="Thumbnail not available for this document type")

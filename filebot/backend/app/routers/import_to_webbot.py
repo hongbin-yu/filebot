@@ -138,6 +138,10 @@ def ensure_page_exists(cursor, path, parent_path, title, content, language,
     # 老板要求（2026-09-07）：last_modified 从页面 dcterms.modified 获取（真实修改日期），
     # 找不到时回退到 now。
     page_modified = extract_dcterms_meta(content).get('modified') if content else None
+    # dcterms.modified is often date-only (e.g. '2024-01-09'); WebBot's
+    # PageResponse expects a full datetime and would 500 on date-only values.
+    if page_modified and len(page_modified) == 10 and page_modified[4] == '-' and page_modified[7] == '-':
+        page_modified = page_modified + 'T00:00:00'
     last_modified = page_modified or now
     meta = json.dumps(metadata or {})
 

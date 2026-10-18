@@ -1,5 +1,5 @@
 """WebBot Pydantic models"""
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -163,6 +163,7 @@ class PageResponse(BaseModel):
     file_path: Optional[str] = Field(None, description="FileBot image storage path. If empty, inherits from ancestor pages.")
     status: str = "draft"
     metadata: Optional[Dict[str, Any]] = None
+    thumbnail: Optional[str] = Field(None, description="页面缩略图（metadata.thumbnail，editor metadata Advanced tab 字段）")
     hide_in_navigation: bool = False
     navigation_title: Optional[str] = None
     publish_template: Optional[str] = Field(None, description="Page-level Mustache template path for publish")
@@ -173,6 +174,21 @@ class PageResponse(BaseModel):
     last_published: Optional[datetime] = None
     out_of_sync: bool = Field(False, description="True if this page was modified after its linked other-language page")
     is_republish: Optional[bool] = Field(None, description="True if last_modified > last_published (page edited after last publish, needs republish)")
+
+    @field_validator("created_at", "last_modified", "last_published", mode="before")
+    @classmethod
+    def _coerce_date_only(cls, v):
+        """Some imported pages store datetimes as date-only strings
+        (e.g. canada.ca dcterms.modified '2024-01-09'), which pydantic's
+        datetime field rejects and would 500 the read endpoints. Coerce
+        date-only 'YYYY-MM-DD' to a real datetime before validation."""
+        if isinstance(v, str) and len(v) == 10 and v[4] == '-' and v[7] == '-':
+            try:
+                return datetime.fromisoformat(v)
+            except ValueError:
+                pass
+        return v
+
     class Config:
         from_attributes = True
 

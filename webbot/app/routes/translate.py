@@ -1,6 +1,6 @@
 """
-Content translation routes — uses DeepSeek API to translate HTML content
-while preserving tags, attributes, and structure.
+Content translation routes — uses local Ollama LLM to translate HTML content
+while preserving tags, attributes, and structure. Data never leaves the intranet.
 """
 
 from fastapi import APIRouter, HTTPException, Query
@@ -24,27 +24,24 @@ WEBBOT_DB_PATH = os.environ.get(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "webbot.db")
 )
 
-# DeepSeek API config — read from OpenClaw config
+# LLM config — 仅使用环境变量（LLM_BASE_URL + LLM_MODEL），gc 机用本机 Ollama 本地模型
 _CONFIG_CACHE = None
 
 def _get_api_config():
     global _CONFIG_CACHE
     if _CONFIG_CACHE:
         return _CONFIG_CACHE
-    try:
-        oc_json = os.path.expanduser("~/.openclaw/openclaw.json")
-        with open(oc_json) as f:
-            cfg = json.load(f)
-        provider = cfg.get("models", {}).get("providers", {}).get("custom-api-deepseek-com", {})
-        _CONFIG_CACHE = {
-            "base_url": provider.get("baseUrl", "https://api.deepseek.com"),
-            "api_key": provider.get("apiKey", ""),
-            "model": "deepseek-v4-flash",
-        }
+    # 1) 优先读环境变量（LLM_BASE_URL + LLM_MODEL 都存在才启用）
+    base_url = os.environ.get("LLM_BASE_URL", "").strip()
+    model = os.environ.get("LLM_MODEL", "").strip()
+    if base_url and model:
+        api_key = os.environ.get("LLM_API_KEY", "ollama")  # Ollama 无需 key，但代码要求非空
+        _CONFIG_CACHE = {"base_url": base_url, "api_key": api_key, "model": model}
+        logger.info(f"LLM config from env: base_url={base_url}, model={model}")
         return _CONFIG_CACHE
-    except Exception as e:
-        logger.warning(f"Failed to read API config: {e}")
-        return {"base_url": "https://api.deepseek.com", "api_key": "", "model": "deepseek-v4-flash"}
+    # 2) 未配置环境变量 → 直接报错（不再 fallback 到外网 API）
+    logger.error("LLM translation not configured: set LLM_BASE_URL and LLM_MODEL")
+    return {"base_url": "", "api_key": "", "model": ""}
 
 
 def _get_db():
@@ -54,7 +51,7 @@ def _get_db():
 
 
 async def _call_llm(system_prompt: str, user_content: str) -> str:
-    """Call DeepSeek API with the given prompts. Returns the response text."""
+    """Call the configured LLM (local Ollama) with the given prompts. Returns the response text."""
     cfg = _get_api_config()
     if not cfg["api_key"]:
         raise HTTPException(500, "Translation service not configured (no API key)")

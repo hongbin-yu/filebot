@@ -12,6 +12,8 @@ import traceback
 import urllib.parse
 from typing import Optional
 
+from .dict_fields import enrich_dictionary_fields  # 字典映射通用工具（io/convert 共用）
+
 router = APIRouter(prefix="", tags=["mustache"])
 
 # 数据库路径
@@ -84,36 +86,68 @@ def _enrich_label_fields(ctx: dict) -> None:
                     row[f"{field}_label"] = mapping.get(v, v)
 
 
+# 行字段动态键：{{M[F]}} / {{M[F].sub}} / {{#M[F]}}...{{/M[F]}}
+# M = ctx 顶层字典名（Status/Subjects/...），F = 数据行字段（渲染前未知，如 status）；
+# 兼容旧语法 {{labels.M[F]}}（labels 前缀）。
 _DYN_ROW_KEY_RE = re.compile(
-    r"\{\{\s*labels\.([A-Za-z_][A-Za-z0-9_]*)\[([A-Za-z_][A-Za-z0-9_]*)\]\s*\}\}"
+    r"\{\{\s*([#/]?)\s*(labels\.)?([A-Za-z_][A-Za-z0-9_]*)\["
+    r"([A-Za-z_][A-Za-z0-9_]*)\](?:\.([A-Za-z_][A-Za-z0-9_]*))?\s*\}\}"
 )
 
 
 def _expand_row_dynamic_keys(template: str, ctx: dict) -> str:
-    """把 {{labels.M[F]}} 动态键展开：F 是数据行字段（渲染前未知，如 status）。
+    """把 {{M[F]}} 动态键展开：F 是数据行字段（渲染前未知，如 status）。
 
     [page.language] 类由 expand_i18n_keys 在渲染前展开（已知 lang）；
-    行字段动态键在数据层展开：每行注入 __dyn_M_F = labels.M.get(row[F], row[F])，
-    模板替换为 {{__dyn_M_F}}，chevron 在行上下文直接命中。
+    行字段动态键在数据层展开：每行注入 __dyn_M_F = M.get(row[F], row[F])，
+    模板替换为 {{__dyn_M_F}}（可选 .sub 后缀保留），chevron 在行上下文直接命中。
+    支持 section 形式 {{#M[F]}}...{{/M[F]}}（列表/对象自动迭代）。
+    逗号分隔值（如 subjects='CM,EM'）展开为映射后的数组，模板可迭代。
     """
     pairs = set(_DYN_ROW_KEY_RE.findall(template))
     if not pairs:
         return template
-    labels = ctx.get("labels")
     data = ctx.get("data")
-    if isinstance(labels, dict) and isinstance(data, list):
-        for mapping_name, row_field in pairs:
-            mapping = labels.get(mapping_name)
+    if isinstance(data, list):
+        for open_tag, prefix, mapping_name, row_field, sub in pairs:
+            if prefix:
+                labels = ctx.get("labels")
+                mapping = labels.get(mapping_name) if isinstance(labels, dict) else None
+            else:
+                mapping = ctx.get(mapping_name)
             if not isinstance(mapping, dict):
                 continue
             for row in data:
-                if isinstance(row, dict) and row_field in row:
-                    v = row[row_field]
-                    if isinstance(v, (str, int)):
-                        row[f"__dyn_{mapping_name}_{row_field}"] = mapping.get(v, v)
-    return _DYN_ROW_KEY_RE.sub(
-        lambda m: "{{__dyn_%s_%s}}" % (m.group(1), m.group(2)), template
-    )
+                if not isinstance(row, dict) or row_field not in row:
+                    continue
+                v = row[row_field]
+                if isinstance(v, str) and "," in v:
+                    # 逗号分隔 → 数组（每项映射对象或字符串，带 last 标志供 {{^last}} 分隔符）
+                    items = []
+                    codes = [x.strip() for x in v.split(",") if x.strip()]
+                    for idx, c in enumerate(codes):
+                        mv = mapping.get(c)
+                        if isinstance(mv, dict):
+                            items.append({"code": c, "en": mv.get("en", c), "fr": mv.get("fr", c),
+                                          "last": idx == len(codes) - 1})
+                        elif mv is not None:
+                            items.append(mv)
+                        else:
+                            items.append(c)
+                    row[f"__dyn_{mapping_name}_{row_field}"] = items
+                elif isinstance(v, (str, int)):
+                    mv = mapping.get(str(v), v)
+                    # dict 值（如 {en, fr}）保留对象：模板 {{__dyn_M_F.en}} 由 chevron 取子键，
+                    # 或 {{#__dyn_M_F}}...{{/__dyn_M_F}} section 迭代；str 值直接可用
+                    row[f"__dyn_{mapping_name}_{row_field}"] = mv
+
+    def _sub(m):
+        return "{{%s__dyn_%s_%s%s}}" % (
+            m.group(1), m.group(3), m.group(4),
+            ("." + m.group(5)) if m.group(5) else ""
+        )
+
+    return _DYN_ROW_KEY_RE.sub(_sub, template)
 
 
 def resolve_partial_config(name: str, cursor) -> Optional[dict]:
@@ -326,6 +360,8 @@ async def _render_param_partial(base: str, params: dict, data: dict, cursor, lan
             ctx["datasource_error"] = str(e)
     # 数据层自动查表：labels.{field} dict + 行内同名 field → {field}_label
     _enrich_label_fields(ctx)
+    # 通用字典映射：Status/Subjects 等双语字典 → {field}_obj/{field}_label/{field}_list
+    enrich_dictionary_fields(ctx, lang)
     # 行字段动态键 {{labels.M[F]}} → 数据层展开（partial 自带 ctx）
     sub_tpl = _expand_row_dynamic_keys(sub_tpl, ctx)
     # 递归处理嵌套带参 partial；普通 partial 由 build_partials_dict 收集
@@ -356,6 +392,8 @@ async def render_template(template: str, data: dict, cursor, lang: Optional[str]
     if isinstance(data, dict):
         # 数据层自动查表：labels.{field} dict + data 行同名 field → 行内 {field}_label
         _enrich_label_fields(data)
+        # 通用字典映射：Status/Subjects 等双语字典 → {field}_obj/{field}_label/{field}_list
+        enrich_dictionary_fields(data, lang)
     template = expand_i18n_keys(template, lang)
     # 行字段动态键 {{labels.M[F]}} → 数据层展开
     if isinstance(data, dict):

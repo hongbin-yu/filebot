@@ -5,7 +5,6 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import os
 import traceback
-import threading
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,28 +19,12 @@ from app.models.group import GroupMember
 from app.models.document import Document, ConversionStatus, FileType, DocumentStatus, DocumentType
 from app.models.page import Page
 from app.schemas.document import DocumentResponse, PageResponse
+from app.ollama_embed import embed_one
 
 router = APIRouter()
 
 
 # ========== AI Semantic Search ==========
-
-# Lazy-loaded singleton for the embedding model
-_model_lock = threading.Lock()
-_model_instance = None
-
-def get_embedding_model():
-    """Lazy-load and cache the sentence-transformers model."""
-    global _model_instance
-    if _model_instance is None:
-        with _model_lock:
-            if _model_instance is None:
-                from sentence_transformers import SentenceTransformer
-                model_name = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
-                logger.info(f"Loading embedding model: {model_name}...")
-                _model_instance = SentenceTransformer(model_name)
-                logger.info("Embedding model loaded")
-    return _model_instance
 
 
 # Direct psycopg2 connection for pgvector queries
@@ -111,17 +94,16 @@ def ai_search(
     import psycopg2.extras
 
     try:
-        # Embed the query
-        model = get_embedding_model()
-        query_emb = model.encode(f"query: {q}", normalize_embeddings=True)
+        # Embed the query (local Ollama)
+        query_emb = embed_one(q)
 
         # Build query with optional site filter
         if site:
             site_filter = " AND source_url LIKE '%%' || %s || '%%'"
-            params = [query_emb.tolist(), lang, site, query_emb.tolist(), top_k]
+            params = [query_emb, lang, site, query_emb, top_k]
         else:
             site_filter = ""
-            params = [query_emb.tolist(), lang, query_emb.tolist(), top_k]
+            params = [query_emb, lang, query_emb, top_k]
 
         sql = f"""
             SELECT page_title, heading, text, source_url, char_count, description,

@@ -279,6 +279,10 @@ class PasswordMiddleware:
         if path.startswith("/__"):
             await self.app(scope, receive, send)
             return
+        # 静态资源（GCWeb/WET-BOEW 设计资源 + DAM 图片）公开，无需密码
+        if path.startswith("/etc/") or path.startswith("/content/dam/"):
+            await self.app(scope, receive, send)
+            return
         # CDN bypass: 检查 secret header
         headers_dict = {}
         for header, value in scope.get("headers", []):

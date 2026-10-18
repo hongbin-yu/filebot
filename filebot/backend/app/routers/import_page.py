@@ -136,6 +136,44 @@ def extract_title_from_html(html: str) -> str:
     return title
 
 
+def _ensure_dam_folder_chain(db, folder_path: str, current_user) -> None:
+    """Ensure every parent Folder row exists for an image's doc_path.
+
+    Idempotent — walks each path segment and only inserts missing rows.
+    Called for BOTH skipped ("already exists") and freshly-downloaded images,
+    so a page re-import re-creates deleted image parent folders even when the
+    image Document row + physical file already exist (the "already exists" skip
+    branch would otherwise never run folder creation).
+    """
+    if not folder_path:
+        return
+    try:
+        boarding_app = db.query(App).filter(App.slug == 'boarding').first()
+        root_app_id = boarding_app.id if boarding_app else None
+        _cur = ''
+        for _part in folder_path.strip('/').split('/'):
+            _cur = _cur + '/' + _part if _cur else '/' + _part
+            _exist = db.query(Folder).filter(Folder.path == _cur).first()
+            if not _exist:
+                _parent = '/'.join(_cur.split('/')[:-1]) or None
+                _folder_app_id = root_app_id
+                if _parent:
+                    _pf = db.query(Folder).filter(Folder.path == _parent).first()
+                    if _pf and _pf.app_id:
+                        _folder_app_id = _pf.app_id
+                _f = Folder(
+                    path=_cur,
+                    parent_folder_path=_parent,
+                    name=_part,
+                    app_id=_folder_app_id,
+                    created_by=str(current_user.id),
+                )
+                db.add(_f)
+                db.flush()
+    except Exception as e:
+        logger.warning(f"  ⚠️  Folder creation warning for {folder_path}: {e}")
+
+
 def download_and_store_dam_images(html: str, page_url: str, current_user) -> tuple[str, int, int]:
     """Download ALL canada.ca images from a page and store locally.
     
@@ -157,9 +195,11 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
     """
     from pathlib import Path
     
-    data_root = Path(settings.FILE_STORAGE_PATH).resolve()
-    if not data_root.exists():
-        data_root = Path(settings.DATA_ROOT).resolve()
+    # NOTE: DAM images must be written under DATA_ROOT/boarding/canadasite/content/dam/
+    # (NO "files/" prefix) so they match the /content/dam proxy mount
+    # (_dam_path = data/boarding/canadasite/content/dam). Writing under
+    # data/files/... made images 404 — the proxy never found them.
+    data_root = Path(settings.DATA_ROOT).resolve()
     
     db = SessionLocal()
     downloaded = 0
@@ -253,18 +293,24 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
         if '/content/dam/' in rel_path:
             # DAM image: store at cleaned path under /content/dam/
             if rel_path != clean_path:
-                doc_path = clean_path
+                serving_path = clean_path
                 needs_rewrite = True
             else:
-                doc_path = clean_path
+                serving_path = clean_path
         else:
             # Non-DAM: preserve path hierarchy under /content/dam/
             # _jcr_content already stripped above
-            doc_path = f"/content/dam{clean_path}"
+            serving_path = f"/content/dam{clean_path}"
+        
+        # Document + folder path live under /boarding/canadasite (the tree the
+        # FileBot UI browses), while serving_path is the /content/dam URL the
+        # proxy resolves (LOCAL_DAM_DIR = data/boarding/canadasite/content/dam).
+        doc_path = f"/boarding/canadasite{serving_path}"
         
         image_urls[rel_path] = {
             "remote": remote_url,
             "doc_path": doc_path,
+            "serving_path": serving_path,
             "needs_rewrite": needs_rewrite,
         }
     
@@ -287,20 +333,53 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
     
     download_results = {}  # doc_path → {content, content_type, rel_path, doc_path, remote_url, needs_rewrite}
     
-    # First pass: skip already-existing images to avoid redundant work
+    def _physical_file_exists(doc: Document, doc_path: str) -> bool:
+        """Verify the image file actually exists on disk.
+
+        A Document row can outlive its physical file (e.g. an earlier buggy run
+        wrote to the wrong root, or the file was later removed). Trusting the row
+        alone would skip the download and leave a broken image reference.
+        Mirrors the write path used in Step 4 plus legacy fallbacks.
+        """
+        # Canonical write location (same formula as Step 4 below)
+        # doc_path is already /boarding/canadasite/..., so no extra prefix.
+        canonical = data_root / doc_path.lstrip('/')
+        if canonical.exists():
+            return True
+        if doc.storage_path and (data_root / doc.storage_path).exists():
+            return True
+        if doc.full_storage_path and doc.stored_filename:
+            try:
+                if (Path(doc.full_storage_path) / doc.stored_filename).exists():
+                    return True
+            except Exception:
+                pass
+        return False
+
+    # First pass: skip already-existing images to avoid redundant work.
+    # Only skip when the physical file is actually present — a stale row
+    # (record exists but file missing) must be re-downloaded.
     for rel_path, info in sorted(image_urls.items()):
         existing = db.query(Document).filter(Document.path == info["doc_path"]).first()
-        if existing:
+        if existing and _physical_file_exists(existing, info["doc_path"]):
             logger.info(f"  ⏭️  Image already exists: {info['doc_path']}")
+            # Re-create parent folder chain (deleted image folders + re-import case)
+            _ensure_dam_folder_chain(db, str(Path(info["doc_path"]).parent), current_user)
             if info["needs_rewrite"]:
-                rewrite_map[rel_path] = info["doc_path"]
+                rewrite_map[rel_path] = info["serving_path"]
         else:
+            if existing:
+                logger.info(f"  🔄 Image row exists but file missing, re-downloading: {info['doc_path']}")
             download_results[info["doc_path"]] = {
                 "rel_path": rel_path,
                 "doc_path": info["doc_path"],
+                "serving_path": info["serving_path"],
                 "remote_url": info["remote"],
                 "needs_rewrite": info["needs_rewrite"],
             }
+    
+    # Persist any folder-chain rows created for already-existing (skipped) images.
+    db.commit()
     
     def _download_one(doc_path: str, remote_url: str) -> dict:
         """Download a single image. Returns result dict or error dict."""
@@ -382,75 +461,71 @@ def download_and_store_dam_images(html: str, page_url: str, current_user) -> tup
         
         file_type = ft_map.get(ext, FileType.PNG)
         
+        # doc_path is already /boarding/canadasite/..., so strip the leading slash only.
         storage_rel = doc_path.lstrip('/')
-        storage_rel = f"files/boarding/canadasite/{storage_rel}"
         abs_path = data_root / storage_rel
         abs_path.parent.mkdir(parents=True, exist_ok=True)
         abs_path.write_bytes(content)
         
         folder_path = str(Path(doc_path).parent)
-        
-        # Ensure folder hierarchy exists in DB
-        try:
-            boarding_app = db.query(App).filter(App.slug == 'boarding').first()
-            root_app_id = boarding_app.id if boarding_app else None
-            _parts = folder_path.strip('/').split('/')
-            _cur = ''
-            for _part in _parts:
-                _cur = _cur + '/' + _part if _cur else '/' + _part
-                _exist = db.query(Folder).filter(Folder.path == _cur).first()
-                if not _exist:
-                    _parent = '/'.join(_cur.split('/')[:-1]) or None
-                    _folder_app_id = root_app_id
-                    if _parent:
-                        _pf = db.query(Folder).filter(Folder.path == _parent).first()
-                        if _pf and _pf.app_id:
-                            _folder_app_id = _pf.app_id
-                    _f = Folder(
-                        path=_cur,
-                        parent_folder_path=_parent,
-                        name=_part,
-                        app_id=_folder_app_id,
-                        created_by=str(current_user.id),
-                    )
-                    db.add(_f)
-                    db.flush()
-        except Exception as e:
-            logger.warning(f"  ⚠️  Folder creation warning for {folder_path}: {e}")
+        _ensure_dam_folder_chain(db, folder_path, current_user)
         
         page_id = str(uuid.uuid4())[:8]
         timestamp = datetime.now()
         
         try:
-            doc = Document(
-                path=doc_path,
-                folder_path=folder_path,
-                document_number=page_id,
-                title=os.path.splitext(os.path.basename(doc_path))[0] or "Imported Image",
-                original_filename=os.path.basename(doc_path),
-                stored_filename=os.path.basename(doc_path),
-                file_size=file_size,
-                file_type=file_type,
-                mime_type=content_type or "image/png",
-                storage_path=storage_rel,
-                status=DocumentStatus.ACTIVE,
-                publish_status=PublishStatus.PUBLISHED,
-                document_metadata={
+            existing_doc = db.query(Document).filter(Document.path == doc_path).first()
+            if existing_doc:
+                # Re-download of a stale row (path is the primary key, so we
+                # update in place instead of inserting a duplicate).
+                existing_doc.folder_path = folder_path
+                existing_doc.original_filename = os.path.basename(doc_path)
+                existing_doc.stored_filename = os.path.basename(doc_path)
+                existing_doc.file_size = file_size
+                existing_doc.file_type = file_type
+                existing_doc.mime_type = content_type or "image/png"
+                existing_doc.storage_path = storage_rel
+                existing_doc.status = DocumentStatus.ACTIVE
+                existing_doc.publish_status = PublishStatus.PUBLISHED
+                existing_doc.document_metadata = {
                     "source_url": d["remote_url"],
                     "imported_at": timestamp.isoformat(),
                     "import_method": "bookmarklet_image_download",
                     "url": doc_path,
-                },
-                uploaded_by=str(current_user.id),
-                created_at=timestamp,
-                created_by=str(current_user.id),
-            )
-            db.add(doc)
-            db.commit()
-            downloaded += 1
-            logger.info(f"  ✅ Downloaded & stored: {doc_path} ({file_size} bytes, {content_type})")
+                }
+                db.commit()
+                downloaded += 1
+                logger.info(f"  ✅ Re-stored (existing row updated): {doc_path} ({file_size} bytes, {content_type})")
+            else:
+                doc = Document(
+                    path=doc_path,
+                    folder_path=folder_path,
+                    document_number=page_id,
+                    title=os.path.splitext(os.path.basename(doc_path))[0] or "Imported Image",
+                    original_filename=os.path.basename(doc_path),
+                    stored_filename=os.path.basename(doc_path),
+                    file_size=file_size,
+                    file_type=file_type,
+                    mime_type=content_type or "image/png",
+                    storage_path=storage_rel,
+                    status=DocumentStatus.ACTIVE,
+                    publish_status=PublishStatus.PUBLISHED,
+                    document_metadata={
+                        "source_url": d["remote_url"],
+                        "imported_at": timestamp.isoformat(),
+                        "import_method": "bookmarklet_image_download",
+                        "url": doc_path,
+                    },
+                    uploaded_by=str(current_user.id),
+                    created_at=timestamp,
+                    created_by=str(current_user.id),
+                )
+                db.add(doc)
+                db.commit()
+                downloaded += 1
+                logger.info(f"  ✅ Downloaded & stored: {doc_path} ({file_size} bytes, {content_type})")
             if d.get("needs_rewrite"):
-                rewrite_map[rel_path] = doc_path
+                rewrite_map[rel_path] = d["serving_path"]
         except Exception as e:
             db.rollback()
             logger.warning(f"  ❌ Failed to create document for {doc_path}: {e}")
@@ -864,12 +939,8 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
     file_type = ft_map.get(ext, FileType.OTHER)
 
     # URL path → folder determination
-    # Always extract original filename from the URL first
     parsed = urlparse(req.url)
     url_path = parsed.path.rstrip('/')
-    original_filename = os.path.basename(url_path.rstrip('/'))
-    if original_filename in ('', '/'):
-        original_filename = 'image'
 
     # Save parsed_url_path before any stripping (for DAM check)
     parsed_url_path = url_path
@@ -877,16 +948,42 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
     # If folder_path explicitly provided, use it directly
     if req.folder_path:
         target_folder_path = req.folder_path.rstrip('/')
+        original_filename = os.path.basename(url_path.rstrip('/'))
     else:
         # Strip /content/canadasite prefix (canada.ca AEM pages)
         if url_path.startswith('/content/canadasite'):
             url_path = url_path[len('/content/canadasite'):]
 
-        # Strip _jcr_content and everything after (all paths)
+        # Strip /_jcr_content/... and split filename from folder path.
+        # Two AEM URL shapes are handled:
+        #   a) simple:    /content/dam/.../folder/_jcr_content/img.jpg
+        #                 → folder path + img.jpg (filename lives AFTER _jcr_content)
+        #   b) rendition: /content/dam/.../asset.jpg/_jcr_content/renditions/cq5dam.web.1280.1280.jpeg
+        #                 → folder path + asset.jpg (rendition discarded, asset is the filename)
         jcr_idx = url_path.find('/_jcr_content')
-        had_jcr_content = jcr_idx != -1
-        if had_jcr_content:
-            url_path = url_path[:jcr_idx]
+        if jcr_idx != -1:
+            clean_before = url_path[:jcr_idx].rstrip('/')
+            after_jcr = url_path[jcr_idx + len('/_jcr_content'):]
+            after_segs = [s for s in after_jcr.split('/') if s]
+            # AEM exposes two URL shapes after _jcr_content:
+            #   a) rendition: /content/dam/.../asset.jpg/_jcr_content/renditions/cq5dam.web.1280.1280.jpeg
+            #      → the segment BEFORE _jcr_content is itself an image asset (rendition discarded).
+            #   b) adaptive: /content/canadasite/.../page/_jcr_content/par/.../image.img.png/1666637813448.png
+            #      → the segment BEFORE _jcr_content is a page path; the image name is the LAST
+            #        segment AFTER _jcr_content.
+            clean_before_is_image = os.path.splitext(os.path.basename(clean_before))[1].lower() in valid_exts
+            if clean_before_is_image:
+                # rendition-style: the DAM asset is the last segment BEFORE _jcr_content
+                original_filename = os.path.basename(clean_before)
+                url_path = clean_before.rsplit('/', 1)[0] if '/' in clean_before else ''
+            else:
+                # adaptive/simple: the filename is the last segment AFTER _jcr_content
+                original_filename = after_segs[-1] if after_segs else os.path.basename(clean_before)
+                url_path = clean_before
+        else:
+            # No _jcr_content: last path segment is the filename
+            original_filename = os.path.basename(url_path.rstrip('/'))
+            url_path = url_path.rstrip('/').rsplit('/', 1)[0] if '/' in url_path.rstrip('/') else ''
 
         path_segments = [s for s in url_path.split('/') if s]
 
@@ -896,26 +993,16 @@ def _handle_image_upload(req: ImportPageRequest, current_user: User) -> ImportPa
         # For DAM URLs, strip the /content/dam/ prefix from url_path
         # so we don't get /content/dam/content/dam/...
         if '/content/dam/' in parsed_url_path:
-            dam_rel = re.sub(r'^/?content/dam/', '', url_path)
+            dam_rel = re.sub(r'^/?content/dam/?', '', url_path)
             dam_segs = [s for s in dam_rel.split('/') if s]
-            if dam_segs:
-                if had_jcr_content:
-                    # _jcr_content stripped, ALL segments are folders
-                    target_folder_path = root + '/' + '/'.join(dam_segs)
-                else:
-                    # Last segment is filename
-                    target_folder_path = root + '/' + '/'.join(dam_segs[:-1]) if len(dam_segs) > 1 else root
-            else:
-                target_folder_path = root
-        elif had_jcr_content:
-            # Non-DAM _jcr_content: all remaining segments are folders
-            # original_filename holds the actual filename
-            target_folder_path = root + '/' + '/'.join(path_segments) if path_segments else root
+            target_folder_path = root + '/' + '/'.join(dam_segs) if dam_segs else root
         elif path_segments:
-            # No _jcr_content: last segment is the filename
-            target_folder_path = root + '/' + '/'.join(path_segments[:-1]) if len(path_segments) > 1 else root
+            target_folder_path = root + '/' + '/'.join(path_segments)
         else:
             target_folder_path = root
+
+    if original_filename in ('', '/'):
+        original_filename = 'image'
 
     # Use the ORIGINAL filename from the URL, not the truncated path
     # (filename cap raised 64 -> 255 so long URLs are not silently cut; 2026-08-13)
@@ -1641,7 +1728,7 @@ def import_url(
         # Binary content (e.g. an image URL) — import as an image document.
         import_req = ImportPageRequest(
             url=final_url,
-            title=req.title or os.path.basename(urlparse(final_url).path.rstrip('/')) or "Imported Image",
+            title=req.title,
             folder_path=req.folder_path,
             is_image=True,
             image_data=fetched.image_data,
